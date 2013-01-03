@@ -45,11 +45,8 @@ end
 desc 'build the user guide'
 task :guide do
   Dir.chdir('doc/user-guide') do
-    if File.stat('user-guide.tex').mtime > File.stat('user-guide.pdf').mtime
-      sh 'latex user-guide'
-      sh 'latex user-guide'
-      sh 'latex user-guide'
-      sh 'dvipdf user-guide.dvi'
+    if File.stat('user-guide.txt').mtime > File.stat('user-guide.pdf').mtime
+      sh 'a2x -fpdf -darticle --dblatex-opts "-P latex.output.revhistory=0" user-guide.txt'
     end
   end
 end
@@ -64,12 +61,10 @@ end
 desc 'build the manual'
 task :manual do
   Dir.chdir('doc/manual') do
-    if File.stat('manual.tex').mtime > File.stat('manual.pdf').mtime
-      sh 'latex manual'
-      sh 'bibtex manual'
-      sh 'latex manual'
-      sh 'latex manual'
-      sh 'dvipdf manual.dvi'
+    if File.stat('manual.txt').mtime > File.stat('manual.pdf').mtime
+			sh 'asciidoc-bib -s numeric manual.txt'
+      sh 'a2x -fpdf -darticle --dblatex-opts "-P latex.output.revhistory=0" manual-ref.txt'
+      sh 'mv manual-ref.pdf manual.pdf'
     end
   end
 end
