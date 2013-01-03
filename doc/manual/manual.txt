@@ -263,7 +263,7 @@ for version 2 include:
 recalling several boards. [cite:Gobet96b]
 - F. Gobet, Memory for the meaningless: How chunks help. [cite:Gobet98a]
 
-CHUMP:: is a version of CHREST which learns to select moves by pure
+_CHUMP_ is a version of CHREST which learns to select moves by pure
 pattern recognition (no search):
 
 - F. Gobet and P. Jansen (1994). Towards a chess program based on a model of

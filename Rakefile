@@ -3,7 +3,7 @@
 VERSION = '4.0.0-alpha-1' # current version for bundling
 JCOMMON = 'lib/jcommon-1.0.17.jar' # name of library
 JFREECHART = 'lib/jfreechart-1.0.14.jar' # name of library
-JRUBY = 'jruby-1.6.7.2' # name of jruby executable
+JRUBY = 'jruby' # name of jruby executable
 
 directory 'bin'
 
