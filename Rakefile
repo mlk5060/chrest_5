@@ -9,7 +9,7 @@ directory 'bin'
 
 desc 'compile Chrest classes into bin folder'
 task :compile => 'bin' do
-  Dir.chdir ('src/jchrest-architecture') do
+  Dir.chdir('src/jchrest-architecture') do
     sh "javac -cp ../../#{JCOMMON}:../../#{JFREECHART} -d ../../bin `find -name \"*.java\"`"
     sh "cp -r jchrest/gui/icons ../../bin/jchrest/gui"
   end
