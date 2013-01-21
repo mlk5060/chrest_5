@@ -20,7 +20,8 @@ The Rakefile assumes the presence of Ruby (to run Rake), a Java compiler, and so
 functions - the Rakefile has only been tested on Ubuntu, and may need adapting for other 
 platforms.
 
-Before using the Rakefile, you need to add the two required library files to the lib folder.
+Before using the Rakefile, you need to add the two required library files to the lib folder.  Download 
+from the following sites, unpack and place the respective jar file into the lib folder:
 
 [JCommon](http://sourceforge.net/projects/jfreechart/files/3.%20JCommon/), version 1.0.17  
 [JFreeChart](http://sourceforge.net/projects/jfreechart/), version 1.0.14  
