@@ -62,7 +62,7 @@ desc 'build the manual'
 task :manual do
   Dir.chdir('doc/manual') do
     if File.stat('manual.txt').mtime > File.stat('manual.pdf').mtime
-			sh 'asciidoc-bib -s numeric manual.txt'
+			sh 'asciidoc-bib -s ieee manual.txt'
       sh 'a2x -fpdf -darticle --dblatex-opts "-P latex.output.revhistory=0" manual-ref.txt'
       sh 'mv manual-ref.pdf manual.pdf'
     end
