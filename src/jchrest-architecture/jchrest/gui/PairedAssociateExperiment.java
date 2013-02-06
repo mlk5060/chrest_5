@@ -194,7 +194,11 @@ public class PairedAssociateExperiment extends JPanel {
       private int getErrors (int trial) {
         int errors = 0;
         for (int i = 0, n = _patterns.size (); i < n; ++i) {
-          if (_responses.get(trial).get(i).equals(_patterns.get(i).getSecond ())) {
+          ListPattern target = _responses.get(trial).get(i).clone ();
+          ListPattern response = _patterns.get(i).getSecond().clone ();
+          target.setNotFinished ();
+          response.setNotFinished ();
+          if (response.equals (target)) {
           } else {
             errors += 1;
           }
