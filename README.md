@@ -11,7 +11,7 @@ Details on using Chrest will be made available on the
 [wiki](https://github.com/petercrlane/chrest/wiki).
 
 A prepackaged version of Chrest is available at
-[http://chrest.info/software](http://chrest.info/software)
+[http://chrest.info/software.html](http://chrest.info/software.html)
 
 Compiling Chrest
 ----------------
