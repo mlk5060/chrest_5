@@ -1,8 +1,9 @@
 # Rake file for managing the Chrest project
 
 VERSION = '4.0.0-alpha-2' # current version for bundling
-JCOMMON = 'lib/jcommon-1.0.17.jar' # name of library
-JFREECHART = 'lib/jfreechart-1.0.14.jar' # name of library
+JAVALIBS = '/home/peter/Software/javalibs' # location of jar files
+JCOMMON = "#{JAVALIBS}/jcommon-1.0.17.jar" # name of library
+JFREECHART = "#{JAVALIBS}/jfreechart-1.0.14.jar" # name of library
 JRUBY = 'jruby' # name of jruby executable
 
 directory 'bin'
@@ -10,7 +11,7 @@ directory 'bin'
 desc 'compile Chrest classes into bin folder'
 task :compile => 'bin' do
   Dir.chdir('src/jchrest-architecture') do
-    sh "javac -cp ../../#{JCOMMON}:../../#{JFREECHART} -d ../../bin `find -name \"*.java\"`"
+    sh "javac -cp #{JCOMMON}:#{JFREECHART} -d ../../bin `find -name \"*.java\"`"
     sh "cp -r jchrest/gui/icons ../../bin/jchrest/gui"
   end
 end
@@ -25,8 +26,8 @@ directory 'tmp'
 desc 'extract java libs into tmp directory'
 task :extract_libs => 'tmp' do
   Dir.chdir('tmp') do
-    sh "jar -xf ../#{JCOMMON}"
-    sh "jar -xf ../#{JFREECHART}"
+    sh "jar -xf #{JCOMMON}"
+    sh "jar -xf #{JFREECHART}"
   end
 end
 
@@ -80,7 +81,7 @@ directory 'doc/api'
 desc 'create API documentation'
 task :api_doc => 'doc/api' do
   Dir.chdir('src/jchrest-architecture') do
-    sh "javadoc -classpath ../../#{JCOMMON}:../../#{JFREECHART} -d ../../doc/api `find -name \"*.java\"`"
+    sh "javadoc -classpath #{JCOMMON}:#{JFREECHART} -d ../../doc/api `find -name \"*.java\"`"
   end
 end
 
