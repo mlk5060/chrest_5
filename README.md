@@ -16,35 +16,9 @@ A prepackaged version of Chrest is available at
 Compiling Chrest
 ----------------
 
-The Chrest source code is within the folder +src/jchrest-architecture+.  To compile the 
-code, you also require the following jar files within your project folder or on your 
-CLASSPATH:
-
-- [JCommon](http://sourceforge.net/projects/jfreechart/files/3.%20JCommon/), version 1.0.17 or later  
-- [JFreeChart](http://sourceforge.net/projects/jfreechart/), version 1.0.14 or later
-
-Alternatively, the Chrest folder includes a Rakefile which can be used for
-compiling and building Chrest.  The Rakefile assumes the presence of Ruby (to
-run Rake), a Java compiler, and some bash functions - the Rakefile has only
-been tested on Ubuntu, and may need adapting for other platforms.
-
-Before using the Rakefile, you need to update the JAVALIBS constant pointing to
-the location of the jar files.  Download from the following sites, unpack and
-place the respective jar file into JAVALIBS:
-
-- [JCommon](http://sourceforge.net/projects/jfreechart/files/3.%20JCommon/), version 1.0.17
-- [JFreeChart](http://sourceforge.net/projects/jfreechart/), version 1.0.14
-
-(Later versions should work fine, but will need the corresponding change to the Rakefile.)
-
-    > rake -T
-
-will show a list of available tasks. 
-
-The test suite requires jruby - edit the Rakefile to suit your runtime.  
-You will need to install the testing gem:
-
-    > jruby -S gem install modellers_testing_framework
+The code base is being migrated to use +buildr+ for compiling.  Currently, the 
++buildfile+ enables CHREST to be compiled, run and packaged into an executable jar file.
+Dependencies are automatically pulled from a maven repository.
 
 License
 -------
