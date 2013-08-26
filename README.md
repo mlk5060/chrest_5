@@ -1,11 +1,9 @@
-CHREST
-======
+# CHREST #
 
 This software project contains materials relating to the CHREST cognitive 
 architecture.  
 
-Using Chrest
-------------
+## Using Chrest ##
 
 Details on using Chrest will be made available on the
 [wiki](https://github.com/petercrlane/chrest/wiki).
@@ -13,11 +11,9 @@ Details on using Chrest will be made available on the
 A prepackaged version of Chrest is available at
 [http://chrest.info/software.html](http://chrest.info/software.html)
 
-Compiling Chrest
-----------------
+## Compiling Chrest ##
 
-Compilation
-+++++++++++
+### Compilation ###
 
 Compilation uses a 'buildr' script.  So first install 'buildr' using:
 
@@ -32,8 +28,7 @@ To package CHREST into a self-contained jar file, in the 'targets' folder:
   > buildr package
 
 
-Testing
-+++++++
+### Testing ###
 
 For testing CHREST, first install jruby.  Assuming the jruby executable is on the path, 
 install the gem:
@@ -44,8 +39,7 @@ and to run the tests:
 
   > buildr tests
 
-Documentation
-+++++++++++++
+### Documentation ###
 
 There are two documents, a user-guide and a manual.  These are stored in the
 'doc' folder.  Use the following the construct the two documents, pdfs are
@@ -54,8 +48,7 @@ stored in 'doc/user-guide' and 'doc/manual' respectively.
   > buildr guide
   > buildr manual
 
-License
--------
+## License ##
 
 Chrest project files may be redistributed under the terms of the [Open Works
 License](http://owl.apotheon.org/).
@@ -64,8 +57,7 @@ License](http://owl.apotheon.org/).
 within CHREST, and the distribution includes JFreeChart under the terms of the
 [GNU Lesser General Public Licence](http://www.gnu.org/licenses/lgpl.html). 
 
-Contributors
-------------
+## Contributors ##
 
 The original design and ideas behind Chrest were created by [Fernand Gobet](www.brunel.ac.uk/~hsstffg/).
 
