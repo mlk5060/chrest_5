@@ -46,6 +46,7 @@ There are two documents, a user-guide and a manual.  These are stored in the
 stored in 'doc/user-guide' and 'doc/manual' respectively.
 
   > buildr guide
+
   > buildr manual
 
 ## License ##
@@ -59,7 +60,9 @@ within CHREST, and the distribution includes JFreeChart under the terms of the
 
 ## Contributors ##
 
-The original design and ideas behind Chrest were created by [Fernand Gobet](www.brunel.ac.uk/~hsstffg/).
+This repository is maintained by [Peter Lane](http://peterlane.info).
+
+The original design and ideas behind CHREST were created by [Fernand Gobet](http://www.brunel.ac.uk/~hsstffg/).
 
 The emotions module was created by [Marvin Schiller](http://www.marvin-schiller.de/).
 
