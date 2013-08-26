@@ -17,3 +17,31 @@ define 'chrest' do
   run.with(JCOMMON, JFREECHART).using :main => "jchrest.gui.Shell"
 end
 
+desc 'build the user guide'
+task :guide do
+  Dir.chdir('doc/user-guide') do
+    if !File.exists?('user-guide.pdf') ||
+      (File.stat('user-guide.txt').mtime > File.stat('user-guide.pdf').mtime)
+      sh 'a2x -fpdf -darticle --dblatex-opts "-P latex.output.revhistory=0" user-guide.txt'
+    end
+  end
+end
+
+desc 'build the manual'
+task :manual do
+  Dir.chdir('doc/manual') do
+     if !File.exists?('manual.pdf') || 
+       (File.stat('manual.txt').mtime > File.stat('manual.pdf').mtime)
+      sh 'asciidoc-bib -s ieee manual.txt'
+      sh 'a2x -fpdf -darticle --dblatex-opts "-P latex.output.revhistory=0" manual-ref.txt'
+      sh 'mv manual-ref.pdf manual.pdf'
+    end
+  end
+end
+
+desc 'run all Chrest tests'
+task :tests => :compile do
+  Dir.chdir('tests') do
+    sh 'jruby -J-cp ../target/classes all-chrest-tests.rb'
+  end
+end

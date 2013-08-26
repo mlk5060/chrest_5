@@ -16,9 +16,43 @@ A prepackaged version of Chrest is available at
 Compiling Chrest
 ----------------
 
-The code base is being migrated to use +buildr+ for compiling.  Currently, the 
-+buildfile+ enables CHREST to be compiled, run and packaged into an executable jar file.
-Dependencies are automatically pulled from a maven repository.
+Compilation
++++++++++++
+
+Compilation uses a 'buildr' script.  So first install 'buildr' using:
+
+  > gem install buildr
+
+To compile CHREST:
+
+  > buildr compile
+
+To package CHREST into a self-contained jar file, in the 'targets' folder:
+
+  > buildr package
+
+
+Testing
++++++++
+
+For testing CHREST, first install jruby.  Assuming the jruby executable is on the path, 
+install the gem:
+
+  > jruby -S gem install modellers_testing_framework
+
+and to run the tests:
+
+  > buildr tests
+
+Documentation
++++++++++++++
+
+There are two documents, a user-guide and a manual.  These are stored in the
+'doc' folder.  Use the following the construct the two documents, pdfs are
+stored in 'doc/user-guide' and 'doc/manual' respectively.
+
+  > buildr guide
+  > buildr manual
 
 License
 -------
