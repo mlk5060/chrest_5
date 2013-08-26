@@ -59,7 +59,7 @@ folder:
   > buildr bundle
 
 The latest version of CHREST can be downloaded pre-packaged from
-[http://chrest.org/software](http://chrest.org/software).
+[http://chrest.info/software.html](http://chrest.info/software.html).
 
 ## License ##
 
