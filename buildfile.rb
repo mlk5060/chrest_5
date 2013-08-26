@@ -1,12 +1,14 @@
 # Buildr file for managing the CHREST project
 
+VERSION = '4.0.0-alpha-2'
+
 repositories.remote << 'http://repo1.maven.org/maven2'
 
 JCOMMON = 'jfree:jcommon:jar:1.0.16'
 JFREECHART = 'jfree:jfreechart:jar:1.0.13'
 
 define 'chrest' do
-  project.version = '4.0.0-alpha-2'
+  project.version = VERSION
   compile.with JCOMMON, JFREECHART
   package(:jar).with(
     :manifest=>{'Main-Class'=>'jchrest.gui.Shell'}
@@ -45,3 +47,39 @@ task :tests => :compile do
     sh 'jruby -J-cp ../target/classes all-chrest-tests.rb'
   end
 end
+
+directory 'release/chrest'
+desc 'bundle for release'
+task :bundle => [:guide, :manual, :package, :doc, 'release/chrest'] do
+  Dir.chdir('release/chrest') do
+    sh 'rm -rf documentation' # remove it if exists already
+    sh 'mkdir documentation'
+    sh 'cp ../../lib/license.txt documentation'
+    sh 'cp ../../doc/user-guide/user-guide.pdf documentation'
+    sh 'cp ../../doc/manual/manual.pdf documentation'
+
+    sh "cp ../../target/chrest-#{VERSION}.jar ./chrest.jar"
+    sh 'cp -r ../../examples .'
+
+    sh 'cp -r ../../target/doc documentation/javadoc'
+    File.open("start-chrest.sh", "w") do |file|
+      file.puts <<END
+java -Xmx100M -jar chrest.jar
+END
+    end
+    File.open("start-chrest.bat", "w") do |file|
+      file.puts <<END
+start javaw -Xmx100M -jar chrest.jar
+END
+    end
+    File.open("README.txt", "w") do |file|
+      file.puts <<END
+See documentation/user-guide.pdf for information on running and using CHREST.
+END
+    end
+  end
+  Dir.chdir('release') do
+    sh "zip -FS -r chrest-#{VERSION}.zip chrest"
+  end
+end
+

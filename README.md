@@ -13,11 +13,19 @@ A prepackaged version of Chrest is available at
 
 ## Compiling Chrest ##
 
-### Compilation ###
+### Setup ###
 
 Compilation uses a 'buildr' script.  So first install 'buildr' using:
 
   > gem install buildr
+
+Testing uses [jruby](http://jruby.org) and a jruby gem
+[modellers_testing_framework](https://rubygems.org/gems/modellers_testing_framework).
+Assuming the jruby executable is on the PATH, install the gem using:
+
+  > jruby -S gem install modellers_testing_framework
+
+### Compilation ###
 
 To compile CHREST:
 
@@ -27,15 +35,9 @@ To package CHREST into a self-contained jar file, in the 'targets' folder:
 
   > buildr package
 
-
 ### Testing ###
 
-For testing CHREST, first install jruby.  Assuming the jruby executable is on the path, 
-install the gem:
-
-  > jruby -S gem install modellers_testing_framework
-
-and to run the tests:
+To run the tests:
 
   > buildr tests
 
@@ -48,6 +50,16 @@ stored in 'doc/user-guide' and 'doc/manual' respectively.
   > buildr guide
 
   > buildr manual
+
+### Packaging ###
+
+To bundle CHREST, the documentation and examples into a zip file in the 'release' 
+folder:
+
+  > buildr bundle
+
+The latest version of CHREST can be downloaded pre-packaged from
+[http://chrest.org/software](http://chrest.org/software).
 
 ## License ##
 
