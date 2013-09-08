@@ -17,10 +17,13 @@ public class Scenes {
 
   /**
    * Read in a list of scenes from the given input stream.  Format is:
-   * line 1: height width              e.g. 8 8
-   * line 2: blank (can be comment)
-   * line 3-3+height: line of length 'width'.  Each char in line 2 or '.' (empty)
-   * line 3+height+1: blank (can be comment) and repeat until EOF
+   *
+   * <ul>
+   * <li>line 1: height width              e.g. 8 8</li>
+   * <li>line 2: blank (can be comment)</li>
+   * <li>line 3-3+height: line of length 'width'.  Each char in line 2 or '.' (empty)</li>
+   * <li>line 3+height+1: blank (can be comment) and repeat until EOF</li>
+   * </ul>
    *
    * Throws IOException if any line is short, or the number of lines cannot be read.
    */
@@ -61,12 +64,15 @@ public class Scenes {
   }
 
   /**
-   * Read in a list of scenes from the given input stream.  Format is:
-   * line 1: height width              e.g. 8 8
-   * line 2: blank (can be comment)
-   * line 3-3+height: line of length 'width'.  Each char in line 2 or '.' (empty)
-   * line 3+height+1: piece row column  defines a move (row from 0 at the top, column from 0 at the left)
-   * line 3+height+2: blank (can be comment) and repeat until EOF
+   * Read in a list of scenes + move from the given input stream.  Format is:
+   *
+   * <ul>
+   * <li>line 1: height width              e.g. 8 8</li>
+   * <li>line 2: blank (can be comment)</li>
+   * <li>line 3-3+height: line of length 'width'.  Each char in line 2 or '.' (empty)</li>
+   * <li>line 3+height+1: piece row column  defines a move (row from 0 at the top, column from 0 at the left)</li>
+   * <li>line 3+height+2: blank (can be comment) and repeat until EOF</li>
+   * </ul>
    *
    * Throws IOException if any line is short, or the number of lines cannot be read.
    */
@@ -125,53 +131,53 @@ public class Scenes {
     return scenes;
   }
 
-  private int _height;
-  private int _width;
-  private List<Scene> _scenes;
-  private List<Move> _moves;
+  private int height;
+  private int width;
+  private List<Scene> scenes;
+  private List<Move> moves;
 
   private Scenes (int height, int width) {
-    _height = height;
-    _width = width;
-    _scenes = new ArrayList<Scene> ();
-    _moves = new ArrayList<Move> ();
+    this.height = height;
+    this.width = width;
+    this.scenes = new ArrayList<Scene> ();
+    this.moves = new ArrayList<Move> ();
   }
 
   private void add (Scene scene) {
-    _scenes.add (scene);
+    scenes.add (scene);
   }
 
   private void add (Scene scene, Move move) {
-    _scenes.add (scene);
-    _moves.add (move);
+    scenes.add (scene);
+    moves.add (move);
   }
 
   public String [] getSceneNames () {
-    String [] names = new String[_scenes.size ()];
-    for (int i = 0; i < _scenes.size (); ++i) {
-      names[i] = _scenes.get(i).getName ();
+    String [] names = new String[scenes.size ()];
+    for (int i = 0; i < scenes.size (); ++i) {
+      names[i] = scenes.get(i).getName ();
     }
     return names;
   }
 
   public Scene get (int i) {
-    return _scenes.get (i);
+    return scenes.get (i);
   }
 
   public boolean haveMoves () {
-    return (_moves.size () > 0);
+    return (moves.size () > 0);
   }
 
   public Move getMove (int i) {
-    if (haveMoves () && i < _moves.size ()) {
-      return _moves.get (i);
+    if (haveMoves () && i < moves.size ()) {
+      return moves.get (i);
     } else {
       return new Move ("None", 0, 0);
     }
   }
 
   public int size () {
-    return _scenes.size ();
+    return scenes.size ();
   }
 }
 
