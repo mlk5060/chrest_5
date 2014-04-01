@@ -1,0 +1,4 @@
+Manifest-Version: 1.0
+Extension-Name: chrest
+Class-Manager: ChrestExtension
+NetLogo-Extension-API-Version: 5.0.5

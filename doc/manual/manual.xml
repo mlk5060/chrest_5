@@ -1,0 +1,424 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE article PUBLIC "-//OASIS//DTD DocBook XML V4.5//EN" "http://www.oasis-open.org/docbook/xml/4.5/docbookx.dtd">
+<?asciidoc-toc?>
+<?asciidoc-numbered?>
+
+<article lang="en">
+<articleinfo>
+    <title>CHREST Manual (version 4.0.0)</title>
+    <author>
+        <firstname>Peter</firstname>
+        <surname>Lane</surname>
+    </author>
+    <authorinitials>PL</authorinitials>
+</articleinfo>
+<blockquote>
+<simpara>CHREST is a symbolic cognitive architecture explaining how experience
+affects our ability to remember, categorise and think about the world.  This
+document contains a technical description of CHREST, including details of its
+main processes and links to how these are implemented.  A separate user guide
+is available, which is a gentler introduction to using the CHREST software.</simpara>
+</blockquote>
+<section id="_overview_of_chrest_architecture">
+<title>Overview of CHREST Architecture</title>
+<simpara>The CHREST architecture has four components.  Interactions with the world pass
+through an input/output component, which is responsible for interpreting inputs
+as patterns and for converting action patterns into operations on the world.
+Patterns are passed through the discrimination network, which acts as an index
+into long-term memory.  Chunks retrieved from long-term memory are placed into
+the short-term (or working) memory, which is a limited capacity store.
+Figure 1 provides an overview of these components and
+their connections.</simpara>
+<simpara><inlinemediaobject>
+  <imageobject>
+  <imagedata fileref="figures/chrest.eps" contentwidth="400"/>
+  </imageobject>
+  <textobject><phrase>figures/chrest.eps</phrase></textobject>
+</inlinemediaobject></simpara>
+<simpara>Figure 1: An overview of CHREST</simpara>
+<simpara>The distinctive aspect and role of CHREST is in accessing appropriate long-term
+memory structures given a perceived stimulus, such as an image or spoken
+sentence.  The architecture explains how memories are accessed given some
+input, and how certain kinds of associations can be constructed across elements
+of declarative or procedural memory when primed by perception.  The
+<emphasis>discrimination network</emphasis> provides the index into long-term memory, and is
+constructed in close association with the perceptual mechanisms, which control
+eye movements or how verbal information is stored for rehearsal.</simpara>
+<simpara>CHREST thus has links to the following kinds of memories, but does not provide
+a fully-worked out theory of them:</simpara>
+<itemizedlist>
+<listitem>
+<simpara>
+Procedural memory: unconscious memory of skills
+</simpara>
+</listitem>
+<listitem>
+<simpara>
+Declarative memory: conscious memory of facts
+</simpara>
+</listitem>
+<listitem>
+<simpara>
+Episodic memory: facts about one&#8217;s own life
+</simpara>
+</listitem>
+<listitem>
+<simpara>
+Semantic memory: facts about the world and their connections
+</simpara>
+</listitem>
+</itemizedlist>
+<simpara>With only a small emphasis on procedural and declarative memory, CHREST has a
+different focus than architectures such as Soar [cite:Laird12;Newell90] or
+ACT-R [cite:Anderson98].  However, with a greater emphasis on learning and the
+link between learning and perception, CHREST provides an explanation of how
+experience affects our ability to remember, categorise and think about the
+world around us.</simpara>
+<simpara>This document describes in more detail each component of CHREST.  We begin with
+the long-term memory structures: the discrimination network, the semantic
+memory and templates.  Then we cover the perception module, based on Perceiver,
+and the short-term or working memory, followed by explaining the mechanisms for
+including emotional responses in learning and retrieval.  Problem-solving is
+introduced through a look at the CHUMP mechanisms and the SEARCH simulation.
+We bring these components together by explaining how to control and work with a
+CHREST-based agent.  Finally, we introduce some example domains and models.</simpara>
+</section>
+<section id="_discrimination_network">
+<title>Discrimination Network</title>
+<simpara>To write.</simpara>
+</section>
+<section id="_semantic_memory_and_templates">
+<title>Semantic Memory and Templates</title>
+<section id="_semantic_links">
+<title>Semantic Links</title>
+<simpara>In EPAM, Simon&#8217;s model of Memory from which CHREST is inspired, nodes are
+connected by tests used in the discrimination process.  Although nodes are also
+supposed to be connected by semantic links, a common idea in cognitive
+psychology, this is not implemented in EPAM.  CHREST 2 introduced the idea of
+semantic links, to make the model a more plausible theory of human memory.</simpara>
+<simpara>The basic idea is that nodes that have a similar internal representation (in the case
+of CHREST, patterns of chess pieces) are connected together by links.</simpara>
+<section id="_how_are_semantic_links_created">
+<title>How are semantic links created?</title>
+<simpara>Chunks stored in STM are compared pairwise, and if their images
+(internal representation) overlap with at least the minimum of elements set
+by the <literal>similarity threshold</literal> parameter, a link is created.</simpara>
+<simpara>Example:</simpara>
+<simpara>Assume that pointers to Node-1 and Node-2 are stored in STM. The images of the
+nodes are as follows:</simpara>
+<variablelist>
+<varlistentry>
+<term>
+node-1-image
+</term>
+<listitem>
+<simpara>
+("Pc4" "Pd5" "Pe4" "Pf3" "Nc3" "Be3")
+</simpara>
+</listitem>
+</varlistentry>
+<varlistentry>
+<term>
+node-2-image
+</term>
+<listitem>
+<simpara>
+("Pd5" "Pe4" "Nc3" "Be3")
+</simpara>
+</listitem>
+</varlistentry>
+</variablelist>
+<simpara>assume also that the <literal>similarity threshold</literal> is set to 4.</simpara>
+<simpara>In this case, 4 pieces-on-squares are members of both images, so the criterion
+is met, and a semantic link is created. A pointer to node-1 is added to
+the list of semantic links for node-2, and a pointer to node-2 is added to
+the list of semantic links for node-1.</simpara>
+</section>
+<section id="_how_are_semantic_links_used_during_pattern_recognition">
+<title>How are semantic links used during pattern recognition?</title>
+<simpara>When recognising a pattern, the program uses the discrimination net as before.
+The difference is that when a leaf node is reached, this node is not returned
+immediately, but the program searches through the nodes connected by semantic
+links to see if some node has richer information, as calculated by the size of
+the image and the number of slots in the template (see below). The depth of
+search is controlled by the parameter <literal>maximum semantic distance</literal>. This
+parameter is set to 1 currently: only nodes one semantic link away from the
+node reached by discrimination can be selected.  (This parameter is not
+accessible in the GUI.)</simpara>
+<simpara>The effect of the semantic links is to make all search paths to one of the
+nodes in the semantic network always reach the most informative
+semantically-equivalent node.  As these connections and relations are computed
+based on the current state of the network, subsequent learning in other parts
+of the network may alter the node retrieved for any given input pattern.</simpara>
+</section>
+</section>
+<section id="_templates">
+<title>Templates</title>
+<simpara>The idea of templates is discussed in detail in [cite:Gobet96b].  The basic
+idea is that some chunks, which occur often when playing or studying games,
+evolve into more complex data structures, which possess slots supporting the
+storage of variable information.  Templates are also supposed to point to other
+types of information: moves, plans, evaluation of the position described in the
+template, and so on, but this has not been implemented yet.</simpara>
+<section id="_how_templates_are_created">
+<title>How templates are created</title>
+<simpara>Slots are created for types of information that recur often. There are two
+sources for the information: nodes reached via test links, and nodes reached
+via semantic links.  For the nodes located at a minimum-level in the network,
+CHREST looks for if some information (type of piece, square or chunk) recurs at
+least a minimum-number-of-occurrences. If this is the case, a slot is created
+for this type of piece, square or chunk. (Note: slots for chunks are
+not currently implemented.)</simpara>
+<simpara>Note that in the present version, templates are created periodically during
+the learning phase: the whole net is scanned and templates are created when
+possible. This is done mainly for efficiency and simplicity reasons.
+Later versions will probably have nodes checked for templates when they are
+recognized during the learning phase.</simpara>
+</section>
+<section id="_how_templates_are_used_during_a_memory_task">
+<title>How templates are used during a memory task</title>
+<simpara>During the presentation of a position, the program recognizes patterns of
+pieces on squares, and outputs a node. If the node is a template, the program
+tries to fill in slots of this template with pieces on squares in the pattern
+that do not belong to the image of the node. In addition, the program tries to
+fill in slots of the hypothesis with each pattern newly perceived. During the
+reconstruction phase, information in slots is used as any other information
+stored in STM.</simpara>
+<simpara>In the current version, slots may be filled in with any type of information
+that shares the piece, square or chunk labeling the slot. A possibly more
+plausible mechanism is that slots may be rapidly instantiated only with
+information already present in the net.  With method (a) of construction, for
+example, slots could be filled in only with values that appear in at least one
+of the links coming from the template-node.</simpara>
+</section>
+</section>
+</section>
+<section id="_perceiver">
+<title>Perceiver</title>
+<simpara>The Perceiver is responsible for gathering information from a visual stimulus.
+Input from the simulated eye is in the form of <emphasis>patterns</emphasis>, containing
+a sequence of <emphasis>item-on-square</emphasis>.</simpara>
+<simpara>Attention is controlled using a set of heuristics.  In line with studies
+on expertise, the heuristics vary slightly between novice and experts.  An
+arbitrary dividing line is placed between novice and experts at 2000 nodes in
+visual LTM.</simpara>
+<simpara>The heuristics are as follows:</simpara>
+<simpara><emphasis role="strong">LTM</emphasis></simpara>
+<simpara><emphasis role="strong">Neighbouring piece</emphasis></simpara>
+<simpara>The heuristics are applied, as shown in Table 1.</simpara>
+<screen>A &amp; B</screen>
+<simpara>Table 1: Heuristics</simpara>
+</section>
+<section id="_working_memory">
+<title>Working Memory</title>
+<simpara>To write.</simpara>
+</section>
+<section id="_emotions">
+<title>Emotions</title>
+<simpara>To write.</simpara>
+</section>
+<section id="_problem_solving">
+<title>Problem solving</title>
+<simpara>CHUMP [cite:Gobet94] and SEARCH [cite:Gobet97a] provide two complementary
+aspects of problem-solving behaviour.  Currently, CHUMP is implemented
+within CHREST, and SEARCH is currently being integrated.  A process-based
+model of SEARCH is available, simulating its behaviour.</simpara>
+<simpara>Problem-solving behaviour in CHREST follows the proposal of Chase and
+Simon [cite:Chase73] that ``skill in playing chess depends on:</simpara>
+<orderedlist numeration="arabic">
+<listitem>
+<simpara>
+recognising familiar chunks in chess positions when playing games, and
+</simpara>
+</listitem>
+<listitem>
+<simpara>
+exploring possible moves and evaluating their consequences.
+</simpara>
+</listitem>
+</orderedlist>
+<simpara>Hence, expertise depends {em both} on the availability in memory of
+information about a large number of frequently recurring patterns of pieces,
+and upon the availability of strategies for highly selective search in the move
+tree.'' [cite:Gobet97a]</simpara>
+</section>
+<section id="_controlling_a_model">
+<title>Controlling a Model</title>
+<simpara>To write.</simpara>
+</section>
+<section id="_examples">
+<title>Examples</title>
+<simpara>The following examples demonstrate the use of CHREST in three domains taken
+from published work.  More examples are provided in the &#8216;examples&#8217; folder of
+the distributed software.</simpara>
+<section id="_chess_recall">
+<title>Chess recall</title>
+<simpara>Based on book [cite:deGroot96] and article [cite:Gobet00b].</simpara>
+</section>
+<section id="_language_learning">
+<title>Language learning</title>
+<simpara>Based on EPAM-VOC [cite:Jones08].</simpara>
+</section>
+<section id="_iowa_gambling_task">
+<title>Iowa gambling task</title>
+<simpara>Based on Marvin&#8217;s project [cite:Gobet11a].</simpara>
+</section>
+</section>
+<section id="_recommended_reading">
+<title>Recommended reading</title>
+<simpara>The following publications are recommended for understanding the current
+status of CHREST and related models.</simpara>
+<itemizedlist>
+<listitem>
+<simpara>
+A general description of chunking mechanisms in human learning. [cite:Gobet01]
+</simpara>
+</listitem>
+</itemizedlist>
+<section id="_historical_background">
+<title>Historical background</title>
+<simpara>The following publications may be of interest for understanding the development
+of CHREST and its precursors.</simpara>
+<section id="_chrest_and_related_models">
+<title>CHREST and related models</title>
+<simpara><emphasis>Version 1 of CHREST</emphasis> was released in 1993 and published as:</simpara>
+<itemizedlist>
+<listitem>
+<simpara>
+F. Gobet (1993). Les memoires d&#8217;un joueur d'\'echecs. [cite:Gobet93a]
+</simpara>
+</listitem>
+<listitem>
+<simpara>
+F. Gobet (1993). A computer model of chess memory. [cite:Gobet93b]
+</simpara>
+</listitem>
+</itemizedlist>
+<simpara>A variant of the first version of CHREST was described in chapter 8 of [cite:deGroot96].
+The main differences in comparison with the first version were that the
+internal representation does not play any more the role of a retrieval
+structure, and that the eye movements were simulated much more closely than in
+the earlier version.</simpara>
+<simpara><emphasis>Version 2 of CHREST</emphasis> was released in 1995 and included the
+ideas of semantic links between nodes and templates.  Important publications
+for version 2 include:</simpara>
+<itemizedlist>
+<listitem>
+<simpara>
+F. Gobet and H.A. Simon (1996), Templates in chess memory: A mechanism for
+recalling several boards. [cite:Gobet96b]
+</simpara>
+</listitem>
+<listitem>
+<simpara>
+F. Gobet, Memory for the meaningless: How chunks help. [cite:Gobet98a]
+</simpara>
+</listitem>
+</itemizedlist>
+<simpara><emphasis>CHUMP</emphasis> is a version of CHREST which learns to select moves by pure
+pattern recognition (no search):</simpara>
+<itemizedlist>
+<listitem>
+<simpara>
+F. Gobet and P. Jansen (1994). Towards a chess program based on a model of
+human memory. [cite:Gobet94]
+</simpara>
+</listitem>
+</itemizedlist>
+<simpara><emphasis>Version 3 of CHREST</emphasis> was released in 2009, and used in modelling
+some further results in chess expertise, particularly short-term memory
+effects.</simpara>
+<itemizedlist>
+<listitem>
+<simpara>
+R. Ll. Smith, F. Gobet and P.C.R. Lane (2007), An investigation into the
+effect of ageing on expert memory with CHREST. [cite:Smith07]
+</simpara>
+</listitem>
+<listitem>
+<simpara>
+R. Ll. Smith, P.C.R. Lane and F. Gobet (2008), Modelling the relationship
+between visual short-term memory capacity and recall ability. [cite:Smith08]
+</simpara>
+</listitem>
+<listitem>
+<simpara>
+R. Ll. Smith, F. Gobet and P.C.R. Lane (2009), Checking chess checks with
+chunks: A model of simple check detection. [cite:Smith09]
+</simpara>
+</listitem>
+</itemizedlist>
+<simpara><emphasis>Version 4 of CHREST</emphasis> is due for release in early 2013, and is a
+complete reimplementation of CHREST from Lisp into Java.  Version 4 includes
+the components of earlier versions of CHREST, such as the discrimination network,
+semantic links, templates, perceiver and working memory, additionally supports
+CHUMP [cite:Bossomaier12;Gobet94], and includes the emotion-handling
+mechanisms, as developed by Marvin Schiller [cite:Gobet11a].</simpara>
+</section>
+<section id="_precursors_of_chrest">
+<title>Precursors of CHREST</title>
+<simpara>CHREST&#8217;s discrimination network is at heart similar (but not
+identical) to that proposed by the EPAM theory.</simpara>
+<itemizedlist>
+<listitem>
+<simpara>
+E.A. Feigenbaum and H.A. Simon (1962). A theory of the serial position
+effect. [cite:Feigenbaum62]
+</simpara>
+</listitem>
+<listitem>
+<simpara>
+E.A. Feigenbaum, and H.A. Simon (1984). EPAM-like models of recognition
+and learning. [cite:Feigenbaum84]
+</simpara>
+</listitem>
+<listitem>
+<simpara>
+H.B. Richman and H.A. Simon (1989). Context effects in letter
+perception: Comparison of two theories. [cite:Richman89]
+</simpara>
+</listitem>
+<listitem>
+<simpara>
+H.B. Richman and H.A. Simon (1994). EPAM simulations of short-term
+memory. [cite:Richman94]
+</simpara>
+</listitem>
+<listitem>
+<simpara>
+H.B. Richman, H.A. Simon and F. Gobet (1991, July).
+Applying retrieval structures to chess memory. [cite:Richman91]
+</simpara>
+</listitem>
+<listitem>
+<simpara>
+H.B. Richman, J. Staszewski and H.A. Simon (1995). Simulation of expert memory with EPAM IV. [cite:Richman95]
+</simpara>
+</listitem>
+</itemizedlist>
+<simpara>EPAM-based models have been used in chess:</simpara>
+<itemizedlist>
+<listitem>
+<simpara>
+G.W. Baylor and H.A. Simon (1966). A chess mating combinations program. [cite:Baylor66]
+</simpara>
+</listitem>
+<listitem>
+<simpara>
+H.A. Simon and M. Barenfeld (1969). Information processing analysis of perceptual processes in problem solving. [cite:Simon69b]
+</simpara>
+</listitem>
+<listitem>
+<simpara>
+H.A. Simon and K.J. Gilmartin (1973). A simulation of memory for
+chess positions. [cite:Simon73]
+</simpara>
+</listitem>
+</itemizedlist>
+</section>
+</section>
+</section>
+<section id="_references">
+<title>References</title>
+</section>
+</article>
