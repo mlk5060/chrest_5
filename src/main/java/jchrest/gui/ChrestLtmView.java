@@ -144,7 +144,7 @@ public class ChrestLtmView extends JPanel {
     img.createGraphics();  
     _ltmView.paint (img.getGraphics());
     try {
-      String format = "png"; // TODO Extend range  
+      String format = "png"; // TODO Extend range 
       ImageIO.write(img, format, file);
     } catch (IOException e) {  
       JOptionPane.showMessageDialog (this, 

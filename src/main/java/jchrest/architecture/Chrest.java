@@ -290,6 +290,13 @@ public class Chrest extends Observable {
   public Stm getVerbalStm () {
     return _verbalStm;
   }
+  
+  /**
+   * Accessor to retrieve verbal long-term memory of model.
+   */
+  public Node getVerbalLtm () {
+    return _visualLtm;
+  }
 
   /**
    * Accessor to retrieve visual long-term memory of model.
@@ -345,6 +352,13 @@ public class Chrest extends Observable {
    */
   public double getActionLtmAverageDepth () {
     return _actionLtm.averageDepth ();
+  }
+  
+  /**
+   * Accessor to retrieve vaction long-term memory of model.
+   */
+  public Node getActionLtm () {
+    return _actionLtm;
   }
 
   /**
@@ -578,8 +592,12 @@ public class Chrest extends Observable {
   public Node associateAndLearn (ListPattern pattern1, ListPattern pattern2, int time) {
     if (ListPattern.isSameModality (pattern1, pattern2)) {
       return learnAndLinkPatterns(pattern1, pattern2, time);
-    } else {
-      // TODO: Handle differing modalities.
+    }
+    // TODO: Handle differing modalities.
+    else if(pattern2.getModalityString().equalsIgnoreCase("action")){
+      return learnPatternAndLinkToActionPattern(pattern1, pattern2, time);
+    }
+    else{
       return null;
     }
   }
@@ -621,6 +639,90 @@ public class Chrest extends Observable {
       return null;
     }
   }
+  
+  /**
+   * Presents Chrest with a pair of patterns which it should learn and then 
+   * associate together using an action link.  The first pattern can be of any 
+   * modality whilst the second pattern must have an "action" modality.  The 
+   * method assumes that the second pattern has action modality and the time of 
+   * presentation is the current Chrest clock time.
+   */
+  private void learnPatternAndLinkToActionPattern (ListPattern pattern1, ListPattern actionPattern) {
+    learnPatternAndLinkToActionPattern (pattern1, actionPattern, _clock);
+  }
+  
+  /**
+   * Learns first pattern (which can be of any modality) and a second pattern 
+   * (whose modality must be "action") and learns an action link between the 
+   * first pattern and the second pattern pattern
+   */
+  private Node learnPatternAndLinkToActionPattern(ListPattern pattern1, ListPattern actionPattern, int time) {
+    Node pat1Retrieved = recognise (pattern1);
+    Boolean actionPatternMatched = false;
+    
+    // 1. is retrieved node image a match for pattern1?
+    if (pat1Retrieved.getImage().matches (pattern1)) {
+      
+      // 2. does retrieved node have any action links?  If so, check each one to
+      // see if it matches actionPattern.
+      if (pat1Retrieved.getActionLinks() != null) {
+        List<Node> pattern1ActionLinks = pat1Retrieved.getActionLinks();
+        for (Node currentActionNode : pattern1ActionLinks) {
+          
+          // 3. is linked node image match pattern2? if not, learn pattern2
+          if (currentActionNode.getImage().matches (actionPattern)) {
+            actionPatternMatched = true;
+ 
+            //   4. if linked node image == pattern2, learn pattern1, else learn pattern2
+            if (currentActionNode.getImage().equals (actionPattern)) {
+              recogniseAndLearn (pattern1, time); // TODO: this is overlearning?
+            }
+            else {
+              recogniseAndLearn (actionPattern, time);
+            } 
+          }
+        }
+        if(!actionPatternMatched){
+          recogniseAndLearn (actionPattern, time);
+          // force it to correct a mistake
+          recogniseAndLearn (pattern1, time);
+
+          if (_clock <= time) {
+            Node actionNodeRetrieved = recognise (actionPattern);
+
+            // 6. if the action node retrieved's image matches action pattern, learn link, else learn action pattern
+            if (actionNodeRetrieved.getImage().matches (actionPattern)) {
+              associatePatterns(pat1Retrieved, actionNodeRetrieved, Modality.ACTION.toString());
+            }
+          }
+        }
+      }
+      else {
+        // 5. sort action pattern
+        Node actionNodeRetrieved = recognise (actionPattern);
+        
+        // 6. if action node retrieved's image matches action pattern, learn link, else learn action pattern
+        if (actionNodeRetrieved.getImage().matches (actionPattern)) {  
+          associatePatterns(pat1Retrieved, actionNodeRetrieved, Modality.ACTION.toString());
+        } else { // image not a match, so we need to learn action pattern
+          recogniseAndLearn (actionPattern, time);
+          
+          // 5. sort action pattern.
+          actionNodeRetrieved = recognise (actionPattern);
+          
+          // 6. if the action node retrieved's image matches action pattern, learn link, else learn action pattern
+          if (actionNodeRetrieved.getImage().matches (actionPattern)) {  
+            associatePatterns(pat1Retrieved, actionNodeRetrieved, Modality.ACTION.toString());
+          }
+        }
+      }
+    }
+    else { // image not a match, so we need to learn pattern 1
+      recogniseAndLearn (pattern1, time);
+    }
+      
+    return pat1Retrieved;
+  }
 
   /**
    * Presents Chrest with a pair of patterns, which it should learn and 
@@ -628,16 +730,20 @@ public class Chrest extends Observable {
    */
   private Node learnAndLinkPatterns (ListPattern pattern1, ListPattern pattern2, int time) {
     Node pat1Retrieved = recognise (pattern1);
+    
     // 1. is retrieved node image a match for pattern1?
     if (pat1Retrieved.getImage().matches (pattern1)) {
+      
       // 2. does retrieved node have a lateral link?
       if (pat1Retrieved.getAssociatedNode() != null) {
+          
         // if yes
         //   3. is linked node image match pattern2? if not, learn pattern2
         if (pat1Retrieved.getAssociatedNode().getImage().matches (pattern2)) {
+          
           //   if yes
           //   4. if linked node image == pattern2, learn pattern1, else learn pattern2
-          if (pat1Retrieved.getAssociatedNode().getImage().equals (pattern2)) {
+          if (pat1Retrieved.getAssociatedNode().getImage().equals (pattern2)) {  
             recogniseAndLearn (pattern1, time); // TODO: this is overlearning?
           } else {
             recogniseAndLearn (pattern2, time);
@@ -646,14 +752,13 @@ public class Chrest extends Observable {
           recogniseAndLearn (pattern2, time);
           // force it to correct a mistake
           recogniseAndLearn (pattern1, time);
+          
           if (_clock <= time) {
             Node pat2Retrieved = recognise (pattern2);
+            
             // 6. if pattern2 retrieved node image match for pattern2, learn link, else learn pattern2
             if (pat2Retrieved.getImage().matches (pattern2)) {
-              pat1Retrieved.setAssociatedNode (pat2Retrieved);
-              advanceClock (getAddLinkTime ());
-              setChanged ();
-              if (!_frozen) notifyObservers ();
+              associatePatterns(pat1Retrieved, pat2Retrieved, "");
             }
           }
         } 
@@ -661,22 +766,19 @@ public class Chrest extends Observable {
         // if not
         // 5. sort pattern2
         Node pat2Retrieved = recognise (pattern2);
+        
         // 6. if pattern2 retrieved node image match for pattern2, learn link, else learn pattern2
-        if (pat2Retrieved.getImage().matches (pattern2)) {
-          pat1Retrieved.setAssociatedNode (pat2Retrieved);
-          advanceClock (getAddLinkTime ());
-          setChanged ();
-          if (!_frozen) notifyObservers ();
+        if (pat2Retrieved.getImage().matches (pattern2)) {  
+          associatePatterns(pat1Retrieved, pat2Retrieved, "");
         } else { // image not a match, so we need to learn pattern 2
           recogniseAndLearn (pattern2, time);
+          
           // 5. sort pattern2
           pat2Retrieved = recognise (pattern2);
+          
           // 6. if pattern2 retrieved node image match for pattern2, learn link, else learn pattern2
           if (pat2Retrieved.getImage().matches (pattern2)) {
-            pat1Retrieved.setAssociatedNode (pat2Retrieved);
-            advanceClock (getAddLinkTime ());
-            setChanged ();
-            if (!_frozen) notifyObservers ();
+            associatePatterns(pat1Retrieved, pat2Retrieved, "");
           }
         }
       }
@@ -692,6 +794,26 @@ public class Chrest extends Observable {
    */
   private void learnAndLinkPatterns (ListPattern pattern1, ListPattern pattern2) {
     learnAndLinkPatterns (pattern1, pattern2, _clock);
+  }
+  
+  /**
+   * Associates two patterns of any modality accordingly.  
+   * 
+   * @param firstNode The node that the association comes from.
+   * @param secondNode The node that the association goes to.
+   * @param modalityOfSecondNode The modality of the second node. 
+   */
+  private void associatePatterns(Node firstNode, Node secondNode, String modalityOfSecondNode){
+    if(modalityOfSecondNode.equalsIgnoreCase(Modality.ACTION.toString())){
+      firstNode.addActionLink(secondNode);
+    }
+    //TODO: Handle verbal and visual patterns differently (if required).
+    else{
+      firstNode.setAssociatedNode(secondNode);
+    }
+    advanceClock (getAddLinkTime ());
+    setChanged ();
+    if (!_frozen) notifyObservers ();
   }
 
   /**
