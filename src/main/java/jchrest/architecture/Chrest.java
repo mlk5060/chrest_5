@@ -229,6 +229,14 @@ public class Chrest extends Observable {
     setChanged ();
     if (!_frozen) notifyObservers ();
   }
+  
+  /**
+   * Accessor to retrieve the number of nodes currently in the visual short-term
+   * memory. 
+   */
+  public int getVisualStmNodeCount(){
+    return _visualStm.getCount();
+  }
 
   /**
    * Accessor to retrieve the size of verbal short-term memory.
@@ -244,6 +252,14 @@ public class Chrest extends Observable {
     _verbalStm.setSize (size);
     setChanged ();
     if (!_frozen) notifyObservers ();
+  }
+  
+  /**
+   * Accessor to retrieve the number of nodes currently in the verbal short-term
+   * memory. 
+   */
+  public int getVerbalStmNodeCount(){
+    return _verbalStm.getCount();
   }
 
   /**
@@ -373,6 +389,14 @@ public class Chrest extends Observable {
    */
   public int getActionStmSize(){
     return _actionStm.getSize();
+  }
+  
+  /**
+   * Accessor to retrieve the number of nodes currently in the action short-term
+   * memory. 
+   */
+  public int getActionStmNodeCount(){
+    return _actionStm.getCount();
   }
 
   /**
