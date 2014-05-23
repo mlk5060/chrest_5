@@ -355,10 +355,24 @@ public class Chrest extends Observable {
   }
   
   /**
-   * Accessor to retrieve vaction long-term memory of model.
+   * Accessor to retrieve action long-term memory of model.
    */
   public Node getActionLtm () {
     return _actionLtm;
+  }
+  
+  /**
+   * Accessor to retrieve action short-term memory of model.
+   */
+  public Stm getActionStm(){
+    return _actionStm;
+  }
+  
+  /**
+   * Accessor to retrieve the size of action short-term memory.
+   */
+  public int getActionStmSize(){
+    return _actionStm.getSize();
   }
 
   /**
@@ -594,7 +608,7 @@ public class Chrest extends Observable {
       return learnAndLinkPatterns(pattern1, pattern2, time);
     }
     // TODO: Handle differing modalities.
-    else if(pattern2.getModalityString().equalsIgnoreCase("action")){
+    else if(pattern2.getModalityString().equalsIgnoreCase(Modality.ACTION.toString())){
       return learnPatternAndLinkToActionPattern(pattern1, pattern2, time);
     }
     else{
