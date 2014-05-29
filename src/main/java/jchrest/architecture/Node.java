@@ -54,7 +54,7 @@ public class Node extends Observable {
     _semanticLinks = new ArrayList<Node> ();
     _associatedNode = null;
     _namedBy = null;
-    _actionLinks = new ArrayList<Node> ();
+    _actionLinks = new HashMap<Node, Integer>();
   }
 
   /**
@@ -171,15 +171,21 @@ public class Node extends Observable {
    * Do not add the node if already present.
    */
   public void addActionLink (Node node) {
-    if (_actionLinks.contains (node)) { 
+    if (_actionLinks.containsKey(node)) { 
       ;
     } else {
-      _actionLinks.add (node);
+      _actionLinks.put(node, 0);
     }
   }
 
-  public List<Node> getActionLinks () {
+  public HashMap<Node, Integer> getActionLinks () {
     return _actionLinks;
+  }
+  
+  public void reinforceActionLink (Node actionNode, int valueToReinforceBy){
+    if (_actionLinks.containsKey(actionNode)){
+      _actionLinks.put(actionNode, _actionLinks.get(actionNode) + valueToReinforceBy);
+    }
   }
 
   /** 
@@ -270,7 +276,7 @@ public class Node extends Observable {
   private List<Node> _semanticLinks;
   private Node _associatedNode;
   private Node _namedBy;
-  private List<Node> _actionLinks;
+  private HashMap<Node, Integer> _actionLinks;
 
   /**
    * Compute the total size of images below the current node.

@@ -704,8 +704,8 @@ public class Chrest extends Observable {
       // 2. does retrieved node have any action links?  If so, check each one to
       // see if it matches actionPattern.
       if (pat1Retrieved.getActionLinks() != null) {
-        List<Node> pattern1ActionLinks = pat1Retrieved.getActionLinks();
-        for (Node currentActionNode : pattern1ActionLinks) {
+        HashMap<Node, Integer> pattern1ActionLinks = pat1Retrieved.getActionLinks();
+        for (Node currentActionNode : pattern1ActionLinks.keySet()) {
           
           // 3. is linked node image match pattern2? if not, learn pattern2
           if (currentActionNode.getImage().matches (actionPattern)) {
@@ -918,7 +918,7 @@ public class Chrest extends Observable {
     // create a map of moves to their frequency of occurrence in nodes of STM
     Map<ListPattern, Integer> moveFrequencies = new HashMap<ListPattern, Integer> ();
     for (Node node : _visualStm) {
-      for (Node action : node.getActionLinks ()) {
+      for (Node action : node.getActionLinks ().keySet()) {
         if (sameColour(action.getImage(), colour)) {
           if (moveFrequencies.containsKey(action.getImage ())) {
             moveFrequencies.put (
