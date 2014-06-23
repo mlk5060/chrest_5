@@ -1140,15 +1140,23 @@ public class Chrest extends Observable {
   
   /**
    * Sets the value of the CHREST instance's _reinforcementLearningTheory 
-   * variable to the theory parameter iff _reinforcementLearningTheory is null.
+   * variable to the theory parameter iff _reinforcementLearningTheory is null
+   * and if the theory specified is a declared 
+   * ReinforcementLearning.ReinforcementLearningTheories constant.
    * This means that a CHREST instance's reinforcement learning theory can only
-   * be set once.
+   * be set once to a theory supported by CHREST.
    * 
-   * @param theory 
+   * @param theorySpecified
    */
-  public void setReinforcementLearningTheory(ReinforcementLearningTheories theory){
+  public void setReinforcementLearningTheory(ReinforcementLearningTheories theorySpecified){
     if(_reinforcementLearningTheory == null){
-      _reinforcementLearningTheory = theory;
+      ReinforcementLearningTheories[] theories = ReinforcementLearning.getReinforcementLearningTheories();
+      for(ReinforcementLearningTheories theory : theories){
+        if(theorySpecified.equals(theory)){
+          _reinforcementLearningTheory = theory;
+          break;
+        }
+      }
     }
   }
 

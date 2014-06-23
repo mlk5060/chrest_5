@@ -165,3 +165,20 @@ process_test "full learning" do
   assert_true list1.equals(model.recallPattern(list1))
   assert_true list2.equals(model.recallPattern(list2))
 end
+
+process_test "set and retrieve reinforcement learning theory" do
+  model = Chrest.new
+  validReinforcementLearningTheories = ReinforcementLearning.getReinforcementLearningTheories()
+  
+  result1 = model.getReinforcementLearningTheory()
+  
+  model.setReinforcementLearningTheory(validReinforcementLearningTheories[0])
+  result2 = model.getReinforcementLearningTheory()
+  
+  model.setReinforcementLearningTheory(nil)
+  result3 = model.getReinforcementLearningTheory()
+  
+  assert_equal(nil, result1)
+  assert_equal(validReinforcementLearningTheories[0], result2)
+  assert_equal(validReinforcementLearningTheories[0], result3)
+end

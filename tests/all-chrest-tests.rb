@@ -18,6 +18,7 @@ end
   "ListPattern",
   "NumberPattern",
   "Pattern",
+  "ReinforcementLearning",
   "Scene",
   "Square",
   "StringPattern"

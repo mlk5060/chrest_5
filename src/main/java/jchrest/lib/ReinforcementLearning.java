@@ -1,5 +1,8 @@
 package jchrest.lib;
 
+import java.math.RoundingMode;
+import java.text.DecimalFormat;
+
 /**
  * Represents reinforcement learning theories currently supported in CHEREST.
  * 
@@ -20,6 +23,7 @@ public class ReinforcementLearning{
         if(this.correctNumberOfVariables(variables)){
           reinforcementValue = variables[0] * Math.pow(variables[1], (variables[2] - variables[3]));
         }
+        System.out.println("REINFORCEMENT VALUE CALCULATED TO BE: " + reinforcementValue.toString());
         return reinforcementValue;
       }
     };
@@ -79,7 +83,7 @@ public class ReinforcementLearning{
    * 
    * @return 
    */
-  public ReinforcementLearningTheories[] getReinforcementLearningTheories(){
+  public static ReinforcementLearningTheories[] getReinforcementLearningTheories(){
     return ReinforcementLearningTheories.values();
   }
 }
