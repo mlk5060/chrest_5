@@ -20,7 +20,7 @@ public class ReinforcementLearning{
    * 
    * @return 
    */
-  public ReinforcementLearningTheories[] getReinforcementLearningTheories(){
+  public static ReinforcementLearningTheories[] getReinforcementLearningTheories(){
     return ReinforcementLearningTheories.values();
   }
   
