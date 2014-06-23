@@ -12,7 +12,66 @@ public class ReinforcementLearning{
    * values.
    */
   public enum ReinforcementLearningTheories{
-    PROFIT_SHARING_WITH_DISCOUNT_RATE;
+    PROFIT_SHARING_WITH_DISCOUNT_RATE(4){
+      
+      @Override
+      public Double calculateReinforcementValue(Double[] variables){
+        Double reinforcementValue = 0.00;
+        if(this.correctNumberOfVariables(variables)){
+          reinforcementValue = variables[0] * Math.pow(variables[1], (variables[2] - variables[3]));
+        }
+        return reinforcementValue;
+      }
+    };
+    
+    //Stores the number of variables expected by the reinforcement learning 
+    //theory to calculate how much a node link should be reinforced by.
+    private final int NUMBER_OF_VARIABLES_EXPECTED;
+
+    /**
+     * Constructor for ReinforcementLearningTheories enum values.
+     * 
+     * @param numberOfVariablesExpected The number of variables expected by the 
+     * reinforcement learning theory to calculate how much a node link should be 
+     * reinforced by.
+     */
+    ReinforcementLearningTheories (int numberOfVariablesExpected) {
+      this.NUMBER_OF_VARIABLES_EXPECTED = numberOfVariablesExpected;
+    }
+
+    /**
+     * Returns the current value of the ReinforcementLearningTheories' 
+     * NUMBER_OF_VARIABLES_EXPECTED variable.
+     * 
+     * @return 
+     */
+    int getNumberOfVariablesExpected () {
+      return NUMBER_OF_VARIABLES_EXPECTED;
+    }
+    
+    /**
+     * Checks to see if the length of "variables" is equal to the value of the
+     * current ReinforcementLearningTheories' NUMBER_OF_VARIABLES_EXPECTED value.
+     * Returns true if these values are equal and false if not.
+     * 
+     * @param variables The variables to be used to calculate how much the link
+     * between two nodes should be reinforced by.
+     * 
+     * @return 
+     */
+    boolean correctNumberOfVariables (Double[] variables) {
+      return variables.length == this.NUMBER_OF_VARIABLES_EXPECTED;
+    }
+    
+    /**
+     * Calculates a reinforcement value according to the implementation for a
+     * particular reinforcement learning theory and returns the result.
+     * 
+     * @param variables The variables to be used to calculate how much the link
+     * between two nodes should be reinforced by.
+     * @return 
+     */
+    public abstract Double calculateReinforcementValue(Double[] variables);
   }
   
   /**
@@ -20,50 +79,7 @@ public class ReinforcementLearning{
    * 
    * @return 
    */
-  public static ReinforcementLearningTheories[] getReinforcementLearningTheories(){
+  public ReinforcementLearningTheories[] getReinforcementLearningTheories(){
     return ReinforcementLearningTheories.values();
-  }
-  
-  /**
-   * Calculates reinforcement values according to the reinforcement learning 
-   * theory that is passed.  If the reinforcement learning theory passed does 
-   * not have a method defined to calculate a reinforcement value a runtime
-   * exception is thrown.
-   * 
-   * @param theory A reinforcement learning theory enum value.  Use 
-   * {@link #getReinforcementLearningTheories()} to return all current 
-   * reinforcement learning theory enum values.
-   * 
-   * @param variables The variables required in order for the calculation to be
-   * performed.
-   * 
-   * @return 
-   */
-  public static Double calculateReinforcementValue(ReinforcementLearningTheories theory, Double[] variables){
-    Double reinforcementValue = 0.00;
-    boolean correctNumberOfVariables = true;
-    int numberOfVariablesExpected = 0;
-    
-    switch(theory){
-      case PROFIT_SHARING_WITH_DISCOUNT_RATE:
-        numberOfVariablesExpected = 4;
-        
-        if(variables.length == numberOfVariablesExpected){
-          reinforcementValue = variables[0] * Math.pow(variables[1], (variables[2] - variables[3]));
-        }
-        else{
-          correctNumberOfVariables = false;
-        }
-        
-        break;
-      default:
-        throw new RuntimeException("The specified reinforcement learning theory: " + theory.toString() + ", has no method defined to calculate reinforcement values!");
-    }
-    
-    if(!correctNumberOfVariables){
-      throw new RuntimeException("The " + theory.toString() + " reinforcement learning theory requires " + numberOfVariablesExpected + " variables but " + variables.length + " have been specified.");
-    }
-    
-    return reinforcementValue;
   }
 }
