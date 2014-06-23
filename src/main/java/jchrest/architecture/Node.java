@@ -14,9 +14,12 @@ import java.util.Observable;
 import jchrest.lib.FileUtilities;
 import jchrest.lib.ItemSquarePattern;
 import jchrest.lib.ListPattern;
+import jchrest.lib.Modality;
 import jchrest.lib.ParsingErrorException;
 import jchrest.lib.Pattern;
 import jchrest.lib.PrimitivePattern;
+import jchrest.lib.ReinforcementLearning;
+import jchrest.lib.ReinforcementLearning.ReinforcementLearningTheories;
 
 /**
  * Represents a node within the model's long-term memory discrimination network.
@@ -54,7 +57,7 @@ public class Node extends Observable {
     _semanticLinks = new ArrayList<Node> ();
     _associatedNode = null;
     _namedBy = null;
-    _actionLinks = new HashMap<Node, Integer>();
+    _actionLinks = new HashMap<>();
   }
 
   /**
@@ -167,24 +170,42 @@ public class Node extends Observable {
   }
 
   /**
-   * Add a node to the list of action links for this node.
-   * Do not add the node if already present.
+   * Add the node specified by the parameter passed to this function to the list 
+   * of action links for the current node iff the following are true: 
+   * <ul>
+   *  <li>The node specified by the parameter passed to the function has action 
+   *  modality.</li>
+   *  <li>The node specified by the parameter passed to the function is not 
+   *  already a key in the current node's _actionLinks variable.</li>
+   * </ul>
    */
   public void addActionLink (Node node) {
-    if (_actionLinks.containsKey(node)) { 
-      ;
-    } else {
-      _actionLinks.put(node, 0);
+    if (node.getImage().getModality().equals(Modality.ACTION) && !_actionLinks.containsKey(node)) { 
+      _actionLinks.put(node, 0.00);
     }
   }
 
-  public HashMap<Node, Integer> getActionLinks () {
+  /**
+   * Accessor to return action nodes that this node is linked to.
+   * 
+   * @return 
+   */
+  public HashMap<Node, Double> getActionLinks () {
     return _actionLinks;
   }
   
-  public void reinforceActionLink (Node actionNode, int valueToReinforceBy){
-    if (_actionLinks.containsKey(actionNode)){
-      _actionLinks.put(actionNode, _actionLinks.get(actionNode) + valueToReinforceBy);
+  /**
+   * Reinforces the link between the current node and the action node specified 
+   * using the reinforcement learning theory that the node's containing model
+   * is set to.
+   * 
+   * @param actionNode 
+   * @param variables 
+   */
+  public void reinforceActionLink (Node actionNode, Double[] variables){
+    ReinforcementLearningTheories reinforcementLearningTheory = _model.getReinforcementLearningTheory();
+    if (reinforcementLearningTheory != null && _actionLinks.containsKey(actionNode) && actionNode.getContents().getModality().equals(Modality.ACTION)){
+      _actionLinks.put(actionNode, (_actionLinks.get(actionNode) + ReinforcementLearning.calculateReinforcementValue(reinforcementLearningTheory, variables)));
     }
   }
 
@@ -276,7 +297,7 @@ public class Node extends Observable {
   private List<Node> _semanticLinks;
   private Node _associatedNode;
   private Node _namedBy;
-  private HashMap<Node, Integer> _actionLinks;
+  private HashMap<Node, Double> _actionLinks;
 
   /**
    * Compute the total size of images below the current node.

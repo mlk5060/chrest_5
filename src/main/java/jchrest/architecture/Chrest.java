@@ -4,7 +4,6 @@
 
 package jchrest.architecture;
 
-import jchrest.lib.*;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -14,6 +13,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Observable;
+import jchrest.lib.*;
+import jchrest.lib.ReinforcementLearning.ReinforcementLearningTheories;
 
 /**
  * The parent class for an instance of a Chrest model.
@@ -54,6 +55,8 @@ public class Chrest extends Observable {
   private final Perceiver _perceiver;
   // Emotions module
   private EmotionAssociator _emotionAssociator;
+  //Reinforcement learning module
+  private ReinforcementLearningTheories _reinforcementLearningTheory;
 
   public Chrest () {
     _domainSpecifics = new GenericDomain ();
@@ -73,6 +76,7 @@ public class Chrest extends Observable {
     _verbalStm = new Stm (2);
     _actionStm = new Stm (4);
     _emotionAssociator = new EmotionAssociator ();
+    _reinforcementLearningTheory = null; //Must be set explicitly using Chrest.setReinforcementLearningTheory()
 
     _createTemplates = true;
     _createSemanticLinks = true;
@@ -704,7 +708,7 @@ public class Chrest extends Observable {
       // 2. does retrieved node have any action links?  If so, check each one to
       // see if it matches actionPattern.
       if (pat1Retrieved.getActionLinks() != null) {
-        HashMap<Node, Integer> pattern1ActionLinks = pat1Retrieved.getActionLinks();
+        HashMap<Node, Double> pattern1ActionLinks = pat1Retrieved.getActionLinks();
         for (Node currentActionNode : pattern1ActionLinks.keySet()) {
           
           // 3. is linked node image match pattern2? if not, learn pattern2
@@ -1124,5 +1128,28 @@ public class Chrest extends Observable {
     }
   }
 
+  /**
+   * Returns the string value of a CHREST instance's _reinforcementLearningTheory
+   * variable.
+   * 
+   * @return 
+   */
+  public ReinforcementLearningTheories getReinforcementLearningTheory(){
+    return _reinforcementLearningTheory;
+  }
+  
+  /**
+   * Sets the value of the CHREST instance's _reinforcementLearningTheory 
+   * variable to the theory parameter iff _reinforcementLearningTheory is null.
+   * This means that a CHREST instance's reinforcement learning theory can only
+   * be set once.
+   * 
+   * @param theory 
+   */
+  public void setReinforcementLearningTheory(ReinforcementLearningTheories theory){
+    if(_reinforcementLearningTheory == null){
+      _reinforcementLearningTheory = theory;
+    }
+  }
 
 }
