@@ -1,8 +1,5 @@
 package jchrest.lib;
 
-import java.math.RoundingMode;
-import java.text.DecimalFormat;
-
 /**
  * Represents reinforcement learning theories currently supported in CHEREST.
  * 
