@@ -20,7 +20,7 @@ public class ReinforcementLearning{
         if(this.correctNumberOfVariables(variables)){
           reinforcementValue = variables[0] * Math.pow(variables[1], (variables[2] - variables[3]));
         }
-        System.out.println("REINFORCEMENT VALUE CALCULATED TO BE: " + reinforcementValue.toString());
+        //System.out.println("REINFORCEMENT VALUE CALCULATED TO BE: " + reinforcementValue.toString());
         return reinforcementValue;
       }
     };

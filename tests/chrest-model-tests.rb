@@ -182,3 +182,138 @@ process_test "set and retrieve reinforcement learning theory" do
   assert_equal(validReinforcementLearningTheories[0], result2)
   assert_equal(validReinforcementLearningTheories[0], result3)
 end
+
+#The aim of this test is to check for the correct operation of all implemented
+#reinforcement theories in the jchrest.lib.ReinforcementLearning class in the
+#CHREST architecture.  The following tests are run:
+# 1) The size of the "_actionLinks" variable should = 0 after initialisation.
+# 2) After adding an action node to a visual node's "_actionLinks" variable, 
+#    the action node should be present in the visual node's "_actionLinks"
+#    variable.
+# 3) After adding an action node to a visual node's "_actionLinks" variable, 
+#    the reinforcement value of the link between the visual and action node 
+#    should be set to 0.0.
+# 4) Passing too few variables to a reinforcement learning theory should return 
+#    boolean false from that theory's "correctNumberOfVariables" method.
+# 5) Passing too many variables to a reinforcement learning theory should return 
+#    boolean false from that theory's "correctNumberOfVariables" method.
+# 6) Passing the correct number of variables to a reinforcement learning theory 
+#    should return boolean true from that theory's "correctNumberOfVariables" 
+#    method.
+# 7) After passing the correct number of variables to a reinforcement theory and
+#    using that theory's "calculateReinforcementValue" method, the value 
+#    returned should equal an expected value.
+# 8) After passing the correct number of variables to a reinforcement theory and
+#    using the visual node's "reinforceActionLink" method, the final 
+#    reinforcement value of the link between the visual and action node should 
+#    equal an expected value.
+process_test "'Reinforcement theory tests'" do
+  
+  #Retrieve all currently implemented reinforcement learning theories.
+  validReinforcementLearningTheories = ReinforcementLearning.getReinforcementLearningTheories()
+  
+  #Construct a test visual pattern.
+  visualPattern = Pattern.makeVisualList [1].to_java(:int)
+  visualPattern.setFinished
+  visualPatternString = visualPattern.toString
+  
+  #Construct a test action pattern.
+  actionPattern = Pattern.makeActionList ["A"].to_java(:string)
+  actionPattern.setFinished
+  actionPatternString = actionPattern.toString
+  
+  #Test each reinforcement learning theory implemented in the CHREST 
+  #architecture.
+  validReinforcementLearningTheories.each do |reinforcementLearningTheory|
+    
+    #Create a new CHREST model instance and set its reinforcement learning 
+    #theory to the one that is to be tested.
+    model = Chrest.new
+    model.setReinforcementLearningTheory(reinforcementLearningTheory)
+    reinforcementLearningTheoryName = reinforcementLearningTheory.toString
+  
+    #Learn visual and action patterns.
+    model.recogniseAndLearn(visualPattern)
+    model.recogniseAndLearn(actionPattern)
+  
+    #Retrieve visual and action nodes after learning.
+    visualNode = model.recognise(visualPattern)
+    actionNode = model.recognise(actionPattern)
+  
+    #Test 1.
+    visualNodeActionLinks = visualNode.getActionLinks
+    assert_equal(0, visualNodeActionLinks.size, "See test 1.")
+  
+    #Test 2 and 3.
+    visualNode.addActionLink(actionNode)
+    visualNodeActionLinks = visualNode.getActionLinks
+    visualNodeActionLinkValue = visualNodeActionLinks.get(actionNode)
+    assert_true(visualNodeActionLinks.containsKey(actionNode), "After adding " + actionPatternString + " to the _actionLinks variable of " + visualPatternString + ", " + visualPatternString + "'s _actionLinks does not contain " + actionPatternString + ".")
+    assert_equal(0.0, visualNodeActionLinkValue, "See test 3.")
+  
+    #Depending upon the model's current reinforcement learning theory, 5 
+    #variables should be created:
+    # 1) tooLittleVariables = an array of numbers whose length is less than the
+    #    number of variables needed by the current reinforcement theory to 
+    #    calculate a reinforcement value.
+    # 2) tooManyVariables = an array of numbers whose length is more than the
+    #    number of variables needed by the current reinforcement theory to 
+    #    calculate a reinforcement value.
+    # 3) correctVariables = an array of arrays.  Each inner array's length 
+    #    should equal the number of variables needed by the current 
+    #    reinforcement learning theory.
+    # 4) expectedCalculationValues = an array of numbers that should specify
+    #    the value returned by a reinforcement learning theory has been 
+    #    calculated.  There is a direct mapping between this array's indexes 
+    #    and the indexes of the "correctVariables" array i.e. the variables in 
+    #    index 0 of the "correctVariables" array should produce the variable 
+    #    stored in index 0 of the "expectedCalculationValues" array.
+    # 5) expectedReinforcementValues = an array of numbers that should specify 
+    #    the value returned by a reinforcement learning theory after a 
+    #    reinforcement value has been calculated AND added to the current 
+    #    reinforcement value between the visual node and action node.  There is 
+    #    a direct mapping between this array's indexes and the indexes of the 
+    #    "correctVariables" array i.e. the variables in index 0 of the 
+    #    "correctVariables" array should produce the variable stored in index 0 
+    #    of the "expectedReinforcementValues" array after adding the calculated
+    #    reinforcement value to the current reinforcement value between the 
+    #    visual and action node.
+    case 
+      when reinforcementLearningTheoryName.casecmp("profit_sharing_with_discount_rate").zero?
+        puts
+          tooFewVariables = [1]
+          tooManyVariables = [1,2,3,4,5]
+          correctVariables = [[1,0.5,2,2],[1,0.5,2,1]]
+          expectedCalculationValues = [1,0.5]
+          expectedReinforcementValues = [1,1.5]
+    end
+    
+    #Convert declared arrays into Double[] data types since the methods in the
+    #ReinforcementLearning class require Double[] variables.
+    tooFewVariables = tooFewVariables.to_java(:Double)
+    tooManyVariables = tooManyVariables.to_java(:Double)
+    expectedCalculationValues = expectedCalculationValues.to_java(:Double)
+    expectedReinforcementValues = expectedReinforcementValues.to_java(:Double)
+    
+    #Same as above but for each inner array in the "correctVariables" array.
+    correctVariables.each do |groupOfCorrectVariables|
+      groupOfCorrectVariables.to_java(:Double)
+    end
+    
+    #Tests 4 and 5.
+    assert_false(reinforcementLearningTheory.correctNumberOfVariables(tooFewVariables), "FOR " + reinforcementLearningTheoryName + ": The number of variables in the 'tooFewVariables' parameter is not incorrect.")
+    assert_false(reinforcementLearningTheory.correctNumberOfVariables(tooManyVariables), "FOR " + reinforcementLearningTheoryName + ": The number of variables in the 'tooManyVariables' parameter is not incorrect.")
+    
+    #Tests 6, 7 and 8.
+    index = 0
+    correctVariables.each do |groupOfCorrectVariables|
+      assert_true(reinforcementLearningTheory.correctNumberOfVariables(groupOfCorrectVariables), "FOR " + reinforcementLearningTheoryName + ": The number of variables in item " + index.to_s + " of the 'correctvariables' parameter is incorrect.")
+      calculationValue = reinforcementLearningTheory.calculateReinforcementValue(groupOfCorrectVariables)
+      visualNode.reinforceActionLink(actionNode, groupOfCorrectVariables)
+      visualNodeActionLinkValue = visualNode.getActionLinks.get(actionNode)
+      assert_equal(expectedCalculationValues[index], calculationValue, "Triggered by the " + reinforcementLearningTheoryName + ".calculateReinforcementValue() method.  See item " + index.to_s + " in the 'expectedCalculationValues' variable.")
+      assert_equal(expectedReinforcementValues[index], visualNodeActionLinkValue, "Triggered by the Node.reinforceActionLink() method (addition of current and new reinforcement values incorrect).  See item " + index.to_s + " in the 'expectedReinforcementValues' variable for the '" + reinforcementLearningTheoryName + "' reinforcement learning theory.")
+      index += 1
+    end
+  end
+end
