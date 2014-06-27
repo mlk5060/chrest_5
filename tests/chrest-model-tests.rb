@@ -166,21 +166,29 @@ process_test "full learning" do
   assert_true list2.equals(model.recallPattern(list2))
 end
 
-process_test "set and retrieve reinforcement learning theory" do
+#The aim of this test is to check for the correct operation of setting a CHREST
+#instance's "_reinforcementLearningTheory" variable.  The following tests are
+#run:
+# 1) After creating a new CHREST instance, its "_reinforcementLearningTheory" 
+# variable should be set to null.
+# 2) You should be able to set a CHREST instance's "_reinforcementLearningTheory" 
+# variable if it is currently set to null.
+# 3) You should not be able to set a CHREST instance's "_reinforcementLearningTheory"
+# variable if it is not currently set to null.
+process_test "set reinforcement learning theory" do
   model = Chrest.new
+  
+  #Test 1.
   validReinforcementLearningTheories = ReinforcementLearning.getReinforcementLearningTheories()
+  assert_equal(nil, model.getReinforcementLearningTheory, "See test 1.")
   
-  result1 = model.getReinforcementLearningTheory()
-  
+  #Test 2.
   model.setReinforcementLearningTheory(validReinforcementLearningTheories[0])
-  result2 = model.getReinforcementLearningTheory()
+  assert_equal(validReinforcementLearningTheories[0], model.getReinforcementLearningTheory, "See test 2.")
   
+  #Test 3.
   model.setReinforcementLearningTheory(nil)
-  result3 = model.getReinforcementLearningTheory()
-  
-  assert_equal(nil, result1)
-  assert_equal(validReinforcementLearningTheories[0], result2)
-  assert_equal(validReinforcementLearningTheories[0], result3)
+  assert_equal(validReinforcementLearningTheories[0], model.getReinforcementLearningTheory, "See test 3.")
 end
 
 #The aim of this test is to check for the correct operation of all implemented
