@@ -171,13 +171,15 @@ public class Node extends Observable {
 
   /**
    * Add the node specified by the parameter passed to this function to the list 
-   * of action links for the current node iff the following are true: 
+   * of action links for the current node if the following are true. 
    * <ul>
    *  <li>The node specified by the parameter passed to the function has action 
    *  modality.</li>
    *  <li>The node specified by the parameter passed to the function is not 
    *  already a key in the current node's _actionLinks variable.</li>
    * </ul>
+   * 
+   * @param node The node to be linked to this node.
    */
   public void addActionLink (Node node) {
     if (node.getImage().getModality().equals(Modality.ACTION) && !_actionLinks.containsKey(node)) { 
@@ -186,7 +188,7 @@ public class Node extends Observable {
   }
 
   /**
-   * Accessor to return action nodes that this node is linked to.
+   * Accessor to return the action nodes that this node is linked to.
    * 
    * @return 
    */
@@ -205,11 +207,6 @@ public class Node extends Observable {
   public void reinforceActionLink (Node actionNode, Double[] variables){
     ReinforcementLearningTheories reinforcementLearningTheory = _model.getReinforcementLearningTheory();
     if (reinforcementLearningTheory != null && _actionLinks.containsKey(actionNode) && actionNode.getContents().getModality().equals(Modality.ACTION)){
-      Double existingReinforcementValue = _actionLinks.get(actionNode);
-      Double calculatedReinforcementValue = reinforcementLearningTheory.calculateReinforcementValue(variables);
-      //System.out.println("The existing reinforcement value between " + this.getContents().toString() + " and " + actionNode.getContents().toString() + " is: " + existingReinforcementValue);
-      //System.out.println("The value to reinforce the link by is: " + calculatedReinforcementValue);
-      //System.out.println("The sum of the two values above and the new reinforcement value between these two nodes is: " + (existingReinforcementValue + calculatedReinforcementValue));
       _actionLinks.put(actionNode, (_actionLinks.get(actionNode) + reinforcementLearningTheory.calculateReinforcementValue(variables)));
     }
   }
