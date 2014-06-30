@@ -1134,8 +1134,13 @@ public class Chrest extends Observable {
    * 
    * @return 
    */
-  public ReinforcementLearningTheories getReinforcementLearningTheory(){
-    return _reinforcementLearningTheory;
+  public String getReinforcementLearningTheory(){
+    if(_reinforcementLearningTheory == null){
+      return "null";
+    }
+    else{
+      return _reinforcementLearningTheory.toString();
+    }
   }
   
   /**

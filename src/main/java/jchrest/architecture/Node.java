@@ -205,9 +205,9 @@ public class Node extends Observable {
    * @param variables 
    */
   public void reinforceActionLink (Node actionNode, Double[] variables){
-    ReinforcementLearningTheories reinforcementLearningTheory = _model.getReinforcementLearningTheory();
-    if (reinforcementLearningTheory != null && _actionLinks.containsKey(actionNode) && actionNode.getContents().getModality().equals(Modality.ACTION)){
-      _actionLinks.put(actionNode, (_actionLinks.get(actionNode) + reinforcementLearningTheory.calculateReinforcementValue(variables)));
+    String reinforcementLearningTheory = _model.getReinforcementLearningTheory();
+    if (!reinforcementLearningTheory.equals("null") && _actionLinks.containsKey(actionNode) && actionNode.getContents().getModality().equals(Modality.ACTION)){
+      _actionLinks.put(actionNode, (_actionLinks.get(actionNode) + ReinforcementLearning.ReinforcementLearningTheories.valueOf(reinforcementLearningTheory).calculateReinforcementValue(variables)));
     }
   }
 

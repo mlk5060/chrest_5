@@ -180,15 +180,15 @@ process_test "set reinforcement learning theory" do
   
   #Test 1.
   validReinforcementLearningTheories = ReinforcementLearning.getReinforcementLearningTheories()
-  assert_equal(nil, model.getReinforcementLearningTheory, "See test 1.")
+  assert_equal("null", model.getReinforcementLearningTheory, "See test 1.")
   
   #Test 2.
   model.setReinforcementLearningTheory(validReinforcementLearningTheories[0])
-  assert_equal(validReinforcementLearningTheories[0], model.getReinforcementLearningTheory, "See test 2.")
+  assert_equal(validReinforcementLearningTheories[0].to_s, model.getReinforcementLearningTheory, "See test 2.")
   
   #Test 3.
   model.setReinforcementLearningTheory(nil)
-  assert_equal(validReinforcementLearningTheories[0], model.getReinforcementLearningTheory, "See test 3.")
+  assert_equal(validReinforcementLearningTheories[0].to_s, model.getReinforcementLearningTheory, "See test 3.")
 end
 
 #The aim of this test is to check for the correct operation of all implemented
