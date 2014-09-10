@@ -325,3 +325,52 @@ process_test "'Reinforcement theory tests'" do
     end
   end
 end
+
+#This test attempts to verify correct operation of a CHREST model's "mind's eye"
+#by creating a new instance of CHREST and running the following tests:
+# 1) After setting the size of its mind's eye to a known value, does the size of
+#    the mind's eye equal this value?
+# 2) Is it the case that only non-empty visual patterns can be added to the 
+#    mind's eye?  
+# 3) Is it the case that trying to add more patterns to the mind's eye than the 
+#    maximum value allowed results in that pattern not being added? 
+# 4) Is it the case that the patterns added to the mind's eye are present in 
+#    the mind's eye contents?
+# 5) After clearing the mind's eye, is it the case that all mind's eye contents
+#    are equal to nil?
+process_test "'Minds eye tests'" do
+  model = Chrest.new
+  
+  #Test 1
+  mindsEyeSize = 1
+  model.setMindsEyeSize(mindsEyeSize)
+  assert_equal(model.getMindsEyeSize(), mindsEyeSize, "The size of the mind's eye was set to " + mindsEyeSize.to_s + " but the actual size of the mind's eye is " + model.getMindsEyeSize().to_s + ".")
+  
+  #Test 2
+  actionPattern = Pattern.makeActionList(["Action"].to_java(:String))
+  verbalPattern = Pattern.makeVerbalList(["Verbal"].to_java(:String))
+  visualPatternEmpty = Pattern.makeVisualList([].to_java(:String))
+  visualPattern1 = Pattern.makeVisualList(["Test1"].to_java(:String))
+  
+  assert_false(model.addToMindsEye(actionPattern), "Action pattern was successfully added to the mind's eye: only visual patterns should be allowed.")
+  assert_false(model.addToMindsEye(verbalPattern), "Verbal pattern was successfully added to the mind's eye: only visual patterns should be allowed.")
+  assert_false(model.addToMindsEye(visualPatternEmpty), "An empty visual pattern was successfully added to the mind's eye: only non-empty visual patterns should be allowed.")
+  assert_true(model.addToMindsEye(visualPattern1), "The visual item-square pattern: " + visualPattern1.toString() + " should have been added successfully to the mind's eye since its max size has been set to " + mindsEyeSize.to_s + " and should be empty before adding this pattern.")
+  
+  #Test 3
+  visualPattern2 = Pattern.makeVisualList(["Test2"].to_java(:String))
+  assert_false(model.addToMindsEye(visualPattern2), "Thhe visual item-square pattern: " + visualPattern2.toString() + " should not have been added successfully to the mind's eye since its max size has been set to " + mindsEyeSize.to_s + " and its current size should equal this value.")
+  
+  #Test 4
+  mindsEyeContents = model.getMindsEyeContents()
+  assert_equal(mindsEyeContents[0], visualPattern1, "The first item in the mind's eye should equal " + visualPattern1.toString() + " but doesn't: " + mindsEyeContents[0].toString() + ".")
+  
+  #Test 5
+  model.clearMindsEye()
+  mindsEyeContents = model.getMindsEyeContents()
+  index = 0
+  mindsEyeContents.each do |mindsEyeElement|
+    assert_equal(mindsEyeElement, nil, "After clearing the mind's eye, there is a non-empty element in its contents at index " + index.to_s + ".")
+    index += 1
+  end
+end

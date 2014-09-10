@@ -53,6 +53,8 @@ public class Chrest extends Observable {
   private final Stm _actionStm; // TODO: Incorporate into displays
   // Perception module
   private final Perceiver _perceiver;
+  //Mind's Eye module
+  private MindsEye _mindsEye;
   // Emotions module
   private EmotionAssociator _emotionAssociator;
   //Reinforcement learning module
@@ -77,7 +79,8 @@ public class Chrest extends Observable {
     _actionStm = new Stm (4);
     _emotionAssociator = new EmotionAssociator ();
     _reinforcementLearningTheory = null; //Must be set explicitly using Chrest.setReinforcementLearningTheory()
-
+    _mindsEye = new MindsEye(4);
+    
     _createTemplates = true;
     _createSemanticLinks = true;
     _perceiver = new Perceiver (this);
@@ -1164,5 +1167,54 @@ public class Chrest extends Observable {
       }
     }
   }
+  
+  /**
+   * Add the specified ListPattern to the mind's eye of the model.
+   * 
+   *        Name      Data Type     Description
+   *        ----      ---------     -----------
+   * @param pattern   ListPattern   The ListPattern to be added to the mind's 
+   *                                eye.
+   * 
+   *         Data Type    Description  
+   *         ---------    -----------
+   * @return Boolean      True if pattern was added, false if not.
+   */
+  public boolean addToMindsEye(ListPattern pattern){
+    return _mindsEye.add(pattern);
+  }
 
+  /**
+   * Clears the contents of the mind's eye. 
+   */
+  public void clearMindsEye(){
+    _mindsEye.clear();
+  }
+  
+  /**
+   * Returns the contents of the mind's eye as an array.
+   * 
+   *         Data Type    Description  
+   *         ---------    -----------
+   * @return Array        Contents of the mind's eye. 
+   */
+  public Object[] getMindsEyeContents(){
+    return _mindsEye.getContents();
+  }
+  
+  public int getMindsEyeSize(){
+    return _mindsEye.getSize();
+  }
+  
+  /**
+   * Sets the size of the mind's eye to the integer specified.
+   * 
+   *        Name  Data Type   Description
+   *        ----  ---------   -----------
+   * @param size  Integer     The maximum number of elements the mind's eye can
+   *                          retain.
+   */
+  public void setMindsEyeSize(int size){
+    _mindsEye.setSize(size);
+  }
 }
