@@ -4,7 +4,9 @@ package jchrest.architecture;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
+import java.util.TreeSet;
 
 /**
  * Class that represents the "Mind's Eye".  
@@ -114,10 +116,8 @@ public class MindsEye {
     
     //Used to determine sizes of ArrayList dimensions that consitute the 
     //"_visualSpatialField" data structure.
-    int minDomainSpecificRowCoord = 0;
-    int maxDomainSpecificRowCoord = 0;
-    int minDomainSpecificColCoord = 0;
-    int maxDomainSpecificColCoord = 0;
+    ArrayList<Integer> rowCoordinates = new ArrayList<>();
+    ArrayList<Integer> colCoordinates = new ArrayList<>();
     
     //Cycle through "vision" array elements.
     for(int i = 0; i < vision.length; i++){
@@ -127,52 +127,23 @@ public class MindsEye {
       int domainSpecificRowCoord = Integer.valueOf(objectInfo[1]);
       int domainSpecificColCoord = Integer.valueOf(objectInfo[2]);
       
-      //Check to see if this is the first element of the "vision" array.  If it
-      //is, set the min/max row/col variables to the row/col coordinates of this
-      //first element so that subsequent "vision" element row/col coordinates 
-      //can be compared. 
-      if(i == 0){
-        minDomainSpecificRowCoord = domainSpecificRowCoord;
-        maxDomainSpecificRowCoord = domainSpecificRowCoord;
-        minDomainSpecificColCoord = domainSpecificColCoord;
-        maxDomainSpecificColCoord = domainSpecificColCoord;
+      if(!rowCoordinates.contains(domainSpecificRowCoord)){
+        rowCoordinates.add(domainSpecificRowCoord);
       }
-      //Otherwise, compare the "vision" array element's row/col coordinates 
-      //against the max/min row/col values and overwrite these values 
-      //accordingly.
-      else{
-        if(domainSpecificRowCoord < minDomainSpecificRowCoord){
-          minDomainSpecificRowCoord = domainSpecificRowCoord;
-        }
-        
-        if(domainSpecificRowCoord > maxDomainSpecificRowCoord){
-          maxDomainSpecificRowCoord = domainSpecificRowCoord;
-        }
-        
-        if(domainSpecificColCoord < minDomainSpecificColCoord){
-          minDomainSpecificColCoord = domainSpecificColCoord;
-        }
-        
-        if(domainSpecificColCoord > maxDomainSpecificColCoord){
-          maxDomainSpecificColCoord = domainSpecificColCoord;
-        }
+      
+      if(!colCoordinates.contains(domainSpecificColCoord)){
+        colCoordinates.add(domainSpecificColCoord);
       }
     }
     
-    //Calculate the size of the 1st and 2nd dimension arrays for the instance's 
-    //"_visualSpatialField" by taking the difference between the max /min 
-    //domain-specific row/column values and adding 1.  Adding 1 ensures that 
-    //there is an element for the minimum row/col value otherwise, if the 
-    //min/max row values are set to 1 and 5, the mind's eye would only create 4 
-    //rows so row 1/5 in "reality" would not be represented in the mind's eye.
-    int numberOfRows = (maxDomainSpecificRowCoord - minDomainSpecificRowCoord) + 1;
-    int numberOfCols = (maxDomainSpecificColCoord - minDomainSpecificColCoord) + 1;
+    Collections.sort(rowCoordinates);
+    Collections.sort(colCoordinates);
     
     //Generate the domain-specific to mind's eye coordinate mappings.
-    for(int domainRow = minDomainSpecificRowCoord, genericRow = 0; genericRow < numberOfRows; domainRow++, genericRow++){
-      for(int domainCol = minDomainSpecificColCoord, genericCol = 0; genericCol < numberOfCols; domainCol++, genericCol++){  
-        String domainRowAndCol = String.valueOf(domainRow) + "," + String.valueOf(domainCol);
-        String genericRowAndCol = String.valueOf(genericRow) + "," + String.valueOf(genericCol);
+    for(int mindsEyeRow = 0; mindsEyeRow < rowCoordinates.size(); mindsEyeRow++){
+      for(int mindsEyeCol = 0; mindsEyeCol < colCoordinates.size(); mindsEyeCol++){  
+        String domainRowAndCol = String.valueOf(rowCoordinates.get(mindsEyeRow)) + "," + String.valueOf(colCoordinates.get(mindsEyeCol));
+        String genericRowAndCol = String.valueOf(mindsEyeRow) + "," + String.valueOf(mindsEyeCol);
         this._domainSpecificToMindsEyeCoordMappings.put(domainRowAndCol, genericRowAndCol);
         this._mindsEyeToDomainSpecificCoordMappings.put(genericRowAndCol, domainRowAndCol);
       }
@@ -180,10 +151,10 @@ public class MindsEye {
     
     //Instantiate the "_visualSpatialField" with null values for the max number 
     //of row/col elements determined above.
-    for(int row = 0; row < numberOfRows; row++){
+    for(int row = 0; row < rowCoordinates.size(); row++){
       ArrayList<String> colSpace = new ArrayList<>();
       this._visualSpatialField.add(colSpace);
-      for(int col = 0; col < numberOfCols; col++){
+      for(int col = 0; col < colCoordinates.size(); col++){
         this._visualSpatialField.get(row).add(null);
       }
     }
