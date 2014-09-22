@@ -326,51 +326,307 @@ process_test "'Reinforcement theory tests'" do
   end
 end
 
-#This test attempts to verify correct operation of a CHREST model's "mind's eye"
-#by creating a new instance of CHREST and running the following tests:
-# 1) After setting the size of its mind's eye to a known value, does the size of
-#    the mind's eye equal this value?
-# 2) Is it the case that only non-empty visual patterns can be added to the 
-#    mind's eye?  
-# 3) Is it the case that trying to add more patterns to the mind's eye than the 
-#    maximum value allowed results in that pattern not being added? 
-# 4) Is it the case that the patterns added to the mind's eye are present in 
-#    the mind's eye contents?
-# 5) After clearing the mind's eye, is it the case that all mind's eye contents
-#    are equal to nil?
 process_test "'Minds eye tests'" do
   model = Chrest.new
+  baseTime = 100
+  timeToMoveObject = 250
   
-  #Test 1
-  mindsEyeSize = 1
-  model.setMindsEyeSize(mindsEyeSize)
-  assert_equal(model.getMindsEyeSize(), mindsEyeSize, "The size of the mind's eye was set to " + mindsEyeSize.to_s + " but the actual size of the mind's eye is " + model.getMindsEyeSize().to_s + ".")
+  ##############################################################################
+  # Create and instantiate a mind's eye and check that its representation of the
+  # domain environment is correct.
+  ##############################################################################
+  # 
+  # Tests to see if the 2D array of the mind's eye represents the observer's 
+  # vision as expected:
+  # 1) Do the first dimension elements in the 2D mind's eye array represent the 
+  #    row coordinates of the observer's current vision?
+  # 2) Do the second dimension elements in the 2D mind's eye array represent the
+  #    column coordinates of the observer's current vision?
+  # 3) Do the row and column elements in the 2D mind's eye array represent the 
+  #    domain-specific coordinates in an ascending order?
+  # 4) Are "blind spots" in the vision used to intantiate the mind's eye 
+  #    correctly respresented as null values in the 2D mind's eye array?
+  # 
+  # The vision used to instantiate the mind's eye 2D array in these tests 
+  # resembles a "cone" of vision i.e. the further ahead the observer sees, the
+  # wider its field of vision.  A diagram of this vision can be found below:
+  # "-" and "|" are used to denote squares that represent units of vision, "x" 
+  # represents a "blind spot", "A"/"B"/"C" represent 3 distinct objects that the
+  # observer can see and the numbers to the left and bottom of the diagram 
+  # represent the domain-specific row and column coordinates, respectively. 
+  # 
+  #   ---------------------
+  # 3 |   | C |   |   |   | 
+  #   ---------------------
+  # 2   x |   | B |   | x
+  #       -------------
+  # 1   x   x | A | x   x
+  #           -----
+  #    -2  -1   0   1   2
+  #
+  # The 2D mind's eye array created should be composed of 5 first dimension 
+  # array elements that represent the rows of the vision and a 5 element array
+  # in each of the first dimension elements to represent the columns of the 
+  # vision.  The 2D mind's eye array element 0,0 should contain "null" since the 
+  # square at domain-specific coordinates 1,-2 can not be seen.  The 2D mind's 
+  # eye array element 2,4 should contain "" since the square at domain specific
+  # coordinates 3,2 can be seen but does not contain an object.  
+  #
+  # Declare the vision cone "backwards" i.e. maximum domain-specific row/col
+  # value first so that it can be asserted that the 2D mind's eye array is 
+  # created from the minimum domain-specific row/col.
   
-  #Test 2
-  actionPattern = Pattern.makeActionList(["Action"].to_java(:String))
-  verbalPattern = Pattern.makeVerbalList(["Verbal"].to_java(:String))
-  visualPatternEmpty = Pattern.makeVisualList([].to_java(:String))
-  visualPattern1 = Pattern.makeVisualList(["Test1"].to_java(:String))
+  expectedTime = 0
+  empty = ""
+  null = "null"
+  objectA = "A"
+  objectB = "B"
+  objectC = "C"
   
-  assert_false(model.addToMindsEye(actionPattern), "Action pattern was successfully added to the mind's eye: only visual patterns should be allowed.")
-  assert_false(model.addToMindsEye(verbalPattern), "Verbal pattern was successfully added to the mind's eye: only visual patterns should be allowed.")
-  assert_false(model.addToMindsEye(visualPatternEmpty), "An empty visual pattern was successfully added to the mind's eye: only non-empty visual patterns should be allowed.")
-  assert_true(model.addToMindsEye(visualPattern1), "The visual item-square pattern: " + visualPattern1.toString() + " should have been added successfully to the mind's eye since its max size has been set to " + mindsEyeSize.to_s + " and should be empty before adding this pattern.")
-  
-  #Test 3
-  visualPattern2 = Pattern.makeVisualList(["Test2"].to_java(:String))
-  assert_false(model.addToMindsEye(visualPattern2), "Thhe visual item-square pattern: " + visualPattern2.toString() + " should not have been added successfully to the mind's eye since its max size has been set to " + mindsEyeSize.to_s + " and its current size should equal this value.")
-  
-  #Test 4
-  mindsEyeContents = model.getMindsEyeContents()
-  assert_equal(mindsEyeContents[0], visualPattern1, "The first item in the mind's eye should equal " + visualPattern1.toString() + " but doesn't: " + mindsEyeContents[0].toString() + ".")
-  
-  #Test 5
-  model.clearMindsEye()
-  mindsEyeContents = model.getMindsEyeContents()
-  index = 0
-  mindsEyeContents.each do |mindsEyeElement|
-    assert_equal(mindsEyeElement, nil, "After clearing the mind's eye, there is a non-empty element in its contents at index " + index.to_s + ".")
-    index += 1
+  visionCone = [
+    empty + ",3,2",
+    empty + ",3,1",
+    empty + ",3,0",
+    objectC + ",3,-1",
+    empty + ",3,-2",
+    empty + ",2,1", 
+    objectB + ",2,0",
+    empty + ",2,-1",
+    objectA + ",1,0"
+  ]
+    
+  def get_minds_eye_contents(model)
+    contents = Array.new
+    for i in 1..3
+      for j in -2..2
+        contents << model.getMindsEyeContentUsingDomainSpecificCoords(i, j)
+      end
+    end
+    return contents
   end
+  
+  #Represents the initial state of the mind's eye.
+  expectedMindsEyeContents = [
+    #Row 3
+    null,
+    null,
+    objectA,
+    null,
+    null,
+    #Row 2
+    null,
+    empty,
+    objectB,
+    empty,
+    null,
+    #Row 1
+    empty,
+    objectC,
+    empty,
+    empty,
+    empty
+  ]
+  
+  model.createNewMindsEye(visionCone, baseTime, timeToMoveObject)
+  
+  mindsEyeContents = get_minds_eye_contents(model)
+  mindsEyeContents.each_with_index{ 
+    |val, index| 
+    assert_equal(expectedMindsEyeContents[index], val, "Occurred with element " + index.to_s + " when checking the initial state of the mind's eye.") 
+  }
+  
+  ##############################################################################
+  # Specify intial coordinates for an object but no moves
+  ##############################################################################
+  
+  noObjectBMoves = [
+    [ objectA + ",2,-1", objectA + ",3,-1" ],
+    [ objectB + ",2,0" ]
+  ]
+  moveResult = model.moveObjects(noObjectBMoves)
+  assert_false(moveResult[0], "Occurred when checking result of specifying initial coordinates and no moves for an object.")
+  
+  assert_equal(expectedTime, model.getClock(), "Occurred when checking the CHREST model's clock after specifying initial coordinates and no moves for an object.")
+  
+  mindsEyeContents = get_minds_eye_contents(model)
+  mindsEyeContents.each_with_index{
+    |val, index|
+    assert_equal(expectedMindsEyeContents[index], val, "Occurred with element " + index.to_s + " when checking the state of the mind's eye after specifying initial coordinates and no moves for an object.")
+  }
+  
+  ##############################################################################
+  # Specify wrong initial coordinates for an object
+  ##############################################################################
+  wrongInitialCoordinates = [
+    [ objectA + ",2,-1", objectA + ",3,-1" ], 
+    [ objectB + ",2,0", objectB + "3,0" ]
+  ]
+  moveResult = model.moveObjects(wrongInitialCoordinates)
+  assert_false(moveResult[0], "Occurred when checking result of attempting to move an object whose specified initial coordinates are incorrect.")
+  
+  assert_equal(expectedTime, model.getClock(), "Occurred when checking the CHREST model's clock after attempting to move an object whose specified initial coordinates are incorrect.")
+  
+  mindsEyeContents = get_minds_eye_contents(model)
+  mindsEyeContents.each_with_index{
+    |val, index|
+    assert_equal(expectedMindsEyeContents[index], val, "Occurred with element " + index.to_s + " when checking the state of the mind's eye after moving two objects multiple times each.")
+  }
+  
+  ##############################################################################
+  # Move two objects, multiple times each
+  ##############################################################################
+  twoObjectsMultipleTimes = [
+    [ objectC + ",3,-1", objectC + ",3,0", objectC + ",3,1"],
+    [ objectB + ",2,0", objectB + ",2,-1", objectB + ",3,-1"]
+  ]
+  moveResult = model.moveObjects(twoObjectsMultipleTimes)
+  assert_true(moveResult[0], "Occurred when checking the result of moving two objects multiple times each.")
+  
+  expectedTime = baseTime + (timeToMoveObject * 4)
+  assert_equal(expectedTime, model.getClock(), "Occurred when checking the CHREST model's clock after moving two objects multiple times.")
+  
+  expectedMindsEyeContents[11] = empty
+  expectedMindsEyeContents[12] = empty
+  expectedMindsEyeContents[13] = objectC
+  
+  expectedMindsEyeContents[7] = empty
+  expectedMindsEyeContents[6] = empty
+  expectedMindsEyeContents[11] = objectB
+  mindsEyeContents = get_minds_eye_contents(model)
+  mindsEyeContents.each_with_index{
+    |val, index|
+    assert_equal(expectedMindsEyeContents[index], val, "Occurred with element " + index.to_s + " when checking the state of the mind's eye after moving two objects multiple times each.")
+  }
+  
+  ##############################################################################
+  # Move two objects onto the same coordinates in the mind's eye
+  ##############################################################################
+  twoObjectsSameCoord = [ [objectB + ",3,-1", objectB + ",3,1"] ]
+  moveResult = model.moveObjects(twoObjectsSameCoord)
+  assert_true(moveResult[0], "Occurred when checking the result of moving two objects onto the same coordinates.")
+  
+  expectedTime += baseTime + timeToMoveObject
+  assert_equal(expectedTime, model.getClock(), "Occurred when checking the CHREST model's clock after moving two objects onto the same coordinates.")
+  
+  expectedMindsEyeContents[11] = empty
+  expectedMindsEyeContents[13] = objectC + "," + objectB
+  mindsEyeContents = get_minds_eye_contents(model)
+  mindsEyeContents.each_with_index{
+    |val, index|
+    assert_equal(expectedMindsEyeContents[index], val, "Occurred with element " + index.to_s + " when checking the state of the mind's eye after moving two objects onto the same coordinates.")
+  }
+  
+  ##############################################################################
+  # Move a different object part-way through moving another object.
+  ##############################################################################
+  illegalMoveSequence = [
+    [objectB + ",3,1", objectC + ",3,1", objectB + ",3,1"],
+    [objectC + ",3,1", objectC + ",2,1", objectC + ",3,1"]
+  ]
+  moveResult = model.moveObjects(illegalMoveSequence)
+  assert_false(moveResult[0], "Occurred when checking the result of moving a different object part-way through moving another.")
+  
+  assert_equal(expectedTime, model.getClock(), "Occurred when checking the CHREST model's clock after moving a different object part-way through moving another.")
+  
+  mindsEyeContents = get_minds_eye_contents(model)
+  mindsEyeContents.each_with_index{
+    |val, index|
+    assert_equal(expectedMindsEyeContents[index], val, "Occurred with element " + index.to_s + " when checking the state of the mind's eye after moving a different object part-way through moving another.")
+  }
+  
+  ##############################################################################
+  # Move an object onto coordinates not represented in the mind's eye.
+  # 
+  # This test also checks to see if a coordinates content is correct if the last
+  # object on the initial coordinates specified is moved.
+  ##############################################################################
+  moveObjectBOutsideVisualSpatialField = [[objectB + ",3,1", objectB + ",4,1"]]
+  modelResult = model.moveObjects(moveObjectBOutsideVisualSpatialField)
+  assert_true(modelResult[0], "Occurred when checking the result of moving an object to coordinates not in the current range of the mind's eye.")
+
+  expectedTime += (baseTime + timeToMoveObject)
+  assert_equal(expectedTime, model.getClock(), "Occurred when checking the CHREST model's clock after moving an object to coordinates not in the current range of the mind's eye.")
+  
+  expectedMindsEyeContents[13] = objectC
+  mindsEyeContents = get_minds_eye_contents(model)
+  mindsEyeContents.each_with_index{
+    |val, index|
+    assert_equal(expectedMindsEyeContents[index], val, "Occurred with element " + index.to_s + " when checking the state of the mind's eye after moving an object to coordinates not in the current range of the mind's eye.")
+  }
+  
+  assert_false(mindsEyeContents.include?(objectB), "Occurred when checking for the abscence of the object that was moved to coordinates not in the current range of the mind's eye." )
+  
+  ##############################################################################
+  # Move an object onto the same coordinates as another before moving the first
+  # object on these coordinates to other cooridnates.
+  ##############################################################################
+  
+  moveFirstObjectFromSharedCoordinates = [
+    [objectA + ",1,0", objectA + ",3,1"], 
+    [objectC + ",3,1", objectC + ",3,2"]
+  ]
+  resultOfMove = model.moveObjects(moveFirstObjectFromSharedCoordinates)
+  assert_true(resultOfMove[0], "Occurred when checking the result of moving an object to shared coordinates and then moving the object originally at these shared coordinates.")
+
+  expectedTime += (baseTime + timeToMoveObject * 2)
+  assert_equal(expectedTime, model.getClock(), "Occurred when checking the CHREST model's clock after moving an object to shared coordinates and then moving the object originally at these shared coordinates.")
+  
+  expectedMindsEyeContents[2] = empty
+  expectedMindsEyeContents[13] = objectA
+  expectedMindsEyeContents[14] = objectC
+  mindsEyeContents = get_minds_eye_contents(model)
+  mindsEyeContents.each_with_index{
+    |val, index|
+    assert_equal(expectedMindsEyeContents[index], val, "Occurred with element " + index.to_s + " when checking the state of the mind's eye after moving an object to shared coordinates and then moving the object originally at these shared coordinates.")
+  }
+  
+  ##############################################################################
+  # Attempt to move object after it has been moved into a blind spot
+  ##############################################################################
+  
+  moveObjectAfterMovingToBlindSpot = [[objectC + ",3,2", objectC + ",4,2", objectC + ",3,2"]]
+  resultOfMove = model.moveObjects(moveObjectAfterMovingToBlindSpot)
+  assert_true(resultOfMove[0], "Occurred when checking the result of attempting to move an object after it has been moved out of mind's eye range.")
+  
+  expectedTime += (baseTime + timeToMoveObject)
+  assert_equal(expectedTime, model.getClock(), "Occurred when checking the CHREST model's clock after attempting to move an object after it has been moved out of mind's eye range.")
+  
+  expectedMindsEyeContents[14] = empty
+  mindsEyeContents = get_minds_eye_contents(model)
+  mindsEyeContents.each_with_index{
+    |val, index|
+    assert_equal(expectedMindsEyeContents[index], val, "Occurred with element " + index.to_s + " when checking the state of the mind's eye after attempting to move an object after it has been moved out of mind's eye range.")
+  }
+  
+  assert_false(mindsEyeContents.include?(objectC), "Occurred when checking for the abscence of the object that was moved out of the mind's eye range and then moved again afterwards.")
+
+  ##############################################################################
+  # Check that mind's eye contents are returned correctly.
+  ##############################################################################
+  domainRowAndCols = [
+    "1,-2",
+    "1,-1",
+    "1,0",
+    "1,1",
+    "1,2",
+    "2,-2",
+    "2,-1",
+    "2,0",
+    "2,1",
+    "2,2",
+    "3,-2",
+    "3,-1",
+    "3,0",
+    "3,1",
+    "3,2",
+  ]
+  mindsEyeContents = model.getMindsEyeContentSpecificToDomain()
+  mindsEyeContents.each_with_index{
+    |val, index| 
+    objectInformation = val.split(";")
+    domainRowAndCol = domainRowAndCols[index].split(",")
+    assert_equal(expectedMindsEyeContents[index], objectInformation[0])
+    assert_equal(domainRowAndCol[0], objectInformation[1])
+    assert_equal(domainRowAndCol[1], objectInformation[2])
+  }
 end

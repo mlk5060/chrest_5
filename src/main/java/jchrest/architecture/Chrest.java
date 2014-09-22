@@ -79,8 +79,8 @@ public class Chrest extends Observable {
     _actionStm = new Stm (4);
     _emotionAssociator = new EmotionAssociator ();
     _reinforcementLearningTheory = null; //Must be set explicitly using Chrest.setReinforcementLearningTheory()
-    _mindsEye = new MindsEye(4);
-    
+    _mindsEye = null;
+            
     _createTemplates = true;
     _createSemanticLinks = true;
     _perceiver = new Perceiver (this);
@@ -1169,52 +1169,52 @@ public class Chrest extends Observable {
   }
   
   /**
-   * Add the specified ListPattern to the mind's eye of the model.
+   * Generates a new mind's eye, see {@link 
+   * jchrest.architecture.MindsEye#MindsEye(jchrest.architecture.Chrest, 
+   * java.lang.String[], int, int)} for more details on parameters to be passed.
    * 
-   *        Name      Data Type     Description
-   *        ----      ---------     -----------
-   * @param pattern   ListPattern   The ListPattern to be added to the mind's 
-   *                                eye.
-   * 
-   *         Data Type    Description  
-   *         ---------    -----------
-   * @return Boolean      True if pattern was added, false if not.
+   * @param vision
+   * @param accessTime
+   * @param timeToMoveMinimumMovementUnit
    */
-  public boolean addToMindsEye(ListPattern pattern){
-    return _mindsEye.add(pattern);
-  }
-
-  /**
-   * Clears the contents of the mind's eye. 
-   */
-  public void clearMindsEye(){
-    _mindsEye.clear();
+  public void createNewMindsEye(String [] vision, int accessTime, int timeToMoveMinimumMovementUnit){
+    _mindsEye = new MindsEye(this, vision, accessTime, timeToMoveMinimumMovementUnit);
   }
   
   /**
-   * Returns the contents of the mind's eye as an array.
+   * Retrieves complete contents of the mind's eye with object locations 
+   * translated to domain-specific coordinates.  See {@link 
+   * jchrest.architecture.MindsEye#getMindsEyeContentSpecificToDomain()} for 
+   * more information about parameters etc.
    * 
-   *         Data Type    Description  
-   *         ---------    -----------
-   * @return Array        Contents of the mind's eye. 
+   * @return 
    */
-  public Object[] getMindsEyeContents(){
-    return _mindsEye.getContents();
-  }
-  
-  public int getMindsEyeSize(){
-    return _mindsEye.getSize();
+  public ArrayList<String> getMindsEyeContentSpecificToDomain(){
+    return this._mindsEye.getMindsEyeContentSpecificToDomain();
   }
   
   /**
-   * Sets the size of the mind's eye to the integer specified.
+   * Retrieves the contents of one mind's eye coordinate specified using 
+   * domain-specific coordinates. See {@link 
+   * jchrest.architecture.MindsEye#getMindsEyeContentUsingDomainSpecificCoords(int, int)}
+   * for more information about parameters etc.
    * 
-   *        Name  Data Type   Description
-   *        ----  ---------   -----------
-   * @param size  Integer     The maximum number of elements the mind's eye can
-   *                          retain.
+   * @param domainSpecificRow
+   * @param domainSpecificCol
+   * @return 
    */
-  public void setMindsEyeSize(int size){
-    _mindsEye.setSize(size);
+  public String getMindsEyeContentUsingDomainSpecificCoords(int domainSpecificRow, int domainSpecificCol){
+    return this._mindsEye.getMindsEyeContentUsingDomainSpecificCoords(domainSpecificRow, domainSpecificCol);
+  }
+  
+  /**
+   * Moves objects in the mind's eye using domain-specific coordinates suuplied.
+   * See {@link jchrest.architecture.MindsEye#moveObjects(java.lang.String[][])}
+   * for more information about parameters etc.
+   * @param moves
+   * @return 
+   */
+  public Object[] moveObjects(String[][] moves){
+    return this._mindsEye.moveObjects(moves);
   }
 }
