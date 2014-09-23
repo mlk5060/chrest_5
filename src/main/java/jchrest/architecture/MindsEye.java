@@ -55,36 +55,33 @@ public class MindsEye {
    * associated with.
    * 
    * @param vision An array consisting of object identifiers and domain-specific 
-   * row/column coordinates separated by commas i.e. "PersonA,3,2" would 
-   * indicate that the "PersonA" object can be seen at row 3 and column 2.
+   * x/y coordinates separated by commas i.e. "PersonA,3,2" would 
+   * indicate that the "PersonA" object can be seen at x-coordinate 3 and 
+   * y-coordinate 2.
    * <ul>
    *  <li>
    *    When translating the visual information passed, the constructor will 
-   *    calculate the maximum number of visual units that can be seen to the
-   *    east/west and will assume that, for every visual unit that can be seen 
-   *    north/south, the observer can see this maximum number of units 
-   *    east/west.  
+   *    calculate the maximum number of x/y-coordinates that can be seen and 
+   *    will create a 2D array that spans these maximum x/y-coordinate 
+   *    dimensions.
    *  </li>
    *  <li>
    *    As a consequence of the point above, ensure that all objects that can be
    *    "seen" have a unique <b>object identifier</b> set (uniqueness of object 
    *    identifiers is required due to the functionality of the "moveObjects" 
    *    function (see {@link#moveObjects(java.lang.String[][])} for details). 
-   *    If a coordinate in the domain that can be seen contains no object, pass 
-   *    an empty string as an object identifier otherwise the coordinate will be 
-   *    interpreted as a "blind spot" and will contain a null value.  Thus, any 
-   *    object moved to such a coordinate in future will be considered as 
-   *    "lost".
+   *    If a location in the domain that can be seen contains no object, pass an 
+   *    empty string as an object identifier otherwise the coordinate that 
+   *    represents this location in the mind's eye will be interpreted as a 
+   *    "blind spot" and will contain a null value.  Thus, any object moved to 
+   *    this location in the mind's eye in future will be considered as "lost".
    *  </li>
    *  <li>
    *    Note that domain coordinates <b>must</b> be integers; fractional numbers
    *    can not be used.  Therefore, if the domain consists of a 2D grid of 
    *    squares and it is possible for objects to move along half a square, 
    *    please ensure that the domain-specific coordinates are translated into 
-   *    integers accordingly.  For example, if the agent can see 2 squares to 
-   *    the east and west (resulting in 4 row elements) but objects can be moved 
-   *    along half a square then round .5 coordinates up to the nearest unit 
-   *    (resulting in 8 row elements).
+   *    integers accordingly.
    *  </li>
    *  <li>
    *    Note that coordinates can be absolute or relative to the observer when 
@@ -116,55 +113,58 @@ public class MindsEye {
     
     //Used to determine sizes of ArrayList dimensions that consitute the 
     //"_visualSpatialField" data structure.
-    ArrayList<Integer> rowCoordinates = new ArrayList<>();
-    ArrayList<Integer> colCoordinates = new ArrayList<>();
+    ArrayList<Integer> domainSpecificXCoordinates = new ArrayList<>();
+    ArrayList<Integer> domainSpecificYCoordinates = new ArrayList<>();
     
     //Cycle through "vision" array elements.
     for(int i = 0; i < vision.length; i++){
       
       //Extract domain-specific row and col coordinates for the current element.       
       String[] objectInfo = processObjectInfo(vision[i]);
-      int domainSpecificRowCoord = Integer.valueOf(objectInfo[1]);
-      int domainSpecificColCoord = Integer.valueOf(objectInfo[2]);
+      int domainSpecificXCor = Integer.valueOf(objectInfo[1]);
+      int domainSpecificYCor = Integer.valueOf(objectInfo[2]);
       
-      if(!rowCoordinates.contains(domainSpecificRowCoord)){
-        rowCoordinates.add(domainSpecificRowCoord);
+      //Add x and y coordinates if they aren't already in their respective
+      //lists.
+      if(!domainSpecificXCoordinates.contains(domainSpecificXCor)){
+        domainSpecificXCoordinates.add(domainSpecificXCor);
       }
       
-      if(!colCoordinates.contains(domainSpecificColCoord)){
-        colCoordinates.add(domainSpecificColCoord);
+      if(!domainSpecificYCoordinates.contains(domainSpecificYCor)){
+        domainSpecificYCoordinates.add(domainSpecificYCor);
       }
     }
     
-    Collections.sort(rowCoordinates);
-    Collections.sort(colCoordinates);
+    //Sort x and y lists in ascending order.
+    Collections.sort(domainSpecificXCoordinates);
+    Collections.sort(domainSpecificYCoordinates);
     
-    //Generate the domain-specific to mind's eye coordinate mappings.
-    for(int mindsEyeRow = 0; mindsEyeRow < rowCoordinates.size(); mindsEyeRow++){
-      for(int mindsEyeCol = 0; mindsEyeCol < colCoordinates.size(); mindsEyeCol++){  
-        String domainRowAndCol = String.valueOf(rowCoordinates.get(mindsEyeRow)) + "," + String.valueOf(colCoordinates.get(mindsEyeCol));
-        String genericRowAndCol = String.valueOf(mindsEyeRow) + "," + String.valueOf(mindsEyeCol);
-        this._domainSpecificToMindsEyeCoordMappings.put(domainRowAndCol, genericRowAndCol);
-        this._mindsEyeToDomainSpecificCoordMappings.put(genericRowAndCol, domainRowAndCol);
+    //Generate the domain-specific to/from mind's eye coordinate mappings.
+    for(int mindsEyeXCor = 0; mindsEyeXCor < domainSpecificXCoordinates.size(); mindsEyeXCor++){
+      for(int mindsEyeYCor = 0; mindsEyeYCor < domainSpecificYCoordinates.size(); mindsEyeYCor++){  
+        String domainXAndYCor = String.valueOf(domainSpecificXCoordinates.get(mindsEyeXCor)) + "," + String.valueOf(domainSpecificYCoordinates.get(mindsEyeYCor));
+        String mindsEyeXandYCor = String.valueOf(mindsEyeXCor) + "," + String.valueOf(mindsEyeYCor);
+        this._domainSpecificToMindsEyeCoordMappings.put(domainXAndYCor, mindsEyeXandYCor);
+        this._mindsEyeToDomainSpecificCoordMappings.put(mindsEyeXandYCor, domainXAndYCor);
       }
     }
     
     //Instantiate the "_visualSpatialField" with null values for the max number 
     //of row/col elements determined above.
-    for(int row = 0; row < rowCoordinates.size(); row++){
-      ArrayList<String> colSpace = new ArrayList<>();
-      this._visualSpatialField.add(colSpace);
-      for(int col = 0; col < colCoordinates.size(); col++){
-        this._visualSpatialField.get(row).add(null);
+    for(int mindsEyeXCor = 0; mindsEyeXCor < domainSpecificXCoordinates.size(); mindsEyeXCor++){
+      ArrayList<String> yCorSpace = new ArrayList<>();
+      this._visualSpatialField.add(yCorSpace);
+      for(int mindsEyeYCor = 0; mindsEyeYCor < domainSpecificYCoordinates.size(); mindsEyeYCor++){
+        this._visualSpatialField.get(mindsEyeXCor).add(null);
       }
     }
     
     //Populate "_visualSpatialField" with the objects at the coordinates 
     //specified in the "vision" string array passed.
-    for(String objectInfo : vision){
-      String[] objectInfoParts = this.processObjectInfo(objectInfo);
-      int[] nonDomainSpecificCoords = resolveDomainSpecificCoord(Integer.valueOf(objectInfoParts[1]), Integer.valueOf(objectInfoParts[2]) );
-      this._visualSpatialField.get( nonDomainSpecificCoords[0] ).set(nonDomainSpecificCoords[1], objectInfoParts[0]);
+    for(String coordinateInfo : vision){
+      String[] coordinateInfoParts = this.processObjectInfo(coordinateInfo);
+      int[] mindsEyeXYCoords = resolveDomainSpecificCoord(Integer.valueOf(coordinateInfoParts[1]), Integer.valueOf(coordinateInfoParts[2]) );
+      this._visualSpatialField.get( mindsEyeXYCoords[0] ).set(mindsEyeXYCoords[1], coordinateInfoParts[0]);
     }
   }
   
@@ -173,22 +173,22 @@ public class MindsEye {
    * specific coordinates.
    * 
    * @return An ArrayList of strings containing the contents of each mind's eye
-   * coordinate along with the relevant domain-specific row and column 
-   * coordinates.  Object, row and column information are separated by a 
-   * semi-colon (;) and so can be used as a delimiter to split information.
-   * Commas (,) are used to separate object identifiers in mind's eye content so 
-   * can be used as a delimiter to extract content information.
+   * coordinate along with the relevant domain-specific x and y coordinates.  
+   * Object, x-cor and y-cor information are separated by a semi-colon (;) and 
+   * so can be used as a delimiter to split information.  Commas (,) are used to 
+   * separate object identifiers in mind's eye content so can be used as a 
+   * delimiter to extract object information.
    */
   public ArrayList<String> getMindsEyeContentSpecificToDomain(){
     ArrayList<String> domainSpecificContentsOfMindsEye = new ArrayList<>();
-    for(int row = 0; row < this._visualSpatialField.size(); row++){
-      ArrayList rowArray = this._visualSpatialField.get(row);
-      for(int col = 0; col < rowArray.size(); col++){
-        String[] domainSpecificRowAndColCoordinates = this._mindsEyeToDomainSpecificCoordMappings.get(Integer.toString(row) + "," + Integer.toString(col)).split(",");
-        String domainSpecificRowString = domainSpecificRowAndColCoordinates[0];
-        String domainSpecificColString = domainSpecificRowAndColCoordinates[1];
-        String contents = this.getMindsEyeContentUsingDomainSpecificCoords(Integer.valueOf(domainSpecificRowString), Integer.valueOf(domainSpecificColString));
-        domainSpecificContentsOfMindsEye.add(contents + ";" + domainSpecificRowString + ";" + domainSpecificColString);
+    for(int mindsEyeXCor = 0; mindsEyeXCor < this._visualSpatialField.size(); mindsEyeXCor++){
+      ArrayList rowArray = this._visualSpatialField.get(mindsEyeXCor);
+      for(int mindsEyeYCor = 0; mindsEyeYCor < rowArray.size(); mindsEyeYCor++){
+        String[] domainSpecificXAndYCoordinates = this._mindsEyeToDomainSpecificCoordMappings.get(Integer.toString(mindsEyeXCor) + "," + Integer.toString(mindsEyeYCor)).split(",");
+        String domainSpecificXCorString = domainSpecificXAndYCoordinates[0];
+        String domainSpecificYCorString = domainSpecificXAndYCoordinates[1];
+        String contents = this.getMindsEyeContentUsingDomainSpecificCoords(Integer.valueOf(domainSpecificXCorString), Integer.valueOf(domainSpecificYCorString));
+        domainSpecificContentsOfMindsEye.add(contents + ";" + domainSpecificXCorString + ";" + domainSpecificYCorString);
       }
     }
     
@@ -196,21 +196,21 @@ public class MindsEye {
   }
   
   /**
-   * Takes domain-specific row and column coordinates and returns the object 
-   * identifier found at the resolved mind's eye row and column coordinates.
+   * Takes domain-specific x and y coordinates and returns the object identifier 
+   * found at the resolved mind's eye x and y coordinates.
    * 
-   * @param domainSpecificRow
-   * @param domainSpecificCol
+   * @param domainSpecificXCor
+   * @param domainSpecificYCor
    * @return 
    */
-  public String getMindsEyeContentUsingDomainSpecificCoords(int domainSpecificRow, int domainSpecificCol){
-    int[] nonDomainSpecificCoords = this.resolveDomainSpecificCoord(domainSpecificRow, domainSpecificCol);
-    return String.valueOf(this._visualSpatialField.get( nonDomainSpecificCoords[0] ).get( nonDomainSpecificCoords[1] ));
+  public String getMindsEyeContentUsingDomainSpecificCoords(int domainSpecificXCor, int domainSpecificYCor){
+    int[] mindsEyeXAndYCoords = this.resolveDomainSpecificCoord(domainSpecificXCor, domainSpecificYCor);
+    return String.valueOf(this._visualSpatialField.get( mindsEyeXAndYCoords[0] ).get( mindsEyeXAndYCoords[1] ));
   }
   
   /**
    * Moves objects in the mind's eye according to the sequence of moves passed
-   * in as a parameter to this function and if moves are successful, the clock
+   * in as a parameter to this function.  If all moves are successful, the clock
    * of the CHREST model associated with this mind's eye will be advanced by the
    * result of: _accessTime + (_movementTime * number of moves performed in 
    * total).
@@ -257,8 +257,8 @@ public class MindsEye {
    * @param domainSpecificMoves A 2D array whose first dimension elements 
    * should contain arrays whose elements prescribe a sequence of moves for one 
    * object by specifying domain-specific coordinates.  For example, if two 
-   * objects, A and B, are to be moved from domain specific coordinates 0, 1 and 
-   * 0, 2 to 1, 1 and 1, 2 respectively, the array passed should be: 
+   * objects, A and B, are to be moved from domain specific x/y coordinates 0/1 
+   * and 0/2 to 1/1 and 1/2 respectively, the array passed should be: 
    * [ ["A,0,1", "A,1,1"], ["B,0,2","B,1,2"] ].  See the discussion of the 
    * function's caveats above for further implementation and usage details of 
    * this parameter.
@@ -288,10 +288,10 @@ public class MindsEye {
     //applied so that if any object's move is illegal, all changes made to 
     //"_visualSpatialField" up until the illegal move can be reversed.
     ArrayList<ArrayList> visualSpatialFieldBeforeMovesApplied = new ArrayList<>();
-    for(int i = 0; i < this._visualSpatialField.size(); i++){
+    for(int mindsEyeXCor = 0; mindsEyeXCor < this._visualSpatialField.size(); mindsEyeXCor++){
       visualSpatialFieldBeforeMovesApplied.add(new ArrayList<>());
-      for(int j = 0; j< this._visualSpatialField.get(i).size(); j++){
-        visualSpatialFieldBeforeMovesApplied.get(i).add( String.valueOf( this._visualSpatialField.get(i).get(j) ) );
+      for(int mindsEyeYCor = 0; mindsEyeYCor < this._visualSpatialField.get(mindsEyeXCor).size(); mindsEyeYCor++){
+        visualSpatialFieldBeforeMovesApplied.get(mindsEyeXCor).add( String.valueOf( this._visualSpatialField.get(mindsEyeXCor).get(mindsEyeYCor) ) );
       }
     }
     
@@ -305,16 +305,16 @@ public class MindsEye {
         //Extract the initial information for the object
         String[] initialDomainSpecificObjectInformation = this.processObjectInfo(domainSpecificMoves[object][0]);
         String initialObjectIdentifier = initialDomainSpecificObjectInformation[0];
-        int currentDomainSpecificRow = Integer.valueOf(initialDomainSpecificObjectInformation[1]);
-        int currentDomainSpecificCol = Integer.valueOf(initialDomainSpecificObjectInformation[2]);
+        int currentDomainSpecificXCor = Integer.valueOf(initialDomainSpecificObjectInformation[1]);
+        int currentDomainSpecificYCor = Integer.valueOf(initialDomainSpecificObjectInformation[2]);
 
-        int[] initialMindsEyeCoords = this.resolveDomainSpecificCoord(currentDomainSpecificRow, currentDomainSpecificCol);
-        int currentMindsEyeRow = initialMindsEyeCoords[0];
-        int currentMindsEyeCol = initialMindsEyeCoords[1];
+        int[] initialMindsEyeCoords = this.resolveDomainSpecificCoord(currentDomainSpecificXCor, currentDomainSpecificYCor);
+        int currentMindsEyeXCor = initialMindsEyeCoords[0];
+        int currentMindsEyeYCor = initialMindsEyeCoords[1];
 
         //Check to see if the object specified in reltion to domain-specific 
         //coordinates is located at the relevant mind's eye coordinates.
-        String contentsOfInitialCoordinatesSpecifiedInMindsEye = this.getMindsEyeContentUsingDomainSpecificCoords(currentDomainSpecificRow, currentDomainSpecificCol);
+        String contentsOfInitialCoordinatesSpecifiedInMindsEye = this.getMindsEyeContentUsingDomainSpecificCoords(currentDomainSpecificXCor, currentDomainSpecificYCor);
         if(contentsOfInitialCoordinatesSpecifiedInMindsEye.contains(initialObjectIdentifier)){
 
           //Process each move for this object starting from the first element of 
@@ -334,10 +334,10 @@ public class MindsEye {
               //may have caused it to be moved to coordinates outside the 
               //range of the mind's eye's "_visualSpatialField".
               boolean objectExistsInMindsEye = false;
-              for(int row = 0; row < this._visualSpatialField.size(); row++){
-                for(int col = 0; col < this._visualSpatialField.get(row).size(); col++){
-                  String columnContents = String.valueOf(this._visualSpatialField.get(row).get(col));
-                  if(columnContents.contains(objectToBeMoved)){
+              for(int mindsEyeXCor = 0; mindsEyeXCor < this._visualSpatialField.size(); mindsEyeXCor++){
+                for(int mindsEyeYCor = 0; mindsEyeYCor < this._visualSpatialField.get(mindsEyeXCor).size(); mindsEyeYCor++){
+                  String mindsEyeXYCorContents = String.valueOf(this._visualSpatialField.get(mindsEyeXCor).get(mindsEyeYCor));
+                  if(mindsEyeXYCorContents.contains(objectToBeMoved)){
                     objectExistsInMindsEye = true;
                   }
                 }
@@ -350,19 +350,19 @@ public class MindsEye {
                 movesApplied++;
                 
                 //Extract domain specific row/col to move to.
-                int domainRowToMoveObjectTo = Integer.valueOf(domainSpecificMoveInformation[1]);
-                int domainColToMoveObjectTo = Integer.valueOf(domainSpecificMoveInformation[2]);
+                int domainXCorToMoveObjectTo = Integer.valueOf(domainSpecificMoveInformation[1]);
+                int domainYCorToMoveObjectTo = Integer.valueOf(domainSpecificMoveInformation[2]);
                 
                 //Convert domain-specific coordinates to move to into their 
                 //relevant mind's eye coordinates.
-                int[] mindsEyeCoordsToMoveTo = this.resolveDomainSpecificCoord( domainRowToMoveObjectTo, domainColToMoveObjectTo);
+                int[] mindsEyeCoordsToMoveTo = this.resolveDomainSpecificCoord( domainXCorToMoveObjectTo, domainYCorToMoveObjectTo);
                 
                 //Remove the object from its current coordinates in 
                 //"_visualSpatialField" and tidy up any double/leading/trailing
                 //commas in the contents of the mind's eye row/column that the
                 //object has been moved from.
-                String mindsEyeCurrentCoordsContentAfterObjectRemoval = this.getMindsEyeContentUsingDomainSpecificCoords( currentDomainSpecificRow, currentDomainSpecificCol ).replaceAll(initialObjectIdentifier, "").replaceAll(",,", ",").replaceAll("^,\\s*|,\\s*$", "");
-                this._visualSpatialField.get(currentMindsEyeRow).set(currentMindsEyeCol, mindsEyeCurrentCoordsContentAfterObjectRemoval);
+                String mindsEyeCurrentCoordsContentAfterObjectRemoval = this.getMindsEyeContentUsingDomainSpecificCoords( currentDomainSpecificXCor, currentDomainSpecificYCor ).replaceAll(initialObjectIdentifier, "").replaceAll(",,", ",").replaceAll("^,\\s*|,\\s*$", "");
+                this._visualSpatialField.get(currentMindsEyeXCor).set(currentMindsEyeYCor, mindsEyeCurrentCoordsContentAfterObjectRemoval);
                 
                 //Check to see if the mind's eye coordinates that were resolved 
                 //above are represented in the visual spatial field.  If they 
@@ -372,12 +372,12 @@ public class MindsEye {
 
                   //Extract mind's eye coordinates to move to using 
                   //domain-specific coordinates to move to.
-                  int mindsEyeRowToMoveTo = mindsEyeCoordsToMoveTo[0];
-                  int mindsEyeColToMoveTo = mindsEyeCoordsToMoveTo[1];
+                  int mindsEyeXCorToMoveTo = mindsEyeCoordsToMoveTo[0];
+                  int mindsEyeYCorToMoveTo = mindsEyeCoordsToMoveTo[1];
                   
                   //Get the current content of the mind's eye coordinates that 
                   //the object will be moved to.
-                  String mindsEyeCoordsToMoveToContentBeforeObjectMovement = this.getMindsEyeContentUsingDomainSpecificCoords(domainRowToMoveObjectTo, domainColToMoveObjectTo);
+                  String mindsEyeCoordsToMoveToContentBeforeObjectMovement = this.getMindsEyeContentUsingDomainSpecificCoords(domainXCorToMoveObjectTo, domainYCorToMoveObjectTo);
                   
                   //Create a blank string to hold the new mind's eye coordinate
                   //contents that the object will be moved to.
@@ -397,15 +397,15 @@ public class MindsEye {
 
                   //Set the content of the mind's eye row/col to move to to the
                   //content specified above.
-                  this._visualSpatialField.get(mindsEyeRowToMoveTo).set(mindsEyeColToMoveTo, mindsEyeCoordsToMoveToContentAfterObjectMovement);
+                  this._visualSpatialField.get(mindsEyeXCorToMoveTo).set(mindsEyeYCorToMoveTo, mindsEyeCoordsToMoveToContentAfterObjectMovement);
                   
                   //Set the values of "currentMindsEyeRow" and 
                   //"currentMindsEyeCol" to the values of "mindsEyeRowToMoveTo"
                   //and "mindsEyeColToMoveTo" so that any subsequent moves for
                   //the object in this sequence will remove the object from the
                   //correct coordinates in the mind's eye.
-                  currentMindsEyeRow = mindsEyeRowToMoveTo;
-                  currentMindsEyeCol = mindsEyeColToMoveTo;
+                  currentMindsEyeXCor = mindsEyeXCorToMoveTo;
+                  currentMindsEyeYCor = mindsEyeYCorToMoveTo;
                 }
               }
             }
@@ -426,7 +426,7 @@ public class MindsEye {
         //Initial coordinates specified for the object are incorrect.
         else{
           moveObjectsSuccessful = false;
-          errorMessage = "Object " + initialObjectIdentifier + " is not located at the initial domain-specific coordinates specified: " + currentDomainSpecificRow + ", " + currentDomainSpecificCol + " (translated mind's eye coordinates : " + currentMindsEyeRow + ", " + currentMindsEyeCol + ").";
+          errorMessage = "Object " + initialObjectIdentifier + " is not located at the initial domain-specific coordinates specified: " + currentDomainSpecificXCor + ", " + currentDomainSpecificYCor + " (translated mind's eye coordinates : " + currentMindsEyeXCor + ", " + currentMindsEyeYCor + ").";
         }
       }//End check for number of object moves being greater than or equal to 2.
       else{
@@ -458,9 +458,10 @@ public class MindsEye {
   }
   
   /**
-   * If standard object information is passed (object identifier, row and col) 
-   * this function returns an array whose elements contain the distinct parts of
-   * the object information passed in the order they are declared.
+   * If standard object information is passed (object identifier, x-coordinate 
+   * and y-coordinate) this function returns an array whose elements contain the 
+   * distinct parts of the object information passed in the order they are
+   * declared.
    * 
    * If the array of strings created from the object information passed is not 
    * of length 3 (indicating that all pieces of information required to perform 
@@ -478,7 +479,7 @@ public class MindsEye {
     String[] partsOfObjectInfo = objectInfo.replaceAll("\\s", "").split(",");
     
     if(partsOfObjectInfo.length != 3){
-      throw new Error("Object information should comprise 3 parts: object identifier, row and column seperated by commas (,) but " + objectInfo + " only contains " + partsOfObjectInfo.length + " parts.");
+      throw new Error("Object information should comprise 3 parts: object identifier, x-coordinate and y-coordinate seperated by commas (,) but " + objectInfo + " only contains " + partsOfObjectInfo.length + " parts.");
     }
     
     return partsOfObjectInfo;
@@ -490,14 +491,14 @@ public class MindsEye {
    * relative/absolute depending upon the coordinates used to instantiate the 
    * mind's eye instance. 
    * 
-   * @param domainSpecificRow The domain-specific row to resolve.
-   * @param domainSpecificCol The domain-specific col to resolve.
+   * @param domainSpecificXCor The domain-specific x-coordinate to resolve.
+   * @param domainSpecificYCor The domain-specific y-coordinate to resolve.
    * @return Two element integer array whose first element contains the resolved
-   * mind's eye row coordinate and second elements contains the resolved mind's 
-   * eye column coordinate.
+   * mind's eye x-coordinate and second elements contains the resolved mind's 
+   * eye y-coordinate.
    */
-  private int[] resolveDomainSpecificCoord(int domainSpecificRow, int domainSpecificCol){
-    String domainSpecificCoords = Integer.toString(domainSpecificRow) + "," + Integer.toString(domainSpecificCol);
+  private int[] resolveDomainSpecificCoord(int domainSpecificXCor, int domainSpecificYCor){
+    String domainSpecificCoords = Integer.toString(domainSpecificXCor) + "," + Integer.toString(domainSpecificYCor);
     int[] mindsEyeCoords = null;
     
     if(this._domainSpecificToMindsEyeCoordMappings.containsKey(domainSpecificCoords)){
