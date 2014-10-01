@@ -116,7 +116,7 @@ public class Stm implements Iterable<Node> {
     if (_items.size () >= 2 && 
         _items.get(1).getAssociatedNode () != _items.get(0)) {
       _items.get(1).setAssociatedNode (_items.get(0));
-      model.advanceClock (model.getAddLinkTime ());
+      model.advanceLearningClock (model.getAddLinkTime ());
       return true;
     } else {
       return false;

@@ -23,12 +23,12 @@ public class ChrestTimeView extends JPanel {
     setBorder (new TitledBorder ("Clock"));
 
     _model = model;
-    _display = new JLabel ("Time (ms): " + _model.getClock ());
+    _display = new JLabel ("Time (ms): " + _model.getLearningClock ());
 
     add (_display);
   }
 
   public void update () {
-    _display.setText ("Time (ms): " + _model.getClock ());
+    _display.setText ("Time (ms): " + _model.getLearningClock ());
   }
 }

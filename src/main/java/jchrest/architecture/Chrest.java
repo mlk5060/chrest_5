@@ -19,13 +19,16 @@ import jchrest.lib.ReinforcementLearning.ReinforcementLearningTheories;
 /**
  * The parent class for an instance of a Chrest model.
  *
+ * TODO: Implement CHREST clock considerations regarding mind's eye actions.
+ * 
  * @author Peter C. R. Lane
  */
 public class Chrest extends Observable {
   // Domain definitions, if used
   private DomainSpecifics _domainSpecifics;
-  // internal clock
-  private int _clock;  
+  // internal clocks
+  private int _attentionClock; //Tracks time taken for operations performed in the mind's eye
+  private int _learningClock; //Tracks time taken for operations perfrormend in LTM/STM
   // timing parameters
   private int _addLinkTime;
   private int _discriminationTime;
@@ -68,7 +71,8 @@ public class Chrest extends Observable {
     _rho = 1.0f;
     _similarityThreshold = 4;
 
-    _clock = 0;
+    _attentionClock = 0;
+    _learningClock = 0;
     _totalNodes = 0;
     _visualLtm = new Node (this, 0, Pattern.makeVisualList (new String[]{"Root"}));
     _verbalLtm = new Node (this, 0, Pattern.makeVerbalList (new String[]{"Root"}));
@@ -270,17 +274,17 @@ public class Chrest extends Observable {
   }
 
   /**
-   * Accessor to retrieve current time of model.
+   * Accessor to retrieve current learning time of model.
    */
-  public int getClock () {
-    return _clock;
+  public int getLearningClock () {
+    return _learningClock;
   }
 
   /**
-   * Advance the clock by given amount.
+   * Advance the learning clock by given amount.
    */
-  public void advanceClock (int time) {
-    _clock += time;
+  public void advanceLearningClock (int time) {
+    _learningClock += time;
     setChanged ();
   }
 
@@ -605,9 +609,9 @@ public class Chrest extends Observable {
    */
   public Node recogniseAndLearn (ListPattern pattern, int time) {
     Node currentNode = recognise (pattern);
-    if (_clock <= time) { // only try to learn if model clock is 'behind' the time of the call
+    if (_learningClock <= time) { // only try to learn if learning clock is 'behind' the time of the call
       if (Math.random () < _rho) { // depending on _rho, may refuse to learn some random times
-        _clock = time; // bring clock up to date
+        _learningClock = time; // bring clock up to date
         if (!currentNode.getImage().equals (pattern)) { // only try any learning if image differs from pattern
           if (currentNode == getLtmByModality (pattern) || // if is rootnode
               !currentNode.getImage().matches (pattern) || // or mismatch on image
@@ -627,7 +631,7 @@ public class Chrest extends Observable {
    * Used to learn about a new pattern.  Returns the node learnt.
    */
   public Node recogniseAndLearn (ListPattern pattern) {
-    return recogniseAndLearn (pattern, _clock);
+    return recogniseAndLearn (pattern, _learningClock);
   }
 
   /**
@@ -648,7 +652,7 @@ public class Chrest extends Observable {
   }
 
   public Node associateAndLearn (ListPattern pattern1, ListPattern pattern2) {
-    return associateAndLearn (pattern1, pattern2, _clock);
+    return associateAndLearn (pattern1, pattern2, _learningClock);
   }
 
   /**
@@ -690,10 +694,10 @@ public class Chrest extends Observable {
    * associate together using an action link.  The first pattern can be of any 
    * modality whilst the second pattern must have an "action" modality.  The 
    * method assumes that the second pattern has action modality and the time of 
-   * presentation is the current Chrest clock time.
+   * presentation is the current learning clock time.
    */
   private void learnPatternAndLinkToActionPattern (ListPattern pattern1, ListPattern actionPattern) {
-    learnPatternAndLinkToActionPattern (pattern1, actionPattern, _clock);
+    learnPatternAndLinkToActionPattern (pattern1, actionPattern, _learningClock);
   }
   
   /**
@@ -732,7 +736,7 @@ public class Chrest extends Observable {
           // force it to correct a mistake
           recogniseAndLearn (pattern1, time);
 
-          if (_clock <= time) {
+          if (_learningClock <= time) {
             Node actionNodeRetrieved = recognise (actionPattern);
 
             // 6. if the action node retrieved's image matches action pattern, learn link, else learn action pattern
@@ -798,7 +802,7 @@ public class Chrest extends Observable {
           // force it to correct a mistake
           recogniseAndLearn (pattern1, time);
           
-          if (_clock <= time) {
+          if (_learningClock <= time) {
             Node pat2Retrieved = recognise (pattern2);
             
             // 6. if pattern2 retrieved node image match for pattern2, learn link, else learn pattern2
@@ -838,7 +842,7 @@ public class Chrest extends Observable {
    * Chrest clock time.
    */
   private void learnAndLinkPatterns (ListPattern pattern1, ListPattern pattern2) {
-    learnAndLinkPatterns (pattern1, pattern2, _clock);
+    learnAndLinkPatterns (pattern1, pattern2, _learningClock);
   }
   
   /**
@@ -856,7 +860,7 @@ public class Chrest extends Observable {
     else{
       firstNode.setAssociatedNode(secondNode);
     }
-    advanceClock (getAddLinkTime ());
+    advanceLearningClock (getAddLinkTime ());
     setChanged ();
     if (!_frozen) notifyObservers ();
   }
@@ -867,10 +871,10 @@ public class Chrest extends Observable {
   public void learnAndNamePatterns (ListPattern pattern1, ListPattern pattern2, int time) {
     recogniseAndLearn (pattern1, time);
     recogniseAndLearn (pattern2, time);
-    if (_clock <= time) {
+    if (_learningClock <= time) {
       if (pattern1.isVisual () && pattern2.isVerbal () && _visualStm.getCount () > 0 && _verbalStm.getCount () > 0) {
         _visualStm.getItem(0).setNamedBy (_verbalStm.getItem (0));
-        advanceClock (getAddLinkTime ());
+        advanceLearningClock (getAddLinkTime ());
       }
       setChanged ();
       if (!_frozen) notifyObservers ();
@@ -878,7 +882,7 @@ public class Chrest extends Observable {
   }
 
   public void learnAndNamePatterns (ListPattern pattern1, ListPattern pattern2) {
-    learnAndNamePatterns (pattern1, pattern2, _clock);
+    learnAndNamePatterns (pattern1, pattern2, _learningClock);
   }
 
   public void learnScene (Scene scene, int numFixations) {
@@ -1044,7 +1048,8 @@ public class Chrest extends Observable {
    * Clear the STM and LTM of the model.
    */
   public void clear () {
-    _clock = 0;
+    _attentionClock = 0;
+    _learningClock = 0;
     _visualLtm.clear ();
     _verbalLtm.clear ();
     _actionLtm.clear ();
@@ -1094,7 +1099,7 @@ public class Chrest extends Observable {
    */
   public void emoteAndPropagateAcrossModalities (Object stmsobject) {
     Stm[] stms = (Stm[]) stmsobject;
-    _emotionAssociator.emoteAndPropagateAcrossModalities (stms, _clock);
+    _emotionAssociator.emoteAndPropagateAcrossModalities (stms, _learningClock);
   }
 
   /**
@@ -1169,28 +1174,125 @@ public class Chrest extends Observable {
   }
   
   /**
+   * Sets the value of the "_attentionClock" instance variable to the time 
+   * passed if this value is greater than the current value of the 
+   * "_attentionClock" instance.
+   * 
+   * @param time The time to set the "_attentionClock" instance variable value
+   * to.  This time is domain-specific.
+   */
+  public void setAttentionClock(int time){
+    if(time > this._attentionClock){
+      this._attentionClock = time;
+      setChanged();
+    }
+  }
+  
+  /**
+   * Accessor to retrieve the value of the model's "_attentionClock" instance 
+   * variable value.
+   * 
+   * @return The value of the model's "_attentionClock" instance variable value.
+   */
+  public int getAttentionClock () {
+    return _attentionClock;
+  }
+  
+  /**
+   * Determines if the CHREST model's attention is currently free or not.
+   * 
+   * @param domainTime  The current time (in milliseconds) in the domain where 
+   * the CHREST model is located.
+   * 
+   * @return True if the value passed is greater than the value of the 
+   * "_attentionClock" instance variable, false if not.
+   */
+  public boolean attentionFree(int domainTime){
+    return domainTime >= this._attentionClock; 
+  }
+  
+  /**
+   * Determines if a mind's eye exists for this CHREST instance and if so, if it 
+   * has a visual-spatial field instantiated.  If a minds eye does not exist, 
+   * the attention clock of the CHREST model is set to the domain time passed
+   * to this function.
+   * 
+   * @param domainTime The current time (in milliseconds) in the domain where 
+   * the CHREST model is located.
+   * 
+   * @return True if a mind's eye is associated with this CHREST instance and 
+   * its visual-spatial field is not null, false otherwise.
+   */
+  public boolean mindsEyeExists(int domainTime){
+    boolean mindsEyeExists = false;
+    
+    if(this._mindsEye != null){
+      mindsEyeExists = this._mindsEye.exists(domainTime);
+    }
+    else{
+      this.setAttentionClock(domainTime);
+    }
+    
+    return mindsEyeExists;
+  }
+  
+  /**
    * Generates a new mind's eye, see {@link 
    * jchrest.architecture.MindsEye#MindsEye(jchrest.architecture.Chrest, 
    * java.lang.String[], int, int)} for more details on parameters to be passed.
    * 
-   * @param vision
-   * @param accessTime
-   * @param timeToMoveMinimumMovementUnit
+   * @param vision The symbolic representation of the external environment as an
+   * array of strings with the following format: 
+   * { "objectIdentifier1, objectIdentifier2;x-coord;y-coord" ].
+   * 
+   * @param lifespan The length of time (in milliseconds) that the mind's eye
+   * can be inactive for before it its visual spatial field is set to null.
+   * 
+   * @param objectPlacementTime The time it takes (in milliseconds) to place an
+   * object on a visual unit in the mind's eye.
+   * 
+   * @param accessTime The time it takes (in milliseconds) to access the mind's 
+   * eye whenever it is accessed.
+   * 
+   * @param objectMovementTime The time it takes (in milliseconds) to move an
+   * object in the mind's eye.
+   * 
+   * @param domainTime The current time (in milliseconds) in the domain. 
+   * 
+   * @return True if a minds eye has been created otherwise false (only occurs
+   * if attention is not currently free).
    */
-  public void createNewMindsEye(String [] vision, int accessTime, int timeToMoveMinimumMovementUnit){
-    _mindsEye = new MindsEye(this, vision, accessTime, timeToMoveMinimumMovementUnit);
+  public boolean createNewMindsEye(String [] vision, int lifespan, int objectPlacementTime, int accessTime, int objectMovementTime, int domainTime){
+    boolean mindsEyeCreated = false;
+    
+    if(this.attentionFree(domainTime)){
+      this._mindsEye = new MindsEye(this, vision, lifespan, objectPlacementTime, accessTime, objectMovementTime, domainTime );
+      mindsEyeCreated = true;
+    }
+    
+    return mindsEyeCreated;
   }
   
   /**
    * Retrieves complete contents of the mind's eye with object locations 
-   * translated to domain-specific coordinates.  See {@link 
-   * jchrest.architecture.MindsEye#getMindsEyeContentSpecificToDomain()} for 
-   * more information about parameters etc.
+   * translated to domain-specific coordinates if a mind's eye exists.
    * 
-   * @return 
+   * @param domainTime The current time (in milliseconds) in the domain where 
+   * the CHREST model associated with the mind's eye instance is located.
+   * 
+   * @return The content of the mind's eye from min domain xcor/ycor to max
+   * domain xcor/ycor if mind's eye exists and its visual-spatial field has not
+   * decayed otherwise, null is returned.
    */
-  public ArrayList<String> getMindsEyeContentSpecificToDomain(){
-    return this._mindsEye.getMindsEyeContentSpecificToDomain();
+  public ArrayList<String> getMindsEyeContent(int domainTime){
+    ArrayList<String> mindsEyeContent = null;
+    
+    if(this.mindsEyeExists(domainTime)){
+      mindsEyeContent = this._mindsEye.getAllContent(domainTime);
+    }
+    
+    //System.out.println("Terminus value according to CHREST model: " + this.getMindsEyeTerminus(domainTime));
+    return mindsEyeContent;
   }
   
   /**
@@ -1199,22 +1301,74 @@ public class Chrest extends Observable {
    * jchrest.architecture.MindsEye#getMindsEyeContentUsingDomainSpecificCoords(int, int)}
    * for more information about parameters etc.
    * 
-   * @param domainSpecificRow
-   * @param domainSpecificCol
-   * @return 
+   * @param domainSpecificXCor Must be absolute/relative (same as when mind's 
+   * eye was instantiated).
+   * 
+   * @param domainSpecificYCor Must be absolute/relative (same as when mind's 
+   * eye was instantiated).
+   * 
+   * @param domainTime The current time (in milliseconds) in the domain where 
+   * the CHREST model associated with the mind's eye instance is located.
+   * 
+   * @return The content of the mind's eye at the domain coordinates passed if 
+   * mind's eye exists and its visual-spatial field has not decayed otherwise, 
+   * null is returned.
    */
-  public String getMindsEyeContentUsingDomainSpecificCoords(int domainSpecificRow, int domainSpecificCol){
-    return this._mindsEye.getMindsEyeContentUsingDomainSpecificCoords(domainSpecificRow, domainSpecificCol);
+  public String getSpecificMindsEyeContent(int domainSpecificXCor, int domainSpecificYCor, int domainTime){
+    String mindsEyeContent = null;
+    
+    if(this.mindsEyeExists(domainTime)){
+      mindsEyeContent = this._mindsEye.getSpecificContent(domainSpecificXCor, domainSpecificYCor, domainTime);
+    }
+    
+    //System.out.println("Terminus value according to CHREST model: " + this.getMindsEyeTerminus(domainTime));
+    return mindsEyeContent;
   }
   
   /**
-   * Moves objects in the mind's eye using domain-specific coordinates suuplied.
-   * See {@link jchrest.architecture.MindsEye#moveObjects(java.lang.String[][])}
-   * for more information about parameters etc.
-   * @param moves
-   * @return 
+   * Moves objects in the mind's eye using domain-specific coordinates supplied.
+   * 
+   * @param moves See 
+   * {@link jchrest.architecture.MindsEye#moveObjects(java.lang.String[][])} for
+   * details.
+   * 
+   * @param domainTime The current time (in milliseconds) in the domain where 
+   * the CHREST model associated with the mind's eye instance is located.
+   * 
+   * @return A two element array whose first element is a boolean value 
+   * indicating whether the move sequence passed was successfully executed in 
+   * the mind's eye and whose second element is a string that is empty if the
+   * move sequence was executed successfully or contains a description of why 
+   * the move sequence failed if execution was unsuccessful.
    */
-  public Object[] moveObjects(String[][] moves){
-    return this._mindsEye.moveObjects(moves);
+  public Object[] moveObjects(String[][] moves, int domainTime){
+    Object[] result = {false, "No mind's eye is currently associated with this CHREST model."};
+    
+    if(this.mindsEyeExists(domainTime)){
+      result = this._mindsEye.moveObjects(moves, domainTime);
+    }
+    
+    return result;
+  }
+  
+  /**
+   * Returns the current terminus value of the mind's eye associated with this
+   * CHREST model.
+   * 
+   * @param domainTime The current time (in milliseconds) in the domain where 
+   * the CHREST model associated with the mind's eye instance is located.
+   * 
+   * @return The time at which the visual-spatial field of the mind's eye
+   * will completely decay if a mind's eye exists and its visual-spatial field 
+   * has not decayed otherwise, null is returned.
+   */
+  public Integer getMindsEyeTerminus(int domainTime){
+    Integer mindsEyeTerminus = null;
+    
+    if( this.mindsEyeExists(domainTime) ){
+      mindsEyeTerminus = this._mindsEye.getTerminus();
+    }
+    
+    return mindsEyeTerminus;
   }
 }

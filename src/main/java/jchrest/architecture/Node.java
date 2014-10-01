@@ -52,7 +52,7 @@ public class Node extends Observable {
     _model = model;
     _reference = reference;
     _contents = contents.clone ();
-    _image = image;
+    _image = image; //The contents of the chunk inside the node.
     _children = new ArrayList<Link> ();
     _semanticLinks = new ArrayList<Node> ();
     _associatedNode = null;
@@ -618,7 +618,7 @@ public class Node extends Observable {
     contents.setNotFinished ();
     Node child = new Node (_model, contents, new ListPattern (pattern.getModality ()));
     addTestLink (contents, child);
-    _model.advanceClock (_model.getDiscriminationTime ());
+    _model.advanceLearningClock (_model.getDiscriminationTime ());
 
     return child;
   }
@@ -640,7 +640,7 @@ public class Node extends Observable {
         ( (_reference == 0) ? pattern : _model.getDomainSpecifics().normalise (_contents.append(pattern))) // make same as contents vs Chrest 2
         );
     addTestLink (pattern, child);
-    _model.advanceClock (_model.getDiscriminationTime ());
+    _model.advanceLearningClock (_model.getDiscriminationTime ());
     return child;
   }
 
@@ -650,7 +650,7 @@ public class Node extends Observable {
    */
   private Node extendImage (ListPattern newInformation) {
     setImage (_model.getDomainSpecifics().normalise (_image.append (newInformation)));
-    _model.advanceClock (_model.getFamiliarisationTime ());
+    _model.advanceLearningClock (_model.getFamiliarisationTime ());
 
     return this;
   }
