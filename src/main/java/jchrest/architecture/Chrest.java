@@ -1208,14 +1208,14 @@ public class Chrest extends Observable {
    * "_attentionClock" instance variable, false if not.
    */
   public boolean attentionFree(int domainTime){
-    return domainTime >= this._attentionClock; 
+    return domainTime >= this.getAttentionClock(); 
   }
   
   /**
-   * Determines if a mind's eye exists for this CHREST instance and if so, if it 
-   * has a visual-spatial field instantiated.  If a minds eye does not exist, 
-   * the attention clock of the CHREST model is set to the domain time passed
-   * to this function.
+   * Determines if the terminus value of the mind's eye associated with this 
+   * CHREST instance is greater than the current domain time.  If a minds eye 
+   * does not exist, the attention clock of the CHREST model is set to the 
+   * domain time passed to this function.
    * 
    * @param domainTime The current time (in milliseconds) in the domain where 
    * the CHREST model is located.
@@ -1275,7 +1275,7 @@ public class Chrest extends Observable {
   
   /**
    * Retrieves complete contents of the mind's eye with object locations 
-   * translated to domain-specific coordinates if a mind's eye exists.
+   * translated to domain-specific coordinates.
    * 
    * @param domainTime The current time (in milliseconds) in the domain where 
    * the CHREST model associated with the mind's eye instance is located.
@@ -1285,14 +1285,7 @@ public class Chrest extends Observable {
    * decayed otherwise, null is returned.
    */
   public ArrayList<String> getMindsEyeContent(int domainTime){
-    ArrayList<String> mindsEyeContent = null;
-    
-    if(this.mindsEyeExists(domainTime)){
-      mindsEyeContent = this._mindsEye.getAllContent(domainTime);
-    }
-    
-    //System.out.println("Terminus value according to CHREST model: " + this.getMindsEyeTerminus(domainTime));
-    return mindsEyeContent;
+    return this._mindsEye.getAllContent(domainTime);
   }
   
   /**
@@ -1329,8 +1322,8 @@ public class Chrest extends Observable {
    * Moves objects in the mind's eye using domain-specific coordinates supplied.
    * 
    * @param moves See 
-   * {@link jchrest.architecture.MindsEye#moveObjects(java.lang.String[][])} for
-   * details.
+   * {@link jchrest.architecture.MindsEye#moveObjects(java.util.ArrayList, int)} 
+   * for details.
    * 
    * @param domainTime The current time (in milliseconds) in the domain where 
    * the CHREST model associated with the mind's eye instance is located.
@@ -1341,14 +1334,8 @@ public class Chrest extends Observable {
    * move sequence was executed successfully or contains a description of why 
    * the move sequence failed if execution was unsuccessful.
    */
-  public Object[] moveObjects(String[][] moves, int domainTime){
-    Object[] result = {false, "No mind's eye is currently associated with this CHREST model."};
-    
-    if(this.mindsEyeExists(domainTime)){
-      result = this._mindsEye.moveObjects(moves, domainTime);
-    }
-    
-    return result;
+  public boolean moveObjectsInMindsEye(ArrayList<ArrayList<String>> moves, int domainTime){
+    return this._mindsEye.moveObjects(moves, domainTime);
   }
   
   /**

@@ -327,6 +327,7 @@ process_test "'Reinforcement theory tests'" do
 end
 
 process_test "'Minds eye tests'" do
+  ArrayList = java.util.ArrayList
   model = Chrest.new
   minds_eye_lifespan = 500
   object_placement_time = 50
@@ -359,8 +360,7 @@ process_test "'Minds eye tests'" do
   def legal_action_checks(model, domain_time, moves_performed, moves, number_of_moves, minds_eye_access_time, time_to_move_object, expected_attention_free_time, expected_terminus_time, expected_minds_eye_contents, minds_eye_lifespan, action_description)
     
     if(moves_performed)
-      move_result = model.moveObjects(moves, domain_time)
-      assert_true(move_result[0], "Occurred when checking the result of " + action_description + ".")
+      model.moveObjectsInMindsEye(moves, domain_time)
       expected_attention_free_time = domain_time + minds_eye_access_time + (time_to_move_object * number_of_moves)
       expected_terminus_time = model.getAttentionClock + minds_eye_lifespan
     end
@@ -393,19 +393,6 @@ process_test "'Minds eye tests'" do
     #Return the updated "domain_time" and "expected_terminus_time" values for 
     #subsequent use.
     return domain_time, expected_terminus_time
-  end
-  
-  def illegal_action_checks(model, domain_time, moves_performed, moves, expected_terminus_time, expected_minds_eye_contents, minds_eye_lifespan, action_description)
-    
-    if(moves_performed)
-      move_result = model.moveObjects(moves, domain_time)
-      assert_false(move_result[0], "Occurred when checking the result of " + action_description + ".")
-    end
-    
-    expected_attention_free_time = model.getAttentionClock
-    post_action_checks(model, domain_time, expected_attention_free_time, expected_terminus_time, action_description)
-    expected_terminus_time = visual_spatial_field_checks(model, domain_time, expected_minds_eye_contents, expected_attention_free_time, minds_eye_lifespan, action_description)
-    return expected_terminus_time
   end
   
   def post_action_checks(model, domain_time, expected_attention_free_time, expected_terminus_time, action_description)
@@ -538,61 +525,6 @@ process_test "'Minds eye tests'" do
   expected_terminus_time = values_returned[1]
   
   ##############################################################################
-  # Specify more than one object in initial move
-  ##############################################################################
-  
-  action_description = "specifying more than one object in an object's initial move"
-  
-  #Simulate domain time passing by setting "domainTime" to a value greater than
-  #the current domain time but less than the minds eye terminus.
-  domain_time = rand( (domain_time + 1)...model.getMindsEyeTerminus(domain_time))
-  prior_move_performance_checks(model, domain_time, action_description)
-  
-  multiple_objects_identified_initially = [ 
-    [ object_c + "," + object_d + ";-1;3", object_c + "," + object_d + ";0;3"] 
-  ]
-  expected_terminus_time = illegal_action_checks(model, domain_time, true, multiple_objects_identified_initially, expected_terminus_time, expected_minds_eye_contents, minds_eye_lifespan, action_description)
-  
-  ##############################################################################
-  # Specify intial coordinates for an object but no moves
-  ##############################################################################
-  
-  action_description = "specifying initial coordinates but no moves for an object"
-  
-  #Since the time at which CHREST's attention is free will not have changed from
-  #instantiation (previous move was illegal), simulate domain time passing by 
-  #setting "domainTime" to a value greater than its current value but less than
-  #the current minds eye terminus.
-  domain_time = rand( (domain_time + 1)...model.getMindsEyeTerminus(domain_time) )
-  prior_move_performance_checks(model, domain_time, action_description)
-  
-  #Specify the illegal move sequence and attempt to perform the moves.
-  no_object_moves = [
-    [ object_a + ";0;1", object_a + ";0;3" ],
-    [ object_b + ";0;2" ]
-  ]
-  expected_terminus_time = illegal_action_checks(model, domain_time, true, no_object_moves, expected_terminus_time, expected_minds_eye_contents, minds_eye_lifespan, action_description)
-  
-  ##############################################################################
-  # Specify wrong initial coordinates for an object
-  ##############################################################################
-  
-  action_description = "specifying a move sequence containing the wrong initial coordinates for an object"
-  
-  #Since the time at which CHREST's attention is free will not have changed from
-  #instantiation (previous move was illegal), simulate domain time passing by 
-  #setting "domainTime" to a value greater than its current value but less than
-  #the minds eye terminus.
-  domain_time = rand( (domain_time + 1)...model.getMindsEyeTerminus(domain_time) )
-  prior_move_performance_checks(model, domain_time, action_description)
-  
-  wrong_initial_coordinates = [
-    [ object_a + ";0;1", object_a + ";0;3" ], 
-    [ object_b + ";1;2", object_b + ";1;3" ]
-  ]
-  expected_terminus_time = illegal_action_checks(model, domain_time, true, wrong_initial_coordinates, expected_terminus_time, expected_minds_eye_contents, minds_eye_lifespan, action_description)
-  
-  ##############################################################################
   # Move two objects, multiple times each
   ##############################################################################
   
@@ -605,10 +537,19 @@ process_test "'Minds eye tests'" do
   domain_time = rand((domain_time + 1)...model.getMindsEyeTerminus(domain_time))
   prior_move_performance_checks(model, domain_time, action_description)
   
-  two_objects_multiple_times = [
-    [ object_c + ";-1;3", object_c + ";0;3", object_c + ";1;3"],
-    [ object_b + ";0;2", object_b + ";-1;2", object_b + ";-1;3"]
-  ]
+  move_sequence_1 = ArrayList.new
+  move_sequence_1.add(object_c + ";-1;3")
+  move_sequence_1.add(object_c + ";0;3")
+  move_sequence_1.add(object_c + ";1;3")
+  
+  move_sequence_2 = ArrayList.new
+  move_sequence_2.add(object_b + ";0;2")
+  move_sequence_2.add(object_b + ";-1;2")
+  move_sequence_2.add(object_b + ";-1;3")
+  
+  two_objects_multiple_times = ArrayList.new
+  two_objects_multiple_times.add(move_sequence_1)
+  two_objects_multiple_times.add(move_sequence_2)
   
   expected_minds_eye_contents[4] = empty
   expected_minds_eye_contents[5] = object_d + "," + object_b
@@ -631,7 +572,12 @@ process_test "'Minds eye tests'" do
   domain_time = rand((domain_time + 1)...model.getMindsEyeTerminus(domain_time))
   prior_move_performance_checks(model, domain_time, action_description)
   
-  two_objects_same_coord = [ [object_b + ";-1;3", object_b + ";1;3"] ]
+  move_sequence_1.clear
+  move_sequence_1.add(object_b + ";-1;3")
+  move_sequence_1.add(object_b + ";1;3")
+  
+  two_objects_same_coord = ArrayList.new
+  two_objects_same_coord.add(move_sequence_1)
   
   expected_minds_eye_contents[5] = object_d
   expected_minds_eye_contents[11] = object_c + "," + object_b
@@ -639,24 +585,6 @@ process_test "'Minds eye tests'" do
   values_returned = legal_action_checks(model, domain_time, true, two_objects_same_coord, 1, minds_eye_access_time, time_to_move_object, expected_attention_free_time, expected_terminus_time, expected_minds_eye_contents, minds_eye_lifespan, action_description)
   domain_time = values_returned[0]
   expected_terminus_time = values_returned[1]
-  
-  ##############################################################################
-  # Move a different object part-way through moving another object.
-  ##############################################################################
-  
-  action_description = "moving an object part-way through moving another object"
-  
-  #Simulate domain time passing by setting "domainTime" to a value greater than
-  #the current domain time but less than the minds eye terminus.
-  domain_time = rand( (domain_time + 1)...model.getMindsEyeTerminus(domain_time) )
-  prior_move_performance_checks(model, domain_time, action_description)
-  
-  move_object_out_of_turn = [
-    [object_b + ";1;3", object_c + ";1;3", object_b + ";2;3"],
-    [object_c + ";1;3", object_c + ";1;2", object_c + ";1;3"]
-  ]
-  
-  expected_terminus_time = illegal_action_checks(model, domain_time, true, move_object_out_of_turn, expected_terminus_time, expected_minds_eye_contents, minds_eye_lifespan, action_description)
   
   ##############################################################################
   # Move an object onto coordinates not represented in the mind's eye.
@@ -672,7 +600,12 @@ process_test "'Minds eye tests'" do
   domain_time = rand( (domain_time + 1)...model.getMindsEyeTerminus(domain_time))
   prior_move_performance_checks(model, domain_time, action_description)
   
-  move_object_outside_minds_eye_range = [[object_b + ";1;3", object_b + ";1;4"]]
+  move_sequence_1.clear
+  move_sequence_1.add(object_b + ";1;3")
+  move_sequence_1.add(object_b + ";1;4")
+  
+  move_object_outside_minds_eye_range = ArrayList.new
+  move_object_outside_minds_eye_range.add(move_sequence_1)
   
   expected_minds_eye_contents[11] = object_c
   
@@ -698,10 +631,17 @@ process_test "'Minds eye tests'" do
   domain_time = rand( (domain_time + 1)...model.getMindsEyeTerminus(domain_time))
   prior_move_performance_checks(model, domain_time, action_description)
   
-  move_first_object_from_shared_coordinates = [
-    [object_a + ";0;1", object_a + ";1;3"], 
-    [object_c + ";1;3", object_c + ";2;3"]
-  ]
+  move_sequence_1.clear
+  move_sequence_1.add(object_a + ";0;1")
+  move_sequence_1.add(object_a + ";1;3")
+  
+  move_sequence_2.clear
+  move_sequence_2.add(object_c + ";1;3")
+  move_sequence_2.add(object_c + ";2;3")
+  
+  move_first_object_from_shared_coordinates = ArrayList.new
+  move_first_object_from_shared_coordinates.add(move_sequence_1)
+  move_first_object_from_shared_coordinates.add(move_sequence_2)
   
   expected_minds_eye_contents[6] = empty
   expected_minds_eye_contents[11] = object_a
@@ -710,44 +650,6 @@ process_test "'Minds eye tests'" do
   values_returned = legal_action_checks(model, domain_time, true, move_first_object_from_shared_coordinates, 2, minds_eye_access_time, time_to_move_object, expected_attention_free_time, expected_terminus_time, expected_minds_eye_contents, minds_eye_lifespan, action_description)
   domain_time = values_returned[0]
   expected_terminus_time = values_returned[1]  
-  
-  ##############################################################################
-  # Attempt to move object after it has been moved into a blind spot
-  ##############################################################################
-  
-  action_description = "moving an object from a blind spot back into the visual-spatial field of the mind's eye"
-  
-  #Simulate domain time passing by setting "domainTime" to a value greater than
-  #the current domain time but less than the minds eye terminus.
-  domain_time = rand( (domain_time + 1)...model.getMindsEyeTerminus(domain_time))
-  prior_move_performance_checks(model, domain_time, action_description)
-  
-  move_object_after_moving_to_blind_spot = [[object_c + ";2;3", object_c + ";2;4", object_c + ";2;3"]]
-  
-  expected_terminus_time = illegal_action_checks(model, domain_time, true, move_object_after_moving_to_blind_spot, expected_terminus_time, expected_minds_eye_contents, minds_eye_lifespan, action_description)
-  
-  ##############################################################################
-  # Try to interact with the minds eye after it has decayed
-  ##############################################################################
-  
-  action_description = "interacting with the mind's eye when its visual-spatial field has decayed"
-  
-  #Simulate domain time passing by setting "domainTime" to a value greater than
-  #the current minds eye terminus.
-  domain_time = model.getMindsEyeTerminus(domain_time) + 1
-  
-  #As far as CHREST is concerned, the associated minds eye should no longer 
-  #exist.
-  assert_false(model.mindsEyeExists(domain_time), "Occurred when checking the existence of the minds eye after " + action_description + ".")
-  
-  #An attempt to perform a move, retrieve visual spatial content or the minds
-  #eye terminus value should be blocked.
-  move_after_minds_eye_decayed = [[object_a + ";1;3", object_a + ";2,2"]]
-  move_result = model.moveObjects(move_after_minds_eye_decayed, domain_time)
-  assert_false(move_result[0], "Occurred when checking the result of attempting to move an object after " + action_description + ".")
-  assert_equal(model.getMindsEyeContent(domain_time), nil, "Occurred when checking the result of retrieving all minds eye content after " + action_description + ".")
-  assert_equal(model.getSpecificMindsEyeContent(1, 2, domain_time), nil, "Occurred when checking the result of retrieving specific minds eye content after " + action_description + ".")
-  assert_equal(model.getMindsEyeTerminus(domain_time), nil, "Occurred when checking the result of retrieving the minds eye terminus after " + action_description + ".")
   
   ##############################################################################
   # Familiarise a part of the initial "visionCone" scene and check that minds
