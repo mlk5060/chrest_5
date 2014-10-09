@@ -1333,8 +1333,13 @@ public class Chrest extends Observable {
    * the mind's eye and whose second element is a string that is empty if the
    * move sequence was executed successfully or contains a description of why 
    * the move sequence failed if execution was unsuccessful.
+   * 
+   * @throws jchrest.lib.MindsEyeMoveObjectException If an illegal object move
+   * is specified.  See 
+   * {@link jchrest.architecture.MindsEye#moveObjects(java.util.ArrayList, int)} 
+   * for details of illegal moves.
    */
-  public boolean moveObjectsInMindsEye(ArrayList<ArrayList<String>> moves, int domainTime){
+  public boolean moveObjectsInMindsEye(ArrayList<ArrayList<String>> moves, int domainTime) throws MindsEyeMoveObjectException  {
     return this._mindsEye.moveObjects(moves, domainTime);
   }
   

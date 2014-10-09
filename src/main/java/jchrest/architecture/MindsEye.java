@@ -1,11 +1,12 @@
 package jchrest.architecture;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import jchrest.lib.ItemSquarePattern;
 import jchrest.lib.ListPattern;
-import jchrest.lib.MindsEyeObjectMoveException;
+import jchrest.lib.MindsEyeMoveObjectException;
 import jchrest.lib.Modality;
 
 /**
@@ -409,31 +410,6 @@ public class MindsEye {
    * already occupied then the two objects will co-exist on the coordinates; the 
    * new object does not overwrite the old object.
    * 
-   * This method will terminate if the move sequence passed violates any of the 
-   * following conditions:
-   * 
-   * <ol type="1">
-   *  <li>
-   *    Object movement is serial i.e. one object is moved at a time, never in
-   *    parallel.
-   *  </li>
-   *  <li>
-   *    An object's first "move" should stipulate where the object is currently 
-   *    located in the mind's eye (using domain-specific coordinates).  If the 
-   *    object has previously been moved in the mind's eye then the initial 
-   *    location passed for the object should be relative to its current 
-   *    coordinates in the mind's eye.
-   *  </li>
-   *  <li>
-   *    Following an object's initial "move" at least one more move should be
-   *    specified.
-   *  </li>
-   *  <li>
-   *    After moving an object to coordinates not represented in the mind's eye,
-   *    no further moves should be attempted with this object.
-   *  </li>
-   * </ol>
-   * 
    * @param domainSpecificMoves A 2D ArrayList whose first dimension elements 
    * should contain ArrayLists whose elements should be strings that prescribe a 
    * sequence of moves for one object in the domain by specifying 
@@ -447,13 +423,36 @@ public class MindsEye {
    * @param domainTime The current time (in milliseconds) in the domain where 
    * the CHREST model associated with the mind's eye instance is located.
    * 
-   * @return Boolean false if the minds eye does not exist or the attention of
+   * @return Boolean False if the minds eye does not exist or the attention of
    * the CHREST model isn't free when this function is called according to the 
    * value of the domainTime parameter passed.  Boolean true if mind's eye 
    * exists, the attention of the CHREST model is free and all moves specified 
    * are legal.
+   * 
+   * @throws jchrest.lib.MindsEyeMoveObjectException If any of the moves passed
+   * cause any of the following statements to be evaluated as true:
+   * <ol type="1">
+   *  <li>
+   *    More than one object is moved at once; object movement should be 
+   *    strictly serial.
+   *  </li>
+   *  <li>
+   *    An object's first "move" does not correctly identify where the object 
+   *    is currently located in the mind's eye (using domain-specific 
+   *    coordinates).  If the object has previously been moved in the mind's eye 
+   *    then the initial location passed for the object should be relative to 
+   *    its current coordinates in the mind's eye.
+   *  </li>
+   *  <li>
+   *    Only the initial location of an object is specified.
+   *  </li>
+   *  <li>
+   *    After moving an object to coordinates not represented in the mind's eye,
+   *    further moves are attempted with this object.
+   *  </li>
+   * </ol>
    */
-  public boolean moveObjects(ArrayList<ArrayList<String>> domainSpecificMoves, int domainTime) {
+  public boolean moveObjects(ArrayList<ArrayList<String>> domainSpecificMoves, int domainTime) throws MindsEyeMoveObjectException {
     
     //Indicates whether objects have all been moved successfully.
     boolean moveObjectsSuccessful = false;
@@ -595,21 +594,21 @@ public class MindsEye {
                     movesApplied++;
                   }
                   else{
-                    throw new MindsEyeObjectMoveException("For move " + move + " of object " + objectToBeMoved + ", object " + objectToBeMoved + " is not present at the coordinates specified: " + domainSpecificMoveInformation[1] + ", " + domainSpecificMoveInformation[2] + ".  This is either because the object has been moved out of mind's eye range or because the object's specified location is incorrect.");
+                    throw new MindsEyeMoveObjectException("For move " + move + " of object " + objectToBeMoved + ", object " + objectToBeMoved + " is not present at the coordinates specified: " + domainSpecificMoveInformation[1] + ", " + domainSpecificMoveInformation[2] + ".  This is either because the object has been moved out of mind's eye range or because the object's specified location is incorrect.");
                   }
                 }
                 //The object being moved is not the original object specified.
                 else {
-                  throw new MindsEyeObjectMoveException("Object " + objectToBeMoved + " is not the object initially specified for this move sequence: " + initialObjectIdentifier + ".");
+                  throw new MindsEyeMoveObjectException("Object " + objectToBeMoved + " is not the object initially specified for this move sequence: " + initialObjectIdentifier + ".");
                 }
               }//End second dimension loop
             }
             else{
-              throw new MindsEyeObjectMoveException("More than one object has been specified to be moved for coordinates " + initialDomainSpecificObjectInformation[1] + ", " + initialDomainSpecificObjectInformation[1] + ": " + initialObjectIdentifier + "."); 
+              throw new MindsEyeMoveObjectException("More than one object has been specified to be moved for coordinates " + initialDomainSpecificObjectInformation[1] + ", " + initialDomainSpecificObjectInformation[1] + ": " + initialObjectIdentifier + "."); 
             }
           }//End check for number of object moves being greater than or equal to 2.
           else{
-            throw new MindsEyeObjectMoveException("The move sequence " + domainSpecificMoves.get(objectMoveSequence) + " does not contain any moves after the current location of the object is specified.");
+            throw new MindsEyeMoveObjectException("The move sequence " + domainSpecificMoves.get(objectMoveSequence) + " does not contain any moves after the current location of the object is specified.");
           }
         }//End first dimension loop
 
@@ -617,9 +616,9 @@ public class MindsEye {
         this._model.setAttentionClock(domainTime + ( this._accessTime + (movesApplied * this._movementTime) ) );
         this.setTerminus(this._model.getAttentionClock());
       } 
-      catch (MindsEyeObjectMoveException e){
+      catch (MindsEyeMoveObjectException e){
         this.resetTerminusAndVisualSpatialField(visualSpatialFieldBeforeMovesApplied, mindsEyeTerminusBeforeMovesApplied);
-        System.err.println(e.getMessage());
+        throw e;
       }
     }
     
