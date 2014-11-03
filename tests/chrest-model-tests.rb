@@ -379,8 +379,8 @@ process_test "'Minds eye tests'" do
     minds_eye_contents = Array.new
     minds_eye_contents[0] = model.getMindsEyeContent(attention_not_free_time)
     minds_eye_contents[1] = model.getSpecificMindsEyeContent(1, 2, attention_not_free_time)
-    assert_equal(minds_eye_contents[0], nil, "Occurred when attempting to retrieve the visual-spatial contents of the mind's eye at time " + attention_not_free_time.to_s + " using the Chrest.getMindsEyeContent() function after " + action_description + ".")
-    assert_equal(minds_eye_contents[1], nil, "Occurred when attempting to retrieve the visual-spatial contents of the mind's eye at time " + attention_not_free_time.to_s + " using the Chrest.getMindsSpecificMindsEyeContent() function after " + action_description + ".")
+    assert_equal(nil, minds_eye_contents[0], "Occurred when attempting to retrieve the visual-spatial contents of the mind's eye at time " + attention_not_free_time.to_s + " using the Chrest.getMindsEyeContent() function after " + action_description + ".")
+    assert_equal(nil, minds_eye_contents[1], "Occurred when attempting to retrieve the visual-spatial contents of the mind's eye at time " + attention_not_free_time.to_s + " using the Chrest.getMindsSpecificMindsEyeContent() function after " + action_description + ".")
   
     #Simulate domain time passing by setting "domain_time" to a value greater 
     #than the current time that CHREST's attention will be free but less than 
@@ -692,4 +692,12 @@ process_test "'Minds eye tests'" do
     empty,
   ]
   legal_action_checks(model, domain_time, false, nil, nil, minds_eye_access_time, time_to_move_object, expected_attention_free_time, expected_terminus_time, expected_minds_eye_contents, minds_eye_lifespan, action_description)
+  
+  ##############################################################################
+  # Destroy the mind's eye instance and check that it no longer exists
+  ##############################################################################
+  
+  model.destroyMindsEye(domain_time)
+  assert_equal(model.getAttentionClock, domain_time, "Occurred when checking the value of the CHREST model's '_attentionClock' instance variable after destroying the mind's eye at time " + domain_time.to_s + ".")
+  assert_false(model.mindsEyeExists(domain_time), "Occurred when checking for the existence of the mind's eye after destroying it.")
 end

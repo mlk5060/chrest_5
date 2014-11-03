@@ -1175,17 +1175,14 @@ public class Chrest extends Observable {
   
   /**
    * Sets the value of the "_attentionClock" instance variable to the time 
-   * passed if this value is greater than the current value of the 
-   * "_attentionClock" instance.
+   * passed.
    * 
    * @param time The time to set the "_attentionClock" instance variable value
    * to.  This time is domain-specific.
    */
   public void setAttentionClock(int time){
-    if(time > this._attentionClock){
-      this._attentionClock = time;
-      setChanged();
-    }
+    this._attentionClock = time;
+    setChanged();
   }
   
   /**
@@ -1202,7 +1199,7 @@ public class Chrest extends Observable {
    * Determines if the CHREST model's attention is currently free or not.
    * 
    * @param domainTime  The current time (in milliseconds) in the domain where 
-   * the CHREST model is located.
+   * this Chrest instance is located. 
    * 
    * @return True if the value passed is greater than the value of the 
    * "_attentionClock" instance variable, false if not.
@@ -1218,7 +1215,7 @@ public class Chrest extends Observable {
    * domain time passed to this function.
    * 
    * @param domainTime The current time (in milliseconds) in the domain where 
-   * the CHREST model is located.
+   * this Chrest instance is located. 
    * 
    * @return True if a mind's eye is associated with this CHREST instance and 
    * its visual-spatial field is not null, false otherwise.
@@ -1257,7 +1254,8 @@ public class Chrest extends Observable {
    * @param objectMovementTime The time it takes (in milliseconds) to move an
    * object in the mind's eye.
    * 
-   * @param domainTime The current time (in milliseconds) in the domain. 
+   * @param domainTime The current time (in milliseconds) in the domain where 
+   * this Chrest instance is located. 
    * 
    * @return True if a minds eye has been created otherwise false (only occurs
    * if attention is not currently free).
@@ -1278,7 +1276,7 @@ public class Chrest extends Observable {
    * translated to domain-specific coordinates.
    * 
    * @param domainTime The current time (in milliseconds) in the domain where 
-   * the CHREST model associated with the mind's eye instance is located.
+   * this Chrest instance is located. 
    * 
    * @return The content of the mind's eye from min domain xcor/ycor to max
    * domain xcor/ycor if mind's eye exists and its visual-spatial field has not
@@ -1301,7 +1299,7 @@ public class Chrest extends Observable {
    * eye was instantiated).
    * 
    * @param domainTime The current time (in milliseconds) in the domain where 
-   * the CHREST model associated with the mind's eye instance is located.
+   * this Chrest instance is located. 
    * 
    * @return The content of the mind's eye at the domain coordinates passed if 
    * mind's eye exists and its visual-spatial field has not decayed otherwise, 
@@ -1326,7 +1324,7 @@ public class Chrest extends Observable {
    * for details.
    * 
    * @param domainTime The current time (in milliseconds) in the domain where 
-   * the CHREST model associated with the mind's eye instance is located.
+   * this Chrest instance is located. 
    * 
    * @return A two element array whose first element is a boolean value 
    * indicating whether the move sequence passed was successfully executed in 
@@ -1348,7 +1346,7 @@ public class Chrest extends Observable {
    * CHREST model.
    * 
    * @param domainTime The current time (in milliseconds) in the domain where 
-   * the CHREST model associated with the mind's eye instance is located.
+   * this Chrest instance is located. 
    * 
    * @return The time at which the visual-spatial field of the mind's eye
    * will completely decay if a mind's eye exists and its visual-spatial field 
@@ -1362,5 +1360,18 @@ public class Chrest extends Observable {
     }
     
     return mindsEyeTerminus;
+  }
+  
+  /**
+   * Destroys the current MindsEye instance set to this instance's "_mindsEye" 
+   * variable by setting this variable's value to to null and this Chrest
+   * instance's "_attentionClock" value to the domain time passed.
+   * 
+   * @param domainTime The current time (in milliseconds) in the domain where 
+   * this Chrest instance is located. 
+   */
+  public void destroyMindsEye(int domainTime){
+    this._mindsEye = null;
+    this.setAttentionClock(domainTime);
   }
 }

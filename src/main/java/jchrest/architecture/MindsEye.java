@@ -1,7 +1,6 @@
 package jchrest.architecture;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import jchrest.lib.ItemSquarePattern;
@@ -385,8 +384,8 @@ public class MindsEye {
       //The "String.valueOf()" call ensures that, if the domain-specific 
       //coordinates are not represented in the mind's eye and null is returned,
       //this null value is converted to "null" i.e. a string.  This 
-      //differentiates between the possible conflation of null and "null" in the
-      //local "mindsEyeContent" variable.
+      //differentiates between the possible conflation of non-string and string
+      //nulls in the local "mindsEyeContent" variable.
       mindsEyeContent = String.valueOf(this._visualSpatialField.get( mindsEyeXAndYCoords[0] ).get( mindsEyeXAndYCoords[1] ));
       
       this.setTerminus(domainTime);
