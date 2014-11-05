@@ -667,7 +667,7 @@ public class Chrest extends Observable {
    * Asks Chrest to return the image of the node which is associated 
    * with the node obtained by sorting given pattern through the network.
    */
-  public ListPattern associatePattern (ListPattern pattern) {
+  public ListPattern associatedPattern (ListPattern pattern) {
     Node retrievedNode = recognise (pattern);
     if (retrievedNode.getAssociatedNode () != null) {
       return retrievedNode.getAssociatedNode().getImage ();
