@@ -5,9 +5,15 @@ package jchrest.gui;
 
 import java.awt.*;
 import java.awt.event.*;
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import javax.swing.*;
 import javax.swing.border.*;
 import javax.swing.table.*;
@@ -25,10 +31,10 @@ import jchrest.lib.Pattern;
  */
 public class PairedAssociateExperiment extends JPanel {
   
+  private Component _window;
   private final Chrest _model;
   private final List<PairedPattern> _patterns;
   private List<List<ListPattern>> _responses;
-  private List<Integer> _trialErrors;
   private List<HashMap<ListPattern, Integer>> _numberPatternErrors;
   private int _trialNumber;
   
@@ -54,9 +60,13 @@ public class PairedAssociateExperiment extends JPanel {
     JSplitPane jsp = new JSplitPane (JSplitPane.HORIZONTAL_SPLIT, createExperimentControlView (), createExperimentView ());
     jsp.setOneTouchExpandable (true);
 
-    add (jsp);
+    _window = add (jsp);
   }
   
+  /**
+   * Instantiates both the "_numberPatternErrors" and "_trialErrors" instance
+   * variables with values of 0.
+   */
   public final void instantiateErrorStorage(){
     
     this._numberPatternErrors = new ArrayList<HashMap<ListPattern, Integer>>();
@@ -64,9 +74,6 @@ public class PairedAssociateExperiment extends JPanel {
     for(int i = 0; i < _patterns.size(); i++){
       this._numberPatternErrors.get(0).put(_patterns.get(i).getFirst(), 0);
     }
-    
-    this._trialErrors = new ArrayList<Integer>();
-    this._trialErrors.add(0);
   }
   
   /**
@@ -128,6 +135,9 @@ public class PairedAssociateExperiment extends JPanel {
     
     JButton runTrial = new JButton (new RunTrialAction() );
     runTrial.setToolTipText ("Pass each stimulus-response pair once against the model");
+    
+    JButton exportData = new JButton(new ExportDataAction());
+    exportData.setToolTipText ("Export current experiment data as a CSV file to a specified location");
 
     JPanel controls = new JPanel ();
     controls.setLayout (new GridLayout (5, 2, 10, 3));
@@ -145,7 +155,7 @@ public class PairedAssociateExperiment extends JPanel {
     
     controls.add (restart);
     
-    controls.add (new JLabel (""));
+    controls.add (exportData);
     
     controls.add (runTrial);
 
@@ -215,10 +225,7 @@ public class PairedAssociateExperiment extends JPanel {
       
       @Override
       public int getRowCount () {
-        
-        //Include a row for the total number of errors for each trial as well
-        //as each trial's stimuli pattern.
-        return 1 + _patterns.size ();
+        return _patterns.size ();
       }
       
       @Override
@@ -231,24 +238,12 @@ public class PairedAssociateExperiment extends JPanel {
       @Override
       public Object getValueAt (int row, int column) {      
         if (column == 0) {
-          if (row == _patterns.size ()) {
-            return "";
-          } else {
-            return _patterns.get(row).getFirst ();
-          }
+          return _patterns.get(row).getFirst ();
         } else if (column == 1) {
-          if (row == _patterns.size ()) {
-            return "Total Trial Errors:";
-          } else {
-            return _patterns.get(row).getSecond ();
-          }
+          return _patterns.get(row).getSecond ();
         }
         else {
-          if (row == _patterns.size ()) {
-            return _trialErrors.get(column - 1);
-          } else {
-            return _responses.get(column-2).get(row).toString ();
-          }
+          return _responses.get(column-2).get(row).toString ();
         }
       }
       
@@ -331,7 +326,6 @@ public class PairedAssociateExperiment extends JPanel {
       _responses.clear ();
       _exptClock = 0;
       _trialNumber = 0;
-      _trialErrors = new ArrayList<Integer>();
       instantiateErrorStorage();
       updateExperimentControls ();
     }
@@ -424,9 +418,115 @@ public class PairedAssociateExperiment extends JPanel {
         }
       }
       
-      _trialErrors.add(totalErrorsInTrial);
       _responses.add (responses);
     }    
+  }
+  
+  class ExportDataAction extends AbstractAction implements ActionListener {
+    
+    ExportDataAction () {
+      super ("Export Data");
+    }
+    
+    @Override
+    public void actionPerformed(ActionEvent e) {
+      String trialsData = extractTableDataInCsvFormat(_trialsTable);
+      String errorsData = extractTableDataInCsvFormat(_errorsTable);
+      
+      final JFileChooser fc = new JFileChooser();
+      fc.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
+      int resultOfFileSelect = fc.showOpenDialog(_window);
+      
+      if (resultOfFileSelect == JFileChooser.APPROVE_OPTION) {
+        File directoryToStoreData = fc.getSelectedFile();
+        String directoryToStoreDataAbsPath = directoryToStoreData.getAbsolutePath();
+        
+        directoryToStoreData.setExecutable(true, true);
+        directoryToStoreData.setWritable(true, true);
+        
+        if(directoryToStoreData.canWrite() && directoryToStoreData.canExecute()){
+          String trialFileAbsPath = directoryToStoreDataAbsPath + File.separator + "trialData.csv";
+          String errorFileAbsPath = directoryToStoreDataAbsPath + File.separator + "errorData.csv";
+          
+          File trialFile = new File(trialFileAbsPath);
+          File errorFile = new File(errorFileAbsPath);
+          
+          int i = 0;
+          while(trialFile.exists()){
+            i++;
+            trialFileAbsPath = directoryToStoreDataAbsPath + File.separator + "trialData-" + i + ".csv";
+            trialFile = new File(trialFileAbsPath);
+          }
+          
+          i = 0;
+          while(errorFile.exists()){
+            i++;
+            errorFileAbsPath = directoryToStoreDataAbsPath + File.separator + "errorData-" + i + ".csv";
+            errorFile = new File(errorFileAbsPath);
+          }
+          
+          try {
+            trialFile.createNewFile();
+            errorFile.createNewFile();
+          } catch (IOException ex) {
+            Logger.getLogger(PairedAssociateExperiment.class.getName()).log(Level.SEVERE, null, ex);
+          }
+          
+          trialFile.setWritable(true, true);
+          errorFile.setWritable(true, true);
+          
+          trialFile.setReadable(true, true);
+          errorFile.setReadable(true, true);
+          
+          trialFile.setExecutable(true, true);
+          errorFile.setExecutable(true, true);
+          
+          try (PrintWriter trialFilePrintWriter = new PrintWriter(trialFile)) {
+            trialFilePrintWriter.write(trialsData);
+          } catch (FileNotFoundException ex) {
+            Logger.getLogger(PairedAssociateExperiment.class.getName()).log(Level.SEVERE, null, ex);
+          }
+          
+          try (PrintWriter errorFilePrintWriter = new PrintWriter(errorFile)) {
+            errorFilePrintWriter.write(errorsData);
+          } catch (FileNotFoundException ex) {
+            Logger.getLogger(PairedAssociateExperiment.class.getName()).log(Level.SEVERE, null, ex);
+          }
+        }
+        else{
+          JOptionPane.showMessageDialog(null, "Directory '" + directoryToStoreDataAbsPath + "' does not have write and/or execute privileges", "Error", JOptionPane.ERROR_MESSAGE);
+        }
+        
+      }
+    }
+    
+    /**
+     * Converts table data into CSV format by first extracting column headers
+     * then data on a per-row basis.
+     * 
+     * @param table
+     * @return 
+     */
+    public String extractTableDataInCsvFormat(JTable table){
+      AbstractTableModel atm = (AbstractTableModel) table.getModel();
+      int nRow = atm.getRowCount();
+      int nCol = atm.getColumnCount();
+      String tableData = "";
+      
+      for(int col = 0; col < nCol; col++){
+        tableData += "," + atm.getColumnName(col);
+      }
+      tableData += "\n";
+      
+      for(int row = 0; row< nRow; row++){
+        for(int col = 0; col < nCol; col++){
+          tableData += "," + atm.getValueAt(row, col);
+        }
+        tableData += "\n";
+      }
+      
+      return tableData.replaceAll("^,", "").replaceAll("\n,","\n");
+    }
   }
 }
 
