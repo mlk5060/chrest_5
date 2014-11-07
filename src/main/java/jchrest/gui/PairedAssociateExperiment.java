@@ -430,41 +430,59 @@ public class PairedAssociateExperiment extends JPanel {
     
     @Override
     public void actionPerformed(ActionEvent e) {
+      
+      //Store trail and error data for the experiment in CSV formatted strings.
       String trialsData = extractTableDataInCsvFormat(_trialsTable);
       String errorsData = extractTableDataInCsvFormat(_errorsTable);
       
+      //Create a "Save File" dialog that can only list directories since the 
+      //user should select an existing directory to save data in not a file.
       final JFileChooser fc = new JFileChooser();
       fc.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
-      int resultOfFileSelect = fc.showOpenDialog(_window);
+      int resultOfFileSelect = fc.showSaveDialog(_window);
       
+      //If the user selected a directory, store this directory as an object
+      //and extract its absolute path as a string.  Otherwise, do nothing.
       if (resultOfFileSelect == JFileChooser.APPROVE_OPTION) {
-        File directoryToStoreData = fc.getSelectedFile();
-        String directoryToStoreDataAbsPath = directoryToStoreData.getAbsolutePath();
+        File directoryToCreateResultDirectoryIn = fc.getSelectedFile();
+        String directoryToCreateResultDirectoryInAbsPath = directoryToCreateResultDirectoryIn.getAbsolutePath();
         
-        directoryToStoreData.setExecutable(true, true);
-        directoryToStoreData.setWritable(true, true);
+        //Check that the directory specified by the user can be written and
+        //executed, if not, display an error informing the user that the 
+        //directory specified has incorrect permissions set that prevent this
+        //function from executing further.
+        if(directoryToCreateResultDirectoryIn.canWrite() && directoryToCreateResultDirectoryIn.canExecute()){  
+          
+          //Create a new file object for the directory that is to be created 
+          //inside the directory that the user has specified.  Creation of a 
+          //file to store trial and error data prevents this data from becoming
+          //disjoint in the file system (inconvenient for the user).
+          File directoryToStoreData = new File(directoryToCreateResultDirectoryInAbsPath + File.separator + "paired-associate-experiment-data");
+          
+          //Check that the default directory name doesn't already exist.  If it
+          //does, append a number to the end of the directory name and check
+          //again.  If the directory name doesn't exist, create the directory
+          //and set permissions to allow trial and error data to be written to 
+          //files within it.
+          int i = 0;
+          while(directoryToStoreData.exists()){
+            i++;
+            directoryToStoreData = new File(directoryToCreateResultDirectoryInAbsPath + File.separator + "paired-associate-experiment-data-" + i);
+          }
+          directoryToStoreData.mkdir();
+          directoryToStoreData.setExecutable(true, true);
+          directoryToStoreData.setWritable(true, true);
         
-        if(directoryToStoreData.canWrite() && directoryToStoreData.canExecute()){
+          //Extract absolute path to the directory that will contain the data 
+          //files and create the path names for the data files.
+          String directoryToStoreDataAbsPath = directoryToStoreData.getAbsolutePath();
           String trialFileAbsPath = directoryToStoreDataAbsPath + File.separator + "trialData.csv";
           String errorFileAbsPath = directoryToStoreDataAbsPath + File.separator + "errorData.csv";
           
+          //Create the data files and set read, write and execute permissions
+          //so that data can be written to them.
           File trialFile = new File(trialFileAbsPath);
           File errorFile = new File(errorFileAbsPath);
-          
-          int i = 0;
-          while(trialFile.exists()){
-            i++;
-            trialFileAbsPath = directoryToStoreDataAbsPath + File.separator + "trialData-" + i + ".csv";
-            trialFile = new File(trialFileAbsPath);
-          }
-          
-          i = 0;
-          while(errorFile.exists()){
-            i++;
-            errorFileAbsPath = directoryToStoreDataAbsPath + File.separator + "errorData-" + i + ".csv";
-            errorFile = new File(errorFileAbsPath);
-          }
-          
           try {
             trialFile.createNewFile();
             errorFile.createNewFile();
@@ -481,6 +499,7 @@ public class PairedAssociateExperiment extends JPanel {
           trialFile.setExecutable(true, true);
           errorFile.setExecutable(true, true);
           
+          //Write data to data files.
           try (PrintWriter trialFilePrintWriter = new PrintWriter(trialFile)) {
             trialFilePrintWriter.write(trialsData);
           } catch (FileNotFoundException ex) {
@@ -494,9 +513,8 @@ public class PairedAssociateExperiment extends JPanel {
           }
         }
         else{
-          JOptionPane.showMessageDialog(null, "Directory '" + directoryToStoreDataAbsPath + "' does not have write and/or execute privileges", "Error", JOptionPane.ERROR_MESSAGE);
+          JOptionPane.showMessageDialog(null, "Directory '" + directoryToCreateResultDirectoryInAbsPath + "' does not have write and/or execute privileges", "Error", JOptionPane.ERROR_MESSAGE);
         }
-        
       }
     }
     
