@@ -775,7 +775,8 @@ public class Chrest extends Observable {
 
   /**
    * Presents Chrest with a pair of patterns, which it should learn and 
-   * then attempt to learn a link.  Assumes the two patterns are of the same modality.
+   * then attempt to learn a link.  Assumes the two patterns are of the same 
+   * modality.
    */
   private Node learnAndLinkPatterns (ListPattern pattern1, ListPattern pattern2, int time) {
     Node pat1Retrieved = recognise (pattern1);
@@ -792,7 +793,7 @@ public class Chrest extends Observable {
           
           //   if yes
           //   4. if linked node image == pattern2, learn pattern1, else learn pattern2
-          if (pat1Retrieved.getAssociatedNode().getImage().equals (pattern2)) {  
+          if (!pat1Retrieved.getAssociatedNode().getImage().equals (pattern2)) {  
             recogniseAndLearn (pattern1, time); // TODO: this is overlearning?
           } else {
             recogniseAndLearn (pattern2, time);
@@ -860,7 +861,7 @@ public class Chrest extends Observable {
     else{
       firstNode.setAssociatedNode(secondNode);
     }
-    advanceLearningClock (getAddLinkTime ());
+    
     setChanged ();
     if (!_frozen) notifyObservers ();
   }

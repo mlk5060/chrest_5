@@ -10,8 +10,10 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Random;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import javax.swing.*;
@@ -23,29 +25,42 @@ import jchrest.lib.PairedPattern;
 import jchrest.lib.Pattern;
 
 /**
- * This panel provides an interface for running paired associate
- * experiments.
+ * This panel provides an interface for running paired associate experiments.
  * 
  * @author Peter C. R. Lane
  * @author Martyn Lloyd-Kelly
  */
 public class PairedAssociateExperiment extends JPanel {
   
-  private Component _window;
+  private final Component _window;
   private final Chrest _model;
+  
+  //Determinants of experiment behaviour.
+  private int _exptClock;
+  private int _patternNumber;
+  private int _trialNumber;
   private final List<PairedPattern> _patterns;
   private List<List<ListPattern>> _responses;
   private List<HashMap<ListPattern, Integer>> _numberPatternErrors;
-  private int _trialNumber;
   
-  private int _exptClock;
+  //Experiment information and set-up variables.
+  private JLabel _patternLabel;
+  private JLabel _trialNumberLabel;
   private JLabel _experimentTimeLabel;
+  private JComboBox _learningStrategy;
   private JSpinner _presentationTime;
   private JSpinner _interItemTime;
+  private JSpinner _interTrialTime;
   private JCheckBox _randomOrder;
+  
+  //Experiment output variables.
   private JTable _trialsTable;
+  private final int _numberDefaultColsTrialsTable = 2; //Should always be "Stimulus" and "Target" columns.
+  private JScrollPane _trialsScrollPane;
   private JScrollBar _trialsHorizontalBar;
+  private JScrollPane _errorsScrollPane;
   private JTable _errorsTable;
+  private final int _numberDefaultColsErrorsTable = 1; //Should always be "Stimulus" column.
   private JScrollBar _errorsHorizontalBar;
 
   public PairedAssociateExperiment (Chrest model, List<PairedPattern> patterns) {
@@ -53,42 +68,68 @@ public class PairedAssociateExperiment extends JPanel {
     
     _model = model;
     _patterns = patterns;
-    _trialNumber = 0;
+    _patternNumber = 0;
+    _trialNumber = 1;
     instantiateErrorStorage();
 
     setLayout (new GridLayout (1, 1));
-    JSplitPane jsp = new JSplitPane (JSplitPane.HORIZONTAL_SPLIT, createExperimentControlView (), createExperimentView ());
+    JSplitPane jsp = new JSplitPane (JSplitPane.HORIZONTAL_SPLIT, renderInputView (), renderOutputView ());
     jsp.setOneTouchExpandable (true);
-
     _window = add (jsp);
   }
   
+  /****************************************************************************/
+  /****************************************************************************/
+  /******************************* GUI CREATION *******************************/
+  /****************************************************************************/
+  /****************************************************************************/
+  
+  //Code in this section is organised from the top-level to the bottom with 
+  //regard to creation of components.
+
   /**
-   * Instantiates both the "_numberPatternErrors" and "_trialErrors" instance
-   * variables with values of 0.
+   * Renders a panel composed of the stimulus-response pattern list panel 
+   * (created by {@link #renderStimulusResponsePairsPanel()}), the experiment 
+   * information panel (created by {@link #renderExperimentInformation()} and 
+   * the experiment control panel {@link #renderControlsView()}.  
+   * 
+   * The stimulus-target pattern list panel is aligned above the experiment 
+   * control panel.
+   * 
+   * @return 
    */
-  public final void instantiateErrorStorage(){
+  private JPanel renderInputView () {
+    JPanel experimentInput = new JPanel ();
+    experimentInput.setBorder(new TitledBorder ("Experiment Input"));
+    experimentInput.setLayout (new BoxLayout(experimentInput, BoxLayout.PAGE_AXIS));
     
-    this._numberPatternErrors = new ArrayList<HashMap<ListPattern, Integer>>();
-    this._numberPatternErrors.add( new HashMap<ListPattern, Integer>() );
-    for(int i = 0; i < _patterns.size(); i++){
-      this._numberPatternErrors.get(0).put(_patterns.get(i).getFirst(), 0);
-    }
+    experimentInput.add(renderStimulusResponsePairsView());
+    experimentInput.add(renderExperimentInformationView());
+    experimentInput.add(renderExperimentControlsView());
+
+    return experimentInput;
   }
   
   /**
-   * Converts a list of ListPatterns into a list of stimulus-response pattern 
-   * pairs.
+   * Renders a panel composed of two panels that display the responses/ 
+   * errors given/made by the CHREST model for each pattern over each trial.
+   * Composed of the trials view {@link #renderTrailsView()} and errors view
+   * {@link #renderErrorsView()}.
+   * 
+   * @return 
    */
-  public static List<PairedPattern> makePairs (List<ListPattern> patterns) {
-    List<PairedPattern> pairs = new ArrayList<PairedPattern> ();
-    for (int i = 1; i < patterns.size (); ++i) {
-      pairs.add (new PairedPattern (patterns.get(i-1), patterns.get(i)));
-    }
-
-    return pairs;
+  private JPanel renderOutputView () {
+    JPanel experimentOutput = new JPanel ();
+    experimentOutput.setBorder (new TitledBorder ("Experiment Output"));
+    experimentOutput.setLayout (new GridLayout (2, 1));
+    
+    experimentOutput.add(renderTrailsView());
+    experimentOutput.add(renderErrorsView());
+    
+    return experimentOutput;
   }
-
+  
+  
   /**
    * Creates a panel containing all stimulus-response pattern pairs to be used 
    * in the experiment (pairs created by {@link #makePairs(java.util.List)} 
@@ -96,9 +137,9 @@ public class PairedAssociateExperiment extends JPanel {
    * 
    * @return 
    */
-  private JPanel createListPanel () {
+  private JPanel renderStimulusResponsePairsView () {
     JPanel panel = new JPanel ();
-    panel.setBorder (new TitledBorder ("Stimulus-response pairs"));
+    panel.setBorder (new TitledBorder ("Stimulus-Response Pairs"));
     panel.setLayout (new GridLayout (1, 1));
 
     JPanel pairsPanel = new JPanel ();
@@ -113,37 +154,78 @@ public class PairedAssociateExperiment extends JPanel {
   }
   
   /**
-   * Creates a panel containing all independent variables that can be set in the
-   * experiment and useful experiment information.
+   * Renders a panel containing useful experiment information that is updated
+   * periodically.
    * 
    * @return 
    */
-  private JPanel createControlPanel () {
-    _experimentTimeLabel = new JLabel ("0");
+  private JPanel renderExperimentInformationView(){
+    
+    //Define experiment information elements
+     PairedPattern pair = _patterns.get(_patternNumber);
+    _patternLabel = new JLabel (pair.getFirst().toString() + " " + pair.getSecond().toString(), SwingConstants.RIGHT);
+    
+    _trialNumberLabel = new JLabel (Integer.toString(_trialNumber), SwingConstants.RIGHT);
+    
+    _experimentTimeLabel = new JLabel ("0", SwingConstants.RIGHT);
+    
+    //Create experiment interface element.
+    JPanel experimentInformation = new JPanel();
+    experimentInformation.setBorder(new TitledBorder("Experiment Information"));
+    experimentInformation.setLayout(new GridLayout(3, 2, 2, 2));
+    
+    experimentInformation.add(new JLabel ("Pattern pair to learn next", SwingConstants.RIGHT));
+    experimentInformation.add(_patternLabel);
+    
+    experimentInformation.add (new JLabel ("Trial #", SwingConstants.RIGHT));
+    experimentInformation.add(_trialNumberLabel);
+    
+    experimentInformation.add (new JLabel ("Experiment time (ms)", SwingConstants.RIGHT));
+    experimentInformation.add(_experimentTimeLabel);
+  
+    return experimentInformation;
+  }
+  
+  /**
+   * Renders a panel containing all independent variables that can be set in the
+   * experiment.
+   * 
+   * @return 
+   */
+  private JPanel renderExperimentControlsView() {
     
     _presentationTime = new JSpinner (new SpinnerNumberModel (2000, 1, 50000, 1));
-    _presentationTime.setToolTipText("The length of time each stimuli is presented for on each trial");
+    _presentationTime.setToolTipText("The length of time each stimuli is presented for in a trial");
     
     _interItemTime = new JSpinner (new SpinnerNumberModel (2000, 1, 50000, 1));
     _interItemTime.setToolTipText("The length of time between presentation of each stimuli on each trial");
     
-    _randomOrder = new JCheckBox ("Random order");
-    _randomOrder.setToolTipText ("Check to present stimuli in a random order");
+    _interTrialTime = new JSpinner(new SpinnerNumberModel(2000, 1, 50000, 1));
+    _interTrialTime.setToolTipText("The length of time between trials");
+    
+    _learningStrategy = new JComboBox(new String[] {"Minimal stimulus - whole response"});
+    ((JLabel)_learningStrategy.getRenderer()).setHorizontalAlignment(JLabel.RIGHT);
+    _learningStrategy.setToolTipText("The learning strategy that should be used by CHREST");
+    
+    _randomOrder = new JCheckBox ();
+    _randomOrder.setToolTipText ("Check to present stimuli in a random order.  Shuffling of patterns only occurs at the start of a new trial.");
     
     JButton restart = new JButton (new RestartAction() );
     restart.setToolTipText ("Reset the experiment and clear the model");
     
+    JButton learnPattern = new JButton (new LearnPatternAction() );
+    learnPattern.setToolTipText ("Asks the model to learn a pair of stimulus-response patterns.  If this is the last pair, the model will generate output.");
+    
     JButton runTrial = new JButton (new RunTrialAction() );
-    runTrial.setToolTipText ("Pass each stimulus-response pair once against the model");
+    runTrial.setToolTipText("Presents all remaining pattern pairs in a trial to the model and produces output.");
     
     JButton exportData = new JButton(new ExportDataAction());
     exportData.setToolTipText ("Export current experiment data as a CSV file to a specified location");
-
-    JPanel controls = new JPanel ();
-    controls.setLayout (new GridLayout (5, 2, 10, 3));
     
-    controls.add (new JLabel ("Experiment time (ms)", SwingConstants.RIGHT));
-    controls.add (_experimentTimeLabel);
+    //Set layout of the controls and add elements.
+    JPanel controls = new JPanel ();
+    controls.setBorder (new TitledBorder ("Experiment Controls"));
+    controls.setLayout (new GridLayout (7, 2, 2, 2));
     
     controls.add (new JLabel ("Presentation time (ms)", SwingConstants.RIGHT));
     controls.add (_presentationTime);
@@ -151,74 +233,68 @@ public class PairedAssociateExperiment extends JPanel {
     controls.add (new JLabel ("Inter item time (ms)", SwingConstants.RIGHT));
     controls.add (_interItemTime);
     
+    controls.add (new JLabel ("Inter trial time (ms)", SwingConstants.RIGHT));
+    controls.add (_interTrialTime);
+    
+    controls.add (new JLabel ("Learning strategy", SwingConstants.RIGHT));
+    controls.add (_learningStrategy);
+    
+    controls.add (new JLabel ("Randomise presentation", SwingConstants.RIGHT));
     controls.add (_randomOrder);
     
-    controls.add (restart);
-    
-    controls.add (exportData);
-    
-    controls.add (runTrial);
+    controls.add (restart);    controls.add (learnPattern);
+    controls.add (exportData); controls.add (runTrial);
 
     return controls;
   }
   
   /**
-   * Creates a panel composed of the stimulus-target pattern list panel (created 
-   * by {@link #createListPanel()}) and the experiment control panel 
-   * {@link #createControlPanel()}.  
-   * 
-   * The stimulus-target pattern list panel is aligned above the experimental 
-   * control panel.
+   * Renders a panel containing a table (created by {@link #createTrialsTable()}
+   * ) that tracks the responses given by the CHREST model for each 
+   * stimulus-response pair when a trial has been completed.
    * 
    * @return 
    */
-  private JPanel createExperimentControlView () {
-    JPanel panel = new JPanel ();
-    panel.setLayout (new BorderLayout ());
-    panel.add (createListPanel ());
-    panel.add (createControlPanel (), BorderLayout.SOUTH);
-
-    return panel;
-  }
-  
-  /**
-   * Updates various information in the experiment control panel created by
-   * {@link #createControlPanel()}.
-   */
-  private void updateExperimentControls () {
-    _experimentTimeLabel.setText ("" + _exptClock);
-  }
-  
-  /**
-   * Creates the experiment panel where the progress of the experiment is
-   * displayed.  This panel consists of a "trials" table  where the progress
-   * of CHREST's learning is displayed over trials run and an "errors" table
-   * where the errors made by CHREST for each trial are displayed.
-   * 
-   * 
-   * @return 
-   */
-  private JPanel createExperimentView () {
-    JPanel experimentView = new JPanel ();
-    experimentView.setBorder (new TitledBorder ("Experiment"));
-    experimentView.setLayout (new GridLayout (2, 1));
+  private JPanel renderTrailsView(){
+    
     _responses = new ArrayList<List<ListPattern>> ();
     
     createTrialsTable ();
-    createErrorsTable();
+    _trialsScrollPane = new JScrollPane (_trialsTable);
+    _trialsHorizontalBar = _trialsScrollPane.getHorizontalScrollBar ();
     
-    JScrollPane trialsScrollPane = new JScrollPane (_trialsTable);
-    _trialsHorizontalBar = trialsScrollPane.getHorizontalScrollBar ();
+    JPanel trialsView = new JPanel();
+    trialsView.setBorder (new TitledBorder ("Trial Results"));
+    trialsView.setLayout (new GridLayout ());
+    trialsView.add(_trialsScrollPane);
     
-    JScrollPane errorsScrollPane = new JScrollPane (_errorsTable);
-    _errorsHorizontalBar = errorsScrollPane.getHorizontalScrollBar ();
-    
-    experimentView.add(trialsScrollPane);
-    experimentView.add(errorsScrollPane);
-
-    return experimentView;
+    return trialsView;
   }
   
+  /**
+   * Renders a panel containing a table (created by {@link #createErrorsTable()}
+   * ) that tracks the errors made by the CHREST model when providing a response
+   * for each stimulus-response pair when a trial has been completed.
+   * 
+   * @return 
+   */
+  private JPanel renderErrorsView(){
+    createErrorsTable();
+    _errorsScrollPane = new JScrollPane (_errorsTable);
+    _errorsHorizontalBar = _errorsScrollPane.getHorizontalScrollBar ();
+    
+    JPanel errorsView = new JPanel();
+    errorsView.setBorder (new TitledBorder ("Errors"));
+    errorsView.setLayout (new GridLayout ());
+    errorsView.add(_errorsScrollPane);
+
+    return errorsView;
+  }
+  
+  /**
+   * Creates the trials table that tracks the responses given by the CHREST 
+   * model for each stimulus presented over the course of multiple trials.
+   */
   private void createTrialsTable () {
     
     TableModel tm = new AbstractTableModel () {
@@ -230,9 +306,7 @@ public class PairedAssociateExperiment extends JPanel {
       
       @Override
       public int getColumnCount () {
-        
-        //Include two columns for the "Stimulus" and "Target" columns.
-        return 2 + _responses.size (); 
+        return _numberDefaultColsTrialsTable + _responses.size (); 
       }
       
       @Override
@@ -261,7 +335,14 @@ public class PairedAssociateExperiment extends JPanel {
       @Override
       public void fireTableStructureChanged() {
         super.fireTableStructureChanged ();
-        _trialsHorizontalBar.setValue (_trialsHorizontalBar.getMaximum ());
+        
+        //Scrolls the horizontal bar for the trials scroll pane to its maximum
+        //value (i.e. to the extreme right) to display the latest results.  The
+        //wait is required since the UI will update before a new maximum 
+        //horizontal bar value can be set.
+          EventQueue.invokeLater (() -> {
+            _trialsHorizontalBar.setValue (_trialsHorizontalBar.getMaximum ());
+          });
       }
     };
     
@@ -269,6 +350,11 @@ public class PairedAssociateExperiment extends JPanel {
     _trialsTable.setAutoResizeMode (JTable.AUTO_RESIZE_OFF);
   }
   
+  /**
+   * Creates the errors table that tracks the errors made by the CHREST model 
+   * for each response given a presented stimulus over the course of multiple 
+   * trials.
+   */
   private void createErrorsTable(){
     TableModel tm = new AbstractTableModel () {
 
@@ -281,7 +367,7 @@ public class PairedAssociateExperiment extends JPanel {
 
       @Override
       public int getColumnCount() {
-        return 1 + _responses.size();
+        return _numberDefaultColsErrorsTable + _responses.size();
       }
 
       @Override
@@ -306,7 +392,16 @@ public class PairedAssociateExperiment extends JPanel {
       @Override
       public void fireTableStructureChanged() {
         super.fireTableStructureChanged ();
-        _errorsHorizontalBar.setValue (_errorsHorizontalBar.getMaximum ());
+        
+        //Scrolls the horizontal bar for the errors scroll pane to its maximum
+        //value (i.e. to the extreme right) to display the latest results.  The
+        //wait is required since the UI will update before a new maximum 
+        //horizontal bar value can be set.
+        EventQueue.invokeLater (() -> {
+          EventQueue.invokeLater (() -> {
+            _errorsHorizontalBar.setValue (_errorsHorizontalBar.getMaximum ());
+          });
+        });;
       }
     };
     
@@ -314,6 +409,14 @@ public class PairedAssociateExperiment extends JPanel {
     _errorsTable.setAutoResizeMode (JTable.AUTO_RESIZE_OFF);
   }
 
+  /****************************************************************************/
+  /****************************************************************************/
+  /******************************* BUTTONS CODE *******************************/
+  /****************************************************************************/
+  /****************************************************************************/
+  
+  //Code in this section pertains to the operation of GUI buttons.
+  
   class RestartAction extends AbstractAction implements ActionListener {
     
     RestartAction () {
@@ -325,101 +428,50 @@ public class PairedAssociateExperiment extends JPanel {
       _model.clear ();
       _responses.clear ();
       _exptClock = 0;
-      _trialNumber = 0;
+      _patternNumber = 0;
+      ((AbstractTableModel)_trialsTable.getModel()).fireTableStructureChanged();
+      ((AbstractTableModel)_errorsTable.getModel()).fireTableStructureChanged();
+      _trialNumber = 1;
+      
       instantiateErrorStorage();
-      updateExperimentControls ();
+      updateExperimentInformation ();
     }
   }
 
-  class RunTrialAction extends AbstractAction implements ActionListener {
+  class LearnPatternAction extends AbstractAction implements ActionListener {
     
-    RunTrialAction () {
-      super ("Run Trial");
+    LearnPatternAction () {
+      super ("Learn Pattern");
     }
     
     @Override
     public void actionPerformed (ActionEvent e) {
       _model.freeze (); // save all gui updates to the end
-      _trialNumber += 1;
-      associateAndLearnPatterns();
-      test();
-      ((AbstractTableModel)_trialsTable.getModel()).fireTableStructureChanged();
-      ((AbstractTableModel)_errorsTable.getModel()).fireTableStructureChanged();
-      updateExperimentControls();
+      shufflePatterns();
+      processPattern();
+      checkEndTrial();
+      updateExperimentInformation();
+      _model.unfreeze();
+    }  
+  }
+  
+  class RunTrialAction extends AbstractAction implements ActionListener {
+    
+    RunTrialAction(){
+      super ("Run Trial");
+    }
+      
+    @Override
+    public void actionPerformed(ActionEvent e){
+      _model.freeze();
+      shufflePatterns();
+      while(_patternNumber < _patterns.size()){
+        processPattern();
+      }
+      checkEndTrial();
+      updateExperimentInformation();
       _model.unfreeze();
     }
-
-    /**
-     * Prepares a list of the stimuli patterns to be presented according to
-     * whether the stimuli patterns should be randomly presented or not.
-     * @return 
-     */
-    private List<PairedPattern> preparePatterns () {
-      List<PairedPattern> patterns = new ArrayList<PairedPattern> ();
-      java.util.Random gen = new java.util.Random ();
-      for (PairedPattern pattern : _patterns) {
-        if (_randomOrder.isSelected ()) {
-          patterns.add (gen.nextInt (patterns.size () + 1), pattern);
-        } else {
-          patterns.add (pattern);
-        }
-      }
-
-      return patterns;
-    }
-    
-    /**
-     * Attempts to associate the second pattern with the first pattern in a pair 
-     * of patterns if they are both learned or learns unlearned patterns every 
-     * millisecond until the presentation time specified is reached.
-     */
-    private void associateAndLearnPatterns(){
-      for (PairedPattern pair : preparePatterns()) {
-        int presentationFinishTime = ((SpinnerNumberModel)_presentationTime.getModel()).getNumber().intValue() + _exptClock;
-        
-        while(_exptClock <= presentationFinishTime){
-          _model.associateAndLearn (pair.getFirst (), pair.getSecond (), _exptClock);
-          _exptClock += 1;
-        }
-        
-        _exptClock += ((SpinnerNumberModel)_interItemTime.getModel()).getNumber().intValue ();
-      }
-    }
-
-    /**
-     * Asks the CHREST model to retrieve the pattern that is currently 
-     * associated with each stimuli pattern in LTM and records any errors.
-     */
-    private void test () {
-      
-      List<ListPattern> responses = new ArrayList<ListPattern> ();
-      int totalErrorsInTrial = 0;
-      _numberPatternErrors.add( new HashMap<ListPattern, Integer>() );
-      
-      for (PairedPattern pair : _patterns) {
-        ListPattern response = _model.associatedPattern (pair.getFirst ());
-        
-        if (response != null) {
-          responses.add (response);
-        } else {
-          responses.add (Pattern.makeVisualList (new String[]{"NONE"}));
-        }
-        
-        int previousNumberPatternErrors = _numberPatternErrors.get(_trialNumber - 1).get(pair.getFirst());
-        ListPattern latestResponse = responses.get(responses.size() - 1);
-        latestResponse.setFinished();
-        
-        if( latestResponse.matches(pair.getSecond()) ){
-           _numberPatternErrors.get(_trialNumber).put( pair.getFirst(), previousNumberPatternErrors );
-        }
-        else{
-          _numberPatternErrors.get(_trialNumber).put( pair.getFirst(), (previousNumberPatternErrors + 1) );
-          totalErrorsInTrial += 1;
-        }
-      }
-      
-      _responses.add (responses);
-    }    
   }
   
   class ExportDataAction extends AbstractAction implements ActionListener {
@@ -545,6 +597,139 @@ public class PairedAssociateExperiment extends JPanel {
       
       return tableData.replaceAll("^,", "").replaceAll("\n,","\n");
     }
+  }
+  
+  /****************************************************************************/
+  /****************************************************************************/
+  /******************************* SHARED CODE ********************************/
+  /****************************************************************************/
+  /****************************************************************************/
+  
+  //Code in this section is either not associated with GUI components or more 
+  //than one GUI component.
+  
+  /**
+   * Check if a trial has ended (all patterns have been presented to CHREST) and
+   * test the model, update experiment variables and GUI if so.
+   */
+  private void checkEndTrial(){
+    if(_patternNumber == _patterns.size()){
+      test();
+      ((AbstractTableModel)_trialsTable.getModel()).fireTableStructureChanged();
+      ((AbstractTableModel)_errorsTable.getModel()).fireTableStructureChanged();
+      _patternNumber = 0;
+      _trialNumber += 1;
+      _exptClock += ((SpinnerNumberModel)_interTrialTime.getModel()).getNumber().intValue ();
+    }
+  }
+  
+  /**
+   * Instantiates both the "_numberPatternErrors" and "_trialErrors" instance
+   * variables with values of 0.
+   */
+  public final void instantiateErrorStorage(){
+    
+    this._numberPatternErrors = new ArrayList<HashMap<ListPattern, Integer>>();
+    this._numberPatternErrors.add( new HashMap<ListPattern, Integer>() );
+    for(int i = 0; i < _patterns.size(); i++){
+      this._numberPatternErrors.get(0).put(_patterns.get(i).getFirst(), 0);
+    }
+  }
+  
+  /**
+   * Converts a list of ListPatterns into a list of stimulus-response pattern 
+   * pairs.
+   */
+  public static List<PairedPattern> makePairs (List<ListPattern> patterns) {
+    List<PairedPattern> pairs = new ArrayList<PairedPattern> ();
+    for (int i = 1; i < patterns.size (); ++i) {
+      pairs.add (new PairedPattern (patterns.get(i-1), patterns.get(i)));
+    }
+
+    return pairs;
+  }
+  
+  /**
+   * Attempts to associate the second pattern with the first pattern of a 
+   * specified pattern if they are both learned or attempts to learn and 
+   * associate them every millisecond until the presentation time specified is 
+   * reached.
+   * 
+   */
+  private void processPattern(){
+    PairedPattern pair = _patterns.get(_patternNumber);
+    int presentationFinishTime = ((SpinnerNumberModel)_presentationTime.getModel()).getNumber().intValue() + _exptClock;
+
+    while(_exptClock < presentationFinishTime){
+      
+      switch(_learningStrategy.getSelectedIndex()){
+
+        //"Minimal stimulus-whole response" strategy: model learns all stimuli
+        //first using as little information as possible before learning 
+        //responses to each stimulus.
+        case 0:
+          _model.associateAndLearn(pair.getFirst(), pair.getSecond(), _exptClock);
+          break;
+      }
+  
+      _exptClock += 1;
+    }
+    _patternNumber += 1;
+    _exptClock += ((SpinnerNumberModel)_interItemTime.getModel()).getNumber().intValue ();
+   }
+  
+  /**
+   * Shuffle the patterns if this is the first pattern to be run in a new
+   * trial and patterns are to be presented randomly.
+   */
+  private void shufflePatterns(){
+    if(_patternNumber == 0 && _randomOrder.isSelected ()){
+      Collections.shuffle(_patterns, new Random(System.nanoTime()));
+    }
+  }
+  
+  /**
+   * Asks the CHREST model to retrieve the pattern that is currently 
+   * associated with each stimuli pattern in LTM and records any errors.
+   */
+  private void test () {
+
+    List<ListPattern> responses = new ArrayList<ListPattern> ();
+    _numberPatternErrors.add( new HashMap<ListPattern, Integer>() );
+
+    for (PairedPattern pair : _patterns) {
+      ListPattern response = _model.associatedPattern (pair.getFirst ());
+
+      if (response != null) {
+        responses.add (response);
+      } else {
+        responses.add (Pattern.makeVisualList (new String[]{"NONE"}));
+      }
+
+      ListPattern latestResponse = responses.get(responses.size() - 1);
+      latestResponse.setFinished();
+
+      //If the response matches the second primitive of the pair, set the
+      //error in this trial for the pattern to 0, otherwise, set to 1.
+      if( latestResponse.matches(pair.getSecond()) ){
+         _numberPatternErrors.get(_trialNumber).put( pair.getFirst(), 0 );
+      }
+      else{
+        _numberPatternErrors.get(_trialNumber).put( pair.getFirst(), 1 );
+      }
+    }
+    _responses.add (responses);
+  }
+  
+  /**
+   * Updates various information in the experiment control panel created by
+   * {@link #createControlPanel()}.
+   */
+  private void updateExperimentInformation () {
+    PairedPattern nextPair = _patterns.get(_patternNumber);
+    _patternLabel.setText(nextPair.getFirst().toString() + " " + nextPair.getSecond().toString());
+    _trialNumberLabel.setText("" + _trialNumber);
+    _experimentTimeLabel.setText ("" + _exptClock);
   }
 }
 
