@@ -4,8 +4,8 @@
 
 package jchrest.architecture;
 
-
-import java.io.BufferedReader;
+import com.almworks.sqlite4java.*;
+import java.io.File;
 import java.io.IOException;
 import java.io.Writer;
 import java.util.ArrayList;
@@ -13,6 +13,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Observable;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import jchrest.lib.*;
 import jchrest.lib.ReinforcementLearning.ReinforcementLearningTheories;
 
@@ -26,6 +28,10 @@ import jchrest.lib.ReinforcementLearning.ReinforcementLearningTheories;
 public class Chrest extends Observable {
   // Domain definitions, if used
   private DomainSpecifics _domainSpecifics;
+  //CHREST execution history variables
+  private boolean _historyEnabled = false;
+  private SQLiteConnection _historyConnection = new SQLiteConnection(); //No argument: creates new DB in memory not on disk.
+  private final String _historyTableName = "history";
   // internal clocks
   private int _attentionClock; //Tracks time taken for operations performed in the mind's eye
   private int _learningClock; //Tracks time taken for operations perfrormend in LTM/STM
@@ -63,8 +69,15 @@ public class Chrest extends Observable {
   //Reinforcement learning module
   private ReinforcementLearningTheories _reinforcementLearningTheory;
 
-  public Chrest () {
+  public Chrest () throws SQLiteException {
     _domainSpecifics = new GenericDomain ();
+    
+    //Execution history variable set-up
+    SQLite.setLibraryPath("../sqlite4java-392"); //Etremely important: without this, the JVM won't know where the sql4java library is.
+    Logger.getLogger("com.almworks.sqlite4java").setLevel(Level.OFF); //Turn off logging by "default".
+    this._historyConnection.open(true);
+    this._historyConnection.exec("CREATE TABLE " + this._historyTableName + " (id INTEGER PRIMARY KEY, time INT, operation TEXT, description TEXT);");
+    
     _addLinkTime = 10000;
     _discriminationTime = 10000;
     _familiarisationTime = 2000;
@@ -102,6 +115,62 @@ public class Chrest extends Observable {
    */
   public void setDomain (DomainSpecifics domain) {
     _domainSpecifics = domain;
+  }
+  
+  /**
+   * If the model can record history, this function adds an episode to the 
+   * "history" DB table in memory.
+   * 
+   * @param time The time that the event occurred (either simulation time or
+   * real time).
+   * @param operation The name of the function that is being executed in the
+   * episode.  This could be inferred using stack trace debugging but different
+   * JVM versions format this information in their stack traces differently.  So,
+   * for the sake of being future-proof, this parameter is "user-defined". 
+   * @param description An informative description of what the function 
+   * referenced in the "operation" parameter is doing in this episode.
+   * 
+   * @throws com.almworks.sqlite4java.SQLiteException 
+   */
+  public void addToHistory(Integer time, String operation, String description) throws SQLiteException{
+    if(this.canRecordHistory()){
+      SQLiteStatement sql = this._historyConnection.prepare("INSERT INTO " + this._historyTableName + " (time, operation, description) VALUES (?, ?, ?)");
+      
+      try{
+        sql.bind(1, time).bind(2, operation).bind(3, description);
+        sql.stepThrough();
+      }
+      finally{
+        sql.dispose();
+      }
+    }
+  }
+  
+  /**
+   * Enables a user to switch history recording on/off for this model.
+   * 
+   * @param value True to turn on history recording, false to turn off
+   */
+  public void setRecordHistory(boolean value){
+    this._historyEnabled = value;
+  }
+  
+  /**
+   * Indicates whether this model can currently record its execution history.
+   * 
+   * @return Boolean true if yes, boolean false if not.
+   */
+  public boolean canRecordHistory(){
+    return this._historyEnabled;
+  }
+  
+  /**
+   * Returns the execution history of this model.
+   * @return 
+   * @throws com.almworks.sqlite4java.SQLiteException 
+   */
+  public SQLiteStatement getHistory() throws SQLiteException{
+    return this._historyConnection.prepare("SELECT * FROM " + this._historyTableName).stepThrough();
   }
 
   /**
@@ -616,7 +685,7 @@ public class Chrest extends Observable {
           if (currentNode == getLtmByModality (pattern) || // if is rootnode
               !currentNode.getImage().matches (pattern) || // or mismatch on image
               currentNode.getImage().isFinished ()) {      // or image finished
-            currentNode = currentNode.discriminate (pattern); // then discriminate
+            currentNode = currentNode.discriminate (pattern, time); // then discriminate
           } else  { // else familiarise
             currentNode = currentNode.familiarise (pattern);
           }
@@ -1049,6 +1118,8 @@ public class Chrest extends Observable {
    * Clear the STM and LTM of the model.
    */
   public void clear () {
+    _historyConnection.dispose();
+    _historyConnection = new SQLiteConnection(new File(":memory:")); //Creates new DB in memory not on disk.
     _attentionClock = 0;
     _learningClock = 0;
     _visualLtm.clear ();

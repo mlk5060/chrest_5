@@ -3,6 +3,7 @@
 
 package jchrest.gui;
 
+import com.almworks.sqlite4java.SQLiteException;
 import jchrest.architecture.Chrest;
 import jchrest.lib.FileUtilities;
 
@@ -20,7 +21,7 @@ public class ChrestView extends JFrame implements Observer {
   private ChrestStmView _stmView;
   private ChrestTimeView _timeView;
 
-  public ChrestView (Chrest model) {
+  public ChrestView (Chrest model) throws SQLiteException {
     this (new Shell (), model);
   }
 

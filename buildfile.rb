@@ -6,17 +6,18 @@ repositories.remote << 'http://repo1.maven.org/maven2'
 
 JCOMMON = 'jfree:jcommon:jar:1.0.16'
 JFREECHART = 'jfree:jfreechart:jar:1.0.13'
+SQLITE4JAVA = 'com.almworks.sqlite4java:sqlite4java:jar:1.0.392'
 
 define 'chrest' do
   project.version = VERSION
-  compile.with JCOMMON, JFREECHART
+  compile.with JCOMMON, JFREECHART, SQLITE4JAVA
   package(:jar).with(
     :manifest=>{'Main-Class'=>'jchrest.gui.Shell'}
   ).merge(
     compile.dependencies
   )
 
-  run.with(JCOMMON, JFREECHART).using :main => "jchrest.gui.Shell"
+  run.with(JCOMMON, JFREECHART, SQLITE4JAVA).using :main => "jchrest.gui.Shell"
 end
 
 desc 'build the user guide'

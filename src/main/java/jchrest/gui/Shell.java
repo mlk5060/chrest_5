@@ -3,6 +3,8 @@
 
 package jchrest.gui;
 
+import com.almworks.sqlite4java.SQLiteException;
+import com.almworks.sqlite4java.SQLiteStatement;
 import jchrest.architecture.Chrest;
 import jchrest.lib.FileUtilities;
 import jchrest.lib.ListPattern;
@@ -12,15 +14,25 @@ import jchrest.lib.Pattern;
 import jchrest.lib.Scenes;
 
 import java.awt.BorderLayout;
+import java.awt.Component;
 import java.awt.GridLayout;
 import java.awt.event.*;
 import java.io.*;
 import java.text.DecimalFormat;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.function.BiConsumer;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import javax.swing.*;
+import javax.swing.table.AbstractTableModel;
+import javax.swing.table.TableCellRenderer;
+import javax.swing.table.TableColumnModel;
+import javax.swing.table.TableModel;
 
 import org.jfree.chart.*;
 import org.jfree.chart.plot.*;
@@ -35,7 +47,7 @@ import org.jfree.data.statistics.*;
 public class Shell extends JFrame {
   private Chrest _model;
 
-  public Shell () {
+  public Shell () throws SQLiteException {
     super ("CHREST 4");
 
     _model = new Chrest ();
@@ -333,6 +345,7 @@ public class Shell extends JFrame {
         _model.getPerceiver().setFieldOfView (((SpinnerNumberModel)_fieldOfView.getModel()).getNumber().intValue ());
         _model.setCreateSemanticLinks (_createSemanticLinks.isSelected ());
         _model.setCreateTemplates(_createTemplates.isSelected ());
+        _model.setRecordHistory(_recordHistory.isSelected());
         _model.setSimilarityThreshold(((SpinnerNumberModel)_similarityThreshold.getModel()).getNumber().intValue ());
       }
     }
@@ -347,6 +360,7 @@ public class Shell extends JFrame {
     private JSpinner _similarityThreshold;
     private JCheckBox _createSemanticLinks;
     private JCheckBox _createTemplates;
+    private JCheckBox _recordHistory;
 
     private JPanel properties () {
       // -- create entry widgets
@@ -360,6 +374,7 @@ public class Shell extends JFrame {
       _similarityThreshold = new JSpinner (new SpinnerNumberModel (_model.getSimilarityThreshold (), 1, 100, 1));
       _createSemanticLinks = new JCheckBox ("Use semantic links", _model.getCreateSemanticLinks ());
       _createTemplates = new JCheckBox ("Use templates", _model.getCreateTemplates ());
+      _recordHistory = new JCheckBox ("Record history", _model.canRecordHistory());
 
       JPanel panel = new JPanel ();
       panel.setLayout (new SpringLayout ());
@@ -373,8 +388,9 @@ public class Shell extends JFrame {
       Utilities.addLabel (panel, "Similarity threshold", _similarityThreshold);
       Utilities.addLabel (panel, "", _createSemanticLinks);
       Utilities.addLabel (panel, "", _createTemplates);
+      Utilities.addLabel (panel, "", _recordHistory);
 
-      Utilities.makeCompactGrid (panel, 10, 2, 3, 3, 10, 5);
+      Utilities.makeCompactGrid (panel, 11, 2, 3, 3, 10, 5);
       panel.setMaximumSize (panel.getPreferredSize ());
 
       return panel;
@@ -460,6 +476,11 @@ public class Shell extends JFrame {
       jtb.addTab ("Contents", getHistogramPane (_model.getContentCounts(), "contents", "Histogram of Contents Sizes", "Contents size"));
       jtb.addTab ("Images", getHistogramPane (_model.getImageCounts(), "images", "Histogram of Image Sizes", "Image size"));
       jtb.addTab ("Semantic links", getHistogramPane (_model.getSemanticLinkCounts(), "semantic", "Histogram of Number of Semantic Links", "Number of semantic links"));
+      try {
+        jtb.addTab("History", getHistoryPane());
+      } catch (SQLiteException ex) {
+        Logger.getLogger(Shell.class.getName()).log(Level.SEVERE, null, ex);
+      }
       base.add (jtb);
 
       JOptionPane pane = new JOptionPane (base, JOptionPane.INFORMATION_MESSAGE);
@@ -516,6 +537,135 @@ public class Shell extends JFrame {
     saveButton.addActionListener ( new SaveHistogramActionListener (this, contentSizes));
     panel.add (saveButton, BorderLayout.SOUTH);
     return panel;
+  }
+  
+  private JPanel getHistoryPane() throws SQLiteException{
+    
+    JPanel historyPanel = new JPanel();
+    SQLiteStatement history = this._model.getHistory();
+    if(!history.step()){
+      String emptyMessage = "No execution history recorded yet.<br><hr><br>";
+
+      if(this._model.canRecordHistory()){
+        emptyMessage += "The CHREST model associated with this GUI can record history so "
+        + "<br>try running an experiment.";
+      }
+      else{
+        emptyMessage += "The CHREST model associated with this GUI is not set to record history." +
+          "<br>To enable this functionality go to 'Menu -> Properties' and check" +
+          "<br>the 'Record History' box.";
+      }
+      
+      JLabel emptyMessageJLabel = new JLabel("<html>" + emptyMessage + "</html>");
+      JScrollPane historyScrollPane = new JScrollPane(emptyMessageJLabel);
+      historyPanel.add(historyScrollPane);
+    }
+    else{
+      //Reset the counters for the "history" information so we can read all
+      //information (the history.step() call in the if conditional earlier will
+      //have read the first row already so we'd start from the second without
+      //this call).
+      history.reset();
+      
+      TableModel historyTableModel = new AbstractTableModel() {
+        @Override
+        public int getRowCount() {
+          int rowCount = 0;
+          
+          try {
+            while(history.step()){
+              rowCount += 1;
+            }
+            
+            history.reset();
+          } catch (SQLiteException ex) {
+            Logger.getLogger(Shell.class.getName()).log(Level.SEVERE, null, ex);
+          }
+          
+          return rowCount;
+        }
+
+        @Override
+        public int getColumnCount(){
+          int columnCount = 0;
+          
+          try {
+            columnCount = history.columnCount();
+          } catch (SQLiteException ex) {
+            Logger.getLogger(Shell.class.getName()).log(Level.SEVERE, null, ex);
+          }
+          
+          return columnCount; 
+        }
+
+        @Override
+        public Object getValueAt(int rowIndex, int columnIndex) {
+          String value = "";
+          
+          try {
+            int rowNumber = 0;
+            
+            while(history.step()){
+              if(rowNumber == rowIndex){
+                value = history.columnString(columnIndex);
+                history.reset();
+                break;
+              }
+              else{
+                rowNumber += 1;
+              }
+            }
+          } catch (SQLiteException ex) {
+            Logger.getLogger(Shell.class.getName()).log(Level.SEVERE, null, ex);
+          }
+          
+          return value;
+        }
+
+        @Override
+        public String getColumnName (int columnIndex) {
+          String columnName = "";
+          
+          try {
+            columnName = history.getColumnName(columnIndex);
+            columnName = Character.toUpperCase(columnName.charAt(0)) + columnName.substring(1);
+          } catch (SQLiteException ex) {
+            Logger.getLogger(Shell.class.getName()).log(Level.SEVERE, null, ex);
+          }
+          
+          return columnName;
+        }     
+      };
+      
+      //Construct new JTable using "historyTableModel" data and return the
+      //table's column model.
+      JTable historyTable = new JTable (historyTableModel);
+      TableColumnModel historyTableColumnModel = historyTable.getColumnModel();
+      
+      //Remove primary key column from table GUI.
+      historyTable.removeColumn(historyTableColumnModel.getColumn(0)); 
+      
+      //Set each column's width in the table to the size of the longest string
+      //contained in a row for that column.
+      for (int col = 0; col < historyTable.getColumnCount(); col++) {
+        int maxColWidth = 0;
+        
+        for(int row = 0; row < historyTable.getRowCount(); row++){
+          TableCellRenderer renderer = historyTable.getCellRenderer(row, col);
+          Component comp = historyTable.prepareRenderer(renderer, row, col);
+          maxColWidth = Math.max (comp.getPreferredSize().width, maxColWidth);
+        }
+        
+        historyTableColumnModel.getColumn(col).setPreferredWidth(maxColWidth);
+      }
+      
+      historyTable.setAutoResizeMode (JTable.AUTO_RESIZE_OFF);
+      historyPanel.setLayout(new BoxLayout(historyPanel, BoxLayout.Y_AXIS));
+      JScrollPane historyScrollPane = new JScrollPane(historyTable);
+      historyPanel.add(historyScrollPane);
+    }
+    
+    return historyPanel;
   }
 
   class SaveHistogramActionListener implements ActionListener {
@@ -649,8 +799,12 @@ public class Shell extends JFrame {
   public static void main (String[] args) {
     javax.swing.SwingUtilities.invokeLater(new Runnable() {
       public void run() { 
-        Shell shell = new Shell (); 
-        shell.setVisible (true);
+        try {
+          Shell shell = new Shell ();
+          shell.setVisible (true);
+        } catch (SQLiteException ex) {
+          Logger.getLogger(Shell.class.getName()).log(Level.SEVERE, null, ex);
+        }
       }
     });
   }

@@ -3,6 +3,7 @@
 
 package jchrest.architecture;
 
+import com.almworks.sqlite4java.SQLiteException;
 import java.io.IOException;
 import java.io.Writer;
 import java.util.ArrayList;
@@ -10,16 +11,14 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Observable;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
-import jchrest.lib.FileUtilities;
 import jchrest.lib.ItemSquarePattern;
 import jchrest.lib.ListPattern;
 import jchrest.lib.Modality;
-import jchrest.lib.ParsingErrorException;
-import jchrest.lib.Pattern;
 import jchrest.lib.PrimitivePattern;
 import jchrest.lib.ReinforcementLearning;
-import jchrest.lib.ReinforcementLearning.ReinforcementLearningTheories;
 
 /**
  * Represents a node within the model's long-term memory discrimination network.
@@ -663,38 +662,82 @@ public class Node extends Observable {
    * so that checking if test passed is done through the interface.
    * This may be needed later for semantic/template learning.
    */
-  Node discriminate (ListPattern pattern) {
+  Node discriminate (ListPattern pattern, int time) {
+    String operation = "DISCRIMINATION";
+    String description = "";
     ListPattern newInformation = pattern.remove (_contents);
 
     // cases 1 & 2 if newInformation is empty
     if (newInformation.isEmpty ()) {
+      description += "List-pattern presented (" + newInformation.toString() + ") is empty ";
       // change for conformance
       newInformation.setFinished ();
       // 1. is < $ > known?
       if (_model.recognise (newInformation).getContents ().equals (newInformation) ) {
         // 2. if so, use as test
+        try {
+          description += "and is already encoded as a LTM node so it will be added as a test.";
+          this._model.addToHistory(time, operation, description);
+        } catch (SQLiteException ex) {
+          Logger.getLogger(Node.class.getName()).log(Level.SEVERE, null, ex);
+        }
+        
         return addTest (newInformation);
       } else {
         // 3. if not, then learn it
         Node child = new Node (_model, newInformation, newInformation);
         _model.getVisualLtm().addTestLink (newInformation, child);
+        
+        try {
+          description += "and isn't encoded in a LTM node so a test link and child node containing the list-pattern will be added to the visual LTM root node.";
+          this._model.addToHistory(time, operation, description);
+        } catch (SQLiteException ex) {
+          Logger.getLogger(Node.class.getName()).log(Level.SEVERE, null, ex);
+        }
+        
         return child;
       }
     }
-
+    
     Node retrievedChunk = _model.recognise (newInformation);
+    description += "List-pattern presented (" + newInformation.toString() + ") isn't empty and after sorting through LTM, " + retrievedChunk.getContents().toString() + " has been retrieved.  ";
     if (retrievedChunk == _model.getLtmByModality (pattern)) {
       // 3. if root node is retrieved, then the primitive must be learnt
-       return _model.getLtmByModality(newInformation).learnPrimitive (newInformation.getFirstItem ());
-    } else if (retrievedChunk.getContents().matches (newInformation)) {
+      try{
+        description += "This is a modality root node so " + newInformation.getFirstItem() + " will be added as a test link and child node to the " + newInformation.getModalityString() + " root node.";
+        this._model.addToHistory(time, operation, description);
+      } catch (SQLiteException ex){
+        Logger.getLogger(Node.class.getName()).log(Level.SEVERE, null, ex);
+      }
+      
+      return _model.getLtmByModality(newInformation).learnPrimitive (newInformation.getFirstItem ());
+    } 
+    else if (retrievedChunk.getContents().matches (newInformation)) {
       // 5. retrieved chunk can be used as a test
       ListPattern testPattern = retrievedChunk.getContents().clone ();
+      
+      try{
+        description += "This matches " + newInformation.toString() + " so " + testPattern.toString() + " will be added as a test link from " + retrievedChunk.getContents().toString() + " with an empty child node.";
+        this._model.addToHistory(time, operation, description);
+      } catch (SQLiteException ex){
+        Logger.getLogger(Node.class.getName()).log(Level.SEVERE, null, ex);
+      }
+      
       return addTest (testPattern);
-    } else { 
+    } 
+    else { 
       // 6. mismatch, so use only the first item for test
       // NB: first-item must be in network as retrievedChunk was not the root node
       ListPattern firstItem = newInformation.getFirstItem ();
       firstItem.setNotFinished ();
+      
+      try{
+        description += "This doesn't match " + newInformation.toString() + " so " + firstItem.toString() + " will be added as a test link from " + retrievedChunk.getContents().toString() + " with an empty child node.";
+        this._model.addToHistory(time, operation, description);
+      } catch (SQLiteException ex){
+        Logger.getLogger(Node.class.getName()).log(Level.SEVERE, null, ex);
+      }
+      
       return addTest (firstItem);
     }
   }
