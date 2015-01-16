@@ -15,6 +15,7 @@ import jchrest.lib.Scenes;
 
 import java.awt.BorderLayout;
 import java.awt.Component;
+import java.awt.EventQueue;
 import java.awt.GridLayout;
 import java.awt.event.*;
 import java.io.*;
@@ -29,10 +30,14 @@ import java.util.function.BiConsumer;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import javax.swing.*;
+import javax.swing.border.TitledBorder;
+import javax.swing.event.ChangeEvent;
+import javax.swing.event.ChangeListener;
 import javax.swing.table.AbstractTableModel;
 import javax.swing.table.TableCellRenderer;
 import javax.swing.table.TableColumnModel;
 import javax.swing.table.TableModel;
+import javax.swing.text.DefaultFormatter;
 
 import org.jfree.chart.*;
 import org.jfree.chart.plot.*;
@@ -539,11 +544,57 @@ public class Shell extends JFrame {
     return panel;
   }
   
+  private JSpinner _timeFrom;
+  private JSpinner _timeTo;
+  private JSpinner _operations;
+  private JTable _historyTable;
+  private final List<List<String>> _history = new ArrayList<>();
+  
+  private void updateHistory(SQLiteStatement sqlResults){
+    try{
+      _history.clear();
+      int row = 0;
+      
+      while(sqlResults.step()){
+        _history.add(new ArrayList<>());
+        for(int col = 0; col < sqlResults.columnCount(); col++){
+          _history.get(row).add(sqlResults.columnString(col));
+        }
+        row += 1;
+      }
+      
+    } catch (SQLiteException ex){
+      Logger.getLogger(Shell.class.getName()).log(Level.SEVERE, null, ex);
+    }
+  }
+  
+  private void configureHistoryTable(){
+    TableColumnModel historyTableColumnModel = _historyTable.getColumnModel();
+      
+    //Remove primary key column from table GUI.
+    _historyTable.removeColumn(historyTableColumnModel.getColumn(0)); 
+
+    //Set each column's width in the table to the size of the longest string
+    //contained in a row for that column.
+    for (int col = 0; col < _historyTable.getColumnCount(); col++) {
+      int maxColWidth = 0;
+
+      for(int row = 0; row < _historyTable.getRowCount(); row++){
+        TableCellRenderer renderer = _historyTable.getCellRenderer(row, col);
+        Component comp = _historyTable.prepareRenderer(renderer, row, col);
+        maxColWidth = Math.max (comp.getPreferredSize().width, maxColWidth);
+      }
+
+      historyTableColumnModel.getColumn(col).setPreferredWidth(maxColWidth);
+    }
+  }
+  
   private JPanel getHistoryPane() throws SQLiteException{
     
     JPanel historyPanel = new JPanel();
-    SQLiteStatement history = this._model.getHistory();
-    if(!history.step()){
+    updateHistory(this._model.getHistory());
+    
+    if(_history.isEmpty()){
       String emptyMessage = "No execution history recorded yet.<br><hr><br>";
 
       if(this._model.canRecordHistory()){
@@ -561,111 +612,187 @@ public class Shell extends JFrame {
       historyPanel.add(historyScrollPane);
     }
     else{
-      //Reset the counters for the "history" information so we can read all
-      //information (the history.step() call in the if conditional earlier will
-      //have read the first row already so we'd start from the second without
-      //this call).
-      history.reset();
       
       TableModel historyTableModel = new AbstractTableModel() {
+        
         @Override
         public int getRowCount() {
-          int rowCount = 0;
-          
-          try {
-            while(history.step()){
-              rowCount += 1;
-            }
-            
-            history.reset();
-          } catch (SQLiteException ex) {
-            Logger.getLogger(Shell.class.getName()).log(Level.SEVERE, null, ex);
-          }
-          
-          return rowCount;
+          return _history.size();
         }
 
         @Override
         public int getColumnCount(){
-          int columnCount = 0;
-          
-          try {
-            columnCount = history.columnCount();
-          } catch (SQLiteException ex) {
-            Logger.getLogger(Shell.class.getName()).log(Level.SEVERE, null, ex);
-          }
-          
-          return columnCount; 
+          return 4; 
         }
 
         @Override
         public Object getValueAt(int rowIndex, int columnIndex) {
-          String value = "";
-          
-          try {
-            int rowNumber = 0;
-            
-            while(history.step()){
-              if(rowNumber == rowIndex){
-                value = history.columnString(columnIndex);
-                history.reset();
-                break;
-              }
-              else{
-                rowNumber += 1;
-              }
-            }
-          } catch (SQLiteException ex) {
-            Logger.getLogger(Shell.class.getName()).log(Level.SEVERE, null, ex);
-          }
-          
-          return value;
+          return _history.get(rowIndex).get(columnIndex);
         }
 
         @Override
         public String getColumnName (int columnIndex) {
           String columnName = "";
           
-          try {
-            columnName = history.getColumnName(columnIndex);
-            columnName = Character.toUpperCase(columnName.charAt(0)) + columnName.substring(1);
-          } catch (SQLiteException ex) {
-            Logger.getLogger(Shell.class.getName()).log(Level.SEVERE, null, ex);
+          switch(columnIndex){
+            case 0:
+              //Even though this isn't displayed in the JTable, it needs to be
+              //specified so that the CSV file is formatted correctly if the
+              //user chooses to export table data.
+              columnName = "Id";
+              break;
+            case 1:
+              columnName = "Time";
+              break;
+            case 2:
+              columnName = "Operation";
+              break;
+            case 3:
+              columnName = "Description";
+              break;
           }
           
           return columnName;
-        }     
+        }
+        
+        @Override
+        public void fireTableStructureChanged() {
+          super.fireTableStructureChanged ();
+          configureHistoryTable();
+        }
       };
       
       //Construct new JTable using "historyTableModel" data and return the
       //table's column model.
-      JTable historyTable = new JTable (historyTableModel);
-      TableColumnModel historyTableColumnModel = historyTable.getColumnModel();
+      _historyTable = new JTable (historyTableModel);
+      configureHistoryTable();
       
-      //Remove primary key column from table GUI.
-      historyTable.removeColumn(historyTableColumnModel.getColumn(0)); 
+      _historyTable.setAutoResizeMode (JTable.AUTO_RESIZE_OFF);
+      JScrollPane historyScrollPane = new JScrollPane(_historyTable);
       
-      //Set each column's width in the table to the size of the longest string
-      //contained in a row for that column.
-      for (int col = 0; col < historyTable.getColumnCount(); col++) {
-        int maxColWidth = 0;
-        
-        for(int row = 0; row < historyTable.getRowCount(); row++){
-          TableCellRenderer renderer = historyTable.getCellRenderer(row, col);
-          Component comp = historyTable.prepareRenderer(renderer, row, col);
-          maxColWidth = Math.max (comp.getPreferredSize().width, maxColWidth);
+      JPanel executionHistory = new JPanel();
+      executionHistory.setBorder(new TitledBorder ("Execution History"));
+      executionHistory.add(historyScrollPane);
+      
+      //Filter options creation.
+      int maxChrestTime = Math.max(this._model.getLearningClock(), this._model.getAttentionClock());
+      
+      _timeFrom = new JSpinner(new SpinnerNumberModel(0, 0, maxChrestTime, 1));
+      _timeFrom.setToolTipText("Max value is largest value for CHREST's attention/learning clock");
+      
+      _timeTo = new JSpinner(new SpinnerNumberModel(maxChrestTime, 0, maxChrestTime, 1));
+      _timeTo.setToolTipText("Max value is largest value for CHREST's attention/learning clock");
+      
+      JFormattedTextField timeFromEditorField = (JFormattedTextField)_timeFrom.getEditor().getComponent(0);
+      DefaultFormatter timeFromFormatter = (DefaultFormatter) timeFromEditorField.getFormatter();
+      timeFromFormatter.setCommitsOnValidEdit(true);
+      _timeFrom.addChangeListener(new ChangeListener() {
+
+        @Override
+        public void stateChanged(ChangeEvent e) {
+          
+          //When changing the "Time From" value, this should change the "Time 
+          //To" minimum value and, if the "Time From" value is greater than the
+          //"Time To" value, the "Time To" value should be equal to the new
+          //"Time From" value plus 1.
+          SpinnerNumberModel timeToModel = (SpinnerNumberModel)_timeTo.getModel();
+          Integer timeFromCurrentValue = (Integer)_timeFrom.getValue();
+          timeToModel.setMinimum(timeFromCurrentValue);
         }
-        
-        historyTableColumnModel.getColumn(col).setPreferredWidth(maxColWidth);
-      }
+
+      });
       
-      historyTable.setAutoResizeMode (JTable.AUTO_RESIZE_OFF);
+      JFormattedTextField timeToEditorField = (JFormattedTextField) _timeTo.getEditor().getComponent(0);
+      DefaultFormatter timeToFormatter = (DefaultFormatter) timeToEditorField.getFormatter();
+      timeToFormatter.setCommitsOnValidEdit(true);
+      _timeTo.addChangeListener(new ChangeListener() {
+
+        @Override
+        public void stateChanged(ChangeEvent e) {
+          
+          //When changing the "Time To" value, this should alter the "Time From"
+          //maximum value and, if the "Time To" value is less than the
+          //"Time From" value, the "Time From" value should be equal to the new
+          //"Time To" value minus 1.
+          SpinnerNumberModel timeFromModel = (SpinnerNumberModel)_timeFrom.getModel();
+          Integer timeToCurrentValue = (Integer)_timeTo.getValue();
+          timeFromModel.setMaximum(timeToCurrentValue);
+          
+        }
+
+      });
+      
+      ArrayList<String> operations = new ArrayList<>();
+      operations.addAll(Chrest.getPossibleOperations());
+      operations.add(0, "");
+      _operations = new JSpinner(new SpinnerListModel(operations));
+      
+      JPanel filterOptions = new JPanel();
+      filterOptions.setBorder(new TitledBorder ("Filters"));
+      filterOptions.setLayout(new GridLayout(4, 2));
+      
+      filterOptions.add(new JLabel("Time From: "));
+      filterOptions.add(_timeFrom);
+      
+      filterOptions.add(new JLabel("Time To: "));
+      filterOptions.add(_timeTo);
+      
+      filterOptions.add(new JLabel("Filter by Operation: "));
+      filterOptions.add(_operations);
+      
+      filterOptions.add(new JButton( new ExportHistoryAction() ) );
+      filterOptions.add( new JButton( new FilterExecutionHistoryAction() ) );
+      
+      //History panel creation.
       historyPanel.setLayout(new BoxLayout(historyPanel, BoxLayout.Y_AXIS));
-      JScrollPane historyScrollPane = new JScrollPane(historyTable);
-      historyPanel.add(historyScrollPane);
+      historyPanel.add(filterOptions);
+      historyPanel.add(executionHistory);
     }
     
     return historyPanel;
+  }
+  
+  class ExportHistoryAction extends AbstractAction implements ActionListener {
+
+    ExportHistoryAction(){
+      super ("Export Data");
+    }
+      
+    @Override
+    public void actionPerformed(ActionEvent e) {
+      ArrayList<String> executionHistoryData = new ArrayList<>();
+      executionHistoryData.add(ExportData.extractJTableDataAsCsv(_historyTable));
+      executionHistoryData.add("CHRESTexecutionHistory");
+      executionHistoryData.add("csv");
+      
+      ArrayList<ArrayList<String>> data = new ArrayList<>();
+      data.add(executionHistoryData);
+      ExportData.saveFile(null, "CHREST-execution-history-data", data);
+    }
+  }
+  
+  class FilterExecutionHistoryAction extends AbstractAction implements ActionListener{
+
+    FilterExecutionHistoryAction(){
+      super("Filter");
+    }
+    
+    @Override
+    public void actionPerformed(ActionEvent e) {
+      
+      try {
+        if(_operations.getValue().toString().equals("")){
+         updateHistory(_model.getHistory((Integer)_timeFrom.getValue(), (Integer)_timeTo.getValue()));
+        }
+        else{
+          updateHistory(_model.getHistory((String) _operations.getValue(), (Integer)_timeFrom.getValue(), (Integer)_timeTo.getValue()));
+        }
+          
+        ((AbstractTableModel)_historyTable.getModel()).fireTableStructureChanged();
+      } catch (SQLiteException ex) {
+        Logger.getLogger(Shell.class.getName()).log(Level.SEVERE, null, ex);
+      }
+    }
   }
 
   class SaveHistogramActionListener implements ActionListener {

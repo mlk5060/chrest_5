@@ -10,6 +10,7 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -340,9 +341,9 @@ public class PairedAssociateExperiment extends JPanel {
         //value (i.e. to the extreme right) to display the latest results.  The
         //wait is required since the UI will update before a new maximum 
         //horizontal bar value can be set.
-          EventQueue.invokeLater (() -> {
-            _trialsHorizontalBar.setValue (_trialsHorizontalBar.getMaximum ());
-          });
+        EventQueue.invokeLater (() -> {
+          _trialsHorizontalBar.setValue (_trialsHorizontalBar.getMaximum ());
+        });
       }
     };
     
@@ -398,10 +399,8 @@ public class PairedAssociateExperiment extends JPanel {
         //wait is required since the UI will update before a new maximum 
         //horizontal bar value can be set.
         EventQueue.invokeLater (() -> {
-          EventQueue.invokeLater (() -> {
-            _errorsHorizontalBar.setValue (_errorsHorizontalBar.getMaximum ());
-          });
-        });;
+          _errorsHorizontalBar.setValue (_errorsHorizontalBar.getMaximum ());
+        });
       }
     };
     
@@ -483,119 +482,22 @@ public class PairedAssociateExperiment extends JPanel {
     @Override
     public void actionPerformed(ActionEvent e) {
       
-      //Store trail and error data for the experiment in CSV formatted strings.
-      String trialsData = extractTableDataInCsvFormat(_trialsTable);
-      String errorsData = extractTableDataInCsvFormat(_errorsTable);
+      ArrayList<String> trialDataToSave = new ArrayList<>();
+      ArrayList<String> errorDataToSave = new ArrayList<>();
       
-      //Create a "Save File" dialog that can only list directories since the 
-      //user should select an existing directory to save data in not a file.
-      final JFileChooser fc = new JFileChooser();
-      fc.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
-      int resultOfFileSelect = fc.showSaveDialog(_window);
+      trialDataToSave.add(ExportData.extractJTableDataAsCsv(_trialsTable));
+      trialDataToSave.add("trialData");
+      trialDataToSave.add("csv");
       
-      //If the user selected a directory, store this directory as an object
-      //and extract its absolute path as a string.  Otherwise, do nothing.
-      if (resultOfFileSelect == JFileChooser.APPROVE_OPTION) {
-        File directoryToCreateResultDirectoryIn = fc.getSelectedFile();
-        String directoryToCreateResultDirectoryInAbsPath = directoryToCreateResultDirectoryIn.getAbsolutePath();
-        
-        //Check that the directory specified by the user can be written and
-        //executed, if not, display an error informing the user that the 
-        //directory specified has incorrect permissions set that prevent this
-        //function from executing further.
-        if(directoryToCreateResultDirectoryIn.canWrite() && directoryToCreateResultDirectoryIn.canExecute()){  
-          
-          //Create a new file object for the directory that is to be created 
-          //inside the directory that the user has specified.  Creation of a 
-          //file to store trial and error data prevents this data from becoming
-          //disjoint in the file system (inconvenient for the user).
-          File directoryToStoreData = new File(directoryToCreateResultDirectoryInAbsPath + File.separator + "paired-associate-experiment-data");
-          
-          //Check that the default directory name doesn't already exist.  If it
-          //does, append a number to the end of the directory name and check
-          //again.  If the directory name doesn't exist, create the directory
-          //and set permissions to allow trial and error data to be written to 
-          //files within it.
-          int i = 0;
-          while(directoryToStoreData.exists()){
-            i++;
-            directoryToStoreData = new File(directoryToCreateResultDirectoryInAbsPath + File.separator + "paired-associate-experiment-data-" + i);
-          }
-          directoryToStoreData.mkdir();
-          directoryToStoreData.setExecutable(true, true);
-          directoryToStoreData.setWritable(true, true);
-        
-          //Extract absolute path to the directory that will contain the data 
-          //files and create the path names for the data files.
-          String directoryToStoreDataAbsPath = directoryToStoreData.getAbsolutePath();
-          String trialFileAbsPath = directoryToStoreDataAbsPath + File.separator + "trialData.csv";
-          String errorFileAbsPath = directoryToStoreDataAbsPath + File.separator + "errorData.csv";
-          
-          //Create the data files and set read, write and execute permissions
-          //so that data can be written to them.
-          File trialFile = new File(trialFileAbsPath);
-          File errorFile = new File(errorFileAbsPath);
-          try {
-            trialFile.createNewFile();
-            errorFile.createNewFile();
-          } catch (IOException ex) {
-            Logger.getLogger(PairedAssociateExperiment.class.getName()).log(Level.SEVERE, null, ex);
-          }
-          
-          trialFile.setWritable(true, true);
-          errorFile.setWritable(true, true);
-          
-          trialFile.setReadable(true, true);
-          errorFile.setReadable(true, true);
-          
-          trialFile.setExecutable(true, true);
-          errorFile.setExecutable(true, true);
-          
-          //Write data to data files.
-          try (PrintWriter trialFilePrintWriter = new PrintWriter(trialFile)) {
-            trialFilePrintWriter.write(trialsData);
-          } catch (FileNotFoundException ex) {
-            Logger.getLogger(PairedAssociateExperiment.class.getName()).log(Level.SEVERE, null, ex);
-          }
-          
-          try (PrintWriter errorFilePrintWriter = new PrintWriter(errorFile)) {
-            errorFilePrintWriter.write(errorsData);
-          } catch (FileNotFoundException ex) {
-            Logger.getLogger(PairedAssociateExperiment.class.getName()).log(Level.SEVERE, null, ex);
-          }
-        }
-        else{
-          JOptionPane.showMessageDialog(null, "Directory '" + directoryToCreateResultDirectoryInAbsPath + "' does not have write and/or execute privileges", "Error", JOptionPane.ERROR_MESSAGE);
-        }
-      }
-    }
-    
-    /**
-     * Converts table data into CSV format by first extracting column headers
-     * then data on a per-row basis.
-     * 
-     * @param table
-     * @return 
-     */
-    public String extractTableDataInCsvFormat(JTable table){
-      AbstractTableModel atm = (AbstractTableModel) table.getModel();
-      int nRow = atm.getRowCount();
-      int nCol = atm.getColumnCount();
-      String tableData = "";
+      errorDataToSave.add(ExportData.extractJTableDataAsCsv(_errorsTable));
+      errorDataToSave.add("errorData");
+      errorDataToSave.add("csv");
       
-      for(int col = 0; col < nCol; col++){
-        tableData += "," + atm.getColumnName(col);
-      }
-      tableData += "\n";
+      ArrayList<ArrayList<String>> dataToSave = new ArrayList<>();
+      dataToSave.add(trialDataToSave);
+      dataToSave.add(errorDataToSave);
       
-      for(int row = 0; row< nRow; row++){
-        for(int col = 0; col < nCol; col++){
-          tableData += "," + atm.getValueAt(row, col);
-        }
-        tableData += "\n";
-      }
-      
-      return tableData.replaceAll("^,", "").replaceAll("\n,","\n");
+      ExportData.saveFile(_window, "CHREST-paired-associate-experiment-data", dataToSave);
     }
   }
   

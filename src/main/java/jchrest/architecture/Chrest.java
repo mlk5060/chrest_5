@@ -9,6 +9,7 @@ import java.io.File;
 import java.io.IOException;
 import java.io.Writer;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -70,20 +71,24 @@ public class Chrest extends Observable {
   private ReinforcementLearningTheories _reinforcementLearningTheory;
 
   public Chrest () throws SQLiteException {
+    
+    //Specify domain.
     _domainSpecifics = new GenericDomain ();
     
-    //Execution history variable set-up
-    SQLite.setLibraryPath("../sqlite4java-392"); //Etremely important: without this, the JVM won't know where the sql4java library is.
-    Logger.getLogger("com.almworks.sqlite4java").setLevel(Level.OFF); //Turn off logging by "default".
+    //Execution history set-up.
+    SQLite.setLibraryPath("../sqlite4java-392"); //Etremely important: without this, execution history will not be able to operate.
+    Logger.getLogger("com.almworks.sqlite4java").setLevel(Level.OFF); //Turn off extensive logging by "default".
     this._historyConnection.open(true);
     this._historyConnection.exec("CREATE TABLE " + this._historyTableName + " (id INTEGER PRIMARY KEY, time INT, operation TEXT, description TEXT);");
     
+    //Set learning parameters.
     _addLinkTime = 10000;
     _discriminationTime = 10000;
     _familiarisationTime = 2000;
     _rho = 1.0f;
     _similarityThreshold = 4;
 
+    //Set LTM parameters.
     _attentionClock = 0;
     _learningClock = 0;
     _totalNodes = 0;
@@ -96,11 +101,23 @@ public class Chrest extends Observable {
     _actionStm = new Stm (4);
     _emotionAssociator = new EmotionAssociator ();
     _reinforcementLearningTheory = null; //Must be set explicitly using Chrest.setReinforcementLearningTheory()
+    
+    //Instantiate vision (mental and physical).
     _mindsEye = null;
+    _perceiver = new Perceiver (this);
             
+    //Set boolean learning values
     _createTemplates = true;
     _createSemanticLinks = true;
-    _perceiver = new Perceiver (this);
+  }
+  
+  /**
+   * Returns a list of operations that CHREST can perform as strings.
+   * 
+   * @return List of operations that can be performed by CHREST. 
+   */
+  public static List<String> getPossibleOperations(){
+    return Arrays.asList(Arrays.toString(Operations.values()).replaceAll("^.|.$|", "").replaceAll("_", " ").split(","));
   }
 
   /**
@@ -118,8 +135,8 @@ public class Chrest extends Observable {
   }
   
   /**
-   * If the model can record history, this function adds an episode to the 
-   * "history" DB table in memory.
+   * This function adds an episode to the "history" DB table in memory if the 
+   * model can record history.
    * 
    * @param time The time that the event occurred (either simulation time or
    * real time).
@@ -165,12 +182,43 @@ public class Chrest extends Observable {
   }
   
   /**
-   * Returns the execution history of this model.
-   * @return 
+   * Returns the entire execution history of this model.
+   * 
+   * @return The model's entire execution history.
+   * 
    * @throws com.almworks.sqlite4java.SQLiteException 
    */
   public SQLiteStatement getHistory() throws SQLiteException{
     return this._historyConnection.prepare("SELECT * FROM " + this._historyTableName).stepThrough();
+  }
+  
+  /**
+   * Returns the model's execution history from the time specified to the time
+   * specified.
+   * 
+   * @param from Domain-time to return model's execution history from.
+   * @param to Domain-time to return model's execution history to.
+   * @return The model's execution history from the time specified to the time
+   * specified.
+   * 
+   * @throws SQLiteException 
+   */
+  public SQLiteStatement getHistory(int from, int to) throws SQLiteException{
+    return this._historyConnection.prepare("SELECT * FROM " + this._historyTableName + " WHERE time >= ? AND time <= ?").bind(1, from).bind(2, to).stepThrough();
+  }
+  
+  /**
+   * Returns the model's execution history filtered by the operation specified.
+   * 
+   * @param operation The operation to filter execution history by.
+   * @param from Domain-time to return model's execution history from.
+   * @param to Domain-time to return model's execution history to.
+   * @return
+   * 
+   * @throws SQLiteException 
+   */
+  public SQLiteStatement getHistory(String operation, int from, int to) throws SQLiteException{
+    return this._historyConnection.prepare("SELECT * FROM " + this._historyTableName + " WHERE operation = ? AND time >= ? AND time <= ?").bind(1, operation).bind(2, from).bind(3, to).stepThrough();
   }
 
   /**

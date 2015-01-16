@@ -17,6 +17,7 @@ import java.util.logging.Logger;
 import jchrest.lib.ItemSquarePattern;
 import jchrest.lib.ListPattern;
 import jchrest.lib.Modality;
+import jchrest.lib.Operations;
 import jchrest.lib.PrimitivePattern;
 import jchrest.lib.ReinforcementLearning;
 
@@ -663,7 +664,7 @@ public class Node extends Observable {
    * This may be needed later for semantic/template learning.
    */
   Node discriminate (ListPattern pattern, int time) {
-    String operation = "DISCRIMINATION";
+    String operation = Operations.DISCRIMINATE.name();
     String description = "";
     ListPattern newInformation = pattern.remove (_contents);
 
