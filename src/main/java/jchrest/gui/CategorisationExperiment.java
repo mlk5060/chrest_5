@@ -3,6 +3,7 @@
 
 package jchrest.gui;
 
+import com.almworks.sqlite4java.SQLiteException;
 import jchrest.architecture.Chrest;
 import jchrest.lib.ListPattern;
 import jchrest.lib.PairedPattern;
@@ -14,6 +15,8 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import javax.swing.*;
 import javax.swing.border.*;
 import javax.swing.event.*;
@@ -76,7 +79,11 @@ public class CategorisationExperiment extends JPanel {
     }
 
     public void actionPerformed (ActionEvent e) {
-      _model.clear ();
+      try {
+        _model.clear ();
+      } catch (SQLiteException ex) {
+        Logger.getLogger(CategorisationExperiment.class.getName()).log(Level.SEVERE, null, ex);
+      }
       _responses.clear ();
 
       updateControls ();

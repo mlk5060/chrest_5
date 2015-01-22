@@ -3,6 +3,7 @@
 
 package jchrest.gui;
 
+import com.almworks.sqlite4java.SQLiteException;
 import java.awt.*;
 import java.awt.event.*;
 import java.io.File;
@@ -424,7 +425,11 @@ public class PairedAssociateExperiment extends JPanel {
 
     @Override
     public void actionPerformed (ActionEvent e) {
-      _model.clear ();
+      try {
+        _model.clear ();
+      } catch (SQLiteException ex) {
+        Logger.getLogger(PairedAssociateExperiment.class.getName()).log(Level.SEVERE, null, ex);
+      }
       _responses.clear ();
       _exptClock = 0;
       _patternNumber = 0;

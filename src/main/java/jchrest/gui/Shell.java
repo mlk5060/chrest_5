@@ -15,6 +15,8 @@ import jchrest.lib.Scenes;
 
 import java.awt.BorderLayout;
 import java.awt.Component;
+import java.awt.ComponentOrientation;
+import java.awt.Dimension;
 import java.awt.EventQueue;
 import java.awt.GridLayout;
 import java.awt.event.*;
@@ -34,6 +36,7 @@ import javax.swing.border.TitledBorder;
 import javax.swing.event.ChangeEvent;
 import javax.swing.event.ChangeListener;
 import javax.swing.table.AbstractTableModel;
+import javax.swing.table.JTableHeader;
 import javax.swing.table.TableCellRenderer;
 import javax.swing.table.TableColumnModel;
 import javax.swing.table.TableModel;
@@ -317,7 +320,11 @@ public class Shell extends JFrame {
             "Clear model?",
             JOptionPane.YES_NO_OPTION,
             JOptionPane.QUESTION_MESSAGE)) {
-        _model.clear ();
+        try {
+          _model.clear ();
+        } catch (SQLiteException ex) {
+          Logger.getLogger(Shell.class.getName()).log(Level.SEVERE, null, ex);
+        }
       }
     }
   }
@@ -574,18 +581,20 @@ public class Shell extends JFrame {
     //Remove primary key column from table GUI.
     _historyTable.removeColumn(historyTableColumnModel.getColumn(0)); 
 
-    //Set each column's width in the table to the size of the longest string
-    //contained in a row for that column.
-    for (int col = 0; col < _historyTable.getColumnCount(); col++) {
-      int maxColWidth = 0;
+    if(!_history.isEmpty()){
+      //Set each column's width in the table to the size of the longest string
+      //contained in a row for that column.
+      for (int col = 0; col < _historyTable.getColumnCount(); col++) {
+        int maxColWidth = 0;
 
-      for(int row = 0; row < _historyTable.getRowCount(); row++){
-        TableCellRenderer renderer = _historyTable.getCellRenderer(row, col);
-        Component comp = _historyTable.prepareRenderer(renderer, row, col);
-        maxColWidth = Math.max (comp.getPreferredSize().width, maxColWidth);
+        for(int row = 0; row < _historyTable.getRowCount(); row++){
+          TableCellRenderer renderer = _historyTable.getCellRenderer(row, col);
+          Component comp = _historyTable.prepareRenderer(renderer, row, col);
+          maxColWidth = Math.max (comp.getPreferredSize().width, maxColWidth);
+        }
+
+        historyTableColumnModel.getColumn(col).setPreferredWidth(maxColWidth);
       }
-
-      historyTableColumnModel.getColumn(col).setPreferredWidth(maxColWidth);
     }
   }
   
@@ -612,67 +621,6 @@ public class Shell extends JFrame {
       historyPanel.add(historyScrollPane);
     }
     else{
-      
-      TableModel historyTableModel = new AbstractTableModel() {
-        
-        @Override
-        public int getRowCount() {
-          return _history.size();
-        }
-
-        @Override
-        public int getColumnCount(){
-          return 4; 
-        }
-
-        @Override
-        public Object getValueAt(int rowIndex, int columnIndex) {
-          return _history.get(rowIndex).get(columnIndex);
-        }
-
-        @Override
-        public String getColumnName (int columnIndex) {
-          String columnName = "";
-          
-          switch(columnIndex){
-            case 0:
-              //Even though this isn't displayed in the JTable, it needs to be
-              //specified so that the CSV file is formatted correctly if the
-              //user chooses to export table data.
-              columnName = "Id";
-              break;
-            case 1:
-              columnName = "Time";
-              break;
-            case 2:
-              columnName = "Operation";
-              break;
-            case 3:
-              columnName = "Description";
-              break;
-          }
-          
-          return columnName;
-        }
-        
-        @Override
-        public void fireTableStructureChanged() {
-          super.fireTableStructureChanged ();
-          configureHistoryTable();
-        }
-      };
-      
-      //Construct new JTable using "historyTableModel" data and return the
-      //table's column model.
-      _historyTable = new JTable (historyTableModel);
-      configureHistoryTable();
-      
-      _historyTable.setAutoResizeMode (JTable.AUTO_RESIZE_OFF);
-      JScrollPane historyScrollPane = new JScrollPane(_historyTable);
-      
-      JPanel executionHistory = new JPanel();
-      executionHistory.setBorder(new TitledBorder ("Execution History"));
-      executionHistory.add(historyScrollPane);
       
       //Filter options creation.
       int maxChrestTime = Math.max(this._model.getLearningClock(), this._model.getAttentionClock());
@@ -740,8 +688,73 @@ public class Shell extends JFrame {
       filterOptions.add(new JLabel("Filter by Operation: "));
       filterOptions.add(_operations);
       
-      filterOptions.add(new JButton( new ExportHistoryAction() ) );
-      filterOptions.add( new JButton( new FilterExecutionHistoryAction() ) );
+      filterOptions.add( new JLabel(""));
+      filterOptions.add(new JButton( new FilterExecutionHistoryAction() ));
+      
+      //Execution history creation.
+      TableModel historyTableModel = new AbstractTableModel() {
+        
+        @Override
+        public int getRowCount() {
+          return _history.size();
+        }
+
+        @Override
+        public int getColumnCount(){
+          return 4; 
+        }
+
+        @Override
+        public Object getValueAt(int rowIndex, int columnIndex) {
+          return _history.get(rowIndex).get(columnIndex);
+        }
+
+        @Override
+        public String getColumnName (int columnIndex) {
+          String columnName = "";
+          
+          switch(columnIndex){
+            case 0:
+              //Even though this isn't displayed in the JTable, it needs to be
+              //specified so that the CSV file is formatted correctly if the
+              //user chooses to export table data.
+              columnName = "Id";
+              break;
+            case 1:
+              columnName = "Time";
+              break;
+            case 2:
+              columnName = "Operation";
+              break;
+            case 3:
+              columnName = "Description";
+              break;
+          }
+          
+          return columnName;
+        }
+        
+        @Override
+        public void fireTableStructureChanged() {
+          super.fireTableStructureChanged ();
+          configureHistoryTable();
+        }
+      };
+      
+      //Construct new JTable using "historyTableModel" data and return the
+      //table's column model.
+      _historyTable = new JTable (historyTableModel);
+      configureHistoryTable();
+      _historyTable.setAutoResizeMode (JTable.AUTO_RESIZE_OFF);
+      JScrollPane historyScrollPane = new JScrollPane(_historyTable);
+      
+      JPanel executionHistory = new JPanel();
+      executionHistory.setBorder(new TitledBorder ("Execution History"));
+      executionHistory.setLayout(new BoxLayout(executionHistory, BoxLayout.Y_AXIS));
+      executionHistory.add(historyScrollPane);
+      JButton exportButton = new JButton( new ExportHistoryAction() );
+      exportButton.setAlignmentX(Component.RIGHT_ALIGNMENT);
+      executionHistory.add(exportButton);
       
       //History panel creation.
       historyPanel.setLayout(new BoxLayout(historyPanel, BoxLayout.Y_AXIS));
@@ -755,7 +768,7 @@ public class Shell extends JFrame {
   class ExportHistoryAction extends AbstractAction implements ActionListener {
 
     ExportHistoryAction(){
-      super ("Export Data");
+      super ("Export History as CSV");
     }
       
     @Override

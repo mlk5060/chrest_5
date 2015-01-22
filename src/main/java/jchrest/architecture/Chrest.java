@@ -151,6 +151,7 @@ public class Chrest extends Observable {
    */
   public void addToHistory(Integer time, String operation, String description) throws SQLiteException{
     if(this.canRecordHistory()){
+      
       SQLiteStatement sql = this._historyConnection.prepare("INSERT INTO " + this._historyTableName + " (time, operation, description) VALUES (?, ?, ?)");
       
       try{
@@ -219,6 +220,14 @@ public class Chrest extends Observable {
    */
   public SQLiteStatement getHistory(String operation, int from, int to) throws SQLiteException{
     return this._historyConnection.prepare("SELECT * FROM " + this._historyTableName + " WHERE operation = ? AND time >= ? AND time <= ?").bind(1, operation).bind(2, from).bind(3, to).stepThrough();
+  }
+  
+  /**
+   * Clears the model's current execution history.
+   * @throws com.almworks.sqlite4java.SQLiteException
+   */
+  public void clearHistory() throws SQLiteException{
+    this._historyConnection.exec("DELETE FROM " + this._historyTableName);
   }
 
   /**
@@ -1164,10 +1173,10 @@ public class Chrest extends Observable {
 
   /** 
    * Clear the STM and LTM of the model.
+   * @throws com.almworks.sqlite4java.SQLiteException
    */
-  public void clear () {
-    _historyConnection.dispose();
-    _historyConnection = new SQLiteConnection(new File(":memory:")); //Creates new DB in memory not on disk.
+  public void clear () throws SQLiteException {
+    this.clearHistory();
     _attentionClock = 0;
     _learningClock = 0;
     _visualLtm.clear ();
