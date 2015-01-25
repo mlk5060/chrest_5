@@ -1312,7 +1312,6 @@ public class Chrest extends Observable {
       mindsEyeContent = this._mindsEye.getSpecificContent(domainSpecificXCor, domainSpecificYCor, domainTime);
     }
     
-    //System.out.println("Terminus value according to CHREST model: " + this.getMindsEyeTerminus(domainTime));
     return mindsEyeContent;
   }
   
