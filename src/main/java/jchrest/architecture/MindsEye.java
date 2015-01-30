@@ -7,6 +7,7 @@ import jchrest.lib.ItemSquarePattern;
 import jchrest.lib.ListPattern;
 import jchrest.lib.MindsEyeMoveObjectException;
 import jchrest.lib.Modality;
+import jchrest.lib.TwoDimensionalMindsEyeObject;
 
 /**
  * Class that implements the "Mind's Eye", specifically one that handles
@@ -128,7 +129,8 @@ public class MindsEye {
    * @param domainTime The current time (in milliseconds) in the domain where 
    * the CHREST model associated with the mind's eye instance is located.
    */
-  public MindsEye(Chrest model, String [] vision, int lifespan, int objectPlacementTime, int accessTime, int objectMovementTime, int domainTime){
+  //public MindsEye(Chrest model, String [] vision, int lifespan, int objectPlacementTime, int accessTime, int objectMovementTime, int domainTime){
+  public MindsEye(Chrest model, TwoDimensionalMindsEyeObject [] vision, int lifespan, int objectPlacementTime, int accessTime, int objectMovementTime, int domainTime){
     
     this._model = model;
     this._accessTime = accessTime;
@@ -146,11 +148,14 @@ public class MindsEye {
     
     //Extract all domain-specific x and y coordinates so that the visual spatial
     //field can be instantiated.
-    for (String visionUnit : vision) {
-      String[] visionUnitInfo = processObjectInfo(visionUnit);
-      int domainSpecificXCor = Integer.valueOf(visionUnitInfo[1]);
-      int domainSpecificYCor = Integer.valueOf(visionUnitInfo[2]);
-      
+//    for (String visionUnit : vision) {
+    for (TwoDimensionalMindsEyeObject object: vision){
+      int domainSpecificXCor = object.getDomainSpecificXCor();
+      int domainSpecificYCor = object.getDomainSpecificYCor();
+//      String[] visionUnitInfo = processObjectInfo(visionUnit);
+//      int domainSpecificXCor = Integer.valueOf(visionUnitInfo[1]);
+//      int domainSpecificYCor = Integer.valueOf(visionUnitInfo[2]);
+//      
       if( !domainSpecificXCoordinates.contains(domainSpecificXCor) ){
         domainSpecificXCoordinates.add(domainSpecificXCor);
       }
@@ -158,6 +163,7 @@ public class MindsEye {
       if( !domainSpecificYCoordinates.contains(domainSpecificYCor) ){
         domainSpecificYCoordinates.add(domainSpecificYCor);
       }
+//    }
     }
     
     //Sort x and y coordinate lists into ascending order, this ensures that the
@@ -193,11 +199,15 @@ public class MindsEye {
     int numberOfObjects = 0;
     ListPattern visionPattern = new ListPattern(Modality.VISUAL);
     
-    for(String visionUnit : vision){
-      String[] visionUnitInfo = this.processObjectInfo(visionUnit);
-      String objectInfo = visionUnitInfo[0];
-      int domainXCor = Integer.parseInt(visionUnitInfo[1]);
-      int domainYCor = Integer.parseInt(visionUnitInfo[2]);
+//    for(String visionUnit : vision){
+    for (TwoDimensionalMindsEyeObject objectBeingProcessed: vision){
+//      String[] visionUnitInfo = this.processObjectInfo(visionUnit);
+//      String objectInfo = visionUnitInfo[0];
+//      int domainXCor = Integer.parseInt(visionUnitInfo[1]);
+//      int domainYCor = Integer.parseInt(visionUnitInfo[2]);
+      String objectInfo = objectBeingProcessed.getIdentifier();
+      int domainXCor = objectBeingProcessed.getDomainSpecificXCor();
+      int domainYCor = objectBeingProcessed.getDomainSpecificYCor();
       
       //Place the objects in the mind's eye.
       int[] mindsEyeXYCoords = resolveDomainSpecificCoord(domainXCor, domainYCor);
