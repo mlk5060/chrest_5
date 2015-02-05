@@ -1260,8 +1260,8 @@ public class Chrest extends Observable {
    * @return True if a minds eye has been created otherwise false (only occurs
    * if attention is not currently free).
    */
-//  public boolean createNewMindsEye(String [] vision, int lifespan, int objectPlacementTime, int accessTime, int objectMovementTime, int domainTime){
-  public boolean createNewMindsEye(TwoDimensionalMindsEyeObject [] vision, int lifespan, int objectPlacementTime, int accessTime, int objectMovementTime, int domainTime){
+  public boolean createNewMindsEye(String [] vision, int lifespan, int objectPlacementTime, int accessTime, int objectMovementTime, int domainTime){
+//  public boolean createNewMindsEye(TwoDimensionalMindsEyeObject [] vision, int lifespan, int objectPlacementTime, int accessTime, int objectMovementTime, int domainTime){
     boolean mindsEyeCreated = false;
     
     if(this.attentionFree(domainTime)){

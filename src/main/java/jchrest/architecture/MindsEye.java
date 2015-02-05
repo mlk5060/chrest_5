@@ -6,8 +6,8 @@ import java.util.HashMap;
 import jchrest.lib.ItemSquarePattern;
 import jchrest.lib.ListPattern;
 import jchrest.lib.MindsEyeMoveObjectException;
+import jchrest.lib.MindsEyeObject;
 import jchrest.lib.Modality;
-import jchrest.lib.TwoDimensionalMindsEyeObject;
 
 /**
  * Class that implements the "Mind's Eye", specifically one that handles
@@ -64,10 +64,16 @@ public class MindsEye {
   
   //The time taken (in milliseconds) to place an object in the mind's eye during
   //instantiation.
-  private final int _objectPlacementTime; //Look in Fernand's paper with Water's for time of this.
+  private final int _objectPlacementTime; //Look in Fernand's paper with Waters for time of this.
+  
+  
+  private final int terminusForRecognisedObject;
+  
+  private final int terminusForUnrecognisedObject;
   
   //The visual spatial field of the mind's eye.
-  private ArrayList<ArrayList<String>> _visualSpatialField;
+  private ArrayList<ArrayList<ArrayList<MindsEyeObject>>> _visualSpatialField;
+  
   
   /**
    * Constructor for "MindsEye" object.
@@ -128,9 +134,17 @@ public class MindsEye {
    * 
    * @param domainTime The current time (in milliseconds) in the domain where 
    * the CHREST model associated with the mind's eye instance is located.
+   * 
+   * @param terminusForRecognisedObject The length of time (in milliseconds) 
+   * that an object will exist in the mind's eye for when it is created or 
+   * interacted with if it is committed to LTM.
+   * 
+   * @param terminusForUnrecognisedObject The length of time (in milliseconds) 
+   * that an object will exist in the mind's eye for when it is created or 
+   * interacted with if it is not committed to LTM.
    */
-  //public MindsEye(Chrest model, String [] vision, int lifespan, int objectPlacementTime, int accessTime, int objectMovementTime, int domainTime){
-  public MindsEye(Chrest model, TwoDimensionalMindsEyeObject [] vision, int lifespan, int objectPlacementTime, int accessTime, int objectMovementTime, int domainTime){
+  public MindsEye(Chrest model, String [] vision, int lifespan, int objectPlacementTime, int accessTime, int objectMovementTime, int domainTime, int terminusForRecognisedObject, int terminusForUnrecognisedObject){
+//  public MindsEye(Chrest model, TwoDimensionalMindsEyeObject [] vision, int lifespan, int objectPlacementTime, int accessTime, int objectMovementTime, int domainTime){
     
     this._model = model;
     this._accessTime = accessTime;
@@ -148,13 +162,13 @@ public class MindsEye {
     
     //Extract all domain-specific x and y coordinates so that the visual spatial
     //field can be instantiated.
-//    for (String visionUnit : vision) {
-    for (TwoDimensionalMindsEyeObject object: vision){
-      int domainSpecificXCor = object.getDomainSpecificXCor();
-      int domainSpecificYCor = object.getDomainSpecificYCor();
-//      String[] visionUnitInfo = processObjectInfo(visionUnit);
-//      int domainSpecificXCor = Integer.valueOf(visionUnitInfo[1]);
-//      int domainSpecificYCor = Integer.valueOf(visionUnitInfo[2]);
+    for (String visionUnit : vision) {
+//    for (TwoDimensionalMindsEyeObject object: vision){
+//      int domainSpecificXCor = object.getDomainSpecificXCor();
+//      int domainSpecificYCor = object.getDomainSpecificYCor();
+      String[] visionUnitInfo = processObjectInfo(visionUnit);
+      int domainSpecificXCor = Integer.valueOf(visionUnitInfo[1]);
+      int domainSpecificYCor = Integer.valueOf(visionUnitInfo[2]);
 //      
       if( !domainSpecificXCoordinates.contains(domainSpecificXCor) ){
         domainSpecificXCoordinates.add(domainSpecificXCor);
@@ -176,7 +190,7 @@ public class MindsEye {
     //Instantiate the "_visualSpatialField" with null values and generate the 
     //domain-specific to/from mind's eye coordinate mappings.
     for(int mindsEyeXCor = 0; mindsEyeXCor < domainSpecificXCoordinates.size(); mindsEyeXCor++){
-      ArrayList<String> yCorSpace = new ArrayList<>();
+      ArrayList<ArrayList<MindsEyeObject>> yCorSpace = new ArrayList<>();
       this._visualSpatialField.add(yCorSpace);
 
       for(int mindsEyeYCor = 0; mindsEyeYCor < domainSpecificYCoordinates.size(); mindsEyeYCor++){  
@@ -197,42 +211,68 @@ public class MindsEye {
     //included in this count).  This value will be used to calculate the time 
     //cost of placing objects in the mind's eye.
     int numberOfObjects = 0;
-    ListPattern visionPattern = new ListPattern(Modality.VISUAL);
+    //ListPattern visionPattern = new ListPattern(Modality.VISUAL);
     
-//    for(String visionUnit : vision){
-    for (TwoDimensionalMindsEyeObject objectBeingProcessed: vision){
-//      String[] visionUnitInfo = this.processObjectInfo(visionUnit);
-//      String objectInfo = visionUnitInfo[0];
-//      int domainXCor = Integer.parseInt(visionUnitInfo[1]);
-//      int domainYCor = Integer.parseInt(visionUnitInfo[2]);
-      String objectInfo = objectBeingProcessed.getIdentifier();
-      int domainXCor = objectBeingProcessed.getDomainSpecificXCor();
-      int domainYCor = objectBeingProcessed.getDomainSpecificYCor();
-      
-      //Place the objects in the mind's eye.
-      int[] mindsEyeXYCoords = resolveDomainSpecificCoord(domainXCor, domainYCor);
-      this._visualSpatialField.get( mindsEyeXYCoords[0] ).set(mindsEyeXYCoords[1], objectInfo);
+    for(String visionUnit : vision){
+//    for (TwoDimensionalMindsEyeObject objectBeingProcessed: vision){
+      String[] visionUnitInfo = this.processObjectInfo(visionUnit);
+      String objectInfo = visionUnitInfo[0];
+      int domainXCor = Integer.parseInt(visionUnitInfo[1]);
+      int domainYCor = Integer.parseInt(visionUnitInfo[2]);
+//      String objectInfo = objectBeingProcessed.getIdentifier();
+//      int domainXCor = objectBeingProcessed.getDomainSpecificXCor();
+//      int domainYCor = objectBeingProcessed.getDomainSpecificYCor();
       
       //Check to see if "objectInfo" is not empty, if not, the number of objects
       //should be counted and the object information should be added to the
       //visual pattern to be recognised by LTM.
       if(!objectInfo.isEmpty()){
         
+        ArrayList<MindsEyeObject> mindsEyeObjects = new ArrayList<>();
+        
         //Multiple objects have been specified.
         if(objectInfo.contains(",")){
-          String[] objects = objectInfo.split(",");
-           
-          //Count number of objects
-          numberOfObjects += objects.length;
            
           //Add all objects and their respective coordinates to the pattern that
           //will be passed to LTM.
-          for(String object : objects){
-            visionPattern.add( new ItemSquarePattern(object, domainXCor, domainYCor) );
+          for(String object : objectInfo.split(",")){
+            
+            //Try to recognise the object so that the terminus value for its
+            //MindsEyeObject representation can be set correctly.
+            ListPattern visionPattern = new ListPattern(Modality.VISUAL);
+            visionPattern.add(new ItemSquarePattern(object, domainXCor, domainYCor));
+            Node resultOfRecognise = this._model.recognise(visionPattern);
+            
+            //If a root node has been returned then the object has not been 
+            //committed to LTM.
+            if(resultOfRecognise == this._model.getLtmByModality (visionPattern)){
+              MindsEyeObject mindsEyeObject = new MindsEyeObject(objectInfo, domainTime + 100); //TODO: Determine correct terminus value.
+              mindsEyeObjects.add(mindsEyeObject);
+            }
+            else{
+              MindsEyeObject mindsEyeObject = new MindsEyeObject(objectInfo, domainTime + 1000); //TODO: Determine correct terminus value.
+              mindsEyeObjects.add(mindsEyeObject);
+            }
+            
+            
+            //Count the object
+            numberOfObjects++;  
+            
+            //visionPattern.add( new ItemSquarePattern(object, domainXCor, domainYCor) );
           }
+          
+          //Place the objects in the mind's eye.
+          int[] mindsEyeXYCoords = resolveDomainSpecificCoord(domainXCor, domainYCor);
+          this._visualSpatialField.get( mindsEyeXYCoords[0] ).set(mindsEyeXYCoords[1], mindsEyeObjects);
         }
         //Only one object specified.
         else{
+          
+          MindsEyeObject object = new MindsEyeObject(objectInfo, domainTime);
+          
+          //Place the object in the mind's eye.
+          int[] mindsEyeXYCoords = resolveDomainSpecificCoord(domainXCor, domainYCor);
+          this._visualSpatialField.get( mindsEyeXYCoords[0] ).set(mindsEyeXYCoords[1], object);
           
           //Count the object
           numberOfObjects++;
@@ -248,7 +288,7 @@ public class MindsEye {
     //extract the chunk in the retrieved node and count how many patterns are 
     //contained within it.  This value will be used to determine if a reduction 
     //in time cost associated with object placement can be applied.
-    int numberOfRecognisedPatterns = this._model.recognise(visionPattern).getImage().size();
+    //int numberOfRecognisedPatterns = this._model.recognise(visionPattern).getImage().size();
     
     //Set the multiplier for object placement time to the total number of 
     //objects placed since, if there is no time cost discount to be applied as
@@ -284,6 +324,7 @@ public class MindsEye {
     //instance variable value since the mind's eye should initially expire after
     //it has been instantiated and its lifespan has passed.
     this.setTerminus(this._model.getAttentionClock());
+    this.terminusForRecognisedObject = terminusForRecognisedObject;
   }
   
   /**
