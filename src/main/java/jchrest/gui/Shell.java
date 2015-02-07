@@ -65,7 +65,7 @@ public class Shell extends JFrame {
 
     setContentPane( new JLabel ("Open some data to use shell") );
 
-    setSize(600, 400);
+    setSize(800, 600);
     setLocationRelativeTo (null);
     setTheme ("Nimbus");
   }
