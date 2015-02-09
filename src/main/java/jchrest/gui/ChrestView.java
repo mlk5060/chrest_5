@@ -82,13 +82,13 @@ public class ChrestView extends JFrame implements Observer {
     
     //Add components to toolbar and return.
     toolbar.add(new JLabel ("<html><b>State at time:</b></html>"));
-    toolbar.add(createStateAtTimeSpinner(stateAtTimeValue));
+    toolbar.add(createStateAtTimeTextField(stateAtTimeValue));
     
     this._toolbar = toolbar;
     return toolbar;
   }
   
-  private JTextField createStateAtTimeSpinner(int stateAtTimeValue){
+  private JTextField createStateAtTimeTextField(int stateAtTimeValue){
     JTextField stateAtTimeTextField = new JTextField(String.valueOf(stateAtTimeValue));
     Dimension d = stateAtTimeTextField.getPreferredSize();
     d.width = 120;
