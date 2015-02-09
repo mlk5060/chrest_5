@@ -92,9 +92,9 @@ public class Chrest extends Observable {
     _attentionClock = 0;
     _learningClock = 0;
     _totalNodes = 0;
-    _visualLtm = new Node (this, 0, Pattern.makeVisualList (new String[]{"Root"}));
-    _verbalLtm = new Node (this, 0, Pattern.makeVerbalList (new String[]{"Root"}));
-    _actionLtm = new Node (this, 0, Pattern.makeActionList (new String[]{"Root"}));
+    _visualLtm = new Node (this, 0, Pattern.makeVisualList (new String[]{"Root"}), 0);
+    _verbalLtm = new Node (this, 0, Pattern.makeVerbalList (new String[]{"Root"}), 0);
+    _actionLtm = new Node (this, 0, Pattern.makeActionList (new String[]{"Root"}), 0);
     _totalNodes = 0; // Node constructor will have incremented _totalNodes, so reset to 0
     _visualStm = new Stm (4);
     _verbalStm = new Stm (2);
@@ -744,7 +744,7 @@ public class Chrest extends Observable {
               currentNode.getImage().isFinished ()) {      // or image finished
             currentNode = currentNode.discriminate (pattern, time); // then discriminate
           } else  { // else familiarise
-            currentNode = currentNode.familiarise (pattern);
+            currentNode = currentNode.familiarise (pattern, time);
           }
           addToStm (currentNode); // add to stm, as node may have changed during learning
         }
@@ -1182,9 +1182,9 @@ public class Chrest extends Observable {
     _visualLtm.clear ();
     _verbalLtm.clear ();
     _actionLtm.clear ();
-    _visualLtm = new Node (this, 0, Pattern.makeVisualList (new String[]{"Root"}));
-    _verbalLtm = new Node (this, 0, Pattern.makeVerbalList (new String[]{"Root"}));
-    _actionLtm = new Node (this, 0, Pattern.makeActionList (new String[]{"Root"}));
+    _visualLtm = new Node (this, 0, Pattern.makeVisualList (new String[]{"Root"}), 0);
+    _verbalLtm = new Node (this, 0, Pattern.makeVerbalList (new String[]{"Root"}), 0);
+    _actionLtm = new Node (this, 0, Pattern.makeActionList (new String[]{"Root"}), 0);
     _totalNodes = 0;
     _visualStm.clear ();
     _verbalStm.clear ();

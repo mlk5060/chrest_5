@@ -9,8 +9,6 @@ import jchrest.lib.Pattern;
 import java.awt.*;
 import java.awt.BorderLayout;
 import java.awt.event.*;
-import java.awt.font.TextLayout;
-import java.awt.geom.Rectangle2D;
 import java.awt.image.*;
 import java.io.*;
 import java.util.ArrayList;
@@ -24,8 +22,15 @@ import javax.swing.border.*;
  * supporting some interactions to alter the display.
  */
 public class ChrestLtmView extends JPanel {
+  
   private Chrest _model;
   private TreeViewPane _ltmView;
+  private JSpinner _stateAtTime;
+  private SpinnerNumberModel _stateAtTimeNumberModel;
+  private Integer _stateAtTimeValue;
+  private JToolBar _toolbar;
+  
+  private ConstructTreeThread _constructingTreeThread;
 
   public ChrestLtmView (Chrest model) {
     super ();
@@ -39,6 +44,7 @@ public class ChrestLtmView extends JPanel {
       _ltmView = null;
       add (new JLabel ("Sorry - LTM too large to display"));
     } else {
+      _stateAtTimeValue = _model.getLearningClock(); //This must be set before the LTM view is constructed since it depends on the value being set correctly.
       _ltmView = new TreeViewPane (new TreeViewNode (new NodeDisplay (null)));
       _constructingTreeThread = new ConstructTreeThread ();
       _constructingTreeThread.execute ();
@@ -47,8 +53,6 @@ public class ChrestLtmView extends JPanel {
 
     add (createToolBar (), BorderLayout.SOUTH);
   }
-
-  private ConstructTreeThread _constructingTreeThread;
 
   private class ConstructTreeThread extends SwingWorker<Void, Void> {
     LtmTreeViewNode _newTree;
@@ -68,6 +72,12 @@ public class ChrestLtmView extends JPanel {
 
   public void update () {
     if (_ltmView != null) {
+      int newTime = this._model.getLearningClock();
+      _stateAtTimeNumberModel.setMaximum(newTime);
+      _stateAtTime.setValue(newTime);
+      this._stateAtTimeValue = newTime;
+      System.out.println(this._stateAtTimeValue);
+      
       if (_model.getTotalLtmNodes () > 5000) {
         // TODO : change display if number of nodes is too large
         //        this.add (new JLabel ("Sorry - LTM too large to display"));
@@ -107,18 +117,53 @@ public class ChrestLtmView extends JPanel {
 		});
 		return box;
 	}
+  
+  private JSpinner createStateAtBox(int defaultSpinnerTime){
+    _stateAtTimeNumberModel = new SpinnerNumberModel(
+      defaultSpinnerTime, //initial value
+      0, //min
+      defaultSpinnerTime, //max
+      1);                //step
+    this._stateAtTime = new JSpinner(_stateAtTimeNumberModel);
+    Dimension d = this._stateAtTime.getPreferredSize();
+    d.width = 120;
+    this._stateAtTime.setPreferredSize(d);
+    this._stateAtTimeValue = defaultSpinnerTime;
+    return this._stateAtTime;
+  }
 	
 	private JToolBar createToolBar () {
-		JToolBar tools = new JToolBar ();
+		this._toolbar = new JToolBar ();
 
-		tools.add (new JLabel ("Orientation: "));
-		tools.add (createOrientationBox ());
-		tools.addSeparator();
-		tools.add (new JLabel ("Size: "));
-		tools.add (createSizeBox ());
+		this._toolbar.add (new JLabel ("Orientation: "));
+		this._toolbar.add (createOrientationBox ());
+		this._toolbar.addSeparator();
+		this._toolbar.add (new JLabel ("Size: "));
+		this._toolbar.add (createSizeBox ());
+    this._toolbar.addSeparator();
+    this._toolbar.add(new JLabel ("State at time: "));
+    this._toolbar.add(createStateAtBox(this._model.getLearningClock()));
+    JButton applyStateAtTime = new JButton( new FilterStateAction() );
+    this._toolbar.add(applyStateAtTime);
 
-		return tools;
+		return this._toolbar;
 	}
+  
+  class FilterStateAction extends AbstractAction implements ActionListener {
+    
+    FilterStateAction () {
+      super ("Apply");
+    }
+    
+    @Override
+    public void actionPerformed(ActionEvent e) {
+      EventQueue.invokeLater (() -> {
+        _stateAtTimeValue = (Integer)_stateAtTime.getModel().getValue();
+      });
+      _constructingTreeThread = new ConstructTreeThread ();
+      _constructingTreeThread.execute ();
+    }
+  }
 
 	public void setStandardDisplay () {
     if (_ltmView != null) {
@@ -130,11 +175,11 @@ public class ChrestLtmView extends JPanel {
   /**
    * Relayout and draw the treeview nodes.
    */
-	public void drawTreeView () {
-    if (_ltmView != null) {
-      _ltmView.relayout();
-    }
-	}
+//	public void drawTreeView () {
+//    if (_ltmView != null) {
+//      _ltmView.relayout();
+//    }
+//	}
 
   /**
    * Save the network as an image file.  Currently, only .png format is supported.
@@ -184,13 +229,28 @@ public class ChrestLtmView extends JPanel {
    * Wrap the model's LTM as a set of LtmTreeViewNode objects.
    */
   private LtmTreeViewNode constructTree (Node baseNode) {
-    LtmTreeViewNode baseTreeViewNode = new NodeDisplay (baseNode);
-    for (Link link : baseNode.getChildren ()) {
-      LtmTreeViewNode linkNode = new LinkDisplay (link);
-      linkNode.add (constructTree (link.getChildNode ()));
-      baseTreeViewNode.add (linkNode);
-    }
-
+    //System.out.println("=== Processing node: " + baseNode.getImage().toString() + "===");
+    LtmTreeViewNode baseTreeViewNode = null;
+    
+    //System.out.println("Checking if creation time (" + baseNode.getCreationTime() + ") is earlier than or equal to current 'State at Time' value (" + stateAtTime + ")...");
+    //if(baseNode.getCreationTime() <= this._stateAtTimeValue){
+      
+      //System.out.println("Node was created earlier than the current 'State at Time' value so it'll be drawn.");
+      baseTreeViewNode = new NodeDisplay (baseNode);
+      
+      for (Link link : baseNode.getChildren ()) {
+        
+        //System.out.println("Checking creation time for link with test '" + link.getTest().toString() + "' (" + link.getCreationTime() + ")");
+        if(link.getCreationTime() <= this._stateAtTimeValue){
+          
+          //System.out.println("Link was created before or at 'State at Time' value so it will be drawn...");
+          LtmTreeViewNode linkNode = new LinkDisplay (link);
+          linkNode.add (constructTree (link.getChildNode ()));
+          baseTreeViewNode.add (linkNode);
+        }
+      } 
+    //}
+      
     return baseTreeViewNode;
   }
 }
@@ -373,8 +433,10 @@ class TreeViewNode {
 		_extentHeight = 0;
 	}
 
-	// return true/false depending if this node has children
-	private boolean hasChildren () { return (!(_children.isEmpty ())); }
+	// return true/false depending if this node has children.
+	private boolean hasChildren () { 
+    return ( !(_children.isEmpty ()) ); 
+  }
 
 	/** Return the visible extent of this node as a Rectangle */
 	public Rectangle getVisibleExtent () {

@@ -8,9 +8,11 @@ import java.io.IOException;
 import java.io.Writer;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Observable;
+import java.util.Set;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -28,27 +30,47 @@ import jchrest.lib.ReinforcementLearning;
  * @author Peter C. R. Lane
  */
 public class Node extends Observable {
+  
+  private final Chrest _model;
+  private final int _reference;
+  private final ListPattern _contents;
+  private ListPattern _image;
+  private List<Link> _children;
+  private List<Node> _semanticLinks;
+  private Node _associatedNode;
+  private Node _namedBy;
+  private HashMap<Node, Double> _actionLinks;
+  
+  //History variables
+  private final int _creationTime;
+  private Map<Integer, ListPattern> _imageHistory = new HashMap<>();
+  
+  //Template variables
+  private List<ItemSquarePattern> _itemSlots;
+  private List<ItemSquarePattern> _positionSlots;
+  private List<ItemSquarePattern> _filledItemSlots;
+  private List<ItemSquarePattern> _filledPositionSlots;
 
   /**
    * Constructor to construct a new root node for the model.  
    */
-  public Node (Chrest model, int reference, ListPattern type) {
-    this (model, reference, type, type);
+  public Node (Chrest model, int reference, ListPattern type, int domainTime) {
+    this (model, reference, type, type, domainTime);
   }
  
   /**
    * When constructing non-root nodes in the network, the new contents and image 
    * must be defined.  Assume that the image always starts empty.
    */
-  public Node (Chrest model, ListPattern contents, ListPattern image) {
-    this (model, model.getNextNodeNumber (), contents, image);
+  public Node (Chrest model, ListPattern contents, ListPattern image, int domainTime) {
+    this (model, model.getNextNodeNumber (), contents, image, domainTime);
   }
 
   /**
    * Constructor to build a new Chrest node with given reference, contents and image.
    * Package access only, as should only be used by Chrest.java.
    */
-  Node (Chrest model, int reference, ListPattern contents, ListPattern image) {
+  Node (Chrest model, int reference, ListPattern contents, ListPattern image, int domainTime) {
     _model = model;
     _reference = reference;
     _contents = contents.clone ();
@@ -58,6 +80,8 @@ public class Node extends Observable {
     _associatedNode = null;
     _namedBy = null;
     _actionLinks = new HashMap<>();
+    _creationTime = domainTime;
+    _imageHistory.put(domainTime, image.clone());
   }
 
   /**
@@ -97,8 +121,9 @@ public class Node extends Observable {
   /**
    * Change the node's image.  Also notifies any observers.
    */
-  public void setImage (ListPattern image) {
+  public void setImage (ListPattern image, int domainTime) {
     _image = image;
+    _imageHistory.put(domainTime, image.clone());
     setChanged ();
     notifyObservers ();
   }
@@ -113,8 +138,8 @@ public class Node extends Observable {
   /**
    * Add a new test link with given test pattern and child node.
    */
-  void addTestLink (ListPattern test, Node child) {
-    _children.add (0, new Link (test, child));
+  void addTestLink (ListPattern test, Node child, int domainTime) {
+    _children.add (0, new Link (test, child, domainTime));
     setChanged ();
     notifyObservers ();
   }
@@ -290,16 +315,7 @@ public class Node extends Observable {
     }
   }
   
-  // private fields
-  private final Chrest _model;
-  private final int _reference;
-  private final ListPattern _contents;
-  private ListPattern _image;
-  private List<Link> _children;
-  private List<Node> _semanticLinks;
-  private Node _associatedNode;
-  private Node _namedBy;
-  private HashMap<Node, Double> _actionLinks;
+  
 
   /**
    * Compute the total size of images below the current node.
@@ -370,10 +386,7 @@ public class Node extends Observable {
     return count;
   }
 
-  private List<ItemSquarePattern> _itemSlots;
-  private List<ItemSquarePattern> _positionSlots;
-  private List<ItemSquarePattern> _filledItemSlots;
-  private List<ItemSquarePattern> _filledPositionSlots;
+  
 
   public List<ItemSquarePattern> getFilledItemSlots () {
     return _filledItemSlots;
@@ -612,12 +625,12 @@ public class Node extends Observable {
    * a single primitive item, and is finished.
    * TODO: CLEAN UP CODE AND DESCRIPTION
    */
-  public Node learnPrimitive (ListPattern pattern) {
+  public Node learnPrimitive (ListPattern pattern, int domainTime) {
     assert (pattern.isFinished () && pattern.size () == 1);
     ListPattern contents = pattern.clone ();
     contents.setNotFinished ();
-    Node child = new Node (_model, contents, new ListPattern (pattern.getModality ()));
-    addTestLink (contents, child);
+    Node child = new Node (_model, contents, new ListPattern (pattern.getModality ()), domainTime);
+    addTestLink (contents, child, domainTime);
     _model.advanceLearningClock (_model.getDiscriminationTime ());
 
     return child;
@@ -628,18 +641,20 @@ public class Node extends Observable {
    * with a new empty child node.  It is assumed the given pattern is 
    * non-empty and constitutes a valid, new test for the current Node.
    */
-  private Node addTest (ListPattern pattern) {
+  private Node addTest (ListPattern pattern, int domainTime) {
     // ignore if already a test
     for (Link child : _children) {
       if (child.getTest().equals (pattern)) {
         return this;
       }
     }
-    Node child = new Node (_model, 
-        ( (_reference == 0) ? pattern : _model.getDomainSpecifics().normalise (_contents.append(pattern))), // don't append to 'Root'
-        ( (_reference == 0) ? pattern : _model.getDomainSpecifics().normalise (_contents.append(pattern))) // make same as contents vs Chrest 2
-        );
-    addTestLink (pattern, child);
+    Node child = new Node (
+      _model, 
+      ( (_reference == 0) ? pattern : _model.getDomainSpecifics().normalise (_contents.append(pattern))), // don't append to 'Root'
+      ( (_reference == 0) ? pattern : _model.getDomainSpecifics().normalise (_contents.append(pattern))), // make same as contents vs Chrest 2
+      domainTime
+    );
+    addTestLink (pattern, child, domainTime);
     _model.advanceLearningClock (_model.getDiscriminationTime ());
     return child;
   }
@@ -648,8 +663,8 @@ public class Node extends Observable {
    * extendImage is used to add new information to the node's image.
    * It is assumed the given pattern is non-empty and is a valid extension.
    */
-  private Node extendImage (ListPattern newInformation) {
-    setImage (_model.getDomainSpecifics().normalise (_image.append (newInformation)));
+  private Node extendImage (ListPattern newInformation, int domainTime) {
+    setImage (_model.getDomainSpecifics().normalise (_image.append (newInformation)), domainTime);
     _model.advanceLearningClock (_model.getFamiliarisationTime ());
 
     return this;
@@ -683,11 +698,11 @@ public class Node extends Observable {
           Logger.getLogger(Node.class.getName()).log(Level.SEVERE, null, ex);
         }
         
-        return addTest (newInformation);
+        return addTest (newInformation, time);
       } else {
         // 3. if not, then learn it
-        Node child = new Node (_model, newInformation, newInformation);
-        _model.getVisualLtm().addTestLink (newInformation, child);
+        Node child = new Node (_model, newInformation, newInformation, time);
+        _model.getVisualLtm().addTestLink (newInformation, child, time);
         
         try {
           description += "and isn't encoded in a LTM node so a test link and child node containing the list-pattern will be added to the visual LTM root node.";
@@ -711,7 +726,7 @@ public class Node extends Observable {
         Logger.getLogger(Node.class.getName()).log(Level.SEVERE, null, ex);
       }
       
-      return _model.getLtmByModality(newInformation).learnPrimitive (newInformation.getFirstItem ());
+      return _model.getLtmByModality(newInformation).learnPrimitive (newInformation.getFirstItem (), time);
     } 
     else if (retrievedChunk.getContents().matches (newInformation)) {
       // 5. retrieved chunk can be used as a test
@@ -724,7 +739,7 @@ public class Node extends Observable {
         Logger.getLogger(Node.class.getName()).log(Level.SEVERE, null, ex);
       }
       
-      return addTest (testPattern);
+      return addTest (testPattern, time);
     } 
     else { 
       // 6. mismatch, so use only the first item for test
@@ -739,7 +754,7 @@ public class Node extends Observable {
         Logger.getLogger(Node.class.getName()).log(Level.SEVERE, null, ex);
       }
       
-      return addTest (firstItem);
+      return addTest (firstItem, time);
     }
   }
 
@@ -747,7 +762,7 @@ public class Node extends Observable {
    * Familiarisation learning extends the image in a node by adding new 
    * information from the given pattern.
    */
-  Node familiarise (ListPattern pattern) {
+  Node familiarise (ListPattern pattern, int domainTime) {
     ListPattern newInformation = pattern.remove (_image).getFirstItem ();
     newInformation.setNotFinished ();
     // EXIT if nothing to learn
@@ -762,10 +777,10 @@ public class Node extends Observable {
     Node retrievedChunk = _model.recognise (newInformation);
     if (retrievedChunk == _model.getLtmByModality (pattern)) {
       // primitive not known, so learn it
-      return _model.getLtmByModality(newInformation).learnPrimitive (newInformation);
+      return _model.getLtmByModality(newInformation).learnPrimitive (newInformation, domainTime);
     } else {
       // extend image with new item
-      return extendImage (newInformation);
+      return extendImage (newInformation, domainTime);
     }
   }
 
@@ -815,6 +830,45 @@ public class Node extends Observable {
     // repeat for children
     for (Link link : _children) {
       link.getChildNode().writeSemanticLinksAsVna (writer);
+    }
+  }
+  
+  /**
+   * Returns the domain time that this Node instance was created.
+   * 
+   * @return 
+   */
+  public int getCreationTime(){
+    return this._creationTime;
+  }
+  
+  /**
+   * Returns the contents of this Node instance's image at the domain time that
+   * is earlier than, but with the smallest difference to, the domain time 
+   * specified.
+   * 
+   * @param domainTime in milliseconds.
+   * @return 
+   */
+  public ListPattern getHistoricalImage(int domainTime){
+    if(this._imageHistory.containsKey(domainTime)){
+      return this._imageHistory.get(domainTime);
+    }
+    else{
+      Iterator<Integer> imageTimeUpdates = this._imageHistory.keySet().iterator();
+      int mostRecentUpdateBeforeTimeSpecified = 0;
+      
+      while(imageTimeUpdates.hasNext()){
+        Integer imageUpdateTime = imageTimeUpdates.next();
+        if(imageUpdateTime >= mostRecentUpdateBeforeTimeSpecified && imageUpdateTime < domainTime){
+          mostRecentUpdateBeforeTimeSpecified = imageUpdateTime;
+        }
+        else{
+          break;
+        }
+      }
+      
+      return this._imageHistory.get(mostRecentUpdateBeforeTimeSpecified);
     }
   }
 }

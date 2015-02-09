@@ -12,13 +12,18 @@ import jchrest.lib.ListPattern;
  * through to the child node.
  */
 public class Link {
+  
+  private final ListPattern _test;
+  private final Node _child;
+  private final int _creationTime;
 
   /**
    * Constructor sets the link's test and child node.
    */
-  public Link (ListPattern test, Node child) {
+  public Link (ListPattern test, Node child, int domainTime) {
     _test = test;
     _child = child;
+    _creationTime = domainTime;
   }
 
   /**
@@ -34,6 +39,10 @@ public class Link {
   public ListPattern getTest () {
     return _test;
   }
+  
+  public int getCreationTime(){
+    return _creationTime;
+  }
 
   /**
    * Test if the given pattern can be sorted through this test link.
@@ -42,9 +51,5 @@ public class Link {
   public boolean passes (ListPattern pattern) {
     return _test.matches (pattern);
   }
-
-  // private fields
-  private final ListPattern _test;
-  private final Node _child;
 }
 

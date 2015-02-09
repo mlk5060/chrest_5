@@ -53,8 +53,10 @@ public class ChrestView extends JFrame implements Observer {
     setLayout (new GridLayout (1, 1));
     add (jsp);
 
-    // finalise display settings
-    setSize (550, 400);
+    // finalise display settings - width of the view should always be the 
+    // maximum preferred width of the STM and LTM views since they are placed
+    // side-by-side and constitute the entire width of the "CHREST View" window.
+    setSize ((this._stmView.getPreferredSize().width + this._ltmView.getPreferredSize().width), 550);
     setVisible (true);
     // prompt the long-term memory to draw itself
     _ltmView.setStandardDisplay ();
@@ -115,6 +117,7 @@ public class ChrestView extends JFrame implements Observer {
    * Implement the observable interface, and update the view whenever 
    * the underlying model has changed.
    */
+  @Override
   public void update(Observable o, Object arg) {
     _ltmView.update ();
     _stmView.update ();
@@ -125,9 +128,9 @@ public class ChrestView extends JFrame implements Observer {
    * When closing the view, make sure the observer is detached from the model.
    */
   private void closeView () {
-      _model.deleteObserver (this);
-      setVisible (false);
-      dispose ();
-    }
+    _model.deleteObserver (this);
+    setVisible (false);
+    dispose ();
+  }
 }
 
