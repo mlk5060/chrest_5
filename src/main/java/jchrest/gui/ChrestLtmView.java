@@ -25,14 +25,10 @@ public class ChrestLtmView extends JPanel {
   
   private Chrest _model;
   private TreeViewPane _ltmView;
-  private JSpinner _stateAtTime;
-  private SpinnerNumberModel _stateAtTimeNumberModel;
   private Integer _stateAtTimeValue;
-  private JToolBar _toolbar;
-  
   private ConstructTreeThread _constructingTreeThread;
 
-  public ChrestLtmView (Chrest model) {
+  public ChrestLtmView (Chrest model, int stateAtTimeValue) {
     super ();
 
     _model = model;
@@ -44,7 +40,7 @@ public class ChrestLtmView extends JPanel {
       _ltmView = null;
       add (new JLabel ("Sorry - LTM too large to display"));
     } else {
-      _stateAtTimeValue = _model.getLearningClock(); //This must be set before the LTM view is constructed since it depends on the value being set correctly.
+      _stateAtTimeValue = stateAtTimeValue; //This must be set before the LTM view is constructed since construction depends on the value being set correctly.
       _ltmView = new TreeViewPane (new TreeViewNode (new NodeDisplay (null)));
       _constructingTreeThread = new ConstructTreeThread ();
       _constructingTreeThread.execute ();
@@ -70,13 +66,9 @@ public class ChrestLtmView extends JPanel {
       }
   }
 
-  public void update () {
+  public void update (int stateAtTimeValue) {
     if (_ltmView != null) {
-      int newTime = this._model.getLearningClock();
-      _stateAtTimeNumberModel.setMaximum(newTime);
-      _stateAtTime.setValue(newTime);
-      this._stateAtTimeValue = newTime;
-      System.out.println(this._stateAtTimeValue);
+      this._stateAtTimeValue = stateAtTimeValue;
       
       if (_model.getTotalLtmNodes () > 5000) {
         // TODO : change display if number of nodes is too large
@@ -117,53 +109,16 @@ public class ChrestLtmView extends JPanel {
 		});
 		return box;
 	}
-  
-  private JSpinner createStateAtBox(int defaultSpinnerTime){
-    _stateAtTimeNumberModel = new SpinnerNumberModel(
-      defaultSpinnerTime, //initial value
-      0, //min
-      defaultSpinnerTime, //max
-      1);                //step
-    this._stateAtTime = new JSpinner(_stateAtTimeNumberModel);
-    Dimension d = this._stateAtTime.getPreferredSize();
-    d.width = 120;
-    this._stateAtTime.setPreferredSize(d);
-    this._stateAtTimeValue = defaultSpinnerTime;
-    return this._stateAtTime;
-  }
 	
 	private JToolBar createToolBar () {
-		this._toolbar = new JToolBar ();
-
-		this._toolbar.add (new JLabel ("Orientation: "));
-		this._toolbar.add (createOrientationBox ());
-		this._toolbar.addSeparator();
-		this._toolbar.add (new JLabel ("Size: "));
-		this._toolbar.add (createSizeBox ());
-    this._toolbar.addSeparator();
-    this._toolbar.add(new JLabel ("State at time: "));
-    this._toolbar.add(createStateAtBox(this._model.getLearningClock()));
-    JButton applyStateAtTime = new JButton( new FilterStateAction() );
-    this._toolbar.add(applyStateAtTime);
-
-		return this._toolbar;
+		JToolBar toolbar = new JToolBar ();
+		toolbar.add (new JLabel ("Orientation: "));
+		toolbar.add (createOrientationBox ());
+		toolbar.addSeparator();
+		toolbar.add (new JLabel ("Size: "));
+		toolbar.add (createSizeBox ());
+		return toolbar;
 	}
-  
-  class FilterStateAction extends AbstractAction implements ActionListener {
-    
-    FilterStateAction () {
-      super ("Apply");
-    }
-    
-    @Override
-    public void actionPerformed(ActionEvent e) {
-      EventQueue.invokeLater (() -> {
-        _stateAtTimeValue = (Integer)_stateAtTime.getModel().getValue();
-      });
-      _constructingTreeThread = new ConstructTreeThread ();
-      _constructingTreeThread.execute ();
-    }
-  }
 
 	public void setStandardDisplay () {
     if (_ltmView != null) {
@@ -229,28 +184,14 @@ public class ChrestLtmView extends JPanel {
    * Wrap the model's LTM as a set of LtmTreeViewNode objects.
    */
   private LtmTreeViewNode constructTree (Node baseNode) {
-    //System.out.println("=== Processing node: " + baseNode.getImage().toString() + "===");
-    LtmTreeViewNode baseTreeViewNode = null;
-    
-    //System.out.println("Checking if creation time (" + baseNode.getCreationTime() + ") is earlier than or equal to current 'State at Time' value (" + stateAtTime + ")...");
-    //if(baseNode.getCreationTime() <= this._stateAtTimeValue){
-      
-      //System.out.println("Node was created earlier than the current 'State at Time' value so it'll be drawn.");
-      baseTreeViewNode = new NodeDisplay (baseNode);
-      
-      for (Link link : baseNode.getChildren ()) {
-        
-        //System.out.println("Checking creation time for link with test '" + link.getTest().toString() + "' (" + link.getCreationTime() + ")");
-        if(link.getCreationTime() <= this._stateAtTimeValue){
-          
-          //System.out.println("Link was created before or at 'State at Time' value so it will be drawn...");
-          LtmTreeViewNode linkNode = new LinkDisplay (link);
-          linkNode.add (constructTree (link.getChildNode ()));
-          baseTreeViewNode.add (linkNode);
-        }
-      } 
-    //}
-      
+    NodeDisplay baseTreeViewNode = new NodeDisplay (baseNode);
+    for (Link link : baseNode.getChildren ()) {
+      if(link.getCreationTime() <= this._stateAtTimeValue){
+        LtmTreeViewNode linkNode = new LinkDisplay (link);
+        linkNode.add (constructTree (link.getChildNode ()));
+        baseTreeViewNode.add (linkNode);
+      }
+    }
     return baseTreeViewNode;
   }
 }

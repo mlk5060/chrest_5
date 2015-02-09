@@ -14,13 +14,19 @@ public class ChrestStmView extends JPanel {
   private Chrest _model;
   private DefaultListModel _visualStmView, _verbalStmView;
   private JList _visualStmList, _verbalStmList;
+  
+  //Holds the time that the state of the STM to be drawn should represent.
+  private Integer _stateAtTimeValue;
 
   public ChrestStmView (Chrest model) {
     super ();
 
+    //Associated model variable set-up.
     _model = model;
+    _stateAtTimeValue = _model.getLearningClock(); //This must be set before the STM view is constructed since its construction depends on the value being set correctly.
+    
+    //Visual STM set-up.
     setLayout (new GridLayout (1, 1));
-
     JPanel visualPanel = new JPanel ();
     visualPanel.setLayout (new GridLayout (1, 1));
     visualPanel.setBorder (new TitledBorder ("Visual STM"));
@@ -28,6 +34,13 @@ public class ChrestStmView extends JPanel {
     _visualStmList = new JList (_visualStmView);
     _visualStmList.setCellRenderer (new ListNodeRenderer (_model));
     _visualStmList.addMouseListener(new MouseAdapter() {
+      
+      /**
+       * Whenever a node is double-clicked in the visual STM view, a new window
+       * pops up containing detailed information about the node.
+       * 
+       * @param evt 
+       */
       public void mouseClicked(MouseEvent evt) {
         JList list = (JList)evt.getSource();
         if (evt.getClickCount() == 2) { 
@@ -38,6 +51,7 @@ public class ChrestStmView extends JPanel {
     });
     visualPanel.add (new JScrollPane (_visualStmList));
 
+    //Verbal STM set-up.
     JPanel verbalPanel = new JPanel ();
     verbalPanel.setLayout (new GridLayout (1, 1));
     verbalPanel.setBorder (new TitledBorder ("Verbal STM"));
@@ -45,6 +59,13 @@ public class ChrestStmView extends JPanel {
     _verbalStmList = new JList (_verbalStmView);
     _verbalStmList.setCellRenderer (new ListNodeRenderer (_model));
     _verbalStmList.addMouseListener(new MouseAdapter() {
+      
+      /**
+       * Whenever a node is double-clicked in the verbal STM view, a new window
+       * pops up containing detailed information about the node.
+       * 
+       * @param evt 
+       */
       public void mouseClicked(MouseEvent evt) {
         JList list = (JList)evt.getSource();
         if (evt.getClickCount() == 2) { 
@@ -55,6 +76,7 @@ public class ChrestStmView extends JPanel {
     });
     verbalPanel.add (new JScrollPane (_verbalStmList));
   
+    //Final set-up.
     JSplitPane jsp = new JSplitPane (JSplitPane.VERTICAL_SPLIT, visualPanel, verbalPanel);
     jsp.setOneTouchExpandable (true);
     add (jsp);
@@ -63,15 +85,20 @@ public class ChrestStmView extends JPanel {
   }
 
   public void update () {
+    
     _visualStmView.clear ();
     for (Node node : _model.getVisualStm ()) {
-      _visualStmView.addElement (node);
+      if(node.getCreationTime() <= this._stateAtTimeValue){
+        _visualStmView.addElement (node);
+      }
     }
     _visualStmList.setModel (_visualStmView);
 
     _verbalStmView.clear ();
     for (Node node : _model.getVerbalStm ()) {
-      _verbalStmView.addElement (node);
+      if(node.getCreationTime() <= this._stateAtTimeValue){
+        _verbalStmView.addElement (node);
+      }
     }
     _verbalStmList.setModel (_verbalStmView);
   }

@@ -12,7 +12,9 @@ import java.awt.event.*;
 import java.io.File;
 import java.util.Observable;
 import java.util.Observer;
+import javafx.scene.input.KeyCode;
 import javax.swing.*;
+import javax.swing.JSpinner.DefaultEditor;
 
 public class ChrestView extends JFrame implements Observer {
   private Shell _shell;
@@ -20,6 +22,11 @@ public class ChrestView extends JFrame implements Observer {
   private ChrestLtmView _ltmView;
   private ChrestStmView _stmView;
   private ChrestTimeView _timeView;
+  private JToolBar _toolbar;
+  
+  //Need to store object ref here since the number of columns displayed will
+  //change depending on the current value of "_model.getLearningClock()".
+  private JTextField _stateAtTimeTextField; 
 
   public ChrestView (Chrest model) throws SQLiteException {
     this (new Shell (), model);
@@ -31,8 +38,8 @@ public class ChrestView extends JFrame implements Observer {
     _model = model;
     _model.addObserver (this);
     _timeView = new ChrestTimeView (_model);
-    _ltmView = new ChrestLtmView (_model);
-    _stmView = new ChrestStmView (_model);
+    _ltmView = new ChrestLtmView (_model, _model.getLearningClock());
+    _stmView = new ChrestStmView (_model);    
 
     // catch close-window event
     addWindowListener(new WindowAdapter() {
@@ -47,17 +54,19 @@ public class ChrestView extends JFrame implements Observer {
     leftSide.setLayout (new BorderLayout ());
     leftSide.add (_timeView, BorderLayout.NORTH);
     leftSide.add (_stmView, BorderLayout.CENTER);
+    
     JSplitPane jsp = new JSplitPane (JSplitPane.HORIZONTAL_SPLIT, leftSide, _ltmView);
     jsp.setOneTouchExpandable (true);
-
-    setLayout (new GridLayout (1, 1));
-    add (jsp);
+    setLayout (new BorderLayout ());
+    add (jsp, BorderLayout.CENTER);
+    add (this.createToolbar(_model.getLearningClock()), BorderLayout.SOUTH);
 
     // finalise display settings - width of the view should always be the 
     // maximum preferred width of the STM and LTM views since they are placed
     // side-by-side and constitute the entire width of the "CHREST View" window.
-    setSize ((this._stmView.getPreferredSize().width + this._ltmView.getPreferredSize().width), 550);
+    setSize ((leftSide.getPreferredSize().width + this._ltmView.getPreferredSize().width), 550);
     setVisible (true);
+    
     // prompt the long-term memory to draw itself
     _ltmView.setStandardDisplay ();
   }
@@ -66,6 +75,61 @@ public class ChrestView extends JFrame implements Observer {
     JMenuBar mb = new JMenuBar ();
     mb.add (createViewMenu ());
     setJMenuBar (mb);
+  }
+  
+  private JToolBar createToolbar(int stateAtTimeValue){
+    JToolBar toolbar = new JToolBar ();
+    
+    //Add components to toolbar and return.
+    toolbar.add(new JLabel ("<html><b>State at time:</b></html>"));
+    toolbar.add(createStateAtTimeSpinner(stateAtTimeValue));
+    
+    this._toolbar = toolbar;
+    return toolbar;
+  }
+  
+  private JTextField createStateAtTimeSpinner(int stateAtTimeValue){
+    JTextField stateAtTimeTextField = new JTextField(String.valueOf(stateAtTimeValue));
+    Dimension d = stateAtTimeTextField.getPreferredSize();
+    d.width = 120;
+    stateAtTimeTextField.setPreferredSize(d);
+    stateAtTimeTextField.setToolTipText("Displays STM and LTM states as they were according to the time entered (press 'ENTER' to apply filter).");
+    stateAtTimeTextField.addKeyListener(new ApplyTimeFilter());
+    this._stateAtTimeTextField = stateAtTimeTextField;
+    return stateAtTimeTextField;
+  }
+  
+  class ApplyTimeFilter implements KeyListener {
+
+    @Override
+    public void keyReleased(KeyEvent e) {
+      if(e.getKeyCode() == KeyEvent.VK_ENTER){
+        System.out.println("=== Apply the filter ===");
+        String stateAtTimeTextFieldCurrentContents = ((JTextField)e.getComponent()).getText();
+        
+        if(stateAtTimeTextFieldCurrentContents.matches("[0-9]+")){
+          Integer stateAtTimeValue = Integer.valueOf( stateAtTimeTextFieldCurrentContents );
+          
+          _ltmView.update (stateAtTimeValue);
+          _stmView.update ();
+          _timeView.update ();
+        }
+        else{
+          JOptionPane.showMessageDialog(_shell,
+          "Please enter positive numbers (0-9) only",
+          "State at Time Error",
+           JOptionPane.ERROR_MESSAGE
+          );
+        }
+      }
+    }
+
+    @Override
+    public void keyTyped(KeyEvent e) {}
+
+    @Override
+    public void keyPressed(KeyEvent e) {}
+    
   }
 
   public void saveLongTermMemory (File file) {
@@ -119,7 +183,7 @@ public class ChrestView extends JFrame implements Observer {
    */
   @Override
   public void update(Observable o, Object arg) {
-    _ltmView.update ();
+    _ltmView.update (_model.getLearningClock());
     _stmView.update ();
     _timeView.update ();
   }
