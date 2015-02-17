@@ -6,13 +6,16 @@ package jchrest.architecture;
 import com.almworks.sqlite4java.SQLiteException;
 import java.io.IOException;
 import java.io.Writer;
+import java.lang.reflect.Field;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Observable;
-import java.util.Set;
+import java.util.TreeMap;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -30,26 +33,96 @@ import jchrest.lib.ReinforcementLearning;
  * @author Peter C. R. Lane
  */
 public class Node extends Observable {
+
+  /****************************************************************************/
+  /****************************************************************************/
+  /*********************** CONSTANT INSTANCE VARIABLES  ***********************/
+  /****************************************************************************/
+  /****************************************************************************/
   
+  //The variables listed in this section stay consistent throughout the Node's
+  //life-cycle.
+  private final ListPattern _contents; //The test-link trail that leads to this Node in LTM.
+  private final int _creationTime;
   private final Chrest _model;
   private final int _reference;
-  private final ListPattern _contents;
-  private ListPattern _image;
-  private List<Link> _children;
-  private List<Node> _semanticLinks;
-  private Node _associatedNode;
-  private Node _namedBy;
+  
+  /****************************************************************************/
+  /****************************************************************************/
+  /************************ DYNAMIC INSTANCE VARIABLES ************************/
+  /****************************************************************************/
+  /****************************************************************************/
+  
+  //The variables listed in this section can change throughout the Node's 
+  //life-cycle.
   private HashMap<Node, Double> _actionLinks;
-  
-  //History variables
-  private final int _creationTime;
-  private Map<Integer, ListPattern> _imageHistory = new HashMap<>();
-  
-  //Template variables
-  private List<ItemSquarePattern> _itemSlots;
-  private List<ItemSquarePattern> _positionSlots;
+  private Node _associatedNode;
+  private List<Link> _children;
   private List<ItemSquarePattern> _filledItemSlots;
   private List<ItemSquarePattern> _filledPositionSlots;
+  private ListPattern _image;
+  private List<ItemSquarePattern> _itemSlots;
+  private Node _namedBy;
+  private List<ItemSquarePattern> _positionSlots;
+  private List<Node> _semanticLinks;
+  private Node _clone;
+  
+  /****************************************************************************/
+  /****************************************************************************/
+  /************************ HISTORY INSTANCE VARIABLES ************************/
+  /****************************************************************************/
+  /****************************************************************************/
+ 
+  // ===========================================================================
+  // ================================ IMPORTANT ================================
+  // ===========================================================================
+  //
+  // When declaraing a new history variable, please ensure that its instance
+  // variable name ends with "History".  This will ensure that automated 
+  // operations on history variables using Java refelection will work with new
+  // variables without having to implement specific code for the new variable.
+  //
+  // ===========================================================================
+  // ===========================================================================
+  // ===========================================================================
+  //
+  //All of the history variables have keys that are timestamps (domain time) 
+  //hence the use of TreeMap since it is possible to sort and retrieve keys 
+  //in some order.  These  variables are used by Node.deepClone() to instantiate 
+  //cloned Node instances if a historical clone is requested.
+  //
+  //The keys for all instance variable history variables are domainTimes that 
+  //indicate the contents of the history variable at the time indicated by the
+  //key until the next entry in the history variable.  
+  //
+  //The values for the following history variables are either individual or 
+  //multiple Node references.  These are used to indicate what Nodes were 
+  //present in the instance variable they keep a history for from the domain 
+  //time indicated by the respective key.
+  private TreeMap<Integer, HashMap<Integer, Double>> _actionLinksHistory = new TreeMap<>();
+  private TreeMap<Integer, Integer> _associatedNodeHistory = new TreeMap<>();
+  private TreeMap<Integer, Integer> _namedByHistory = new TreeMap<>();
+  private TreeMap<Integer, List<Integer>> _semanticLinksHistory = new TreeMap<>();
+  
+  //The values for the following history variables are single or multiple 
+  //instances of ListPattern or ItemSquarePattern objects.  These are used to 
+  //indicate what instances were present in the instance variable they keep a 
+  //history for from the domain time indicated by the respective key.
+  private TreeMap<Integer, ListPattern> _imageHistory = new TreeMap<>();
+  private TreeMap<Integer, List<ItemSquarePattern>> _itemSlotsHistory = new TreeMap<>();
+  private TreeMap<Integer, List<ItemSquarePattern>> _positionSlotsHistory = new TreeMap<>();
+  
+  //The childrenHistory variable stores the information required to construct a
+  //link instance since it is most efficient to clone a link and its child node
+  //when required otherwise, many similar Node objects would be cloned, wasting
+  //memory.
+  private TreeMap<Integer, List<List<Object>>> _childrenHistory = new TreeMap<>();
+  
+  /****************************************************************************/
+  /****************************************************************************/
+  /******************************** FUNCTIONS *********************************/
+  /****************************************************************************/
+  /****************************************************************************/
 
   /**
    * Constructor to construct a new root node for the model.  
@@ -70,7 +143,7 @@ public class Node extends Observable {
    * Constructor to build a new Chrest node with given reference, contents and image.
    * Package access only, as should only be used by Chrest.java.
    */
-  Node (Chrest model, int reference, ListPattern contents, ListPattern image, int domainTime) {
+  Node (Chrest model, int reference, ListPattern contents, ListPattern image, int time) {
     _model = model;
     _reference = reference;
     _contents = contents.clone ();
@@ -80,8 +153,279 @@ public class Node extends Observable {
     _associatedNode = null;
     _namedBy = null;
     _actionLinks = new HashMap<>();
-    _creationTime = domainTime;
-    _imageHistory.put(domainTime, image.clone());
+    _creationTime = time;
+    
+    //Set-up history variables except for STM history since this should only be
+    //modified when the Node is input/output of STM and this happens 
+    //independently of Node creation.
+    this.updateActionLinksHistory(time);
+    this.updateAssociatedNodeHistory(time);
+    this.updateChildHistory(time);
+    this.updateImageHistory(time);
+    this.updateItemSlotHistory(time);
+    this.updatePositionSlotHistory(time);
+    this.updateSemanticLinkHistory(time);
+  }
+  
+  /**
+   * Returns references for all Node instances that this Node had production
+   * links between and the values of these links at the time specified.
+   * 
+   * @param time
+   * 
+   * @return A HashMap whose keys are references to the Node's that this 
+   * Node had action links to and whose values are the values associated with these
+   * links at the time specified.  If no action links were present at the time 
+   * specified then null is returned. 
+   */
+  private HashMap<Integer, Double> getActionLinksAtTime(int time){
+    return this._actionLinksHistory.floorEntry(time).getValue();
+  }
+  
+  /**
+   * Returns the reference of the Node that was set as this Node instance's 
+   * associated node at the time specified.
+   * 
+   * @param time
+   * 
+   * @return An Integer representing the reference of the Node that this Node
+   * was associated with at the time specified.  If no Node was associated with
+   * this Node at the time specified then null is returned. 
+   */
+  private Integer getAssociatedNodeAtTime(int time){
+    return this._associatedNodeHistory.floorEntry(time).getValue();
+  }
+  
+  /**
+   * Returns the information required to construct a child of this Node at the 
+   * time specified.
+   * 
+   * @param time
+   * 
+   * @return A List of Object instances containing the information required to
+   * construct a Link instance i.e. test pattern, child node reference, link 
+   * creation time. If this Node had no children at the time specified then null 
+   * is returned. 
+   */
+  private List<List<Object>> getChildrenAtTime(int time){
+    return this._childrenHistory.floorEntry(time).getValue();
+  }
+  
+  /**
+   * Returns the image of this Node at the time specified.
+   * 
+   * @param time
+   * 
+   * @return A ListPattern representing the state of this Node's image at the
+   * time specified.  If this Node did not have an image at the time specified 
+   * then null is returned. 
+   */
+  private ListPattern getImageAtTime(int time){
+    return this._imageHistory.floorEntry(time).getValue();
+  }
+  
+  /**
+   * Returns the contents of this Node's item slots at the time specified.
+   * 
+   * @param time
+   * 
+   * @return A List of ItemSquarePattern instances representing this Node's item
+   * slot contents at the time specified.  If this Node had no item slots at the 
+   * time specified then null is returned. 
+   */
+  private List<ItemSquarePattern> getItemSlotsAtTime(int time){
+    return this._itemSlotsHistory.floorEntry(time).getValue();
+  }
+  
+  /**
+   * Returns the reference of the Node that was set as this Node instance's 
+   * named by node at the time specified. 
+   * 
+   * @param time
+   * 
+   * @return An Integer representing the reference of the Node that this Node
+   * was named by at the time specified.  If this Node had no named by value at 
+   * the time specified then null is returned. 
+   */
+  private Integer getNamedByAtTime(int time){
+    return this._namedByHistory.floorKey(time);
+  }
+  
+  /**
+   * Returns the contents of this Node's position slots at the time specified.
+   * 
+   * @param time
+   * 
+   * @return A List of ItemSquarePattern instances representing this Node's 
+   * position slot contents at the time specified.  If this Node had no position 
+   * slots at the time specified then null is returned. 
+   */
+  private List<ItemSquarePattern> getPositionSlotsAtTime(int time){
+    return this._positionSlotsHistory.floorEntry(time).getValue();
+  }
+  
+  /**
+   * Returns the references of the Nodes that were semantically linked to this
+   * Node at the time specified.
+   * 
+   * @param time
+   * 
+   * @return A List of Integers representing the Nodes that were semantically
+   * linked to this Node at the time specified.  If this Node had no semantic
+   * links at the time specified then null is returned.
+   */
+  private List<Integer> getSemanticLinksAtTime(int time){
+    return this._semanticLinksHistory.floorEntry(time).getValue();
+  }
+  
+  /**
+   * Updates the Node's action link history.
+   * @param time 
+   */
+  private void updateActionLinksHistory(int time){
+    if(this._actionLinks.isEmpty()){
+      this._actionLinksHistory.put(time, null);
+    }
+    else{
+      HashMap<Integer, Double> newActionLinkHistoryEntry = new HashMap<>();
+      for(Entry<Node, Double> actionLink : this.getActionLinks().entrySet()){
+        newActionLinkHistoryEntry.put(actionLink.getKey().getReference(), actionLink.getValue());
+      }
+      this._actionLinksHistory.put(time, newActionLinkHistoryEntry);
+    }
+  }
+  
+  /**
+   * Updates the Node's associated node history.
+   * @param time 
+   */
+  private void updateAssociatedNodeHistory(int time){
+    if(this._associatedNode == null){
+      this._associatedNodeHistory.put(time, null);
+    }
+    else{
+      this._associatedNodeHistory.put(time, this._associatedNode.getReference());
+    }
+  }
+  
+  /**
+   * Updates the Node's child history.
+   * @param time 
+   */
+  private void updateChildHistory(int time){
+    if(this._children.isEmpty()){
+      this._childrenHistory.put(time, null);
+    }
+    else{
+      List<List<Object>> copiedChildrenDetails = new ArrayList<>();
+      Iterator<Link> childrenIterator = this._children.iterator();
+      
+      while(childrenIterator.hasNext()){
+        Link childToProcess = childrenIterator.next();
+        ArrayList<Object> copiedChildDetails = new ArrayList<>();
+        copiedChildDetails.add(childToProcess.getTest().clone());
+        copiedChildDetails.add(childToProcess.getChildNode().getReference());
+        copiedChildDetails.add(childToProcess.getCreationTime());
+        copiedChildrenDetails.add(copiedChildDetails);
+      }
+      
+      this._childrenHistory.put(time, copiedChildrenDetails);
+    }
+  }
+  
+  /**
+   * Updates the Node's image history.
+   * @param time 
+   */
+  private void updateImageHistory(int time){
+    if(this._image.isEmpty()){
+      this._imageHistory.put(time, null);
+    }
+    else{
+      this._imageHistory.put(time, this._image.clone());
+    }
+  }
+  
+  /**
+   * Updates the Node's item slot history.
+   * @param time 
+   */
+  private void updateItemSlotHistory(int time){
+    if(this._itemSlots == null){
+      this._itemSlotsHistory.put(time, null);
+    }
+    else if(this._itemSlots.isEmpty()){
+      this._itemSlotsHistory.put(time, null);
+    }
+    else{
+      Iterator<ItemSquarePattern> itemSlotIterator = this._itemSlots.iterator();
+      List<ItemSquarePattern> itemSlotsCopy = new ArrayList<>();
+      
+      while(itemSlotIterator.hasNext()){
+        ItemSquarePattern itemSlotContents = itemSlotIterator.next();
+        itemSlotsCopy.add(new ItemSquarePattern(itemSlotContents.getItem(), itemSlotContents.getColumn(), itemSlotContents.getRow()));
+      }
+      
+      this._itemSlotsHistory.put(time, itemSlotsCopy);
+    }
+  }
+  
+  /**
+   * Updates the Node's named by history.
+   * 
+   * @param time 
+   */
+  private void updateNamedByHistory(int time){
+    if(this._namedBy == null){
+      this._namedByHistory.put(time, null);
+    }
+    else{
+      this._namedByHistory.put(time, this._namedBy._reference);
+    }
+  }
+  
+  /**
+   * Updates the Node's position slot history.
+   * @param time 
+   */
+  private void updatePositionSlotHistory(int time){
+    if(this._positionSlots == null){
+      this._positionSlotsHistory.put(time, null);
+    }
+    else if(this._positionSlots.isEmpty()){
+      this._positionSlotsHistory.put(time, null);
+    }
+    else{
+      Iterator<ItemSquarePattern> positionSlotIterator = this._positionSlots.iterator();
+      List<ItemSquarePattern> positionSlotsCopy = new ArrayList<>();
+
+      while(positionSlotIterator.hasNext()){
+          ItemSquarePattern positionSlotContents = positionSlotIterator.next();
+          positionSlotsCopy.add(new ItemSquarePattern(positionSlotContents.getItem(), positionSlotContents.getColumn(), positionSlotContents.getRow()));
+        }
+
+      this._positionSlotsHistory.put(time, positionSlotsCopy);
+    }
+  }
+  
+  /**
+   * Updates the Node's semantic link history.
+   * @param time 
+   */
+  private void updateSemanticLinkHistory(int time){
+    if(this._semanticLinks.isEmpty()){
+      this._semanticLinksHistory.put(time, null);
+    }
+    else{
+      Iterator<Node> semanticLinksIterator = this._semanticLinks.iterator();
+      List<Integer> semanticLinkCopy = new ArrayList<>();
+      
+      while(semanticLinksIterator.hasNext()){
+        semanticLinkCopy.add(semanticLinksIterator.next()._reference);
+      }
+      
+      this._semanticLinksHistory.put(time, semanticLinkCopy);
+    }
   }
 
   /**
@@ -94,6 +438,26 @@ public class Node extends Observable {
     notifyObservers ("close");
     for (Link child : _children) {
       child.getChildNode().clear ();
+    }
+     
+    //Clear all instance variables that end with "History".
+    for(Field field : Node.class.getDeclaredFields()){
+      if(field.getName().endsWith("History")){
+        try {
+          
+          //Get the object reference by the field for this Node instance.
+          Object historyObject = (TreeMap)field.get(this);
+          
+          //If the object reference is an instance of a TreeMap, call the 
+          //TreeMap.clear() function on it.
+          if(historyObject instanceof TreeMap){
+            TreeMap historyTreeMap = (TreeMap)historyObject;
+            historyTreeMap.clear();
+          }
+        } catch (IllegalArgumentException | IllegalAccessException ex) {
+          Logger.getLogger(Node.class.getName()).log(Level.SEVERE, null, ex);
+        }
+      }
     }
   }
 
@@ -121,9 +485,9 @@ public class Node extends Observable {
   /**
    * Change the node's image.  Also notifies any observers.
    */
-  public void setImage (ListPattern image, int domainTime) {
+  public void setImage (ListPattern image, int time) {
     _image = image;
-    _imageHistory.put(domainTime, image.clone());
+    this.updateImageHistory(time);
     setChanged ();
     notifyObservers ();
   }
@@ -138,8 +502,9 @@ public class Node extends Observable {
   /**
    * Add a new test link with given test pattern and child node.
    */
-  void addTestLink (ListPattern test, Node child, int domainTime) {
-    _children.add (0, new Link (test, child, domainTime));
+  void addTestLink (ListPattern test, Node child, int time) {
+    _children.add (0, new Link (test, child, time));
+    this.updateChildHistory(time);
     setChanged ();
     notifyObservers ();
   }
@@ -147,9 +512,10 @@ public class Node extends Observable {
   /**
    * Make a semantic link between this node and given node.  Do not add duplicates.
    */
-  void addSemanticLink (Node node) {
+  void addSemanticLink (Node node, int time) {
     if (!_semanticLinks.contains (node)) {
       _semanticLinks.add (node);
+      this.updateSemanticLinkHistory(time);
       setChanged ();
       notifyObservers ();
     }
@@ -172,8 +538,9 @@ public class Node extends Observable {
   /**
    * Modify node that is associated with this node.
    */
-  public void setAssociatedNode (Node node) {
+  public void setAssociatedNode (Node node, int time) {
     _associatedNode = node;
+    this.updateAssociatedNodeHistory(time);
     setChanged ();
     notifyObservers ();
   }
@@ -188,8 +555,9 @@ public class Node extends Observable {
   /**
    * Modify node that names this node.
    */
-  public void setNamedBy (Node node) {
+  public void setNamedBy (Node node, int time) {
     _namedBy = node;
+    this.updateNamedByHistory(time);
     setChanged ();
     notifyObservers ();
   }
@@ -206,10 +574,12 @@ public class Node extends Observable {
    * 
    * @param node The node to be linked to this node.
    */
-  public void addActionLink (Node node) {
+  public void addActionLink (Node node, int time) {
     if (node.getImage().getModality().equals(Modality.ACTION) && !_actionLinks.containsKey(node)) { 
       _actionLinks.put(node, 0.00);
     }
+    
+    this.updateActionLinksHistory(time);
   }
 
   /**
@@ -226,13 +596,22 @@ public class Node extends Observable {
    * using the reinforcement learning theory that the node's containing model
    * is set to.
    * 
-   * @param actionNode 
-   * @param variables 
+   * @param actionNode The action node whose link from this Node will be 
+   * reinforced.
+   * @param variables The variables that need to be passed for the Reinforcement
+   * Learning Theory that will be used to calculate the reinforcement value 
+   * {@link jchrest.lib.ReinforcementLearning}
+   * @param time The time that the reinforcement is requested.
    */
-  public void reinforceActionLink (Node actionNode, Double[] variables){
+  public void reinforceActionLink (Node actionNode, Double[] variables, int time){
     String reinforcementLearningTheory = _model.getReinforcementLearningTheory();
-    if (!reinforcementLearningTheory.equals("null") && _actionLinks.containsKey(actionNode) && actionNode.getContents().getModality().equals(Modality.ACTION)){
+    if (
+      !reinforcementLearningTheory.equals("null") && 
+      _actionLinks.containsKey(actionNode) && 
+      actionNode.getContents().getModality().equals(Modality.ACTION)
+    ){
       _actionLinks.put(actionNode, (_actionLinks.get(actionNode) + ReinforcementLearning.ReinforcementLearningTheories.valueOf(reinforcementLearningTheory).calculateReinforcementValue(variables)));
+      this.updateActionLinksHistory(time);
     }
   }
 
@@ -415,9 +794,15 @@ public class Node extends Observable {
   /**
    * Clear out the template slots.
    */
-  public void clearTemplate () {
-    if (_itemSlots != null) _itemSlots.clear ();
-    if (_positionSlots != null) _positionSlots.clear ();
+  public void clearTemplate (int time) {
+    if (_itemSlots != null){
+      _itemSlots.clear ();
+      this.updateItemSlotHistory(time);
+    }
+    if (_positionSlots != null){
+      _positionSlots.clear ();
+      this.updatePositionSlotHistory(time);
+    }
   }
 
   /**
@@ -501,7 +886,7 @@ public class Node extends Observable {
    * Note: usually, this process is done as a whole at the end of training, but 
    * can also be done on a node-by-node basis, during training.
    */
-  public void constructTemplates () {
+  public void constructTemplates (int time) {
     _itemSlots = new ArrayList<ItemSquarePattern> ();
     _positionSlots = new ArrayList<ItemSquarePattern> ();
 
@@ -552,11 +937,14 @@ public class Node extends Observable {
           _positionSlots.add (new ItemSquarePattern ("slot", posnKey / 1000, posnKey - (1000 * (posnKey/1000))));
         }
       }
+      
+      this.updateItemSlotHistory(time);
+      this.updatePositionSlotHistory(time);
     }
 
     // continue conversion for children of this node
     for (Link link : _children) {
-      link.getChildNode().constructTemplates ();
+      link.getChildNode().constructTemplates (time);
     }
 
   }
@@ -663,8 +1051,9 @@ public class Node extends Observable {
    * extendImage is used to add new information to the node's image.
    * It is assumed the given pattern is non-empty and is a valid extension.
    */
-  private Node extendImage (ListPattern newInformation, int domainTime) {
-    setImage (_model.getDomainSpecifics().normalise (_image.append (newInformation)), domainTime);
+  private Node extendImage (ListPattern newInformation, int time) {
+    setImage (_model.getDomainSpecifics().normalise (_image.append (newInformation)), time);
+    this.updateImageHistory(time);
     _model.advanceLearningClock (_model.getFamiliarisationTime ());
 
     return this;
@@ -689,7 +1078,7 @@ public class Node extends Observable {
       // change for conformance
       newInformation.setFinished ();
       // 1. is < $ > known?
-      if (_model.recognise (newInformation).getContents ().equals (newInformation) ) {
+      if (_model.recognise (newInformation, time).getContents ().equals (newInformation) ) {
         // 2. if so, use as test
         try {
           description += "and is already encoded as a LTM node so it will be added as a test.";
@@ -715,7 +1104,7 @@ public class Node extends Observable {
       }
     }
     
-    Node retrievedChunk = _model.recognise (newInformation);
+    Node retrievedChunk = _model.recognise (newInformation, time);
     description += "List-pattern presented (" + newInformation.toString() + ") isn't empty and after sorting through LTM, " + retrievedChunk.getContents().toString() + " has been retrieved.  ";
     if (retrievedChunk == _model.getLtmByModality (pattern)) {
       // 3. if root node is retrieved, then the primitive must be learnt
@@ -774,7 +1163,7 @@ public class Node extends Observable {
     // the max of 5 and 2*contents-size.  This avoids overly large images.
     // This idea is not implemented here.
     //
-    Node retrievedChunk = _model.recognise (newInformation);
+    Node retrievedChunk = _model.recognise (newInformation, domainTime);
     if (retrievedChunk == _model.getLtmByModality (pattern)) {
       // primitive not known, so learn it
       return _model.getLtmByModality(newInformation).learnPrimitive (newInformation, domainTime);
@@ -843,33 +1232,278 @@ public class Node extends Observable {
   }
   
   /**
-   * Returns the contents of this Node instance's image at the domain time that
-   * is earlier than, but with the smallest difference to, the domain time 
-   * specified.
+   * Clones this Node deeply by cloning all Node instances referenced by this
+   * Node and so on.
    * 
-   * @param domainTime in milliseconds.
+   * @param time
    * @return 
    */
-  public ListPattern getHistoricalImage(int domainTime){
-    if(this._imageHistory.containsKey(domainTime)){
-      return this._imageHistory.get(domainTime);
-    }
-    else{
-      Iterator<Integer> imageTimeUpdates = this._imageHistory.keySet().iterator();
-      int mostRecentUpdateBeforeTimeSpecified = 0;
-      
-      while(imageTimeUpdates.hasNext()){
-        Integer imageUpdateTime = imageTimeUpdates.next();
-        if(imageUpdateTime >= mostRecentUpdateBeforeTimeSpecified && imageUpdateTime < domainTime){
-          mostRecentUpdateBeforeTimeSpecified = imageUpdateTime;
-        }
-        else{
+  public Node deepClone(int time){
+    this.deepClone(time, new ArrayList<>());
+    return this._clone;
+  }
+  
+  /**
+   * Deeply clones the Node's current or historical state so any Node instances
+   * referenced by the current Node and any Node instances they reference are
+   * cloned too, recursively.  If a historical clone is requested then the state 
+   * of the Node instances returned will be as they were at the time closest to
+   * the time specified.
+   * 
+   * @param time Set this to -1 if the creation time of nodes is not of interest.
+   * 
+   * @param setOfClonedNodes The set of currently cloned nodes.  Since this 
+   * mechanism creates deep clones exact duplicate clones should
+   * not be created (this will cause problems with Node instance variable 
+   * references to other Nodes).  Usually an empty set should be passed when 
+   * this function is invoked, the function itself will pass an instantiated set 
+   * as it recurses itself.
+   * 
+   * @return 
+   */
+  private ArrayList<Integer> deepClone(int time, ArrayList<Integer> setOfClonedNodeReferences){
+    if(this.getCreationTime() <= time || time == -1){
+
+      //Check that the node to be cloned doesn't already exist in the set of 
+      //cloned nodes.
+      boolean nodeAlreadyCloned = false;
+      for(Integer cloneReference : setOfClonedNodeReferences){
+        if(cloneReference == this._reference){
+          nodeAlreadyCloned = true;
           break;
         }
       }
-      
-      return this._imageHistory.get(mostRecentUpdateBeforeTimeSpecified);
+      if(!nodeAlreadyCloned){
+
+        /**********************************/
+        /**** CONSTRUCT CLONE INSTANCE ****/
+        /**********************************/
+        
+        Node clone = new Node(this._model, this._reference, this._contents.clone(), this._image.clone(), this._creationTime);
+        this._clone = clone;
+        setOfClonedNodeReferences.add(clone._reference);
+        
+        /*********************************************/
+        /**** CLONE NODES REFERENCED BY THIS NODE ****/
+        /*********************************************/
+         
+        //Clone Node instances in instance variables that contain one node.
+        if(this._associatedNode != null){
+          this._associatedNode.deepClone(time, setOfClonedNodeReferences);
+        }
+        
+        if(this._namedBy != null){
+          this._namedBy.deepClone(time, setOfClonedNodeReferences);
+        }
+        
+        //Clone Node instances in instance variables that contain multiple nodes.
+        for(Node node : this._actionLinks.keySet()){
+          if(node != null){
+            node.deepClone(time, setOfClonedNodeReferences);
+          }
+        }
+        
+        for(Link childLink : this._children){
+          Node childNode = childLink.getChildNode();
+          if(childNode != null){
+            childNode.deepClone(time, setOfClonedNodeReferences);
+          }
+        }
+        
+        for(Node node : this._semanticLinks){
+          if(node != null){
+            node.deepClone(time, setOfClonedNodeReferences);
+          }
+        }
+        
+        /**********************************************************************/
+        /**** INSTANTIATE INSTANCE VARIABLES AS THEY WERE @ TIME SPECIFIED ****/
+        /**********************************************************************/
+        
+        HashMap<Integer, Double> historicalActionLinks = this.getActionLinksAtTime(time);
+        if(historicalActionLinks != null){
+          for(Entry<Integer, Double> historicalActionLink : historicalActionLinks.entrySet()){
+            //An action link can only every be in action LTM so just search the
+            //Node instances in this LTM modality for the relevant clone.
+            clone._actionLinks.put( Node.searchForNodeFromBaseNode(historicalActionLink.getKey(), this._model.getLtmByModality(Modality.ACTION))._clone, historicalActionLink.getValue() );
+          }
+        }
+        
+        Integer historicalAssociatedNodeReference = this.getAssociatedNodeAtTime(time);
+        if(historicalAssociatedNodeReference != null){
+          //An associated Node may be of any modality in LTM so a general 
+          //modality search must be performed to retrieve the relevant clone.
+          Node result = Node.searchForNodeInLtm(historicalAssociatedNodeReference, this._model);
+          clone._associatedNode = result._clone;
+        }
+        
+        List<List<Object>> historicalChildLinkDetails = this.getChildrenAtTime(time);
+        if(historicalChildLinkDetails != null){
+          for(List<Object> historicalChildDetail : historicalChildLinkDetails){
+            
+            ListPattern testPattern = (ListPattern)historicalChildDetail.get(0);
+            Integer childNodeReference = (Integer)historicalChildDetail.get(1);
+            Integer creationTime = (Integer)historicalChildDetail.get(2);
+            
+            //A child node will only ever be a descendent of this node so use 
+            //this Node as the starting point for the clone search.
+            Node clonedChild = Node.searchForNodeFromBaseNode( childNodeReference, this)._clone;
+            
+            clone._children.add(new Link(testPattern, clonedChild, creationTime));
+          }
+        }
+        
+        if(this._filledItemSlots!= null){
+          if(!this._filledItemSlots.isEmpty()){
+            for(ItemSquarePattern itemInSlot : this._filledItemSlots){
+              clone._filledItemSlots.add(new ItemSquarePattern(itemInSlot.getItem(), itemInSlot.getColumn(), itemInSlot.getRow()));
+            }
+          }
+        }
+        
+        if(this._filledPositionSlots != null){
+          if(!this._filledPositionSlots.isEmpty()){
+            for(ItemSquarePattern itemInSlot : this._filledPositionSlots){
+              clone._filledPositionSlots.add(new ItemSquarePattern(itemInSlot.getItem(), itemInSlot.getColumn(), itemInSlot.getRow()));
+            }
+          }
+        }
+        
+        ListPattern historicalImage = this.getImageAtTime(time);
+        if(historicalImage != null){
+          clone._image = historicalImage.clone();
+        }
+        
+        List<ItemSquarePattern> historicalItemSlots = this.getItemSlotsAtTime(time);
+        if(historicalItemSlots != null){
+          for(ItemSquarePattern historicalItemSlot: historicalItemSlots){
+            clone._itemSlots.add(new ItemSquarePattern(historicalItemSlot.getItem(), historicalItemSlot.getColumn(), historicalItemSlot.getRow()));
+          }
+        }
+        
+        Integer historicalNamedBy = this.getNamedByAtTime(time);
+        if(historicalNamedBy != null){
+          //The Node in _namedBy will only ever be a verbal Node.
+          clone._namedBy = Node.searchForNodeFromBaseNode(historicalNamedBy, this._model.getLtmByModality(Modality.VERBAL))._clone;
+        }
+        
+        List<ItemSquarePattern> historicalPositionSlots = this.getItemSlotsAtTime(time);
+        if(historicalPositionSlots != null){
+          for(ItemSquarePattern historicalPositionSlot: historicalItemSlots){
+            clone._positionSlots.add(new ItemSquarePattern(historicalPositionSlot.getItem(), historicalPositionSlot.getColumn(), historicalPositionSlot.getRow()));
+          }
+        }
+        
+        List<Integer> historicalSemanticLinks = this.getSemanticLinksAtTime(time);
+        if(historicalSemanticLinks != null){
+          for(Integer historicalSemanticLink : historicalSemanticLinks){
+            //Semantic links will only ever be visual.
+            clone._semanticLinks.add( Node.searchForNodeFromBaseNode(historicalSemanticLink, this._model.getLtmByModality(Modality.VISUAL))._clone );
+          }
+        }
+      }
     }
+    
+    return setOfClonedNodeReferences;
+  }
+  
+  /**
+   * Searches through all LTM modalities in the model specified for the Node
+   * reference specified and returns that Node instance.
+   * 
+   * @param reference The Node instance to search for and retrieve.
+   * @param model The CHREST model whose LTM is to be searched.
+   * 
+   * @return The matching Node reference from LTM or null if no Node instance
+   * in LTM has a reference that matches that supplied.
+   */
+  public static Node searchForNodeInLtm(int reference, Chrest model){
+    
+    Node result = null;
+    
+    breakpoint:
+    for(Field field : model.getClass().getDeclaredFields()){
+      field.setAccessible(true);
+      for(Modality modality : Modality.values()){
+        if(field.getName().endsWith("_" + modality.toString().toLowerCase() + "Ltm")){
+          Object ltmObject;
+        
+          try {
+            ltmObject = field.get(model);
+            if(ltmObject instanceof Node){
+              Node ltmRootNode = (Node)ltmObject;
+              ArrayList<Node> searchResult = Node.searchForNodeFromBaseNode(reference, ltmRootNode, new ArrayList<>());
+              if(searchResult.size() > 0){
+                result = searchResult.get(0);
+                field.setAccessible(false);
+                break breakpoint;
+              }
+            }
+          } catch (IllegalArgumentException | IllegalAccessException ex) {
+            Logger.getLogger(Node.class.getName()).log(Level.SEVERE, null, ex);
+          }
+        }
+      }
+      field.setAccessible(false);
+    }
+    
+    return result;
+  }
+  
+  /**
+   * Searches recursively from the Node instance provided, n, for a Node 
+   * instance whose reference, r, is equal to the reference provided.  If r != 
+   * reference provided then then the references of n's children are checked and
+   * so on until either a Node instance's reference matches that provided or not.
+   * 
+   * @param reference The reference of the Node instance to find and retrieve.
+   * @param node The Node to search from, n.
+   * 
+   * @return The Node instance whose reference is equal to the reference 
+   * provided or null if the references of n or n's descendents do not equal the 
+   * reference provided.
+   */
+  public static Node searchForNodeFromBaseNode(int reference, Node node){
+    ArrayList<Node> result = Node.searchForNodeFromBaseNode(reference, node, new ArrayList<>());
+    return result.get(0);
+  }
+  
+  /**
+   * Performs the actual search described in the public 
+   * {@link jchrest.architecture.Node#searchForNodeFromBaseNode} method.  This
+   * method accepts a stack data structure that has a Node instance added to it
+   * if the reference for the Node instance being searched is equal to the 
+   * reference provided.
+   * 
+   * @param reference The reference of the Node instance to find and retrieve.
+   * @param node The Node instance to be searched.
+   * @param result The result of the search, this should be set to null at first 
+   * but is updated if a Node whose reference is equal to the reference provided
+   * is found.
+   * 
+   * @return Either null if the reference for the Node being searched !=
+   * the reference provided or the Node whose reference does match the reference
+   * provided in the first position of the stack.
+   */
+  private static ArrayList<Node> searchForNodeFromBaseNode(int reference, Node node, ArrayList<Node> result){
+    if(node._reference != reference){
+      for(Link nodeLink : node._children){
+        Node.searchForNodeFromBaseNode(reference, nodeLink.getChildNode(), result);
+      }
+    }
+    else{
+      result.add(node);
+    }
+    
+    return result;
+  }
+  
+  public Node getClone(){
+    return this._clone;
+  }
+  
+  public void clearClone(){
+    this._clone = null;
   }
 }
 

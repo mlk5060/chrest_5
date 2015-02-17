@@ -41,7 +41,10 @@ public class ChessDomain implements DomainSpecifics {
    * defined in deGroot and Gobet (1996).
    * The order is:  P p K k B b N n Q q R r 
    * If the pieces are the same, then order is based on column, and then on row.
+   * @param pattern
+   * @return 
    */
+  @Override
   public ListPattern normalise (ListPattern pattern) {
     ListPattern result = new ListPattern (pattern.getModality ());
     // remove any duplicates from 'pattern'
@@ -52,6 +55,7 @@ public class ChessDomain implements DomainSpecifics {
     }
     // and sort into canonical order before returning
     return result.sort (new Comparator<PrimitivePattern> () {
+      @Override
       public int compare (PrimitivePattern left, PrimitivePattern right) {
         assert (left instanceof ItemSquarePattern);
         assert (right instanceof ItemSquarePattern);
@@ -73,8 +77,12 @@ public class ChessDomain implements DomainSpecifics {
   }
 
   /**
-   * Use level of expertise to determine saliency.
+   * Use level of expertise to det
+   * @param scene
+   * @param model
+   * @return 
    */
+  @Override
   public Set<Square> proposeSalientSquareFixations (Scene scene, Chrest model) {
     return (model.isExperienced () ? getOffensivePieces (scene) : getBigPieces (scene));
   }
@@ -83,6 +91,8 @@ public class ChessDomain implements DomainSpecifics {
    * Construct a chess board given a string definition.
    * Order should be in FEN style, with row 8 (black side) first.
    * Empty square indicated with full stop - counts of empty squares not permitted.
+   * @param definition
+   * @return 
    */
   public static Scene constructBoard (String definition) {
     assert (definition.length () == 71);
@@ -102,6 +112,8 @@ public class ChessDomain implements DomainSpecifics {
    * Returns the set of big pieces in given scene.
    * A 'big piece' is anything other than a pawn.  
    * Used to indicate a salient piece for a novice chess player.
+   * @param scene
+   * @return 
    */
   public Set<Square> getBigPieces (Scene scene) {
     Set<Square> result = new HashSet<Square> ();
@@ -125,6 +137,8 @@ public class ChessDomain implements DomainSpecifics {
    * An 'offensive piece' is a piece on the other player's side.
    * e.g. a black piece on white's side of the board.
    * Used to indicate a salient piece for an inexperienced chess player.
+   * @param scene
+   * @return 
    */
   public Set<Square> getOffensivePieces (Scene scene) {
     Set<Square> result = new HashSet<Square> ();
@@ -365,7 +379,11 @@ public class ChessDomain implements DomainSpecifics {
 
   /**
    * Calculate a list of possible destination squares for a piece in a scene.
+   * @param board
+   * @param square
+   * @return 
    */
+  @Override
   public List<Square> proposeMovementFixations (Scene board, Square square) {
     String piece = board.getItem (square.getRow (), square.getColumn ());
 
@@ -386,6 +404,11 @@ public class ChessDomain implements DomainSpecifics {
     } else {
       return new ArrayList<Square> (); // no moves
     }
+  }
+
+  @Override
+  public int getCurrentTime() {
+    throw new UnsupportedOperationException("Not supported yet.");
   }
 }
 

@@ -30,12 +30,14 @@ import javax.swing.table.*;
 public class CategorisationExperiment extends JPanel {
   private final Chrest _model;
   private final List<PairedPattern> _patterns;
+  private int _exptClock;
 
   public CategorisationExperiment (Chrest model, List<PairedPattern> patterns) {
     super ();
     
     _model = model;
     _patterns = patterns;
+    _exptClock = 0;
 
     setLayout (new GridLayout (1, 1));
     JSplitPane jsp = new JSplitPane (JSplitPane.HORIZONTAL_SPLIT, createRunExperimentView (), createProtocolView ());
@@ -85,6 +87,7 @@ public class CategorisationExperiment extends JPanel {
         Logger.getLogger(CategorisationExperiment.class.getName()).log(Level.SEVERE, null, ex);
       }
       _responses.clear ();
+      _exptClock = 0;
 
       updateControls ();
     }
@@ -114,7 +117,7 @@ public class CategorisationExperiment extends JPanel {
     private void collectResponses () {
       List<ListPattern> responses = new ArrayList<ListPattern> ();
       for (PairedPattern pair : _patterns) {
-        ListPattern response = _model.namePattern (pair.getFirst ());
+        ListPattern response = _model.namePattern (pair.getFirst (), _exptClock);
         if (response != null) {
           responses.add (response);
         } else {
@@ -129,6 +132,7 @@ public class CategorisationExperiment extends JPanel {
       collectResponses ();
       for (PairedPattern pair : preparePatterns ()) {
         _model.learnAndNamePatterns (pair.getFirst (), pair.getSecond ());
+        _exptClock += 1;
       }
       updateControls ();
     }
@@ -142,17 +146,19 @@ public class CategorisationExperiment extends JPanel {
   private JPanel createControls () {
     _randomOrder = new JCheckBox ("Random order");
     _randomOrder.setToolTipText ("Set this to pass pairs to model in a random order");
-        JButton restart = new JButton (new RestartAction ());
+    JButton restart = new JButton (new RestartAction ());
     restart.setToolTipText ("Reset the experiment and clear the model");
     JButton runTrial = new JButton (new RunTrialAction ());
     runTrial.setToolTipText ("Pass each stimulus-response pair once against the model");
 
     JPanel controls = new JPanel ();
-    controls.setLayout (new GridLayout (2, 2, 10, 3));
+    controls.setLayout (new GridLayout (3, 2, 10, 3));
     controls.add (_randomOrder);
     controls.add (restart);
     controls.add (new JLabel (""));
     controls.add (runTrial);
+    controls.add(new JLabel ("Experiment time (ms)"));
+    controls.add(new JLabel (Integer.toString(_exptClock)));
 
     return controls;
   }

@@ -5,15 +5,16 @@
 package jchrest.architecture;
 
 import com.almworks.sqlite4java.*;
-import java.io.File;
 import java.io.IOException;
 import java.io.Writer;
+import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Observable;
+import java.util.Stack;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import jchrest.lib.*;
@@ -31,7 +32,7 @@ public class Chrest extends Observable {
   private DomainSpecifics _domainSpecifics;
   //CHREST execution history variables
   private boolean _historyEnabled = false;
-  private SQLiteConnection _historyConnection = new SQLiteConnection(); //No argument: creates new DB in memory not on disk.
+  private SQLiteConnection _historyConnection;
   private final String _historyTableName = "history";
   // internal clocks
   private int _attentionClock; //Tracks time taken for operations performed in the mind's eye
@@ -52,11 +53,19 @@ public class Chrest extends Observable {
   private boolean _createTemplates;
   private int _minTemplateLevel = 3;
   private int _minTemplateOccurrences = 2;
-  // long-term-memory holds information within the model permanently
+  
+  //Long-term-memory (LTM) holds information within the model permanently and
+  //can be cloned.  Operations concerning LTM clones are automated so if a new
+  //LTM modality is added, just add the respective cloned instance variable.
+  //Unless there are special use cases for this LTM modality clone, no extra 
+  //coding is required.  NOTE: in order for automated clone operations to work,
+  //instance variable names must follow the convention of: "_modalitynameLtm"
+  //and "_clonedModalitynameLtm".
   private int _totalNodes;
   private Node _visualLtm;
   private Node _verbalLtm;
   private Node _actionLtm;
+  
   // short-term-memory holds information within the model temporarily, usually within one experiment
   private final Stm _visualStm;
   private final Stm _verbalStm;
@@ -76,8 +85,9 @@ public class Chrest extends Observable {
     _domainSpecifics = new GenericDomain ();
     
     //Execution history set-up.
-    SQLite.setLibraryPath("../sqlite4java-392"); //Etremely important: without this, execution history will not be able to operate.
+    SQLite.setLibraryPath("../sqlite4java-392"); //Extremely important: without this, execution history will not be able to operate.
     Logger.getLogger("com.almworks.sqlite4java").setLevel(Level.OFF); //Turn off extensive logging by "default".
+    this._historyConnection = new SQLiteConnection(); //No argument: creates new DB in memory not on disk.
     this._historyConnection.open(true);
     this._historyConnection.exec("CREATE TABLE " + this._historyTableName + " (id INTEGER PRIMARY KEY, time INT, operation TEXT, description TEXT);");
     
@@ -96,9 +106,9 @@ public class Chrest extends Observable {
     _verbalLtm = new Node (this, 0, Pattern.makeVerbalList (new String[]{"Root"}), 0);
     _actionLtm = new Node (this, 0, Pattern.makeActionList (new String[]{"Root"}), 0);
     _totalNodes = 0; // Node constructor will have incremented _totalNodes, so reset to 0
-    _visualStm = new Stm (4);
-    _verbalStm = new Stm (2);
-    _actionStm = new Stm (4);
+    _visualStm = new Stm (4, this._learningClock);
+    _verbalStm = new Stm (2, this._learningClock);
+    _actionStm = new Stm (4, this._learningClock);
     _emotionAssociator = new EmotionAssociator ();
     _reinforcementLearningTheory = null; //Must be set explicitly using Chrest.setReinforcementLearningTheory()
     
@@ -109,6 +119,88 @@ public class Chrest extends Observable {
     //Set boolean learning values
     _createTemplates = true;
     _createSemanticLinks = true;
+  }
+  
+  /**
+   * Clones the state of all LTM modalities at the time specified.
+   * 
+   * @param time The time that the cloned LTM should reflect.  If you specify 
+   * 10000 then the cloned LTM state will reflect the state of original LTM
+   * modality specified at time 10000. 
+   */
+  public void cloneLtm(int time){
+    //Store this array since it will be used twice.
+    Field[] declaredFields = Chrest.class.getDeclaredFields();
+    
+    for(Field field1 : declaredFields){
+      
+      //Store the name of the field since it may be used twice.
+      String fieldName = field1.getName();
+      
+      //Check for LTM instance variable.
+      if(fieldName.endsWith("Ltm")){
+        
+        //This field is a LTM instance variable so get its current value and
+        //check to see if the value's type is Node.  If so, continue.
+        try {
+          Object ltmObject = field1.get(this);
+          if(ltmObject instanceof Node){
+            
+            //Safely cast the field value to be a Node and clone it.  Since this
+            //is a LTM modality root node, the entirety of LTM will be cloned.
+            Node ltm = (Node)ltmObject;
+            ltm.deepClone(time);
+          }
+        } catch (IllegalArgumentException | IllegalAccessException ex) {
+          Logger.getLogger(Chrest.class.getName()).log(Level.SEVERE, null, ex);
+        }
+      }
+    }
+  }
+  
+  /**
+   * Retrieves the cloned version of the specified LTM modality.
+   * 
+   * @param modality The {@link jchrest.lib.Modality} of the LTM to retrieve.
+   * 
+   * @return The root node for the LTM clone specified or null if the LTM 
+   * modality specified has not been cloned yet.
+   */
+  public Node getClonedLtm(Modality modality){
+    Node result = null;
+    
+    String modalityString = modality.toString().toLowerCase();
+    for(Field field : Chrest.class.getDeclaredFields()){
+      if(field.getName().endsWith("_" + modalityString + "Ltm")){
+        try {
+          Object value = field.get(this);
+          if(value instanceof Node){
+            result = (Node)value;
+            result = result.getClone();
+          }
+        } catch (IllegalArgumentException | IllegalAccessException ex) {
+          Logger.getLogger(Chrest.class.getName()).log(Level.SEVERE, null, ex);
+        }
+      }
+    }
+    
+    return result;
+  }
+  
+  /**
+   * Clears all LTM clones currently associated with this model.
+   */
+  public void clearClonedLtm(){
+    for(Modality modality : Modality.values()){
+      this.clearClonedLtm(this.getClonedLtm(modality));
+    }
+  }
+  
+  private void clearClonedLtm(Node node){
+    for(Link childLink : node.getChildren()){
+      this.clearClonedLtm(childLink.getChildNode());
+    }
+    node.clearClone();
   }
   
   /**
@@ -557,9 +649,9 @@ public class Chrest extends Observable {
    * Note, the template construction process only currently works for visual patterns 
    * using the ItemSquarePattern primitive.
    */
-  public void constructTemplates () {
+  public void constructTemplates (int time) {
     if (_createTemplates) {
-      _visualLtm.constructTemplates ();
+      _visualLtm.constructTemplates (time);
     }
   }
 
@@ -582,6 +674,26 @@ public class Chrest extends Observable {
     } else { // if (pattern.isAction ()) 
       return _actionLtm;
     }
+  }
+  
+  public Node getLtmByModality(Modality modality){
+    Node result = null;
+    
+    String fieldNameIntermediate = modality.toString().toLowerCase();
+    for(Field field : Chrest.class.getDeclaredFields()){
+      if(field.getName().equals("_" + fieldNameIntermediate + "Ltm")){
+        try {
+          Object value = field.get(this);
+          if(value instanceof Node){
+            result = (Node)value;
+          }
+        } catch (IllegalArgumentException | IllegalAccessException ex) {
+          Logger.getLogger(Chrest.class.getName()).log(Level.SEVERE, null, ex);
+        }
+      }
+    }
+    
+    return result;
   }
 
   private Stm getStmByModality (ListPattern pattern) {
@@ -658,7 +770,7 @@ public class Chrest extends Observable {
    * Add given node to STM.  Check for formation of semantic links by
    * comparing incoming node with the hypothesis, or 'largest', node.
    */
-  private void addToStm (Node node) {
+  private void addToStm (Node node, int time) {
     Stm stm = getStmByModality (node.getImage ());
 
     if (stm.getCount () > 0) {
@@ -666,8 +778,8 @@ public class Chrest extends Observable {
       if (check.getContents().isVisual () && // only add semantic links for visual
           check != node && 
           node.getImage().isSimilarTo (check.getImage (), _similarityThreshold)) {
-        node.addSemanticLink (check); 
-        check.addSemanticLink (node); // two-way semantic link
+        node.addSemanticLink (check, time); 
+        check.addSemanticLink (node, time); // two-way semantic link
       }
     }
 
@@ -675,7 +787,7 @@ public class Chrest extends Observable {
     // Idea is that node's filled slots are cleared when put into STM, 
     // are filled whilst in STM, and forgotten when it leaves.
     node.clearFilledSlots (); 
-    stm.add (node);
+    stm.add (node, time);
 
     // inform observers of a change in model's state
     setChanged ();
@@ -696,7 +808,7 @@ public class Chrest extends Observable {
    * the current node is updated, and searching continues through the 
    * children of the new node.
    */
-  public Node recognise (ListPattern pattern) {
+  public Node recognise (ListPattern pattern, int domainTime) {
     Node currentNode = getLtmByModality (pattern);
     List<Link> children = currentNode.getChildren ();
     ListPattern sortedPattern = pattern;
@@ -720,7 +832,7 @@ public class Chrest extends Observable {
     currentNode = currentNode.searchSemanticLinks (_maximumSemanticDistance);
 
     // add retrieved node to STM
-    addToStm (currentNode);
+    addToStm (currentNode, domainTime);
 
     // return retrieved node
     return currentNode;
@@ -734,19 +846,19 @@ public class Chrest extends Observable {
    * to the image using the pattern.
    */
   public Node recogniseAndLearn (ListPattern pattern, int time) {
-    Node currentNode = recognise (pattern);
+    Node currentNode = recognise (pattern, time);
     if (_learningClock <= time) { // only try to learn if learning clock is 'behind' the time of the call
       if (Math.random () < _rho) { // depending on _rho, may refuse to learn some random times
         _learningClock = time; // bring clock up to date
         if (!currentNode.getImage().equals (pattern)) { // only try any learning if image differs from pattern
           if (currentNode == getLtmByModality (pattern) || // if is rootnode
-              !currentNode.getImage().matches (pattern) || // or mismatch on image
+            !currentNode.getImage().matches (pattern) || // or mismatch on image
               currentNode.getImage().isFinished ()) {      // or image finished
             currentNode = currentNode.discriminate (pattern, time); // then discriminate
           } else  { // else familiarise
             currentNode = currentNode.familiarise (pattern, time);
           }
-          addToStm (currentNode); // add to stm, as node may have changed during learning
+          addToStm (currentNode, time); // add to stm, as node may have changed during learning
         }
       }
     }
@@ -785,16 +897,16 @@ public class Chrest extends Observable {
    * Asks Chrest to return the image of the node obtained by sorting given 
    * pattern through the network.
    */
-  public ListPattern recallPattern (ListPattern pattern) {
-    return recognise(pattern).getImage ();
+  public ListPattern recallPattern (ListPattern pattern, int domainTime) {
+    return recognise(pattern, domainTime).getImage ();
   }
 
   /** 
    * Asks Chrest to return the image of the node which is associated 
    * with the node obtained by sorting given pattern through the network.
    */
-  public ListPattern associatedPattern (ListPattern pattern) {
-    Node retrievedNode = recognise (pattern);
+  public ListPattern associatedPattern (ListPattern pattern, int domainTime) {
+    Node retrievedNode = recognise (pattern, domainTime);
     if (retrievedNode.getAssociatedNode () != null) {
       return retrievedNode.getAssociatedNode().getImage ();
     } else {
@@ -806,8 +918,8 @@ public class Chrest extends Observable {
    * Asks Chrest to return the image of the node which names the node 
    * obtained by sorting given pattern through the network.
    */
-  public ListPattern namePattern (ListPattern pattern) {
-    Node retrievedNode = recognise (pattern);
+  public ListPattern namePattern (ListPattern pattern, int domainTime) {
+    Node retrievedNode = recognise (pattern, domainTime);
     if (retrievedNode.getNamedBy () != null) {
       return retrievedNode.getNamedBy().getImage ();
     } else {
@@ -832,7 +944,7 @@ public class Chrest extends Observable {
    * first pattern and the second pattern pattern
    */
   private Node learnPatternAndLinkToActionPattern(ListPattern pattern1, ListPattern actionPattern, int time) {
-    Node pat1Retrieved = recognise (pattern1);
+    Node pat1Retrieved = recognise (pattern1, time);
     Boolean actionPatternMatched = false;
     
     // 1. is retrieved node image a match for pattern1?
@@ -863,31 +975,31 @@ public class Chrest extends Observable {
           recogniseAndLearn (pattern1, time);
 
           if (_learningClock <= time) {
-            Node actionNodeRetrieved = recognise (actionPattern);
+            Node actionNodeRetrieved = recognise (actionPattern, time);
 
             // 6. if the action node retrieved's image matches action pattern, learn link, else learn action pattern
             if (actionNodeRetrieved.getImage().matches (actionPattern)) {
-              associatePatterns(pat1Retrieved, actionNodeRetrieved, Modality.ACTION.toString());
+              associatePatterns(pat1Retrieved, actionNodeRetrieved, Modality.ACTION.toString(), time);
             }
           }
         }
       }
       else {
         // 5. sort action pattern
-        Node actionNodeRetrieved = recognise (actionPattern);
+        Node actionNodeRetrieved = recognise (actionPattern, time);
         
         // 6. if action node retrieved's image matches action pattern, learn link, else learn action pattern
         if (actionNodeRetrieved.getImage().matches (actionPattern)) {  
-          associatePatterns(pat1Retrieved, actionNodeRetrieved, Modality.ACTION.toString());
+          associatePatterns(pat1Retrieved, actionNodeRetrieved, Modality.ACTION.toString(), time);
         } else { // image not a match, so we need to learn action pattern
           recogniseAndLearn (actionPattern, time);
           
           // 5. sort action pattern.
-          actionNodeRetrieved = recognise (actionPattern);
+          actionNodeRetrieved = recognise (actionPattern, time);
           
           // 6. if the action node retrieved's image matches action pattern, learn link, else learn action pattern
           if (actionNodeRetrieved.getImage().matches (actionPattern)) {  
-            associatePatterns(pat1Retrieved, actionNodeRetrieved, Modality.ACTION.toString());
+            associatePatterns(pat1Retrieved, actionNodeRetrieved, Modality.ACTION.toString(), time);
           }
         }
       }
@@ -905,7 +1017,7 @@ public class Chrest extends Observable {
    * modality.
    */
   private Node learnAndLinkPatterns (ListPattern pattern1, ListPattern pattern2, int time) {
-    Node pat1Retrieved = recognise (pattern1);
+    Node pat1Retrieved = recognise (pattern1, time);
     
     // 1. is retrieved node image a match for pattern1?
     if (pat1Retrieved.getImage().matches (pattern1)) {
@@ -930,31 +1042,31 @@ public class Chrest extends Observable {
           recogniseAndLearn (pattern1, time);
           
           if (_learningClock <= time) {
-            Node pat2Retrieved = recognise (pattern2);
+            Node pat2Retrieved = recognise (pattern2, time);
             
             // 6. if pattern2 retrieved node image match for pattern2, learn link, else learn pattern2
             if (pat2Retrieved.getImage().matches (pattern2)) {
-              associatePatterns(pat1Retrieved, pat2Retrieved, "");
+              associatePatterns(pat1Retrieved, pat2Retrieved, "", time);
             }
           }
         } 
       } else {
         // if not
         // 5. sort pattern2
-        Node pat2Retrieved = recognise (pattern2);
+        Node pat2Retrieved = recognise (pattern2, time);
         
         // 6. if pattern2 retrieved node image match for pattern2, learn link, else learn pattern2
         if (pat2Retrieved.getImage().matches (pattern2)) {  
-          associatePatterns(pat1Retrieved, pat2Retrieved, "");
+          associatePatterns(pat1Retrieved, pat2Retrieved, "", time);
         } else { // image not a match, so we need to learn pattern 2
           recogniseAndLearn (pattern2, time);
           
           // 5. sort pattern2
-          pat2Retrieved = recognise (pattern2);
+          pat2Retrieved = recognise (pattern2, time);
           
           // 6. if pattern2 retrieved node image match for pattern2, learn link, else learn pattern2
           if (pat2Retrieved.getImage().matches (pattern2)) {
-            associatePatterns(pat1Retrieved, pat2Retrieved, "");
+            associatePatterns(pat1Retrieved, pat2Retrieved, "", time);
           }
         }
       }
@@ -979,13 +1091,13 @@ public class Chrest extends Observable {
    * @param secondNode The node that the association goes to.
    * @param modalityOfSecondNode The modality of the second node. 
    */
-  private void associatePatterns(Node firstNode, Node secondNode, String modalityOfSecondNode){
+  private void associatePatterns(Node firstNode, Node secondNode, String modalityOfSecondNode, int time){
     if(modalityOfSecondNode.equalsIgnoreCase(Modality.ACTION.toString())){
-      firstNode.addActionLink(secondNode);
+      firstNode.addActionLink(secondNode, time);
     }
     //TODO: Handle verbal and visual patterns differently (if required).
     else{
-      firstNode.setAssociatedNode(secondNode);
+      firstNode.setAssociatedNode(secondNode, time);
     }
     
     setChanged ();
@@ -1000,7 +1112,7 @@ public class Chrest extends Observable {
     recogniseAndLearn (pattern2, time);
     if (_learningClock <= time) {
       if (pattern1.isVisual () && pattern2.isVerbal () && _visualStm.getCount () > 0 && _verbalStm.getCount () > 0) {
-        _visualStm.getItem(0).setNamedBy (_verbalStm.getItem (0));
+        _visualStm.getItem(0).setNamedBy (_verbalStm.getItem (0), time);
         advanceLearningClock (getAddLinkTime ());
       }
       setChanged ();
@@ -1025,13 +1137,13 @@ public class Chrest extends Observable {
    * in visual STM.
    * TODO: think about if there should be limitations on this.
    */
-  public void learnSceneAndMove (Scene scene, Move move, int numFixations) {
+  public void learnSceneAndMove (Scene scene, Move move, int numFixations, int time) {
     learnScene (scene, numFixations);
     recogniseAndLearn (move.asListPattern ());
     // attempt to link action with each perceived chunk
     if (_visualStm.getCount () > 0 && _actionStm.getCount () > 0) {
       for (Node node : _visualStm) {
-        node.addActionLink (_actionStm.getItem (0));
+        node.addActionLink (_actionStm.getItem (0), time);
       }
     }
     setChanged ();
@@ -1051,8 +1163,8 @@ public class Chrest extends Observable {
   /**
    * Return a map of moves vs frequencies.
    */
-  public Map<ListPattern, Integer> getMovePredictions (Scene scene, int numFixations, String colour) {
-    scanScene (scene, numFixations);
+  public Map<ListPattern, Integer> getMovePredictions (Scene scene, int numFixations, String colour, int domainTime) {
+    scanScene (scene, numFixations, domainTime);
     // create a map of moves to their frequency of occurrence in nodes of STM
     Map<ListPattern, Integer> moveFrequencies = new HashMap<ListPattern, Integer> ();
     for (Node node : _visualStm) {
@@ -1076,8 +1188,8 @@ public class Chrest extends Observable {
    * Predict a move using a CHUMP-like mechanism.
    * TODO: Improve the heuristics here.
    */
-  public Move predictMove (Scene scene, int numFixations) {
-    Map<ListPattern, Integer> moveFrequencies = getMovePredictions (scene, numFixations, null);
+  public Move predictMove (Scene scene, int numFixations, int domainTime) {
+    Map<ListPattern, Integer> moveFrequencies = getMovePredictions (scene, numFixations, null, domainTime);
     // find the most frequent pattern
     ListPattern best = null;
     int bestFrequency = 0;
@@ -1105,8 +1217,8 @@ public class Chrest extends Observable {
    * Predict a move using a CHUMP-like mechanism.
    * TODO: Improve the heuristics here.
    */
-  public Move predictMove (Scene scene, int numFixations, String colour) {
-    Map<ListPattern, Integer> moveFrequencies = getMovePredictions (scene, numFixations, colour);
+  public Move predictMove (Scene scene, int numFixations, String colour, int domainTime) {
+    Map<ListPattern, Integer> moveFrequencies = getMovePredictions (scene, numFixations, colour, domainTime);
     // find the most frequent pattern
     ListPattern best = null;
     int bestFrequency = 0;
@@ -1134,16 +1246,16 @@ public class Chrest extends Observable {
    * Scan given scene, then return a scene which would be recalled.
    * Default behaviour is to clear STM before scanning a scene.
    */
-  public Scene scanScene (Scene scene, int numFixations) {  
-    return scanScene (scene, numFixations, true);
+  public Scene scanScene (Scene scene, int numFixations, int domainTime) {  
+    return scanScene (scene, numFixations, true, domainTime);
   }
   
   /** 
    * Scan given scene, then return a scene which would be recalled.
    */
-  public Scene scanScene (Scene scene, int numFixations, boolean clearStm) {
+  public Scene scanScene (Scene scene, int numFixations, boolean clearStm, int domainTime) {
     if (clearStm) { // only clear STM if flag is set
-      _visualStm.clear ();
+      _visualStm.clear (domainTime);
     }
     _perceiver.setScene (scene);
     _perceiver.start (numFixations);
@@ -1186,8 +1298,8 @@ public class Chrest extends Observable {
     _verbalLtm = new Node (this, 0, Pattern.makeVerbalList (new String[]{"Root"}), 0);
     _actionLtm = new Node (this, 0, Pattern.makeActionList (new String[]{"Root"}), 0);
     _totalNodes = 0;
-    _visualStm.clear ();
-    _verbalStm.clear ();
+    _visualStm.clear (0);
+    _verbalStm.clear (0);
     setChanged ();
     if (!_frozen) notifyObservers ();
   }

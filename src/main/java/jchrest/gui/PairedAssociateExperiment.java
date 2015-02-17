@@ -6,12 +6,7 @@ package jchrest.gui;
 import com.almworks.sqlite4java.SQLiteException;
 import java.awt.*;
 import java.awt.event.*;
-import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.IOException;
-import java.io.PrintWriter;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -605,7 +600,7 @@ public class PairedAssociateExperiment extends JPanel {
     _numberPatternErrors.add( new HashMap<ListPattern, Integer>() );
 
     for (PairedPattern pair : _patterns) {
-      ListPattern response = _model.associatedPattern (pair.getFirst ());
+      ListPattern response = _model.associatedPattern (pair.getFirst (), _exptClock);
 
       if (response != null) {
         responses.add (response);

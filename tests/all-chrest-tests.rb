@@ -16,6 +16,7 @@ end
   "ChessDomain",
   "ItemSquarePattern",
   "ListPattern",
+  "Modality",
   "NumberPattern",
   "Pattern",
   "ReinforcementLearning",

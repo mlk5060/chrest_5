@@ -39,4 +39,9 @@ public class GenericDomain implements DomainSpecifics {
   public List<Square> proposeMovementFixations (Scene scene, Square square) {
     return new ArrayList<Square> ();
   }
+
+  @Override
+  public int getCurrentTime() {
+    throw new UnsupportedOperationException("Not supported yet.");
+  }
 }

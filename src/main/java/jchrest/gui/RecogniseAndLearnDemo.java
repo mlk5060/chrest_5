@@ -24,6 +24,7 @@ import javax.swing.border.*;
 class RecogniseAndLearnDemo extends JPanel {
   private Chrest _model;
   private List<ListPattern> _patterns;
+  private int _exptClock;
 
   public RecogniseAndLearnDemo (Chrest model, List<ListPattern> patterns) {
     _model = model;
@@ -32,6 +33,7 @@ class RecogniseAndLearnDemo extends JPanel {
     _model.setCreateSemanticLinks (false);
     _model.setCreateTemplates (false);
     _patterns = patterns;
+    _exptClock = 0;
 
     setLayout (new BorderLayout ());
     add (constructPatternList (), BorderLayout.CENTER);
@@ -110,7 +112,7 @@ class RecogniseAndLearnDemo extends JPanel {
     public void actionPerformed (ActionEvent e) {
       if (isSelected ()) {
         _feedback.setText ("Recalled " + 
-            _model.recallPattern (selectedPattern()).toString () +
+            _model.recallPattern (selectedPattern(), _exptClock).toString () +
             " for " +
             selectedPattern().toString ());
       }

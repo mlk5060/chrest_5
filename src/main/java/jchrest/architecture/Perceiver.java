@@ -135,7 +135,7 @@ public class Perceiver {
                   if (testIos.getColumn () - 1 == _fixationX && 
                       testIos.getRow () - 1 == _fixationY &&
                       testIos.getItem().equals (_currentScene.getItem (_fixationY, _fixationX))) {
-                    _model.getVisualStm().replaceHypothesis (link.getChildNode ());
+                    _model.getVisualStm().replaceHypothesis (link.getChildNode (), _model.getDomainSpecifics().getCurrentTime());
                       }
                 }
               }
@@ -273,7 +273,10 @@ public class Perceiver {
     if (doingInitialFixations ()) {
       fixationDone = doInitialFixation ();
       if (fixationDone) {
-        node = _model.recognise (_model.getDomainSpecifics().normalise (_currentScene.getItems (_fixationX, _fixationY, 2)));
+        node = _model.recognise (
+          _model.getDomainSpecifics().normalise (_currentScene.getItems (_fixationX, _fixationY, 2)),
+          _model.getDomainSpecifics().getCurrentTime()//TODO: this is probably wrong but inserted to get S/LTM history views working.
+        );
       }
     }
     if (!fixationDone) {
@@ -284,7 +287,10 @@ public class Perceiver {
     }
     if (!fixationDone) {
       moveEyeUsingHeuristics ();
-      node = _model.recognise (_model.getDomainSpecifics().normalise (_currentScene.getItems (_fixationX, _fixationY, 2)));
+      node = _model.recognise (
+        _model.getDomainSpecifics().normalise (_currentScene.getItems (_fixationX, _fixationY, 2)),
+        _model.getDomainSpecifics().getCurrentTime()//TODO: this is probably wrong but inserted to get S/LTM history views working.
+      );
     }
     _recognisedNodes.add (node);
     // Attempt to fill out the slots on the top-node of visual STM with the currently 

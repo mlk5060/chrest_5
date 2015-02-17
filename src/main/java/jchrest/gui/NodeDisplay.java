@@ -19,9 +19,6 @@ class NodeDisplay implements LtmTreeViewNode {
   private Node _node;
   private List<LtmTreeViewNode> _children;
 
-  //TODO: to get the correct image representation, create a private _stateAtTime
-  //field and add a paramater to this constructor to accept a value for the 
-  //parameter
   public NodeDisplay (Node node) {
     _node = node;
     _children = new ArrayList<LtmTreeViewNode> ();

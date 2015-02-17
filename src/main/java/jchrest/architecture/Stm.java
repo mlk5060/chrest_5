@@ -4,8 +4,11 @@
 package jchrest.architecture;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map.Entry;
+import java.util.TreeMap;
 
 /**
  * Class manages the short-term memory for one modality of a Chrest model.
@@ -14,13 +17,19 @@ import java.util.List;
 public class Stm implements Iterable<Node> {
   private int _size;
   private List<Node> _items;
+  
+  //Stores times as keys and Node references as values in the order that the
+  //Node instances appear in STM.  This is used to draw STM correctly when 
+  //a historical state of CHREST is requested.
+  private TreeMap<Integer, List<Integer>> _history;
 
   /**
    * Constructor requires the maximum capacity to be set.
    */
-  public Stm (int size) {
+  public Stm (int size, int domainTime) {
     _size = size;
     _items = new ArrayList<Node> ();
+    _history = new TreeMap<>();
   }
 
   /**
@@ -60,12 +69,15 @@ public class Stm implements Iterable<Node> {
    * However, the most informative node is maintained in the list, by re-adding 
    * it to STM, if lost.
    */
-  public void add (Node node) {
+  public void add (Node node, int time) {
+    
     // find the most informative node which also matches this node's contents
     Node hypothesis = node;
     for (Node check : _items) {
-      if (hypothesis.getContents ().matches (check.getContents ()) &&
-          check.information () > hypothesis.information ()) {
+      if(
+        hypothesis.getContents ().matches (check.getContents ()) &&
+        check.information () > hypothesis.information ()
+      ) {
         hypothesis = check;
       }
     }
@@ -75,19 +87,24 @@ public class Stm implements Iterable<Node> {
 
     // truncate STM to be of at most _size elements
     while (_items.size () > _size) {
-      _items.remove (_items.size () - 1);
+      int lastItemIndex = _items.size () - 1;
+      _items.remove (lastItemIndex);
     }
+    
     // if most informative node not in STM, then add it back in to top
     if (!_items.contains (hypothesis)) {
+      int lastItemIndex = _items.size () - 1;
       _items.remove (_items.size () - 1); // losing bottom item
       _items.add (0, hypothesis);
     }
+    
+    this.addHistoryEntry(time);
   }
 
   /**
    * Replace the topmost (hypothesis) node with the given one.
    */
-  public void replaceHypothesis (Node node) {
+  public void replaceHypothesis (Node node, int time) {
     if (_items.size () > 0) {
       _items.remove (0);
     }
@@ -97,13 +114,15 @@ public class Stm implements Iterable<Node> {
     }
     // add to top of STM
     _items.add (0, node);
+    this.addHistoryEntry(time);
   }
 
   /**
    * Remove all items from STM.
    */
-  public void clear () {
+  public void clear (int time) {
     _items.clear ();
+    this.addHistoryEntry(time);
   }
 
   /**
@@ -112,15 +131,35 @@ public class Stm implements Iterable<Node> {
    * present, and the model's clock is advanced by the time to add a link.
    * Returns boolean to indicate if learning occurred or not.
    */
-  public boolean learnLateralLinks (Chrest model) {
-    if (_items.size () >= 2 && 
-        _items.get(1).getAssociatedNode () != _items.get(0)) {
-      _items.get(1).setAssociatedNode (_items.get(0));
+  public boolean learnLateralLinks (Chrest model, int time) {
+    if (
+      _items.size () >= 2 && 
+      _items.get(1).getAssociatedNode () != _items.get(0)
+    ){
+      _items.get(1).setAssociatedNode (_items.get(0), time);
       model.advanceLearningClock (model.getAddLinkTime ());
       return true;
     } else {
       return false;
     }
+  }
+  
+  /**
+   * Adds an entry to the history of this STM.
+   * 
+   * @param time 
+   */
+  private void addHistoryEntry(int time){
+    Iterator<Node> stmIterator = this._items.iterator();
+    List<Integer> stmNodeReferences = new ArrayList<>();
+    while(stmIterator.hasNext()){
+      stmNodeReferences.add( new Integer(stmIterator.next().getReference()) );
+    }
+    this._history.put(time, stmNodeReferences);
+  }
+  
+  public Entry<Integer, List<Integer>> getStateAtTime(int time){
+    return this._history.floorEntry(time);
   }
 
   /** 

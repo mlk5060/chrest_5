@@ -238,7 +238,7 @@ public class MindsEye {
     //extract the chunk in the retrieved node and count how many patterns are 
     //contained within it.  This value will be used to determine if a reduction 
     //in time cost associated with object placement can be applied.
-    int numberOfRecognisedPatterns = this._model.recognise(visionPattern).getImage().size();
+    int numberOfRecognisedPatterns = this._model.recognise(visionPattern, domainTime).getImage().size();
     
     //Set the multiplier for object placement time to the total number of 
     //objects placed since, if there is no time cost discount to be applied as

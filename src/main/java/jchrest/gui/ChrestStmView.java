@@ -7,8 +7,17 @@ import jchrest.architecture.*;
 
 import java.awt.*;
 import java.awt.event.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.Map;
+import java.util.Map.Entry;
 import javax.swing.*;
 import javax.swing.border.*;
+import jchrest.lib.ItemSquarePattern;
+import jchrest.lib.ListPattern;
+import jchrest.lib.Modality;
 
 public class ChrestStmView extends JPanel {
   private Chrest _model;
@@ -81,26 +90,51 @@ public class ChrestStmView extends JPanel {
     jsp.setOneTouchExpandable (true);
     add (jsp);
 
-    update ();
+    update (_model.getLearningClock(), false);
   }
 
-  public void update () {
+  public void update (int stateAtTime, boolean historicalSearch) {
+    _verbalStmView.clear();
+    _visualStmView.clear();
     
-    _visualStmView.clear ();
-    for (Node node : _model.getVisualStm ()) {
-      if(node.getCreationTime() <= this._stateAtTimeValue){
-        _visualStmView.addElement (node);
+    if(historicalSearch){
+      //Since all Nodes in LTM will have been cloned thanks to the 
+      //ChrestView.update() method at this stage and since the Node.deepClone()
+      //method clones Nodes so that their state reflects the original Node's 
+      //state at the time specified (in this case, "stateAtTime"), we just need 
+      //to fetch the clones and add them to the respective STM view.
+      
+      Entry<Integer, java.util.List<Integer>> verbalStmContents = _model.getVerbalStm().getStateAtTime(stateAtTime);
+      if(verbalStmContents != null){
+        Iterator<Integer> verbalStmContentIterator = verbalStmContents.getValue().iterator();
+        while(verbalStmContentIterator.hasNext()){
+          _verbalStmView.addElement( Node.searchForNodeFromBaseNode(verbalStmContentIterator.next(), this._model.getLtmByModality(Modality.VERBAL)).getClone() );
+        }
+      }
+      
+      Entry<Integer, java.util.List<Integer>> visualStmContents = _model.getVisualStm().getStateAtTime(stateAtTime);
+      if(visualStmContents != null){
+        Iterator<Integer> visualStmContentIterator = visualStmContents.getValue().iterator();
+        while(visualStmContentIterator.hasNext()){
+          _visualStmView.addElement( Node.searchForNodeFromBaseNode(visualStmContentIterator.next(), this._model.getLtmByModality(Modality.VISUAL)).getClone() );
+        }
       }
     }
-    _visualStmList.setModel (_visualStmView);
-
-    _verbalStmView.clear ();
-    for (Node node : _model.getVerbalStm ()) {
-      if(node.getCreationTime() <= this._stateAtTimeValue){
-        _verbalStmView.addElement (node);
+    else{
+      Iterator<Node> verbalStm = _model.getVerbalStm().iterator();
+      Iterator<Node> visualStm = _model.getVisualStm().iterator();
+      
+      while(verbalStm.hasNext()){
+        _verbalStmView.addElement(verbalStm.next());
+      }
+      
+      while(visualStm.hasNext()){
+        _visualStmView.addElement (visualStm.next());
       }
     }
+    
     _verbalStmList.setModel (_verbalStmView);
+    _visualStmList.setModel (_visualStmView);
   }
 }
 

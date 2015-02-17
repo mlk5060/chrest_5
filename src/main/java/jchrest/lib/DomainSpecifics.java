@@ -11,6 +11,7 @@ import jchrest.architecture.Chrest;
   * An interface for defining domain-specific methods.
   */
 public interface DomainSpecifics {
+  public int getCurrentTime();
   public ListPattern normalise (ListPattern pattern);
   public Set<Square> proposeSalientSquareFixations (Scene scene, Chrest model);
   public List<Square> proposeMovementFixations (Scene scene, Square square);

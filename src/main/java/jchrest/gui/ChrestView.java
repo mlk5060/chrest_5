@@ -37,6 +37,8 @@ public class ChrestView extends JFrame implements Observer {
     _shell = shell;
     _model = model;
     _model.addObserver (this);
+    
+    _model.cloneLtm(_model.getLearningClock());
     _timeView = new ChrestTimeView (_model);
     _ltmView = new ChrestLtmView (_model, _model.getLearningClock());
     _stmView = new ChrestStmView (_model);    
@@ -60,11 +62,7 @@ public class ChrestView extends JFrame implements Observer {
     setLayout (new BorderLayout ());
     add (jsp, BorderLayout.CENTER);
     add (this.createToolbar(_model.getLearningClock()), BorderLayout.SOUTH);
-
-    // finalise display settings - width of the view should always be the 
-    // maximum preferred width of the STM and LTM views since they are placed
-    // side-by-side and constitute the entire width of the "CHREST View" window.
-    setSize ((leftSide.getPreferredSize().width + this._ltmView.getPreferredSize().width), 550);
+    setSize (550, 550);
     setVisible (true);
     
     // prompt the long-term memory to draw itself
@@ -104,14 +102,13 @@ public class ChrestView extends JFrame implements Observer {
     @Override
     public void keyReleased(KeyEvent e) {
       if(e.getKeyCode() == KeyEvent.VK_ENTER){
-        System.out.println("=== Apply the filter ===");
         String stateAtTimeTextFieldCurrentContents = ((JTextField)e.getComponent()).getText();
         
         if(stateAtTimeTextFieldCurrentContents.matches("[0-9]+")){
           Integer stateAtTimeValue = Integer.valueOf( stateAtTimeTextFieldCurrentContents );
-          
-          _ltmView.update (stateAtTimeValue);
-          _stmView.update ();
+          _model.cloneLtm(stateAtTimeValue);
+          _ltmView.update (stateAtTimeValue, true);
+          _stmView.update (stateAtTimeValue, true);
           _timeView.update ();
         }
         else{
@@ -183,15 +180,18 @@ public class ChrestView extends JFrame implements Observer {
    */
   @Override
   public void update(Observable o, Object arg) {
-    _ltmView.update (_model.getLearningClock());
-    _stmView.update ();
+    _model.cloneLtm(_model.getLearningClock());
+    _ltmView.update (_model.getLearningClock(), false);
+    _stmView.update (_model.getLearningClock(), false);
     _timeView.update ();
   }
 
   /**
-   * When closing the view, make sure the observer is detached from the model.
+   * When closing the view, make sure the observer is detached from the model
+   * and that cloned LTM's are cleared.
    */
   private void closeView () {
+    _model.clearClonedLtm();
     _model.deleteObserver (this);
     setVisible (false);
     dispose ();

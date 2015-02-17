@@ -45,7 +45,7 @@ end
 desc 'run all Chrest tests'
 task :tests => :compile do
   Dir.chdir('tests') do
-    sh 'jruby -J-cp ../target/classes all-chrest-tests.rb'
+    sh 'jruby -J-cp ../target/classes:../sqlite4java-392/sqlite4java.jar all-chrest-tests.rb'
   end
 end
 

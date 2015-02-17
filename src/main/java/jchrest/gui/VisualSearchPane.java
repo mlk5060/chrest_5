@@ -240,7 +240,7 @@ public class VisualSearchPane extends JPanel {
           }
           cycle += 1;
             }
-        _model.constructTemplates ();
+        _model.constructTemplates (_model.getLearningClock());
         
         result = new Pair (positionsSeen, _model.getTotalLtmNodes ());
         results.add (result);
@@ -450,7 +450,11 @@ public class VisualSearchPane extends JPanel {
         // loop through each scene, doing recall
         for (int i = 0; i < _scenes.size () && !isCancelled (); i++) {
           Scene scene = _scenes.get (i);
-          _model.scanScene (scene, ((SpinnerNumberModel)(_numFixations.getModel())).getNumber().intValue ());
+          _model.scanScene (
+            scene, 
+            ((SpinnerNumberModel)(_numFixations.getModel())).getNumber().intValue (),
+            _model.getDomainSpecifics().getCurrentTime()//TODO: this is probably wrong but inserted to get S/LTM history views working.
+          );
           for (Node node : _model.getPerceiver().getRecognisedNodes ()) {
             int id = node.getReference ();
             if (_recallFrequencies.containsKey (id)) {
@@ -487,7 +491,11 @@ public class VisualSearchPane extends JPanel {
 
     public void actionPerformed (ActionEvent e) {
       Scene scene =  _scenes.get(_sceneSelector.getSelectedIndex ());
-      Scene recalledScene = _model.scanScene (scene, ((SpinnerNumberModel)(_numFixations.getModel())).getNumber().intValue ());
+      Scene recalledScene = _model.scanScene (
+        scene, 
+        ((SpinnerNumberModel)(_numFixations.getModel())).getNumber().intValue (),
+        _model.getDomainSpecifics().getCurrentTime()//TODO: this is probably wrong but inserted to get S/LTM history views working.
+      );
       _recallSceneLabel.setText (recalledScene.getName ());
       _recalledSceneDisplay.updateScene (recalledScene);
       _precision.setText ("" + scene.computePrecision (recalledScene));

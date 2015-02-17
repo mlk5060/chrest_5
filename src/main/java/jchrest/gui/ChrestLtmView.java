@@ -12,10 +12,12 @@ import java.awt.event.*;
 import java.awt.image.*;
 import java.io.*;
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
 import javax.imageio.*;
 import javax.swing.*;
 import javax.swing.border.*;
+import jchrest.lib.Modality;
 
 /**
  * This panel displays the model long-term memory within a tree view, 
@@ -66,7 +68,7 @@ public class ChrestLtmView extends JPanel {
       }
   }
 
-  public void update (int stateAtTimeValue) {
+  public void update (int stateAtTimeValue, boolean historicalUpdate) {
     if (_ltmView != null) {
       this._stateAtTimeValue = stateAtTimeValue;
       
@@ -174,14 +176,14 @@ public class ChrestLtmView extends JPanel {
    */
   private LtmTreeViewNode constructTree () {
     LtmTreeViewNode baseTreeViewNode = new NodeDisplay (null);
-    baseTreeViewNode.add (constructTree (_model.getLtmByModality(Pattern.makeVisualList (new String[]{}))));
-    baseTreeViewNode.add (constructTree (_model.getLtmByModality(Pattern.makeVerbalList (new String[]{}))));
-    baseTreeViewNode.add (constructTree (_model.getLtmByModality(Pattern.makeActionList (new String[]{}))));
+    baseTreeViewNode.add( constructTree(_model.getClonedLtm(Modality.ACTION)) );
+    baseTreeViewNode.add( constructTree(_model.getClonedLtm(Modality.VERBAL)) );
+    baseTreeViewNode.add( constructTree(_model.getClonedLtm(Modality.VISUAL)) );
     return baseTreeViewNode;
   }
 
   /** 
-   * Wrap the model's LTM as a set of LtmTreeViewNode objects.
+   * Clone and wrap the model's LTM as a set of LtmTreeViewNode objects.
    */
   private LtmTreeViewNode constructTree (Node baseNode) {
     NodeDisplay baseTreeViewNode = new NodeDisplay (baseNode);
