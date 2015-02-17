@@ -61,10 +61,7 @@ public class ChrestView extends JFrame implements Observer {
     add (jsp, BorderLayout.CENTER);
     add (this.createToolbar(_model.getLearningClock()), BorderLayout.SOUTH);
 
-    // finalise display settings - width of the view should always be the 
-    // maximum preferred width of the STM and LTM views since they are placed
-    // side-by-side and constitute the entire width of the "CHREST View" window.
-    setSize ((leftSide.getPreferredSize().width + this._ltmView.getPreferredSize().width), 550);
+    setSize (550, 550);
     setVisible (true);
     
     // prompt the long-term memory to draw itself

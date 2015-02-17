@@ -405,6 +405,13 @@ public class Chrest extends Observable {
   public int getLearningClock () {
     return _learningClock;
   }
+  
+  /**
+   * Resets this model's learning clock to 0.
+   */
+  public void resetLearningClock(){
+    this._learningClock = 0;
+  }
 
   /**
    * Advance the learning clock by given amount.
@@ -905,6 +912,7 @@ public class Chrest extends Observable {
    * modality.
    */
   private Node learnAndLinkPatterns (ListPattern pattern1, ListPattern pattern2, int time) {
+    System.out.println("Attempting to learn and link " + pattern1.toString() + " and " + pattern2.toString() + "...");
     Node pat1Retrieved = recognise (pattern1);
     
     // 1. is retrieved node image a match for pattern1?

@@ -49,6 +49,7 @@ public class VisualSearchPane extends JPanel {
     _model = model;
     _scenes = scenes;
     _model.getPerceiver().setScene (_scenes.get (0));
+    _model.resetLearningClock();
     _sceneDisplay = new SceneDisplay (_scenes.get (0));
     _domainSelector = new JComboBox (new String[]{"Generic", "Chess"});
     _domainSelector.addActionListener (new AbstractAction () {

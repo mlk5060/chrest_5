@@ -72,6 +72,7 @@ public class PairedAssociateExperiment extends JPanel {
     _patterns = patterns;
     _patternNumber = 0;
     _trialNumber = 1;
+    _model.resetLearningClock();
     instantiateErrorStorage();
 
     setLayout (new GridLayout (1, 1));
