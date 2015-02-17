@@ -283,15 +283,17 @@ public class Node extends Observable {
    * @param time 
    */
   private void updateActionLinksHistory(int time){
-    if(this._actionLinks.isEmpty()){
-      this._actionLinksHistory.put(time, null);
-    }
-    else{
-      HashMap<Integer, Double> newActionLinkHistoryEntry = new HashMap<>();
-      for(Entry<Node, Double> actionLink : this.getActionLinks().entrySet()){
-        newActionLinkHistoryEntry.put(actionLink.getKey().getReference(), actionLink.getValue());
+    if(this._model.canUpdateNodeHistoryOrDrawLtmState()){
+      if(this._actionLinks.isEmpty()){
+        this._actionLinksHistory.put(time, null);
       }
-      this._actionLinksHistory.put(time, newActionLinkHistoryEntry);
+      else{
+        HashMap<Integer, Double> newActionLinkHistoryEntry = new HashMap<>();
+        for(Entry<Node, Double> actionLink : this.getActionLinks().entrySet()){
+          newActionLinkHistoryEntry.put(actionLink.getKey().getReference(), actionLink.getValue());
+        }
+        this._actionLinksHistory.put(time, newActionLinkHistoryEntry);
+      }
     }
   }
   
@@ -300,11 +302,13 @@ public class Node extends Observable {
    * @param time 
    */
   private void updateAssociatedNodeHistory(int time){
-    if(this._associatedNode == null){
-      this._associatedNodeHistory.put(time, null);
-    }
-    else{
-      this._associatedNodeHistory.put(time, this._associatedNode.getReference());
+    if(this._model.canUpdateNodeHistoryOrDrawLtmState()){
+      if(this._associatedNode == null){
+        this._associatedNodeHistory.put(time, null);
+      }
+      else{
+        this._associatedNodeHistory.put(time, this._associatedNode.getReference());
+      }
     }
   }
   
@@ -313,23 +317,26 @@ public class Node extends Observable {
    * @param time 
    */
   private void updateChildHistory(int time){
-    if(this._children.isEmpty()){
-      this._childrenHistory.put(time, null);
-    }
-    else{
-      List<List<Object>> copiedChildrenDetails = new ArrayList<>();
-      Iterator<Link> childrenIterator = this._children.iterator();
-      
-      while(childrenIterator.hasNext()){
-        Link childToProcess = childrenIterator.next();
-        ArrayList<Object> copiedChildDetails = new ArrayList<>();
-        copiedChildDetails.add(childToProcess.getTest().clone());
-        copiedChildDetails.add(childToProcess.getChildNode().getReference());
-        copiedChildDetails.add(childToProcess.getCreationTime());
-        copiedChildrenDetails.add(copiedChildDetails);
+    if(this._model.canUpdateNodeHistoryOrDrawLtmState()){
+      if(this._children.isEmpty()){
+        this._childrenHistory.put(time, null);
       }
-      
-      this._childrenHistory.put(time, copiedChildrenDetails);
+      else{
+        List<List<Object>> copiedChildrenDetails = new ArrayList<>();
+        Iterator<Link> childrenIterator = this._children.iterator();
+
+        while(childrenIterator.hasNext()){
+          Link childToProcess = childrenIterator.next();
+          ArrayList<Object> copiedChildDetails = new ArrayList<>();
+          copiedChildDetails.add(childToProcess.getTest().clone());
+          copiedChildDetails.add(childToProcess.getChildNode().getReference());
+          copiedChildDetails.add(childToProcess.getCreationTime());
+
+          copiedChildrenDetails.add(copiedChildDetails);
+        }
+
+        this._childrenHistory.put(time, copiedChildrenDetails);
+      }
     }
   }
   
@@ -338,11 +345,13 @@ public class Node extends Observable {
    * @param time 
    */
   private void updateImageHistory(int time){
-    if(this._image.isEmpty()){
-      this._imageHistory.put(time, null);
-    }
-    else{
-      this._imageHistory.put(time, this._image.clone());
+    if(this._model.canUpdateNodeHistoryOrDrawLtmState()){
+      if(this._image.isEmpty()){
+        this._imageHistory.put(time, null);
+      }
+      else{
+        this._imageHistory.put(time, this._image.clone());
+      }
     }
   }
   
@@ -351,22 +360,24 @@ public class Node extends Observable {
    * @param time 
    */
   private void updateItemSlotHistory(int time){
-    if(this._itemSlots == null){
-      this._itemSlotsHistory.put(time, null);
-    }
-    else if(this._itemSlots.isEmpty()){
-      this._itemSlotsHistory.put(time, null);
-    }
-    else{
-      Iterator<ItemSquarePattern> itemSlotIterator = this._itemSlots.iterator();
-      List<ItemSquarePattern> itemSlotsCopy = new ArrayList<>();
-      
-      while(itemSlotIterator.hasNext()){
-        ItemSquarePattern itemSlotContents = itemSlotIterator.next();
-        itemSlotsCopy.add(new ItemSquarePattern(itemSlotContents.getItem(), itemSlotContents.getColumn(), itemSlotContents.getRow()));
+    if(this._model.canUpdateNodeHistoryOrDrawLtmState()){
+      if(this._itemSlots == null){
+        this._itemSlotsHistory.put(time, null);
       }
-      
-      this._itemSlotsHistory.put(time, itemSlotsCopy);
+      else if(this._itemSlots.isEmpty()){
+        this._itemSlotsHistory.put(time, null);
+      }
+      else{
+        Iterator<ItemSquarePattern> itemSlotIterator = this._itemSlots.iterator();
+        List<ItemSquarePattern> itemSlotsCopy = new ArrayList<>();
+
+        while(itemSlotIterator.hasNext()){
+          ItemSquarePattern itemSlotContents = itemSlotIterator.next();
+          itemSlotsCopy.add(new ItemSquarePattern(itemSlotContents.getItem(), itemSlotContents.getColumn(), itemSlotContents.getRow()));
+        }
+
+        this._itemSlotsHistory.put(time, itemSlotsCopy);
+      }
     }
   }
   
@@ -376,11 +387,13 @@ public class Node extends Observable {
    * @param time 
    */
   private void updateNamedByHistory(int time){
-    if(this._namedBy == null){
-      this._namedByHistory.put(time, null);
-    }
-    else{
-      this._namedByHistory.put(time, this._namedBy._reference);
+    if(this._model.canUpdateNodeHistoryOrDrawLtmState()){
+      if(this._namedBy == null){
+        this._namedByHistory.put(time, null);
+      }
+      else{
+        this._namedByHistory.put(time, this._namedBy._reference);
+      }
     }
   }
   
@@ -389,22 +402,24 @@ public class Node extends Observable {
    * @param time 
    */
   private void updatePositionSlotHistory(int time){
-    if(this._positionSlots == null){
-      this._positionSlotsHistory.put(time, null);
-    }
-    else if(this._positionSlots.isEmpty()){
-      this._positionSlotsHistory.put(time, null);
-    }
-    else{
-      Iterator<ItemSquarePattern> positionSlotIterator = this._positionSlots.iterator();
-      List<ItemSquarePattern> positionSlotsCopy = new ArrayList<>();
+    if(this._model.canUpdateNodeHistoryOrDrawLtmState()){
+      if(this._positionSlots == null){
+        this._positionSlotsHistory.put(time, null);
+      }
+      else if(this._positionSlots.isEmpty()){
+        this._positionSlotsHistory.put(time, null);
+      }
+      else{
+        Iterator<ItemSquarePattern> positionSlotIterator = this._positionSlots.iterator();
+        List<ItemSquarePattern> positionSlotsCopy = new ArrayList<>();
 
-      while(positionSlotIterator.hasNext()){
-          ItemSquarePattern positionSlotContents = positionSlotIterator.next();
-          positionSlotsCopy.add(new ItemSquarePattern(positionSlotContents.getItem(), positionSlotContents.getColumn(), positionSlotContents.getRow()));
-        }
+        while(positionSlotIterator.hasNext()){
+            ItemSquarePattern positionSlotContents = positionSlotIterator.next();
+            positionSlotsCopy.add(new ItemSquarePattern(positionSlotContents.getItem(), positionSlotContents.getColumn(), positionSlotContents.getRow()));
+          }
 
-      this._positionSlotsHistory.put(time, positionSlotsCopy);
+        this._positionSlotsHistory.put(time, positionSlotsCopy);
+      }
     }
   }
   
@@ -413,18 +428,20 @@ public class Node extends Observable {
    * @param time 
    */
   private void updateSemanticLinkHistory(int time){
-    if(this._semanticLinks.isEmpty()){
-      this._semanticLinksHistory.put(time, null);
-    }
-    else{
-      Iterator<Node> semanticLinksIterator = this._semanticLinks.iterator();
-      List<Integer> semanticLinkCopy = new ArrayList<>();
-      
-      while(semanticLinksIterator.hasNext()){
-        semanticLinkCopy.add(semanticLinksIterator.next()._reference);
+    if(this._model.canUpdateNodeHistoryOrDrawLtmState()){
+      if(this._semanticLinks.isEmpty()){
+        this._semanticLinksHistory.put(time, null);
       }
-      
-      this._semanticLinksHistory.put(time, semanticLinkCopy);
+      else{
+        Iterator<Node> semanticLinksIterator = this._semanticLinks.iterator();
+        List<Integer> semanticLinkCopy = new ArrayList<>();
+
+        while(semanticLinksIterator.hasNext()){
+          semanticLinkCopy.add(semanticLinksIterator.next()._reference);
+        }
+
+        this._semanticLinksHistory.put(time, semanticLinkCopy);
+      }
     }
   }
 
@@ -1091,10 +1108,10 @@ public class Node extends Observable {
       } else {
         // 3. if not, then learn it
         Node child = new Node (_model, newInformation, newInformation, time);
-        _model.getVisualLtm().addTestLink (newInformation, child, time);
+        _model.getLtmByModality(newInformation).addTestLink (newInformation, child, time);
         
         try {
-          description += "and isn't encoded in a LTM node so a test link and child node containing the list-pattern will be added to the visual LTM root node.";
+          description += "and isn't encoded in a LTM node so a test link and child node containing the list-pattern will be added to the " + newInformation.getModalityString() + " LTM root node.";
           this._model.addToHistory(time, operation, description);
         } catch (SQLiteException ex) {
           Logger.getLogger(Node.class.getName()).log(Level.SEVERE, null, ex);

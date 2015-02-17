@@ -35,8 +35,8 @@ public class Chrest extends Observable {
   private SQLiteConnection _historyConnection;
   private final String _historyTableName = "history";
   // internal clocks
-  private int _attentionClock; //Tracks time taken for operations performed in the mind's eye
-  private int _learningClock; //Tracks time taken for operations perfrormend in LTM/STM
+  private int _attentionClock; //Indicates the time at which CHREST will be free to perform mind's eye operations.
+  private int _learningClock; //Indicates the time at which CHREST will be free to perform LTM/STM operations.
   // timing parameters
   private int _addLinkTime;
   private int _discriminationTime;
@@ -55,13 +55,9 @@ public class Chrest extends Observable {
   private int _minTemplateOccurrences = 2;
   
   //Long-term-memory (LTM) holds information within the model permanently and
-  //can be cloned.  Operations concerning LTM clones are automated so if a new
-  //LTM modality is added, just add the respective cloned instance variable.
-  //Unless there are special use cases for this LTM modality clone, no extra 
-  //coding is required.  NOTE: in order for automated clone operations to work,
-  //instance variable names must follow the convention of: "_modalitynameLtm"
-  //and "_clonedModalitynameLtm".
+  //can be cloned.
   private int _totalNodes;
+  private final int _drawingAndHistoryThreshold = 5000; //How many nodes in LTM is too many for Node history updates and LTM drawing to occur.
   private Node _visualLtm;
   private Node _verbalLtm;
   private Node _actionLtm;
@@ -70,6 +66,7 @@ public class Chrest extends Observable {
   private final Stm _visualStm;
   private final Stm _verbalStm;
   private final Stm _actionStm; // TODO: Incorporate into displays
+  
   // Perception module
   private final Perceiver _perceiver;
   //Mind's Eye module
@@ -119,6 +116,16 @@ public class Chrest extends Observable {
     //Set boolean learning values
     _createTemplates = true;
     _createSemanticLinks = true;
+  }
+  
+  /**
+   * Determines if the model will allow Node history updates or LTM drawing
+   * given the current size of LTM.
+   * 
+   * @return 
+   */
+  public boolean canUpdateNodeHistoryOrDrawLtmState(){
+    return this.getTotalLtmNodes() < this._drawingAndHistoryThreshold;
   }
   
   /**
@@ -192,10 +199,19 @@ public class Chrest extends Observable {
    */
   public void clearClonedLtm(){
     for(Modality modality : Modality.values()){
-      this.clearClonedLtm(this.getClonedLtm(modality));
+      Node clonedModalityRootNode = this.getClonedLtm(modality);
+      if(clonedModalityRootNode != null){
+        this.clearClonedLtm(clonedModalityRootNode);
+      }
     }
   }
   
+  /**
+   * Actually implements the LTM clone clearing referenced in {@link 
+   * jchrest.architecture.Chrest#clearClonedLtm()}.
+   * 
+   * @param node The node whose clone is to be cleared. 
+   */
   private void clearClonedLtm(Node node){
     for(Link childLink : node.getChildren()){
       this.clearClonedLtm(childLink.getChildNode());
