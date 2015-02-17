@@ -62,6 +62,7 @@ public class ChrestView extends JFrame implements Observer {
     setLayout (new BorderLayout ());
     add (jsp, BorderLayout.CENTER);
     add (this.createToolbar(_model.getLearningClock()), BorderLayout.SOUTH);
+    
     setSize (550, 550);
     setVisible (true);
     

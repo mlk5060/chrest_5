@@ -32,6 +32,7 @@ class RecogniseAndLearnDemo extends JPanel {
     _model.setRho (1.0f);
     _model.setCreateSemanticLinks (false);
     _model.setCreateTemplates (false);
+    _model.resetLearningClock();
     _patterns = patterns;
     _exptClock = 0;
 
