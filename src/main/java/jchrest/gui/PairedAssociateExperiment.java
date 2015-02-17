@@ -39,6 +39,7 @@ public class PairedAssociateExperiment extends JPanel {
   private final List<PairedPattern> _patterns;
   private List<List<ListPattern>> _responses;
   private List<HashMap<ListPattern, Integer>> _numberPatternErrors;
+  private List<Integer> _patternsPresented;
   
   //Experiment information and set-up variables.
   private JLabel _patternLabel;
@@ -67,6 +68,8 @@ public class PairedAssociateExperiment extends JPanel {
     _patterns = patterns;
     _patternNumber = 0;
     _trialNumber = 1;
+    _patternsPresented = new ArrayList<>();
+    
     _model.resetLearningClock();
     instantiateErrorStorage();
 
@@ -201,7 +204,10 @@ public class PairedAssociateExperiment extends JPanel {
     _interTrialTime = new JSpinner(new SpinnerNumberModel(2000, 1, 50000, 1));
     _interTrialTime.setToolTipText("The length of time between trials");
     
-    _learningStrategy = new JComboBox(new String[] {"Minimal stimulus - whole response"});
+    _learningStrategy = new JComboBox(new String[] {
+      "First to last",
+      "Outer to inner"
+    });
     ((JLabel)_learningStrategy.getRenderer()).setHorizontalAlignment(JLabel.RIGHT);
     _learningStrategy.setToolTipText("The learning strategy that should be used by CHREST");
     
@@ -429,6 +435,7 @@ public class PairedAssociateExperiment extends JPanel {
       _responses.clear ();
       _exptClock = 0;
       _patternNumber = 0;
+      _patternsPresented.clear();
       ((AbstractTableModel)_trialsTable.getModel()).fireTableStructureChanged();
       ((AbstractTableModel)_errorsTable.getModel()).fireTableStructureChanged();
       _trialNumber = 1;
@@ -465,7 +472,7 @@ public class PairedAssociateExperiment extends JPanel {
     public void actionPerformed(ActionEvent e){
       _model.freeze();
       shufflePatterns();
-      while(_patternNumber < _patterns.size()){
+      while(_patternsPresented.size() < _patterns.size()){
         processPattern();
       }
       checkEndTrial();
@@ -516,11 +523,12 @@ public class PairedAssociateExperiment extends JPanel {
    * test the model, update experiment variables and GUI if so.
    */
   private void checkEndTrial(){
-    if(_patternNumber == _patterns.size()){
+    if(_patternsPresented.size() == _patterns.size()){
       test();
       ((AbstractTableModel)_trialsTable.getModel()).fireTableStructureChanged();
       ((AbstractTableModel)_errorsTable.getModel()).fireTableStructureChanged();
       _patternNumber = 0;
+      _patternsPresented.clear();
       _trialNumber += 1;
       _exptClock += ((SpinnerNumberModel)_interTrialTime.getModel()).getNumber().intValue ();
     }
@@ -560,24 +568,35 @@ public class PairedAssociateExperiment extends JPanel {
    * 
    */
   private void processPattern(){
-    PairedPattern pair = _patterns.get(_patternNumber);
     int presentationFinishTime = ((SpinnerNumberModel)_presentationTime.getModel()).getNumber().intValue() + _exptClock;
 
     while(_exptClock < presentationFinishTime){
-      
-      switch(_learningStrategy.getSelectedIndex()){
-
-        //"Minimal stimulus-whole response" strategy: model learns all stimuli
-        //first using as little information as possible before learning 
-        //responses to each stimulus.
-        case 0:
-          _model.associateAndLearn(pair.getFirst(), pair.getSecond(), _exptClock);
-          break;
-      }
-  
+      PairedPattern pair = this._patterns.get(this._patternNumber);
+      this._model.associateAndLearn(pair.getFirst(), pair.getSecond(), _exptClock);
       _exptClock += 1;
     }
-    _patternNumber += 1;
+    _patternsPresented.add(_patternNumber);
+    
+    switch(_learningStrategy.getSelectedIndex()){
+
+      //"First-to-last" strategy: model learns patterns in order.
+      case 0:
+        _patternNumber++;
+        break;
+
+      //"Outer to inner" strategy: model learns stimuli at each 'end' of the
+      //stimulus-response array and moves towards the middle.
+      case 1:
+        int midpoint = _patterns.size() / 2;
+        if( _patternNumber < midpoint  ){
+          _patternNumber = _patterns.size() - (_patternNumber + 1);
+        }
+        else{
+          _patternNumber = _patterns.size() - _patternNumber;
+        }
+      break;
+    }
+
     _exptClock += ((SpinnerNumberModel)_interItemTime.getModel()).getNumber().intValue ();
    }
   
