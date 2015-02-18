@@ -34,7 +34,9 @@ public class Chrest extends Observable {
   //Indicates whether CHREST is currently engaged in an experiment.  Has 
   //implications in execution history recording, Node history updates and 
   //CHREST model state drawing.  By default, a new CHREST instance will be 
-  //loaded into and engaged with an experiment.
+  //loaded into and engaged with an experiment.  The difference between the 
+  //concepts of "loaded into" and "engaged in" concern whether the model has
+  //done something in an experiment.
   private boolean _loadedIntoExperiment = true;
   private boolean _engagedInExperiment = true;
   
@@ -136,22 +138,44 @@ public class Chrest extends Observable {
     _createSemanticLinks = true;
   }
   
+  /**
+   * Accessor for "_loadedIntoExperiment" instance variable.
+   * 
+   * @return
+   */
   public boolean loadedIntoExperiment(){
     return this._loadedIntoExperiment;
   }
   
+  /**
+   * Updates model's state so that it now considers itself loaded in an 
+   * experiment but hasn't acted within the experiment yet.
+   */
   public void setLoadedIntoExperiment(){
     this._loadedIntoExperiment = true;
   }
   
+  /**
+   * Updates model's state so that it now considers itself not loaded in an 
+   * experiment.
+   */
   public void setNotLoadedIntoExperiment(){
     this._loadedIntoExperiment = false;
   }
   
+  /**
+   * Accessor for "_engagedInExperiment" instance variable.
+   * 
+   * @return
+   */
   public boolean engagedInExperiment(){
     return this._engagedInExperiment;
   }
   
+  /**
+   * If the model is loaded into an experiment the model's state will be updated 
+   * so that it now considers itself engaged in an experiment.  
+   */
   public void setEngagedInExperiment(){
     if(this.loadedIntoExperiment()){
       this._engagedInExperiment = true;
@@ -160,6 +184,10 @@ public class Chrest extends Observable {
     }
   }
   
+  /**
+   * Updates model's state so that it now considers itself not engaged in an 
+   * experiment.
+   */
   public void setNotEngagedInExperiment(){
     this._engagedInExperiment = false;
     this.setChanged();
