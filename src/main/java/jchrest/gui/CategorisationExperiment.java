@@ -89,6 +89,7 @@ public class CategorisationExperiment extends JPanel {
       }
       _responses.clear ();
       _exptClock = 0;
+      _model.setNotEngagedInExperiment();
 
       updateControls ();
     }
@@ -129,6 +130,7 @@ public class CategorisationExperiment extends JPanel {
     }
 
     public void actionPerformed (ActionEvent e) {
+      _model.setEngagedInExperiment();
       _model.freeze (); // save all gui updates to the end
       collectResponses ();
       for (PairedPattern pair : preparePatterns ()) {

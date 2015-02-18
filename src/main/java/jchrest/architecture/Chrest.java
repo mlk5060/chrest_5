@@ -30,25 +30,40 @@ import jchrest.lib.ReinforcementLearning.ReinforcementLearningTheories;
 public class Chrest extends Observable {
   // Domain definitions, if used
   private DomainSpecifics _domainSpecifics;
+  
+  //Indicates whether CHREST is currently engaged in an experiment.  Has 
+  //implications in execution history recording, Node history updates and 
+  //CHREST model state drawing.  By default, a new CHREST instance will be 
+  //loaded into and engaged with an experiment.
+  private boolean _loadedIntoExperiment = true;
+  private boolean _engagedInExperiment = true;
+  
   //CHREST execution history variables
   private boolean _historyEnabled = false;
   private SQLiteConnection _historyConnection;
   private final String _historyTableName = "history";
+  
   // internal clocks
   private int _attentionClock; //Indicates the time at which CHREST will be free to perform mind's eye operations.
   private int _learningClock; //Indicates the time at which CHREST will be free to perform LTM/STM operations.
+  
   // timing parameters
   private int _addLinkTime;
   private int _discriminationTime;
   private int _familiarisationTime;
+  
   // rho is the probability that a given learning operation will occur
   private float _rho;
+  
   // parameter for construction of semantic link
   private boolean _createSemanticLinks;
+  
   // - determines number of overlapping items in node images
   private int _similarityThreshold;
+  
   // - determines maximum distance to search semantic links
   private int _maximumSemanticDistance = 1;
+  
   // template construction parameters
   private boolean _createTemplates;
   private int _minTemplateLevel = 3;
@@ -69,10 +84,13 @@ public class Chrest extends Observable {
   
   // Perception module
   private final Perceiver _perceiver;
+  
   //Mind's Eye module
   private MindsEye _mindsEye;
+  
   // Emotions module
   private EmotionAssociator _emotionAssociator;
+  
   //Reinforcement learning module
   private ReinforcementLearningTheories _reinforcementLearningTheory;
 
@@ -116,6 +134,36 @@ public class Chrest extends Observable {
     //Set boolean learning values
     _createTemplates = true;
     _createSemanticLinks = true;
+  }
+  
+  public boolean loadedIntoExperiment(){
+    return this._loadedIntoExperiment;
+  }
+  
+  public void setLoadedIntoExperiment(){
+    this._loadedIntoExperiment = true;
+  }
+  
+  public void setNotLoadedIntoExperiment(){
+    this._loadedIntoExperiment = false;
+  }
+  
+  public boolean engagedInExperiment(){
+    return this._engagedInExperiment;
+  }
+  
+  public void setEngagedInExperiment(){
+    if(this.loadedIntoExperiment()){
+      this._engagedInExperiment = true;
+      this.setChanged();
+      this.notifyObservers();
+    }
+  }
+  
+  public void setNotEngagedInExperiment(){
+    this._engagedInExperiment = false;
+    this.setChanged();
+    this.notifyObservers();
   }
   
   /**

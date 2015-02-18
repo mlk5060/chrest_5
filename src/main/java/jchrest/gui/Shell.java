@@ -21,9 +21,12 @@ import java.text.DecimalFormat;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Observable;
+import java.util.Observer;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import javax.swing.*;
+import javax.swing.border.Border;
 import javax.swing.border.TitledBorder;
 import javax.swing.event.ChangeEvent;
 import javax.swing.event.ChangeListener;
@@ -43,8 +46,9 @@ import org.jfree.data.statistics.*;
  *
  * @author Peter C. R. Lane
  */
-public class Shell extends JFrame {
+public class Shell extends JFrame implements Observer{
   private Chrest _model;
+  private JMenu _dataMenu; //Required so that "Data" menu options can be disabled if the model is engaged in an experiment.
 
   public Shell () throws SQLiteException {
     super ("CHREST 4");
@@ -53,12 +57,32 @@ public class Shell extends JFrame {
 
     setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
     createMenuBar ();
-
-    setContentPane( new JLabel ("Open some data to use shell") );
+    
+    JLabel startupInfo = new JLabel (
+      "<html>Load data by clicking on the 'Data' toolbar option.  Two types of data<br>"
+        + "can be loaded:"
+        + "<ul>"
+        + " <li>Pre-experiment data: trains CHREST before undertaking an experiment.</li>"
+        + " <li>Experiment data: loads an experiment for CHREST to undertake.</li>"
+        + "</ul>"
+        + "Note that only one set of experiment data can be used with CHREST at any<br>"
+        + "time whereas multiple pre-experiment data files can be used.<br>"
+        + "To reset CHREST and undertake a different experiment, select 'Model' then<br>"
+        + "'Clear' from the toolbar.  Clearing CHREST will remove any pre-experiment<br>"
+        + "data learned too."
+        + "</html>"
+    );
+    
+    startupInfo.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
+    setContentPane(startupInfo);
 
     setSize(800, 600);
     setLocationRelativeTo (null);
     setTheme ("Nimbus");
+    
+    _model.addObserver(this);
+    _model.setNotLoadedIntoExperiment();
+    _model.setNotEngagedInExperiment();
   }
 
   private void createMenuBar () {
@@ -67,6 +91,18 @@ public class Shell extends JFrame {
     mb.add (createDataMenu ());
     mb.add (createModelMenu ());
     setJMenuBar (mb);
+  }
+
+  @Override
+  public void update(Observable o, Object arg) {
+    if(_model.engagedInExperiment()){
+      this._dataMenu.getItem(0).setEnabled(false);
+      this._dataMenu.getItem(1).setEnabled(false);
+    }
+    else {
+      this._dataMenu.getItem(0).setEnabled(true);
+      this._dataMenu.getItem(1).setEnabled(true);
+    }
   }
 
   /**
@@ -126,21 +162,45 @@ public class Shell extends JFrame {
       }
     }
   }
-
+  
   /**
-   * Action to load in a new data set from file.
+   * Action to load in a new pre-experiment data set from file.
    */
-  class LoadDataAction extends AbstractAction implements ActionListener {
+  class LoadPreExperimentDataAction extends AbstractAction implements ActionListener {
     private Shell _parent;
 
-    LoadDataAction (Shell parent) {
-      super ("Open", new ImageIcon (Shell.class.getResource("icons/Open16.gif"))); 
-
+    LoadPreExperimentDataAction (Shell parent) {
+      super ("Load Pre-Experiment Data", new ImageIcon (Shell.class.getResource("icons/Open16.gif"))); 
       _parent = parent;
     }
 
     public void actionPerformed (ActionEvent e) {
-      (new LoadDataThread (_parent)).execute ();
+      if(!_model.engagedInExperiment()){
+        (new LoadDataThread (_parent, "Load Pre-Experiment Data", false)).execute ();
+      }
+    }
+  }
+
+  /**
+   * Action to load in a new data set from file.
+   */
+  class LoadExperimentDataAction extends AbstractAction implements ActionListener {
+    private Shell _parent;
+
+    LoadExperimentDataAction (Shell parent) {
+      super ("Load Experiment Data", new ImageIcon (Shell.class.getResource("icons/Open16.gif"))); 
+      _parent = parent;
+    }
+
+    public void actionPerformed (ActionEvent e) {
+      if(!_model.engagedInExperiment()){
+        (new LoadDataThread (_parent, "Load Experiment Data", true)).execute ();
+      }
+    }
+    
+    @Override
+    public String toString(){
+      return "Load Experiment Data Action";
     }
   }
 
@@ -156,54 +216,67 @@ public class Shell extends JFrame {
     private List<PairedPattern> _pairs;
     private Scenes _scenes;
     private Status _status = Status.OK;
+    private final String _openDialogTitle;
+    private final boolean _experiment;
 
-    LoadDataThread (Shell parent) {
+    LoadDataThread (Shell parent, String openDialogTitle, boolean experiment) {
       _parent = parent;
       _task = "";
       _items = null;
       _pairs = null;
       _scenes = null;
+      _openDialogTitle = openDialogTitle;
+      _experiment = experiment;
     }
 
     @Override
       public Void doInBackground () {
-        File file = FileUtilities.getLoadFilename (_parent);
-        if (file == null) {
-          _status = Status.CANCELLED_SELECTION;
-        } else {
-          try {
-            _status = Status.OK; // assume all will be fine
-            _task = "";
-            // add a monitor to the input stream, to show a message if input is taking a while
-            InputStream inputStream = new ProgressMonitorInputStream(
-                _parent, 
-                "Reading the input file", 
-                new FileInputStream (file));
-            BufferedReader input = new BufferedReader (new InputStreamReader (inputStream));
+        JFileChooser fileChooser = new JFileChooser(".");
+        fileChooser.setDialogTitle(_openDialogTitle);
+        int resultOfFileSelect = fileChooser.showOpenDialog(_parent);
+        if(resultOfFileSelect == JFileChooser.APPROVE_OPTION){
+          File file = fileChooser.getSelectedFile();
+          
+          if (file == null) {
+            _status = Status.CANCELLED_SELECTION;
+          } else {
+            try {
+              _status = Status.OK; // assume all will be fine
+              _task = "";
+              // add a monitor to the input stream, to show a message if input is taking a while
+              InputStream inputStream = new ProgressMonitorInputStream(
+                  _parent, 
+                  "Reading the input file", 
+                  new FileInputStream (file));
+              BufferedReader input = new BufferedReader (new InputStreamReader (inputStream));
 
-            String line = input.readLine ();
-            if (line != null) {
-              _task = line.trim ();
-            }
+              String line = input.readLine ();
+              if (line != null) {
+                _task = line.trim ();
+              }
 
-            if (_task.equals ("recognise-and-learn")) {
-              _items = readItems (input, false);
-            } else if (_task.equals ("serial-anticipation")) {
-              _items = readItems (input, true);
-            } else if (_task.equals ("paired-associate")) {
-              _pairs = readPairedItems (input, false);
-            } else if (_task.equals ("categorisation")) {
-              _pairs = readPairedItems (input, true);
-            } else if (_task.equals ("visual-search")) {
-              _scenes = Scenes.read (input); // throws IOException if any problem
-            } else if (_task.equals ("visual-search-with-move")){
-              _scenes = Scenes.readWithMove (input); // throws IOException if any problem
+              if (_task.equals ("recognise-and-learn")) {
+                _items = readItems (input, false);
+              } else if (_task.equals ("serial-anticipation")) {
+                _items = readItems (input, true);
+              } else if (_task.equals ("paired-associate")) {
+                _pairs = readPairedItems (input, false);
+              } else if (_task.equals ("categorisation")) {
+                _pairs = readPairedItems (input, true);
+              } else if (_task.equals ("visual-search")) {
+                _scenes = Scenes.read (input); // throws IOException if any problem
+              } else if (_task.equals ("visual-search-with-move")){
+                _scenes = Scenes.readWithMove (input); // throws IOException if any problem
+              }
+            } catch (InterruptedIOException ioe) {
+              _status = Status.CANCELLED_RUNNING; // flag cancelled error
+            } catch (IOException ioe) {
+              _status = Status.ERROR; // flag an IO error
             }
-          } catch (InterruptedIOException ioe) {
-            _status = Status.CANCELLED_RUNNING; // flag cancelled error
-          } catch (IOException ioe) {
-            _status = Status.ERROR; // flag an IO error
           }
+        }
+        else if(resultOfFileSelect == JFileChooser.CANCEL_OPTION){
+          _status = Status.CANCELLED_SELECTION;
         }
         return null;
       }
@@ -226,6 +299,13 @@ public class Shell extends JFrame {
                 JOptionPane.WARNING_MESSAGE);
             break;
           case OK:
+            if(this._experiment){
+              _model.setLoadedIntoExperiment();
+            }
+            else{
+              _model.setNotLoadedIntoExperiment();
+            }
+            
             if (_task.equals ("recognise-and-learn") && _items != null) {
               _parent.setContentPane (new RecogniseAndLearnDemo (_model, _items));
             } else if (_task.equals ("serial-anticipation") && _items != null) {
@@ -313,6 +393,7 @@ public class Shell extends JFrame {
             JOptionPane.QUESTION_MESSAGE)) {
         try {
           _model.clear ();
+          _model.setNotEngagedInExperiment();
         } catch (SQLiteException ex) {
           Logger.getLogger(Shell.class.getName()).log(Level.SEVERE, null, ex);
         }
@@ -870,12 +951,11 @@ public class Shell extends JFrame {
   }
 
   private JMenu createDataMenu () {
-    JMenu menu = new JMenu ("Data");
-    menu.setMnemonic (KeyEvent.VK_D);
-    menu.add (new LoadDataAction (this));
-
-    menu.getItem(0).setAccelerator (KeyStroke.getKeyStroke('O', java.awt.Event.CTRL_MASK, false));
-    return menu;
+    this._dataMenu = new JMenu ("Data");
+    this._dataMenu.setMnemonic (KeyEvent.VK_D);
+    this._dataMenu.add (new LoadPreExperimentDataAction (this)).setAccelerator (KeyStroke.getKeyStroke('P', java.awt.Event.CTRL_MASK, false));
+    this._dataMenu.add (new LoadExperimentDataAction (this)).setAccelerator(KeyStroke.getKeyStroke('O', java.awt.Event.CTRL_MASK, false));
+    return this._dataMenu;
   }
 
   private JMenu createModelMenu () {

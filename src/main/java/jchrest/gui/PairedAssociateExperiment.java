@@ -439,6 +439,7 @@ public class PairedAssociateExperiment extends JPanel {
       ((AbstractTableModel)_trialsTable.getModel()).fireTableStructureChanged();
       ((AbstractTableModel)_errorsTable.getModel()).fireTableStructureChanged();
       _trialNumber = 1;
+      _model.setNotEngagedInExperiment();
       
       instantiateErrorStorage();
       updateExperimentInformation ();
@@ -453,6 +454,7 @@ public class PairedAssociateExperiment extends JPanel {
     
     @Override
     public void actionPerformed (ActionEvent e) {
+      _model.setEngagedInExperiment();
       _model.freeze (); // save all gui updates to the end
       shufflePatterns();
       processPattern();
@@ -470,6 +472,7 @@ public class PairedAssociateExperiment extends JPanel {
       
     @Override
     public void actionPerformed(ActionEvent e){
+      _model.setEngagedInExperiment();
       _model.freeze();
       shufflePatterns();
       while(_patternsPresented.size() < _patterns.size()){

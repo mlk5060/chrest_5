@@ -284,6 +284,7 @@ public class VisualSearchPane extends JPanel {
     }
 
     public void actionPerformed (ActionEvent e) {
+      _model.setEngagedInExperiment();
       _task = new TrainingThread (_model, _scenes, getMaxCycles (), getMaxNetworkSize (), getNumFixations ());
       _task.addPropertyChangeListener(
           new java.beans.PropertyChangeListener() {
