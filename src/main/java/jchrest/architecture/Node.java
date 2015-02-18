@@ -3,12 +3,10 @@
 
 package jchrest.architecture;
 
-import com.almworks.sqlite4java.SQLiteException;
 import java.io.IOException;
 import java.io.Writer;
 import java.lang.reflect.Field;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
@@ -128,6 +126,7 @@ public class Node extends Observable {
    * Constructor to construct a new root node for the model.  
    */
   public Node (Chrest model, int reference, ListPattern type, int domainTime) {
+    //Root nodes are always present so have no experiment name
     this (model, reference, type, type, domainTime);
   }
  
@@ -154,6 +153,7 @@ public class Node extends Observable {
     _namedBy = null;
     _actionLinks = new HashMap<>();
     _creationTime = time;
+    
     
     //Set-up history variables except for STM history since this should only be
     //modified when the Node is input/output of STM and this happens 
@@ -331,6 +331,7 @@ public class Node extends Observable {
           copiedChildDetails.add(childToProcess.getTest().clone());
           copiedChildDetails.add(childToProcess.getChildNode().getReference());
           copiedChildDetails.add(childToProcess.getCreationTime());
+          copiedChildDetails.add(childToProcess.getExperimentCreatedIn());
 
           copiedChildrenDetails.add(copiedChildDetails);
         }
@@ -519,8 +520,8 @@ public class Node extends Observable {
   /**
    * Add a new test link with given test pattern and child node.
    */
-  void addTestLink (ListPattern test, Node child, int time) {
-    _children.add (0, new Link (test, child, time));
+  void addTestLink (ListPattern test, Node child, int time, String currentExperimentName) {
+    _children.add (0, new Link (test, child, time, currentExperimentName));
     this.updateChildHistory(time);
     setChanged ();
     notifyObservers ();
@@ -1035,7 +1036,7 @@ public class Node extends Observable {
     ListPattern contents = pattern.clone ();
     contents.setNotFinished ();
     Node child = new Node (_model, contents, new ListPattern (pattern.getModality ()), domainTime);
-    addTestLink (contents, child, domainTime);
+    addTestLink (contents, child, domainTime, _model.getCurrentExperimentName());
     _model.advanceLearningClock (_model.getDiscriminationTime ());
 
     return child;
@@ -1059,7 +1060,7 @@ public class Node extends Observable {
       ( (_reference == 0) ? pattern : _model.getDomainSpecifics().normalise (_contents.append(pattern))), // make same as contents vs Chrest 2
       domainTime
     );
-    addTestLink (pattern, child, domainTime);
+    addTestLink (pattern, child, domainTime, _model.getCurrentExperimentName());
     _model.advanceLearningClock (_model.getDiscriminationTime ());
     return child;
   }
@@ -1097,25 +1098,15 @@ public class Node extends Observable {
       // 1. is < $ > known?
       if (_model.recognise (newInformation, time).getContents ().equals (newInformation) ) {
         // 2. if so, use as test
-        try {
-          description += "and is already encoded as a LTM node so it will be added as a test.";
-          this._model.addToHistory(time, operation, description);
-        } catch (SQLiteException ex) {
-          Logger.getLogger(Node.class.getName()).log(Level.SEVERE, null, ex);
-        }
-        
+        description += "and is already encoded as a LTM node so it will be added as a test.";
+        this._model.addToHistory(time, operation, description);
         return addTest (newInformation, time);
       } else {
         // 3. if not, then learn it
         Node child = new Node (_model, newInformation, newInformation, time);
-        _model.getLtmByModality(newInformation).addTestLink (newInformation, child, time);
-        
-        try {
-          description += "and isn't encoded in a LTM node so a test link and child node containing the list-pattern will be added to the " + newInformation.getModalityString() + " LTM root node.";
-          this._model.addToHistory(time, operation, description);
-        } catch (SQLiteException ex) {
-          Logger.getLogger(Node.class.getName()).log(Level.SEVERE, null, ex);
-        }
+        _model.getLtmByModality(newInformation).addTestLink (newInformation, child, time, _model.getCurrentExperimentName());
+        description += "and isn't encoded in a LTM node so a test link and child node containing the list-pattern will be added to the " + newInformation.getModalityString() + " LTM root node.";
+        this._model.addToHistory(time, operation, description);
         
         return child;
       }
@@ -1125,25 +1116,16 @@ public class Node extends Observable {
     description += "List-pattern presented (" + newInformation.toString() + ") isn't empty and after sorting through LTM, " + retrievedChunk.getContents().toString() + " has been retrieved.  ";
     if (retrievedChunk == _model.getLtmByModality (pattern)) {
       // 3. if root node is retrieved, then the primitive must be learnt
-      try{
-        description += "This is a modality root node so " + newInformation.getFirstItem() + " will be added as a test link and child node to the " + newInformation.getModalityString() + " root node.";
-        this._model.addToHistory(time, operation, description);
-      } catch (SQLiteException ex){
-        Logger.getLogger(Node.class.getName()).log(Level.SEVERE, null, ex);
-      }
+      description += "This is a modality root node so " + newInformation.getFirstItem() + " will be added as a test link and child node to the " + newInformation.getModalityString() + " root node.";
+      this._model.addToHistory(time, operation, description);
       
       return _model.getLtmByModality(newInformation).learnPrimitive (newInformation.getFirstItem (), time);
     } 
     else if (retrievedChunk.getContents().matches (newInformation)) {
       // 5. retrieved chunk can be used as a test
       ListPattern testPattern = retrievedChunk.getContents().clone ();
-      
-      try{
-        description += "This matches " + newInformation.toString() + " so " + testPattern.toString() + " will be added as a test link from " + retrievedChunk.getContents().toString() + " with an empty child node.";
-        this._model.addToHistory(time, operation, description);
-      } catch (SQLiteException ex){
-        Logger.getLogger(Node.class.getName()).log(Level.SEVERE, null, ex);
-      }
+      description += "This matches " + newInformation.toString() + " so " + testPattern.toString() + " will be added as a test link from " + retrievedChunk.getContents().toString() + " with an empty child node.";
+      this._model.addToHistory(time, operation, description);
       
       return addTest (testPattern, time);
     } 
@@ -1152,13 +1134,8 @@ public class Node extends Observable {
       // NB: first-item must be in network as retrievedChunk was not the root node
       ListPattern firstItem = newInformation.getFirstItem ();
       firstItem.setNotFinished ();
-      
-      try{
-        description += "This doesn't match " + newInformation.toString() + " so " + firstItem.toString() + " will be added as a test link from " + retrievedChunk.getContents().toString() + " with an empty child node.";
-        this._model.addToHistory(time, operation, description);
-      } catch (SQLiteException ex){
-        Logger.getLogger(Node.class.getName()).log(Level.SEVERE, null, ex);
-      }
+      description += "This doesn't match " + newInformation.toString() + " so " + firstItem.toString() + " will be added as a test link from " + retrievedChunk.getContents().toString() + " with an empty child node.";
+      this._model.addToHistory(time, operation, description);
       
       return addTest (firstItem, time);
     }
@@ -1263,9 +1240,13 @@ public class Node extends Observable {
   /**
    * Deeply clones the Node's current or historical state so any Node instances
    * referenced by the current Node and any Node instances they reference are
-   * cloned too, recursively.  If a historical clone is requested then the state 
-   * of the Node instances returned will be as they were at the time closest to
-   * the time specified.
+   * cloned too, recursively.  
+   * <ul>
+   *  <li>
+   *    If a historical clone is requested then the state of the Node instances 
+   *    returned will be as they were at the time closest to the time specified.
+   *  </li>
+   * </ul>
    * 
    * @param time Set this to -1 if the creation time of nodes is not of interest.
    * 
@@ -1279,7 +1260,7 @@ public class Node extends Observable {
    * @return 
    */
   private ArrayList<Integer> deepClone(int time, ArrayList<Integer> setOfClonedNodeReferences){
-    if(this.getCreationTime() <= time || time == -1){
+    if( this.getCreationTime() <= time || time == -1 ){
 
       //Check that the node to be cloned doesn't already exist in the set of 
       //cloned nodes.
@@ -1361,12 +1342,13 @@ public class Node extends Observable {
             ListPattern testPattern = (ListPattern)historicalChildDetail.get(0);
             Integer childNodeReference = (Integer)historicalChildDetail.get(1);
             Integer creationTime = (Integer)historicalChildDetail.get(2);
+            String createdInExperiment = (String)historicalChildDetail.get(3);
             
             //A child node will only ever be a descendent of this node so use 
             //this Node as the starting point for the clone search.
             Node clonedChild = Node.searchForNodeFromBaseNode( childNodeReference, this)._clone;
             
-            clone._children.add(new Link(testPattern, clonedChild, creationTime));
+            clone._children.add(new Link(testPattern, clonedChild, creationTime, createdInExperiment));
           }
         }
         

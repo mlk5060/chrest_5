@@ -40,6 +40,10 @@ public class Chrest extends Observable {
   private boolean _loadedIntoExperiment = true;
   private boolean _engagedInExperiment = true;
   
+  //Stores the name of the experiment that CHREST is currently loaded in.
+  private List<String> _experimentsLocatedInNames = new ArrayList<>();
+  private String _preExperimentPrepend = "Pre-expt: ";
+  
   //CHREST execution history variables
   private boolean _historyEnabled = false;
   private SQLiteConnection _historyConnection;
@@ -96,7 +100,7 @@ public class Chrest extends Observable {
   //Reinforcement learning module
   private ReinforcementLearningTheories _reinforcementLearningTheory;
 
-  public Chrest () throws SQLiteException {
+  public Chrest () {
     
     //Specify domain.
     _domainSpecifics = new GenericDomain ();
@@ -105,8 +109,13 @@ public class Chrest extends Observable {
     SQLite.setLibraryPath("../sqlite4java-392"); //Extremely important: without this, execution history will not be able to operate.
     Logger.getLogger("com.almworks.sqlite4java").setLevel(Level.OFF); //Turn off extensive logging by "default".
     this._historyConnection = new SQLiteConnection(); //No argument: creates new DB in memory not on disk.
-    this._historyConnection.open(true);
-    this._historyConnection.exec("CREATE TABLE " + this._historyTableName + " (id INTEGER PRIMARY KEY, time INT, operation TEXT, description TEXT);");
+    
+    try {
+      this._historyConnection.open(true);
+      this._historyConnection.exec("CREATE TABLE " + this._historyTableName + " (id INTEGER PRIMARY KEY, time INT, operation TEXT, description TEXT);");
+    } catch (SQLiteException ex) {
+      Logger.getLogger(Chrest.class.getName()).log(Level.SEVERE, null, ex);
+    }
     
     //Set learning parameters.
     _addLinkTime = 10000;
@@ -136,6 +145,43 @@ public class Chrest extends Observable {
     //Set boolean learning values
     _createTemplates = true;
     _createSemanticLinks = true;
+  }
+  
+  public String getPreExperimentPrepend(){
+    return this._preExperimentPrepend;
+  }
+  
+  /**
+   * Adds an experiment name to the list of experiments this model has been
+   * located in so far since its creation/last time it was cleared.  The 
+   * experiment name will have a repeat number appended to it to differentiate
+   * it from previous runs with this experiment.
+   * 
+   * @param experimentName
+   */
+  public void addExperimentsLocatedInName(String experimentName){
+    int repeatNumber = 1;
+    while(this._experimentsLocatedInNames.contains(experimentName + "-" + repeatNumber)){
+      repeatNumber++;
+    }
+    this._experimentsLocatedInNames.add(experimentName + "-" + repeatNumber);
+    setChanged();
+    notifyObservers();
+  }
+  
+  /**
+   * Returns all experiment names that the model has been located in so far 
+   * since its creation/last time it was cleared.
+   * 
+   * @return 
+   */
+  public List<String> getExperimentsLocatedInNames(){
+    return this._experimentsLocatedInNames;
+  }
+  
+  public String getCurrentExperimentName(){
+    String name = this._experimentsLocatedInNames.get(this._experimentsLocatedInNames.size() - 1);
+    return name;
   }
   
   /**
@@ -205,17 +251,17 @@ public class Chrest extends Observable {
   }
   
   /**
-   * Clones the state of all LTM modalities at the time specified.
+   * Clones the state of all LTM modalities at the time specified for the 
+   * experiment specified.
    * 
    * @param time The time that the cloned LTM should reflect.  If you specify 
    * 10000 then the cloned LTM state will reflect the state of original LTM
    * modality specified at time 10000. 
+   * @param experimentName 
    */
   public void cloneLtm(int time){
-    //Store this array since it will be used twice.
-    Field[] declaredFields = Chrest.class.getDeclaredFields();
     
-    for(Field field1 : declaredFields){
+    for(Field field1 : Chrest.class.getDeclaredFields()){
       
       //Store the name of the field since it may be used twice.
       String fieldName = field1.getName();
@@ -330,20 +376,23 @@ public class Chrest extends Observable {
    * for the sake of being future-proof, this parameter is "user-defined". 
    * @param description An informative description of what the function 
    * referenced in the "operation" parameter is doing in this episode.
-   * 
-   * @throws com.almworks.sqlite4java.SQLiteException 
    */
-  public void addToHistory(Integer time, String operation, String description) throws SQLiteException{
+  public void addToHistory(Integer time, String operation, String description) {
     if(this.canRecordHistory()){
       
-      SQLiteStatement sql = this._historyConnection.prepare("INSERT INTO " + this._historyTableName + " (time, operation, description) VALUES (?, ?, ?)");
-      
-      try{
-        sql.bind(1, time).bind(2, operation).bind(3, description);
-        sql.stepThrough();
+      try{        
+        SQLiteStatement sql = this._historyConnection.prepare("INSERT INTO " + this._historyTableName + " (time, operation, description) VALUES (?, ?, ?)");
+        
+        try{
+          sql.bind(1, time).bind(2, operation).bind(3, description);
+          sql.stepThrough();
+        }
+        finally{
+          sql.dispose();
+        }
       }
-      finally{
-        sql.dispose();
+      catch (SQLiteException ex) {
+        Logger.getLogger(Chrest.class.getName()).log(Level.SEVERE, null, ex);
       }
     }
   }
@@ -370,11 +419,16 @@ public class Chrest extends Observable {
    * Returns the entire execution history of this model.
    * 
    * @return The model's entire execution history.
-   * 
-   * @throws com.almworks.sqlite4java.SQLiteException 
    */
-  public SQLiteStatement getHistory() throws SQLiteException{
-    return this._historyConnection.prepare("SELECT * FROM " + this._historyTableName).stepThrough();
+  public SQLiteStatement getHistory() {
+    SQLiteStatement history = null;
+    try {
+      history = this._historyConnection.prepare("SELECT * FROM " + this._historyTableName).stepThrough();
+    } catch (SQLiteException ex) {
+      Logger.getLogger(Chrest.class.getName()).log(Level.SEVERE, null, ex);
+    }
+    
+    return history;
   }
   
   /**
@@ -385,11 +439,16 @@ public class Chrest extends Observable {
    * @param to Domain-time to return model's execution history to.
    * @return The model's execution history from the time specified to the time
    * specified.
-   * 
-   * @throws SQLiteException 
    */
-  public SQLiteStatement getHistory(int from, int to) throws SQLiteException{
-    return this._historyConnection.prepare("SELECT * FROM " + this._historyTableName + " WHERE time >= ? AND time <= ?").bind(1, from).bind(2, to).stepThrough();
+  public SQLiteStatement getHistory(int from, int to) {
+    SQLiteStatement history = null;
+    try {
+      history = this._historyConnection.prepare("SELECT * FROM " + this._historyTableName + " WHERE time >= ? AND time <= ?").bind(1, from).bind(2, to).stepThrough();
+    } catch (SQLiteException ex) {
+      Logger.getLogger(Chrest.class.getName()).log(Level.SEVERE, null, ex);
+    }
+    
+    return history;
   }
   
   /**
@@ -398,20 +457,29 @@ public class Chrest extends Observable {
    * @param operation The operation to filter execution history by.
    * @param from Domain-time to return model's execution history from.
    * @param to Domain-time to return model's execution history to.
-   * @return
-   * 
-   * @throws SQLiteException 
+   * @return 
    */
-  public SQLiteStatement getHistory(String operation, int from, int to) throws SQLiteException{
-    return this._historyConnection.prepare("SELECT * FROM " + this._historyTableName + " WHERE operation = ? AND time >= ? AND time <= ?").bind(1, operation).bind(2, from).bind(3, to).stepThrough();
+  public SQLiteStatement getHistory(String operation, int from, int to) {
+    SQLiteStatement history = null;
+    
+    try {
+      history = this._historyConnection.prepare("SELECT * FROM " + this._historyTableName + " WHERE operation = ? AND time >= ? AND time <= ?").bind(1, operation).bind(2, from).bind(3, to).stepThrough();
+    } catch (SQLiteException ex) {
+      Logger.getLogger(Chrest.class.getName()).log(Level.SEVERE, null, ex);
+    }
+    
+    return history;
   }
   
   /**
    * Clears the model's current execution history.
-   * @throws com.almworks.sqlite4java.SQLiteException
    */
-  public void clearHistory() throws SQLiteException{
-    this._historyConnection.exec("DELETE FROM " + this._historyTableName);
+  public void clearHistory() {
+    try {
+      this._historyConnection.exec("DELETE FROM " + this._historyTableName);
+    } catch (SQLiteException ex) {
+      Logger.getLogger(Chrest.class.getName()).log(Level.SEVERE, null, ex);
+    }
   }
 
   /**
@@ -1384,9 +1452,8 @@ public class Chrest extends Observable {
 
   /** 
    * Clear the STM and LTM of the model.
-   * @throws com.almworks.sqlite4java.SQLiteException
    */
-  public void clear () throws SQLiteException {
+  public void clear () {
     this.clearHistory();
     _attentionClock = 0;
     _learningClock = 0;
@@ -1399,6 +1466,7 @@ public class Chrest extends Observable {
     _totalNodes = 0;
     _visualStm.clear (0);
     _verbalStm.clear (0);
+    _experimentsLocatedInNames.clear();
     setChanged ();
     if (!_frozen) notifyObservers ();
   }

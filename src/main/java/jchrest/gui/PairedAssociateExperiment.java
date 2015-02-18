@@ -3,7 +3,6 @@
 
 package jchrest.gui;
 
-import com.almworks.sqlite4java.SQLiteException;
 import java.awt.*;
 import java.awt.event.*;
 import java.util.ArrayList;
@@ -11,8 +10,6 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Random;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 import javax.swing.*;
 import javax.swing.border.*;
 import javax.swing.table.*;
@@ -427,11 +424,8 @@ public class PairedAssociateExperiment extends JPanel {
 
     @Override
     public void actionPerformed (ActionEvent e) {
-      try {
-        _model.clear ();
-      } catch (SQLiteException ex) {
-        Logger.getLogger(PairedAssociateExperiment.class.getName()).log(Level.SEVERE, null, ex);
-      }
+      String lastExperimentLocatedInName = _model.getExperimentsLocatedInNames().get(_model.getExperimentsLocatedInNames().size() - 1);
+      _model.clear ();
       _responses.clear ();
       _exptClock = 0;
       _patternNumber = 0;
@@ -440,6 +434,7 @@ public class PairedAssociateExperiment extends JPanel {
       ((AbstractTableModel)_errorsTable.getModel()).fireTableStructureChanged();
       _trialNumber = 1;
       _model.setNotEngagedInExperiment();
+      _model.addExperimentsLocatedInName(lastExperimentLocatedInName);
       
       instantiateErrorStorage();
       updateExperimentInformation ();

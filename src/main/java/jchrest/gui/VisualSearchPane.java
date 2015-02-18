@@ -3,7 +3,6 @@
 
 package jchrest.gui;
 
-import com.almworks.sqlite4java.SQLiteException;
 import jchrest.architecture.Chrest;
 import jchrest.architecture.Node;
 import jchrest.lib.*;
@@ -18,7 +17,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import javax.swing.*;
-import javax.swing.border.*;
 
 // Import the JFreeChart classes
 import org.jfree.chart.*;
@@ -211,7 +209,7 @@ public class VisualSearchPane extends JPanel {
     }
 
     @Override
-      public List<Pair> doInBackground () throws SQLiteException {
+      public List<Pair> doInBackground () {
         _model.clear ();
         _model.freeze ();
         List<Pair> results = new ArrayList<Pair> ();

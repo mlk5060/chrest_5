@@ -16,14 +16,16 @@ public class Link {
   private final ListPattern _test;
   private final Node _child;
   private final int _creationTime;
+  private final String _createdInExperiment; //Used for drawing LTM.
 
   /**
    * Constructor sets the link's test and child node.
    */
-  public Link (ListPattern test, Node child, int domainTime) {
+  public Link (ListPattern test, Node child, int domainTime, String currentExperimentName) {
     _test = test;
     _child = child;
     _creationTime = domainTime;
+    _createdInExperiment = currentExperimentName;
   }
 
   /**
@@ -40,8 +42,20 @@ public class Link {
     return _test;
   }
   
+  /**
+   * Accessor to the time this link was created.
+   * @return 
+   */
   public int getCreationTime(){
     return _creationTime;
+  }
+  
+  /**
+   * Accessor to the name of the experiment this link was created in.
+   * @return 
+   */
+  public String getExperimentCreatedIn(){
+    return this._createdInExperiment;
   }
 
   /**

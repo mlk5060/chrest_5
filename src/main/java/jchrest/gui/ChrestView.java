@@ -3,7 +3,6 @@
 
 package jchrest.gui;
 
-import com.almworks.sqlite4java.SQLiteException;
 import jchrest.architecture.Chrest;
 import jchrest.lib.FileUtilities;
 
@@ -12,9 +11,7 @@ import java.awt.event.*;
 import java.io.File;
 import java.util.Observable;
 import java.util.Observer;
-import javafx.scene.input.KeyCode;
 import javax.swing.*;
-import javax.swing.JSpinner.DefaultEditor;
 
 public class ChrestView extends JFrame implements Observer {
   private Shell _shell;
@@ -24,11 +21,18 @@ public class ChrestView extends JFrame implements Observer {
   private ChrestTimeView _timeView;
   private JToolBar _toolbar;
   
+  private String _lastSelectedExperimentName;
+  
+  //Required so that 'Experiment' sub-menu can be updated as CHREST is placed 
+  //into new experiments.
+  private JMenu _viewMenu; 
+  private JMenu _experimentNames;
+  
   //Need to store object ref here since the number of columns displayed will
   //change depending on the current value of "_model.getLearningClock()".
   private JTextField _stateAtTimeTextField; 
 
-  public ChrestView (Chrest model) throws SQLiteException {
+  public ChrestView (Chrest model) {
     this (new Shell (), model);
   }
 
@@ -40,7 +44,7 @@ public class ChrestView extends JFrame implements Observer {
     
     _model.cloneLtm(_model.getLearningClock());
     _timeView = new ChrestTimeView (_model);
-    _ltmView = new ChrestLtmView (_model, _model.getLearningClock());
+    _ltmView = new ChrestLtmView (_model, _model.getLearningClock(), ""); //This should be altered so that it displays a message informing the user that they need to select an experiment view.
     _stmView = new ChrestStmView (_model);    
 
     // catch close-window event
@@ -61,7 +65,6 @@ public class ChrestView extends JFrame implements Observer {
     jsp.setOneTouchExpandable (true);
     setLayout (new BorderLayout ());
     add (jsp, BorderLayout.CENTER);
-    add (this.createToolbar(_model.getLearningClock()), BorderLayout.SOUTH);
     
     setSize (550, 550);
     setVisible (true);
@@ -108,7 +111,7 @@ public class ChrestView extends JFrame implements Observer {
         if(stateAtTimeTextFieldCurrentContents.matches("[0-9]+")){
           Integer stateAtTimeValue = Integer.valueOf( stateAtTimeTextFieldCurrentContents );
           _model.cloneLtm(stateAtTimeValue);
-          _ltmView.update (stateAtTimeValue, true);
+          _ltmView.update (stateAtTimeValue, true, ChrestView.this._lastSelectedExperimentName);
           _stmView.update (stateAtTimeValue, true);
           _timeView.update ();
         }
@@ -165,14 +168,39 @@ public class ChrestView extends JFrame implements Observer {
   }
 
   private JMenu createViewMenu () {
-    JMenu menu = new JMenu ("View");
-    menu.setMnemonic (KeyEvent.VK_V);
-    menu.add (new SaveLtmAction (this));
-    menu.getItem(0).setMnemonic (KeyEvent.VK_S);
-    menu.add (new CloseAction (this));
-    menu.getItem(1).setMnemonic (KeyEvent.VK_C);
-
-    return menu;
+    this._viewMenu = new JMenu ("View");
+    this._viewMenu.setMnemonic (KeyEvent.VK_V);
+    this._viewMenu.add (this.getExperimentNamesSubMenu());
+    this._viewMenu.add (new SaveLtmAction (this)).setMnemonic (KeyEvent.VK_S);
+    this._viewMenu.add (new CloseAction (this)).setMnemonic (KeyEvent.VK_C);
+    return this._viewMenu;
+  }
+  
+  private JMenu getExperimentNamesSubMenu(){
+    this._experimentNames = new JMenu ("Experiment");
+    for(String experimentName : _model.getExperimentsLocatedInNames()){
+      this._experimentNames.add(new LoadExperimentViewAction(experimentName));
+    }
+    return this._experimentNames;
+  }
+  
+  class LoadExperimentViewAction extends AbstractAction implements ActionListener{
+    private final String _experimentName;
+    
+    public LoadExperimentViewAction (String experimentName) {
+      super (experimentName);
+      this._experimentName = experimentName;
+    }
+    
+    @Override
+    public void actionPerformed(ActionEvent e) {
+      ChrestView.this._lastSelectedExperimentName = _experimentName;
+      _model.cloneLtm(_model.getLearningClock());
+      _ltmView.update (_model.getLearningClock(), false, _experimentName);
+      _stmView.update (_model.getLearningClock(), false);
+      _timeView.update ();
+      ChrestView.this.add (ChrestView.this.createToolbar(_model.getLearningClock()), BorderLayout.SOUTH);
+    }
   }
 
   /** 
@@ -181,8 +209,19 @@ public class ChrestView extends JFrame implements Observer {
    */
   @Override
   public void update(Observable o, Object arg) {
+    
+    int positionOfExperimentsSubMenuInViewMenu = 0;
+    Component[] viewMenuComponents = this._viewMenu.getMenuComponents();
+    while(positionOfExperimentsSubMenuInViewMenu < viewMenuComponents.length){
+      if(viewMenuComponents[positionOfExperimentsSubMenuInViewMenu].equals(this._experimentNames)){
+        break;
+      }
+    }
+    this._viewMenu.remove(this._experimentNames);
+    this._viewMenu.add(this.getExperimentNamesSubMenu(), positionOfExperimentsSubMenuInViewMenu);
+    
     _model.cloneLtm(_model.getLearningClock());
-    _ltmView.update (_model.getLearningClock(), false);
+    _ltmView.update (_model.getLearningClock(), false, _model.getCurrentExperimentName());
     _stmView.update (_model.getLearningClock(), false);
     _timeView.update ();
   }

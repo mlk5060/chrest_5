@@ -29,11 +29,13 @@ public class ChrestLtmView extends JPanel {
   private TreeViewPane _ltmView;
   private Integer _stateAtTimeValue;
   private ConstructTreeThread _constructingTreeThread;
+  private String _experimentToVisualise;
 
-  public ChrestLtmView (Chrest model, int stateAtTimeValue) {
+  public ChrestLtmView (Chrest model, int stateAtTimeValue, String experimentName) {
     super ();
 
     _model = model;
+    this._experimentToVisualise = experimentName;
     setBorder (new TitledBorder ("LTM"));
     setLayout (new BorderLayout ());
 
@@ -68,9 +70,10 @@ public class ChrestLtmView extends JPanel {
       }
   }
 
-  public void update (int stateAtTimeValue, boolean historicalUpdate) {
+  public void update (int stateAtTimeValue, boolean historicalUpdate, String experimentName) {
     if (_ltmView != null) {
       this._stateAtTimeValue = stateAtTimeValue;
+      this._experimentToVisualise = experimentName;
       
       if (!this._model.canUpdateNodeHistoryOrDrawLtmState()) {
         // TODO : change display if number of nodes is too large
@@ -188,7 +191,10 @@ public class ChrestLtmView extends JPanel {
   private LtmTreeViewNode constructTree (Node baseNode) {
     NodeDisplay baseTreeViewNode = new NodeDisplay (baseNode);
     for (Link link : baseNode.getChildren ()) {
-      if(link.getCreationTime() <= this._stateAtTimeValue){
+      if(
+        (link.getCreationTime() <= this._stateAtTimeValue) &&
+        (link.getExperimentCreatedIn().equals(this._experimentToVisualise))
+      ){
         LtmTreeViewNode linkNode = new LinkDisplay (link);
         linkNode.add (constructTree (link.getChildNode ()));
         baseTreeViewNode.add (linkNode);

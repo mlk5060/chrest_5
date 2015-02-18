@@ -26,7 +26,6 @@ import java.util.Observer;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import javax.swing.*;
-import javax.swing.border.Border;
 import javax.swing.border.TitledBorder;
 import javax.swing.event.ChangeEvent;
 import javax.swing.event.ChangeListener;
@@ -50,7 +49,7 @@ public class Shell extends JFrame implements Observer{
   private Chrest _model;
   private JMenu _dataMenu; //Required so that "Data" menu options can be disabled if the model is engaged in an experiment.
 
-  public Shell () throws SQLiteException {
+  public Shell () {
     super ("CHREST 4");
 
     _model = new Chrest ();
@@ -218,6 +217,7 @@ public class Shell extends JFrame implements Observer{
     private Status _status = Status.OK;
     private final String _openDialogTitle;
     private final boolean _experiment;
+    private String _experimentName;
 
     LoadDataThread (Shell parent, String openDialogTitle, boolean experiment) {
       _parent = parent;
@@ -242,6 +242,7 @@ public class Shell extends JFrame implements Observer{
           } else {
             try {
               _status = Status.OK; // assume all will be fine
+              _experimentName = file.getName().replaceFirst("\\..*$", "");
               _task = "";
               // add a monitor to the input stream, to show a message if input is taking a while
               InputStream inputStream = new ProgressMonitorInputStream(
@@ -301,9 +302,11 @@ public class Shell extends JFrame implements Observer{
           case OK:
             if(this._experiment){
               _model.setLoadedIntoExperiment();
+              _model.addExperimentsLocatedInName(_experimentName);
             }
             else{
               _model.setNotLoadedIntoExperiment();
+              _model.addExperimentsLocatedInName(_model.getPreExperimentPrepend() + _experimentName);
             }
             
             if (_task.equals ("recognise-and-learn") && _items != null) {
@@ -386,17 +389,16 @@ public class Shell extends JFrame implements Observer{
 
     public void actionPerformed (ActionEvent e) {
       if (JOptionPane.OK_OPTION == JOptionPane.showConfirmDialog (
-            _parent,
-            "Are you sure you want to clear the model?",
-            "Clear model?",
-            JOptionPane.YES_NO_OPTION,
-            JOptionPane.QUESTION_MESSAGE)) {
-        try {
-          _model.clear ();
-          _model.setNotEngagedInExperiment();
-        } catch (SQLiteException ex) {
-          Logger.getLogger(Shell.class.getName()).log(Level.SEVERE, null, ex);
-        }
+        _parent,
+        "Are you sure you want to clear the model?",
+        "Clear model?",
+        JOptionPane.YES_NO_OPTION,
+        JOptionPane.QUESTION_MESSAGE
+      )){
+        String lastExperimentLocatedInName = _model.getExperimentsLocatedInNames().get(_model.getExperimentsLocatedInNames().size() - 1);
+        _model.clear ();
+        _model.setNotEngagedInExperiment();
+        _model.addExperimentsLocatedInName(lastExperimentLocatedInName);
       }
     }
   }
@@ -560,11 +562,7 @@ public class Shell extends JFrame implements Observer{
       jtb.addTab ("Contents", getHistogramPane (_model.getContentCounts(), "contents", "Histogram of Contents Sizes", "Contents size"));
       jtb.addTab ("Images", getHistogramPane (_model.getImageCounts(), "images", "Histogram of Image Sizes", "Image size"));
       jtb.addTab ("Semantic links", getHistogramPane (_model.getSemanticLinkCounts(), "semantic", "Histogram of Number of Semantic Links", "Number of semantic links"));
-      try {
-        jtb.addTab("History", getHistoryPane());
-      } catch (SQLiteException ex) {
-        Logger.getLogger(Shell.class.getName()).log(Level.SEVERE, null, ex);
-      }
+      jtb.addTab("History", getHistoryPane());
       base.add (jtb);
 
       JOptionPane pane = new JOptionPane (base, JOptionPane.INFORMATION_MESSAGE);
@@ -630,10 +628,10 @@ public class Shell extends JFrame implements Observer{
   private final List<List<String>> _history = new ArrayList<>();
   
   private void updateHistory(SQLiteStatement sqlResults){
-    try{
-      _history.clear();
-      int row = 0;
-      
+    _history.clear();
+    int row = 0;
+
+    try {
       while(sqlResults.step()){
         _history.add(new ArrayList<>());
         for(int col = 0; col < sqlResults.columnCount(); col++){
@@ -641,8 +639,7 @@ public class Shell extends JFrame implements Observer{
         }
         row += 1;
       }
-      
-    } catch (SQLiteException ex){
+    } catch (SQLiteException ex) {
       Logger.getLogger(Shell.class.getName()).log(Level.SEVERE, null, ex);
     }
   }
@@ -670,7 +667,7 @@ public class Shell extends JFrame implements Observer{
     }
   }
   
-  private JPanel getHistoryPane() throws SQLiteException{
+  private JPanel getHistoryPane() {
     
     JPanel historyPanel = new JPanel();
     updateHistory(this._model.getHistory());
@@ -865,18 +862,14 @@ public class Shell extends JFrame implements Observer{
     @Override
     public void actionPerformed(ActionEvent e) {
       
-      try {
-        if(_operations.getValue().toString().equals("")){
-         updateHistory(_model.getHistory((Integer)_timeFrom.getValue(), (Integer)_timeTo.getValue()));
-        }
-        else{
-          updateHistory(_model.getHistory((String) _operations.getValue(), (Integer)_timeFrom.getValue(), (Integer)_timeTo.getValue()));
-        }
-          
-        ((AbstractTableModel)_historyTable.getModel()).fireTableStructureChanged();
-      } catch (SQLiteException ex) {
-        Logger.getLogger(Shell.class.getName()).log(Level.SEVERE, null, ex);
+      if(_operations.getValue().toString().equals("")){
+       updateHistory(_model.getHistory((Integer)_timeFrom.getValue(), (Integer)_timeTo.getValue()));
       }
+      else{
+        updateHistory(_model.getHistory((String) _operations.getValue(), (Integer)_timeFrom.getValue(), (Integer)_timeTo.getValue()));
+      }
+
+      ((AbstractTableModel)_historyTable.getModel()).fireTableStructureChanged();
     }
   }
 
@@ -1010,12 +1003,8 @@ public class Shell extends JFrame implements Observer{
   public static void main (String[] args) {
     javax.swing.SwingUtilities.invokeLater(new Runnable() {
       public void run() { 
-        try {
-          Shell shell = new Shell ();
-          shell.setVisible (true);
-        } catch (SQLiteException ex) {
-          Logger.getLogger(Shell.class.getName()).log(Level.SEVERE, null, ex);
-        }
+        Shell shell = new Shell ();
+        shell.setVisible (true);
       }
     });
   }
