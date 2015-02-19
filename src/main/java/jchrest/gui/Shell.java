@@ -45,7 +45,7 @@ import org.jfree.data.statistics.*;
  *
  * @author Peter C. R. Lane
  */
-public class Shell extends JFrame implements Observer{
+public class Shell extends JFrame implements Observer {
   private Chrest _model;
   private JMenu _dataMenu; //Required so that "Data" menu options can be disabled if the model is engaged in an experiment.
 
@@ -66,6 +66,7 @@ public class Shell extends JFrame implements Observer{
         + "</ul>"
         + "Note that only one set of experiment data can be used with CHREST at any<br>"
         + "time whereas multiple pre-experiment data files can be used.<br>"
+        + "<br>"
         + "To reset CHREST and undertake a different experiment, select 'Model' then<br>"
         + "'Clear' from the toolbar.  Clearing CHREST will remove any pre-experiment<br>"
         + "data learned too."
@@ -300,6 +301,12 @@ public class Shell extends JFrame implements Observer{
                 JOptionPane.WARNING_MESSAGE);
             break;
           case OK:
+            //Before loading a new experiment, save the current learning clock 
+            //of the model in this experiment so that the most recent state of
+            //the model for this experiment can be rendered graphically, if
+            //requested.
+            _model.setMaxmimumTimeInExperiment(_model.getLearningClock());
+            
             if(this._experiment){
               _model.setLoadedIntoExperiment();
               _model.addExperimentsLocatedInName(_experimentName);
@@ -326,6 +333,7 @@ public class Shell extends JFrame implements Observer{
                   JOptionPane.ERROR_MESSAGE);
             }
             _parent.validate ();
+            
             break;
         }
       }

@@ -3,8 +3,6 @@
 
 package jchrest.gui;
 
-import jchrest.architecture.Chrest;
-
 import javax.swing.*;
 import javax.swing.border.TitledBorder;
 
@@ -14,21 +12,17 @@ import javax.swing.border.TitledBorder;
   * @author Peter C. R. Lane
   */
 public class ChrestTimeView extends JPanel {
-  private Chrest _model;
-  private JLabel _display;
+  private final JLabel _display;
 
-  public ChrestTimeView (Chrest model) {
+  public ChrestTimeView (Integer time) {
     super ();
-
-    setBorder (new TitledBorder ("Clock"));
-
-    _model = model;
-    _display = new JLabel ("Time (ms): " + _model.getLearningClock ());
-
+    setBorder (new TitledBorder ("Clock (ms)"));
+    _display = new JLabel ("" + time);
+    _display.setToolTipText("Time CHREST finished learning in experiment.");
     add (_display);
   }
 
-  public void update () {
-    _display.setText ("Time (ms): " + _model.getLearningClock ());
+  public void update (Integer time) {
+    _display.setText ("" + time);
   }
 }

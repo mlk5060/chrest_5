@@ -40,14 +40,22 @@ public class Chrest extends Observable {
   private boolean _loadedIntoExperiment = true;
   private boolean _engagedInExperiment = true;
   
-  //Stores the name of the experiment that CHREST is currently loaded in.
+  //Stores the names of the experiments that this model has been loaded into.
+  //Used primarily for rendering the model's state graphically.
   private List<String> _experimentsLocatedInNames = new ArrayList<>();
-  private String _preExperimentPrepend = "Pre-expt: ";
+  
+  //Stores the time that an experiment (keys) was run until (values).  Used 
+  //primarily for rendering the model's state graphically.
+  private Map<String, Integer> _experimentNamesAndMaximumTimes = new HashMap<>();
+    
+  //Stores the string that is prepended to pre-experiment names in the 
+  //"_experimentsLocatedInNames" instance variable.
+  private final static String _preExperimentPrepend = "Pre-expt: ";
   
   //CHREST execution history variables
   private boolean _historyEnabled = false;
   private SQLiteConnection _historyConnection;
-  private final String _historyTableName = "history";
+  private final static String _historyTableName = "history";
   
   // internal clocks
   private int _attentionClock; //Indicates the time at which CHREST will be free to perform mind's eye operations.
@@ -147,8 +155,40 @@ public class Chrest extends Observable {
     _createSemanticLinks = true;
   }
   
-  public String getPreExperimentPrepend(){
-    return this._preExperimentPrepend;
+  /**
+   * Retrieves the maximum time set for an experiment if one is set or the 
+   * current learning clock value of CHREST if not.
+   * 
+   * @param experiment
+   * @return 
+   */
+  public Integer getMaximumTimeForExperiment(String experiment){
+    Integer maxTime = this._experimentNamesAndMaximumTimes.get(experiment);
+    
+    if(maxTime == null){
+      maxTime = this.getLearningClock();
+    }
+
+    return maxTime;
+  }
+  
+  /**
+   * Sets the maximum time for an experiment to the time passed if the model is
+   * currently located in an experiment.
+   * 
+   * @param time
+   */
+  public void setMaxmimumTimeInExperiment(int time){
+    if (!this.getCurrentExperimentName().isEmpty()) this._experimentNamesAndMaximumTimes.put(this.getCurrentExperimentName(), time);
+  }
+  
+  /**
+   * Accessor for the text prepended to experiment names.
+   * 
+   * @return 
+   */
+  public static String getPreExperimentPrepend(){
+    return Chrest._preExperimentPrepend;
   }
   
   /**
@@ -180,8 +220,7 @@ public class Chrest extends Observable {
   }
   
   public String getCurrentExperimentName(){
-    String name = this._experimentsLocatedInNames.get(this._experimentsLocatedInNames.size() - 1);
-    return name;
+    return this._experimentsLocatedInNames.isEmpty() ? "" : this._experimentsLocatedInNames.get(this._experimentsLocatedInNames.size() - 1);
   }
   
   /**
@@ -663,6 +702,8 @@ public class Chrest extends Observable {
    */
   public void resetLearningClock(){
     this._learningClock = 0;
+    this.setChanged();
+    this.notifyObservers();
   }
 
   /**
