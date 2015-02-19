@@ -17,6 +17,7 @@ import jchrest.architecture.Chrest;
 import jchrest.lib.ListPattern;
 import jchrest.lib.PairedPattern;
 import jchrest.lib.Pattern;
+import jchrest.lib.StringPattern;
 
 /**
  * This panel provides an interface for running paired associate experiments.
@@ -36,13 +37,14 @@ public class PairedAssociateExperiment extends JPanel {
   private final List<PairedPattern> _patterns;
   private List<List<ListPattern>> _responses;
   private List<HashMap<ListPattern, Integer>> _numberPatternErrors;
-  private List<Integer> _patternsPresented;
+//  private List<Integer> _patternsPresented;
   
   //Experiment information and set-up variables.
   private JLabel _patternLabel;
   private JLabel _trialNumberLabel;
   private JLabel _experimentTimeLabel;
-  private JComboBox _learningStrategy;
+  //private JComboBox _learningStrategy;
+  private DefaultTableModel _stimulusResponseTableModel;
   private JSpinner _presentationTime;
   private JSpinner _interItemTime;
   private JSpinner _interTrialTime;
@@ -65,7 +67,7 @@ public class PairedAssociateExperiment extends JPanel {
     _patterns = patterns;
     _patternNumber = 0;
     _trialNumber = 1;
-    _patternsPresented = new ArrayList<>();
+//    _patternsPresented = new ArrayList<>();
     
     _model.resetLearningClock();
     instantiateErrorStorage();
@@ -135,20 +137,37 @@ public class PairedAssociateExperiment extends JPanel {
    * 
    * @return 
    */
-  private JPanel renderStimulusResponsePairsView () {
-    JPanel panel = new JPanel ();
-    panel.setBorder (new TitledBorder ("Stimulus-Response Pairs"));
-    panel.setLayout (new GridLayout (1, 1));
-
-    JPanel pairsPanel = new JPanel ();
-    pairsPanel.setLayout (new GridLayout (_patterns.size(), 2));
-    for (PairedPattern pair : _patterns) {
-      pairsPanel.add (new JLabel (pair.getFirst().toString ()));
-      pairsPanel.add (new JLabel (pair.getSecond().toString ()));
+  private JScrollPane renderStimulusResponsePairsView () {
+    
+    this._stimulusResponseTableModel = new DefaultTableModel(){
+      @Override
+      public boolean isCellEditable(int row, int column) {
+        //Only the third column is editable
+        return column == 2;
+      }
+    };
+    _stimulusResponseTableModel.addColumn("Stimulus");
+    _stimulusResponseTableModel.addColumn("Response");
+    _stimulusResponseTableModel.addColumn("Order");
+    
+    for (int i = 0; i < _patterns.size(); i++) {
+      PairedPattern pair = _patterns.get(i);
+      Object[] rowData = {
+        pair.getFirst().toString (),
+        pair.getSecond().toString (),
+        String.valueOf(i + 1)
+      };
+      _stimulusResponseTableModel.addRow(rowData);
     }
-
-    panel.add (new JScrollPane (pairsPanel));
-    return panel;        
+    JTable table = new JTable(_stimulusResponseTableModel);
+    table.setBackground(Color.LIGHT_GRAY);
+    table.setShowHorizontalLines(false);
+    table.setShowVerticalLines(false);
+    table.setFillsViewportHeight(true);
+    
+    JScrollPane scrollPane = new JScrollPane(table);
+    scrollPane.setBorder (new TitledBorder ("Stimulus-Response Pairs"));
+    return scrollPane;        
   }
   
   /**
@@ -160,8 +179,7 @@ public class PairedAssociateExperiment extends JPanel {
   private JPanel renderExperimentInformationView(){
     
     //Define experiment information elements
-     PairedPattern pair = _patterns.get(_patternNumber);
-    _patternLabel = new JLabel (pair.getFirst().toString() + " " + pair.getSecond().toString(), SwingConstants.RIGHT);
+    _patternLabel = new JLabel ("" + (_patternNumber + 1), SwingConstants.RIGHT);
     
     _trialNumberLabel = new JLabel (Integer.toString(_trialNumber), SwingConstants.RIGHT);
     
@@ -172,7 +190,7 @@ public class PairedAssociateExperiment extends JPanel {
     experimentInformation.setBorder(new TitledBorder("Experiment Information"));
     experimentInformation.setLayout(new GridLayout(3, 2, 2, 2));
     
-    experimentInformation.add(new JLabel ("Pattern pair to learn next", SwingConstants.RIGHT));
+    experimentInformation.add(new JLabel ("Stimulus-response to learn next", SwingConstants.RIGHT));
     experimentInformation.add(_patternLabel);
     
     experimentInformation.add (new JLabel ("Trial #", SwingConstants.RIGHT));
@@ -201,12 +219,12 @@ public class PairedAssociateExperiment extends JPanel {
     _interTrialTime = new JSpinner(new SpinnerNumberModel(2000, 1, 50000, 1));
     _interTrialTime.setToolTipText("The length of time between trials");
     
-    _learningStrategy = new JComboBox(new String[] {
-      "First to last",
-      "Outer to inner"
-    });
-    ((JLabel)_learningStrategy.getRenderer()).setHorizontalAlignment(JLabel.RIGHT);
-    _learningStrategy.setToolTipText("The learning strategy that should be used by CHREST");
+//    _learningStrategy = new JComboBox(new String[] {
+//      "First to last",
+//      "Outer to inner"
+//    });
+//    ((JLabel)_learningStrategy.getRenderer()).setHorizontalAlignment(JLabel.RIGHT);
+//    _learningStrategy.setToolTipText("The learning strategy that should be used by CHREST");
     
     _randomOrder = new JCheckBox ();
     _randomOrder.setToolTipText ("Check to present stimuli in a random order.  Shuffling of patterns only occurs at the start of a new trial.");
@@ -226,7 +244,8 @@ public class PairedAssociateExperiment extends JPanel {
     //Set layout of the controls and add elements.
     JPanel controls = new JPanel ();
     controls.setBorder (new TitledBorder ("Experiment Controls"));
-    controls.setLayout (new GridLayout (7, 2, 2, 2));
+//    controls.setLayout (new GridLayout (7, 2, 2, 2));
+    controls.setLayout (new GridLayout (6, 2, 2, 2));
     
     controls.add (new JLabel ("Presentation time (ms)", SwingConstants.RIGHT));
     controls.add (_presentationTime);
@@ -237,8 +256,8 @@ public class PairedAssociateExperiment extends JPanel {
     controls.add (new JLabel ("Inter trial time (ms)", SwingConstants.RIGHT));
     controls.add (_interTrialTime);
     
-    controls.add (new JLabel ("Learning strategy", SwingConstants.RIGHT));
-    controls.add (_learningStrategy);
+//    controls.add (new JLabel ("Learning strategy", SwingConstants.RIGHT));
+//    controls.add (_learningStrategy);
     
     controls.add (new JLabel ("Randomise presentation", SwingConstants.RIGHT));
     controls.add (_randomOrder);
@@ -429,7 +448,7 @@ public class PairedAssociateExperiment extends JPanel {
       _responses.clear ();
       _exptClock = 0;
       _patternNumber = 0;
-      _patternsPresented.clear();
+//      _patternsPresented.clear();
       ((AbstractTableModel)_trialsTable.getModel()).fireTableStructureChanged();
       ((AbstractTableModel)_errorsTable.getModel()).fireTableStructureChanged();
       _trialNumber = 1;
@@ -452,9 +471,11 @@ public class PairedAssociateExperiment extends JPanel {
       _model.setEngagedInExperiment();
       _model.freeze (); // save all gui updates to the end
       shufflePatterns();
-      processPattern();
-      checkEndTrial();
-      updateExperimentInformation();
+      if(correctOrder()){
+        processPattern();
+        checkEndTrial();
+        updateExperimentInformation();
+      }
       _model.unfreeze();
     }  
   }
@@ -470,11 +491,13 @@ public class PairedAssociateExperiment extends JPanel {
       _model.setEngagedInExperiment();
       _model.freeze();
       shufflePatterns();
-      while(_patternsPresented.size() < _patterns.size()){
-        processPattern();
+      if(correctOrder()){
+        while(_patternNumber < _patterns.size()){
+          processPattern();
+        }
+        checkEndTrial();
+        updateExperimentInformation();
       }
-      checkEndTrial();
-      updateExperimentInformation();
       _model.unfreeze();
     }
   }
@@ -521,15 +544,64 @@ public class PairedAssociateExperiment extends JPanel {
    * test the model, update experiment variables and GUI if so.
    */
   private void checkEndTrial(){
-    if(_patternsPresented.size() == _patterns.size()){
+    if(_patternNumber == _patterns.size()){
       test();
       ((AbstractTableModel)_trialsTable.getModel()).fireTableStructureChanged();
       ((AbstractTableModel)_errorsTable.getModel()).fireTableStructureChanged();
       _patternNumber = 0;
-      _patternsPresented.clear();
+//      _patternsPresented.clear();
       _trialNumber += 1;
       _exptClock += ((SpinnerNumberModel)_interTrialTime.getModel()).getNumber().intValue ();
     }
+  }
+  
+  private boolean correctOrder(){
+    System.out.println("Checking order specification...");
+    List<String> orderNumbers = new ArrayList<>();
+    for(int i = 0; i < _stimulusResponseTableModel.getRowCount(); i++){
+      
+      //Check that order number is:
+      String orderContents = (String)this._stimulusResponseTableModel.getValueAt(i, 2);
+      if(
+        orderContents.matches("[1-9][0-9]{0,8}") && //a whole number greater than 0
+        Integer.valueOf(orderContents) <= _patterns.size() && //less than or equal to the total number of patterns
+        !orderNumbers.contains(orderContents)
+      ){
+        orderNumbers.add(orderContents);
+      }
+      else{
+        JOptionPane.showMessageDialog(_window,
+        "<html>The ordering specified for stimulus-response presentation is incorrect for one"
+          + "of the following reasons:"
+          + "<ul>"
+          + "<li>A non-integer has been specified.</li>"
+          + "<li>Zero (0) has been specified.</li>"
+          + "<li>An integer greater than the number of patterns (" + _patterns.size() + ") has been specified.</li>"
+          + "<li>The same integer has been entered twice.</li>"
+          + "</ul>"
+          + "Please rectify before continuing.</html>",
+        "Stimulus-Pair Order Specification Error",
+        JOptionPane.ERROR_MESSAGE);
+        return false;
+      }
+    }
+    
+    System.out.println("Everything is fine, returning true!");
+    return true;
+  }
+  
+  public PairedPattern findPair(){
+    PairedPattern pairToProcess = null;
+    //Find the pattern
+    for(int i = 0; i < this._stimulusResponseTableModel.getRowCount(); i++){
+      String orderNumber = (String)this._stimulusResponseTableModel.getValueAt(i, 2);
+      
+      if( Integer.valueOf(orderNumber) == (_patternNumber + 1) ){
+        return pairToProcess = _patterns.get(i);
+      }
+    }
+    
+    return pairToProcess;
   }
   
   /**
@@ -566,34 +638,17 @@ public class PairedAssociateExperiment extends JPanel {
    * 
    */
   private void processPattern(){
+    
     int presentationFinishTime = ((SpinnerNumberModel)_presentationTime.getModel()).getNumber().intValue() + _exptClock;
-
+    
+    PairedPattern pair = findPair();
+    System.out.println(pair.getFirst().toString() + pair.getSecond().toString());
+    
     while(_exptClock < presentationFinishTime){
-      PairedPattern pair = this._patterns.get(this._patternNumber);
       this._model.associateAndLearn(pair.getFirst(), pair.getSecond(), _exptClock);
       _exptClock += 1;
     }
-    _patternsPresented.add(_patternNumber);
-    
-    switch(_learningStrategy.getSelectedIndex()){
-
-      //"First-to-last" strategy: model learns patterns in order.
-      case 0:
-        _patternNumber++;
-        break;
-
-      //"Outer to inner" strategy: model learns stimuli at each 'end' of the
-      //stimulus-response array and moves towards the middle.
-      case 1:
-        int midpoint = _patterns.size() / 2;
-        if( _patternNumber < midpoint  ){
-          _patternNumber = _patterns.size() - (_patternNumber + 1);
-        }
-        else{
-          _patternNumber = _patterns.size() - _patternNumber;
-        }
-      break;
-    }
+    _patternNumber++;
 
     _exptClock += ((SpinnerNumberModel)_interItemTime.getModel()).getNumber().intValue ();
    }
@@ -646,8 +701,7 @@ public class PairedAssociateExperiment extends JPanel {
    * {@link #createControlPanel()}.
    */
   private void updateExperimentInformation () {
-    PairedPattern nextPair = _patterns.get(_patternNumber);
-    _patternLabel.setText(nextPair.getFirst().toString() + " " + nextPair.getSecond().toString());
+    _patternLabel.setText("" + (_patternNumber + 1));
     _trialNumberLabel.setText("" + _trialNumber);
     _experimentTimeLabel.setText ("" + _exptClock);
   }
