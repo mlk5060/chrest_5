@@ -1232,6 +1232,8 @@ public class Chrest extends Observable {
       
       // 2. does retrieved node have a lateral link?
       if (pat1Retrieved.getAssociatedNode() != null) {
+        
+        
           
         // if yes
         //   3. is linked node image match pattern2? if not, learn pattern2
@@ -1239,7 +1241,7 @@ public class Chrest extends Observable {
           
           //   if yes
           //   4. if linked node image == pattern2, learn pattern1, else learn pattern2
-          if (!pat1Retrieved.getAssociatedNode().getImage().equals (pattern2)) {  
+          if (pat1Retrieved.getAssociatedNode().getImage().equals (pattern2)) {  
             recogniseAndLearn (pattern1, time); // TODO: this is overlearning?
           } else {
             recogniseAndLearn (pattern2, time);
