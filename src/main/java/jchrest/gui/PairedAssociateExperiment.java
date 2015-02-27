@@ -856,20 +856,20 @@ public class PairedAssociateExperiment extends JPanel {
     //TODO: Check that everything is reset correctly!
     public void actionPerformed (ActionEvent e) {
       String lastExperimentLocatedInName = _model.getExperimentsLocatedInNames().get(_model.getExperimentsLocatedInNames().size() - 1);
-      _model.clear ();
-      _responses.clear ();
-      _cheats.clear();
-      _auditoryLoop.clear();
-      _errors.clear();
-      _exptClock = 0;
-      _stimulusResponseNumber = 0;
-      ((AbstractTableModel)_responsesTable.getModel()).fireTableStructureChanged();
-      ((AbstractTableModel)_errorsTable.getModel()).fireTableStructureChanged();
-      _trialNumber = 0;
-      _auditoryLoop.clear();
       _model.setNotEngagedInExperiment();
       _model.addExperimentsLocatedInName(lastExperimentLocatedInName);
       
+      _auditoryLoop.clear();
+      _cheats.clear();
+      _errors.clear();
+      _exptClock = 0;
+      _model.clear ();
+      _responses.clear ();
+      _stimulusResponseNumber = 0;
+      _trialNumber = 0;
+      
+      ((AbstractTableModel)_responsesTable.getModel()).fireTableStructureChanged();
+      ((AbstractTableModel)_errorsTable.getModel()).fireTableStructureChanged();
       PairedAssociateExperiment.this.populateAuditoryLoopTableModel();
       resetStimulusResponsePriorities();
     }
