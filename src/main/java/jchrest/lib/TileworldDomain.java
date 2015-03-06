@@ -6,29 +6,34 @@ import java.util.Set;
 import jchrest.architecture.Chrest;
 
 /**
- *
+ * Used for Tileworld modelling.
+ * 
  * @author Martyn Lloyd-Kelly <martynlk@liverpool.ac.uk>
  */
 public class TileworldDomain implements DomainSpecifics{
 
   @Override
   public ListPattern normalise(ListPattern pattern) {
+    ListPattern result = new ListPattern();
+    
     //Remove self from pattern since the location of self doesn't need to be
-    //learned.
+    //learned and remove duplicates that may have been added due to random 
+    //fixations.
     for(PrimitivePattern prim : pattern){
       ItemSquarePattern item = (ItemSquarePattern)prim;
-      if(item.getItem().equals("SELF")){
-        ListPattern primToRemove = new ListPattern();
-        primToRemove.add(prim);
-        pattern.remove( primToRemove );
+      
+      //TODO: replace "SELF" with a variable.
+      if(!item.getItem().equalsIgnoreCase("SELF") && !result.contains(prim)){
+        result.add(prim);
       }
     }
     
-    return pattern;
+    return result;
   }
 
   /**
-   * In Tileworld, salient squares are any that aren't empty.
+   * In Tileworld, salient squares are those that aren't empty.
+   * 
    * @param scene
    * @param model
    * @return 
