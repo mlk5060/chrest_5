@@ -26,8 +26,8 @@ import java.util.List;
 import java.util.Set;
 
 /**
- * Perceiver class manages the model's interaction with an external, two-dimensional 
- * scene.
+ * Perceiver class manages the model's visual interaction with an external, 
+ * two-dimensional scene.
  */
 public class Perceiver {
   private final static java.util.Random _random = new java.util.Random ();
@@ -157,9 +157,11 @@ public class Perceiver {
     for (int i = 0; i < 3; ++i) { // *** Parameter controls how likely 'item' over 'place'
       int xDisplacement = _random.nextInt (_fieldOfView * 2 + 1) - _fieldOfView;
       int yDisplacement = _random.nextInt (_fieldOfView * 2 + 1) - _fieldOfView;
-      if (!_currentScene.isEmpty (_fixationY + yDisplacement, _fixationX + xDisplacement)
-          && _fixationX < _currentScene.getWidth ()
-          && _fixationY < _currentScene.getHeight ()) {
+      if (
+        !_currentScene.isEmpty (_fixationY + yDisplacement, _fixationX + xDisplacement) && 
+        _fixationX < _currentScene.getWidth () && 
+        _fixationY < _currentScene.getHeight ()
+      ) {
         _fixationX += xDisplacement;
         _fixationY += yDisplacement;
         _lastHeuristic = FixationType.randomItem;

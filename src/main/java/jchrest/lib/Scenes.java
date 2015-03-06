@@ -54,7 +54,7 @@ public class Scenes {
       for (int i = 0; i < height; ++i) {
         if (line == null) throw new IOException ();         // finished in the middle of a position
         if (line.length() != width) throw new IOException (); // incorrect width of row
-        scene.addRow (i, line.toCharArray ());
+        scene.addItemsToRow (i, line.toCharArray ());
         line = input.readLine (); // on last cycle, this tries to read blank/comment line
       }
       scenes.add (scene);
@@ -103,7 +103,7 @@ public class Scenes {
       for (int i = 0; i < height; ++i) {
         if (line == null) throw new IOException ("Finished in middle of position");         // finished in the middle of a position
         if (line.length() != width) throw new IOException ("Row is wrong size"); // incorrect width of row
-        scene.addRow (i, line.toCharArray ());
+        scene.addItemsToRow (i, line.toCharArray ());
         line = input.readLine ();
       }
       // move will be in last line read

@@ -1265,7 +1265,9 @@ public class Chrest extends Observable {
     boolean mindsEyeCreated = false;
     
     if(this.attentionFree(domainTime)){
-      this._mindsEye = new MindsEye(this, vision, lifespan, objectPlacementTime, accessTime, objectMovementTime, domainTime );
+      
+      //TODO: Sort this out, just commented to keep compiler happy.
+      //this._mindsEye = new MindsEye(this, vision, lifespan, objectPlacementTime, accessTime, objectMovementTime, domainTime );
       mindsEyeCreated = true;
     }
     
