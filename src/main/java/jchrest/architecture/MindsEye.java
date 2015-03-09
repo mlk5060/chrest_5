@@ -1,14 +1,10 @@
 package jchrest.architecture;
 
 import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
 import java.util.Iterator;
 import jchrest.lib.ItemSquarePattern;
 import jchrest.lib.ListPattern;
-import jchrest.lib.MindsEyeMoveObjectException;
 import jchrest.lib.MindsEyeObject;
-import jchrest.lib.Modality;
 import jchrest.lib.PrimitivePattern;
 import jchrest.lib.Scene;
 
@@ -101,11 +97,11 @@ class MindsEye {
    * @param domainTime The current time (in milliseconds) in the domain where 
    * the CHREST model associated with the mind's eye instance is located.
    * 
-   * @param terminusForRecognisedObject The length of time (in milliseconds) 
+   * @param lifespanForRecognisedObjects The length of time (in milliseconds) 
    * that an object will exist in the mind's eye for when it is created or 
    * interacted with if it is committed to LTM.
    * 
-   * @param terminusForUnrecognisedObject The length of time (in milliseconds) 
+   * @param lifespanForUnrecognisedObjects The length of time (in milliseconds) 
    * that an object will exist in the mind's eye for when it is created or 
    * interacted with if it is not committed to LTM.
    */
@@ -114,7 +110,7 @@ class MindsEye {
   //since the MindsEye should only be created/modified after scanning a scene.
   //This reduces the possibility of "hangovers" when identifying what objects
   //should have improved terminus times in the mind's eye.
-  public MindsEye(Chrest model, Scene currentScene, int lifespan, int objectPlacementTime, int accessTime, int objectMovementTime, int domainTime, int terminusForRecognisedObject, int terminusForUnrecognisedObject){   
+  public MindsEye(Chrest model, Scene currentScene, int lifespan, int objectPlacementTime, int accessTime, int objectMovementTime, int domainTime, int lifespanForRecognisedObjects, int lifespanForUnrecognisedObjects){   
     this._model = model;
     this._accessTime = accessTime;
     this._lifespan = lifespan;
@@ -157,7 +153,7 @@ class MindsEye {
           if(scene.contains(pattern)){
             //Add a new MindsEyeObject to the visual spatial field with a superior 
             //terminus value.
-            this._visualSpatialField.get(pattern.getRow()).set(pattern.getColumn(), new MindsEyeObject(pattern.getItem(), terminusForRecognisedObject));
+            this._visualSpatialField.get(pattern.getRow()).set(pattern.getColumn(), new MindsEyeObject(pattern.getItem(), lifespanForRecognisedObjects));
             patternsInScenePresentInVisualStm.add(pattern);
             patternInChunkPresentInScene = true;
           }
@@ -177,7 +173,7 @@ class MindsEye {
     while(sceneContents.hasNext()){
       ItemSquarePattern sceneObject = (ItemSquarePattern)sceneContents.next();
       if(!patternsInScenePresentInVisualStm.contains(sceneObject)){
-        this._visualSpatialField.get(sceneObject.getRow()).set(sceneObject.getColumn(), new MindsEyeObject(sceneObject.getItem(), terminusForUnrecognisedObject));
+        this._visualSpatialField.get(sceneObject.getRow()).set(sceneObject.getColumn(), new MindsEyeObject(sceneObject.getItem(), lifespanForUnrecognisedObjects));
         multiplierForObjectPlacementTime++;
       }
     }

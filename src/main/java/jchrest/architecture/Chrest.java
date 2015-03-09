@@ -1262,22 +1262,22 @@ public class Chrest extends Observable {
    * @param domainTime The current time (in milliseconds) in the domain where 
    * this Chrest instance is located. 
    * 
-   * @param terminusForRecognisedObject The length of time (in milliseconds) 
+   * @param lifespanForRecognisedObjects The length of time (in milliseconds) 
    * that an object will exist in the mind's eye for when it is created or 
    * interacted with if it is committed to LTM.
    * 
-   * @param terminusForUnrecognisedObject The length of time (in milliseconds) 
+   * @param lifespanForUnrecognisedObjects The length of time (in milliseconds) 
    * that an object will exist in the mind's eye for when it is created or 
    * interacted with if it is not committed to LTM.
    * 
    * @return True if a minds eye has been created otherwise false (only occurs
    * if attention is not currently free).
    */
-  public boolean createNewMindsEye(Scene scene, int lifespan, int objectPlacementTime, int accessTime, int objectMovementTime, int domainTime, int terminusForRecognisedObject, int terminusForUnrecognisedObject){
+  public boolean createNewMindsEye(Scene scene, int lifespan, int objectPlacementTime, int accessTime, int objectMovementTime, int domainTime, int lifespanForRecognisedObjects, int lifespanForUnrecognisedObjects){
     boolean mindsEyeCreated = false;
     
     if(this.attentionFree(domainTime)){
-      this._mindsEye = new MindsEye(this, scene, lifespan, objectPlacementTime, accessTime, objectMovementTime, domainTime, terminusForRecognisedObject, terminusForUnrecognisedObject);
+      this._mindsEye = new MindsEye(this, scene, lifespan, objectPlacementTime, accessTime, objectMovementTime, domainTime, lifespanForRecognisedObjects, lifespanForUnrecognisedObjects);
       mindsEyeCreated = true;
     }
     
