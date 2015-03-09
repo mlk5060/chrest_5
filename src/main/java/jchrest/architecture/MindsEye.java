@@ -403,7 +403,7 @@ class MindsEye {
     }
   }
   
-  private Scene getMindsEyeScene(int time){
+  public Scene getMindsEyeScene(int time){
     Scene mindsEyeScene = new Scene("Mind's eye scene", this._visualSpatialField.size(), this._visualSpatialField.get(0).size());
     if(this.exists(time)){
     
