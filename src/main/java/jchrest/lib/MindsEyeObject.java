@@ -1,8 +1,9 @@
 package jchrest.lib;
 
 /**
- *
- * @author martyn
+ * Represents an object in the mind's eye.
+ * 
+ * @author Martyn Lloyd-Kelly <martynlk@liverpool.ac.uk>
  */
 public class MindsEyeObject {
   

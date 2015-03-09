@@ -1174,6 +1174,14 @@ public class Chrest extends Observable {
   }
   
   /**
+   * Advances the value of "_attentionClock" by the time specified.
+   * @param timeToAdvanceBy 
+   */
+  public void advanceAttentionClock(int timeToAdvanceBy){
+    this._attentionClock += timeToAdvanceBy;
+  }
+  
+  /**
    * Sets the value of the "_attentionClock" instance variable to the time 
    * passed.
    * 
@@ -1286,7 +1294,10 @@ public class Chrest extends Observable {
    * decayed otherwise, null is returned.
    */
   public ArrayList<String> getMindsEyeContent(int domainTime){
-    return this._mindsEye.getAllContent(domainTime);
+    //TODO:revert back, this is just to keep compiler happy durings mind's eye
+    //redevelopment.
+    //return this._mindsEye.getAllContent(domainTime);
+    return new ArrayList<>();
   }
   
   /**
@@ -1311,8 +1322,10 @@ public class Chrest extends Observable {
   public String getSpecificMindsEyeContent(int domainSpecificXCor, int domainSpecificYCor, int domainTime){
     String mindsEyeContent = null;
     
+    //TODO:revert back, this is just to keep compiler happy durings mind's eye
+    //redevelopment.
     if(this.mindsEyeExists(domainTime)){
-      mindsEyeContent = this._mindsEye.getSpecificContent(domainSpecificXCor, domainSpecificYCor, domainTime);
+      //mindsEyeContent = this._mindsEye.getSpecificContent(domainSpecificXCor, domainSpecificYCor, domainTime);
     }
     
     return mindsEyeContent;
@@ -1340,7 +1353,11 @@ public class Chrest extends Observable {
    * for details of illegal moves.
    */
   public boolean moveObjectsInMindsEye(ArrayList<ArrayList<String>> moves, int domainTime) throws MindsEyeMoveObjectException  {
-    return this._mindsEye.moveObjects(moves, domainTime);
+    //return this._mindsEye.moveObjects(moves, domainTime);
+    
+    //TODO:revert back, this is just to keep compiler happy durings mind's eye
+    //redevelopment.
+    return true;
   }
   
   /**
