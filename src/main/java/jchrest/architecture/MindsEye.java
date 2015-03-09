@@ -1,7 +1,10 @@
 package jchrest.architecture;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.Iterator;
+import java.util.LinkedHashMap;
+import java.util.TreeMap;
 import jchrest.lib.ItemSquarePattern;
 import jchrest.lib.ListPattern;
 import jchrest.lib.MindsEyeObject;
@@ -117,6 +120,10 @@ class MindsEye {
     this._objectMovementTime = objectMovementTime;
     this._objectPlacementTime = objectPlacementTime;
     
+    //Set the model's attention clock to be equal to the time that the
+    //constructor was called in the domain plus mind's eye access time.
+    this._model.setAttentionClock(domainTime + accessTime);
+    
     //Create the visual-spatial field using currentScene as a basis.  The field
     //will be empty at first.
     this._visualSpatialField = new ArrayList<>();
@@ -130,59 +137,93 @@ class MindsEye {
     //Get visual STM so that we know what objects should have superior terminus
     //times.
     Iterator<Node> visualStm = this._model.getVisualStm().iterator();
+    
+    //Get the current scene so that it can be transposed into the mind's eye.
     ListPattern scene = currentScene.getScene();
-    ArrayList<PrimitivePattern> patternsInScenePresentInVisualStm = new ArrayList<>();
-    int multiplierForObjectPlacementTime = 0;
+    
+    ArrayList<PrimitivePattern> patternsPresentInSceneAndVisualStm = new ArrayList<>();
     
     //Populate visual spatial field using visual STM chunks.
     while(visualStm.hasNext()){
       
-      //If this chunk contains one or more patterns that are present in the 
-      //current scene, only 1 should be added to the multiplier for object 
-      //placement time. So, to determine whether this condition should apply, 
-      //the boolean flag below is used since it may be the case that none of the
-      //chunks in visual STM apply to the current scene.
-      boolean patternInChunkPresentInScene = false;
+      //Create an ArrayList to store patterns present both in this chunk and the
+      //scene that is being transposed.  A list is used since we want to retain 
+      //insertion order because minds eye object termini needs to be set based 
+      //upon recency of pattern recognition (receny of pattern occurrence in 
+      //STM and in the chunk itself).
+      ArrayList<PrimitivePattern> patternsPresentInSceneAndVisualStmChunk = new ArrayList<>();
       
-      //Process the chunk.
+      //Add patterns that are present in both the scene to be transposed and the 
+      //chunk to the pattern-occurrence list.
       Iterator<PrimitivePattern> chunkPatterns = visualStm.next().getImage().iterator();
       while(chunkPatterns.hasNext()){
         PrimitivePattern chunkPattern = chunkPatterns.next();
         if(chunkPattern instanceof ItemSquarePattern){
           ItemSquarePattern pattern = (ItemSquarePattern)chunkPattern;
           if(scene.contains(pattern)){
-            //Add a new MindsEyeObject to the visual spatial field with a superior 
-            //terminus value.
-            this._visualSpatialField.get(pattern.getRow()).set(pattern.getColumn(), new MindsEyeObject(pattern.getItem(), lifespanForRecognisedObjects));
-            patternsInScenePresentInVisualStm.add(pattern);
-            patternInChunkPresentInScene = true;
+            patternsPresentInSceneAndVisualStmChunk.add( pattern );
           }
         }
       }
       
-      if(patternInChunkPresentInScene){
-        multiplierForObjectPlacementTime++;
+      //If some patterns from the chunk where present in the scene being 
+      //transposed, add or update their corresponding mind's eye object.  An 
+      //update will occur if the pattern was present in a STM chunk that was
+      //processed earlier.
+      if( !patternsPresentInSceneAndVisualStmChunk.isEmpty() ){
+        for(PrimitivePattern patternInSceneAndVisualStmChunk : patternsPresentInSceneAndVisualStmChunk){
+          if(patternInSceneAndVisualStmChunk instanceof ItemSquarePattern){
+            ItemSquarePattern patternToProcess = (ItemSquarePattern)patternInSceneAndVisualStmChunk;
+            MindsEyeObject mindsEyeObjectAtPatternLocation = this._visualSpatialField.get(patternToProcess.getRow()).get(patternToProcess.getColumn());
+            
+            //There is nothing currently at this location in the mind's eye so
+            //create a new MindsEyeObject instance representing the object in
+            //the pattern, place it in the visual-spatial field accordingly and
+            //set its terminus to be whatever the attention clock of the CHREST
+            //model associated with this clock is plus the lifespan specified
+            //for a recognised object.
+            if(mindsEyeObjectAtPatternLocation == null){
+              MindsEyeObject newMindsEyeObject = new MindsEyeObject(patternToProcess.getItem(), this._model.getAttentionClock() + lifespanForRecognisedObjects);
+              this._visualSpatialField.get(patternToProcess.getRow()).set(patternToProcess.getColumn(), newMindsEyeObject);
+            }
+            //The pattern already has a mind's eye object representation so 
+            //update its terminus value to be whatever the attention clock of 
+            //the CHREST model associated with this clock is plus the lifespan 
+            //specified for a recognised object.
+            else{
+              mindsEyeObjectAtPatternLocation.setTerminus(_model.getAttentionClock() + lifespanForRecognisedObjects);
+              this._visualSpatialField.get(patternToProcess.getRow()).set(patternToProcess.getColumn(), mindsEyeObjectAtPatternLocation);
+            }
+          }
+        }
+        
+        //Now add the patterns present in the chunk and the scene to the list
+        //of patterns present in the scene and visual STM in general.
+        patternsPresentInSceneAndVisualStm.addAll(patternsPresentInSceneAndVisualStmChunk);
+        
+        //Finally, advance the attention clock by the time it takes to place an 
+        //object in the mind's eye (multiple objects that are part of a chunk 
+        //are considered to be one object).
+        this._model.advanceAttentionClock(this._objectPlacementTime);
       }
-    }
+    }//Process next STM chunk (if there is one)
     
     //Populate visual spatial field using information from the current scene 
     //that isn't present in visual STM.  Placing such objects incurs a time cost
-    //for each object so multiplierForObjectPlacementTime is incremented by 1
-    //after each object is placed.
+    //for each object.
     Iterator<PrimitivePattern> sceneContents = scene.iterator();
     while(sceneContents.hasNext()){
       ItemSquarePattern sceneObject = (ItemSquarePattern)sceneContents.next();
-      if(!patternsInScenePresentInVisualStm.contains(sceneObject)){
-        this._visualSpatialField.get(sceneObject.getRow()).set(sceneObject.getColumn(), new MindsEyeObject(sceneObject.getItem(), lifespanForUnrecognisedObjects));
-        multiplierForObjectPlacementTime++;
+      if( !patternsPresentInSceneAndVisualStm.contains(sceneObject) ){
+        this._visualSpatialField.get(sceneObject.getRow()).set(sceneObject.getColumn(), new MindsEyeObject(sceneObject.getItem(), this._model.getAttentionClock() + lifespanForUnrecognisedObjects));
+        this._model.advanceAttentionClock(this._objectPlacementTime);
       }
     }
     
-    this._model.setAttentionClock(domainTime + (objectPlacementTime * multiplierForObjectPlacementTime) );
-    this._terminus = (this._model.getAttentionClock() + lifespan);
-    //TODO: may have to set terminus values for visual-spatial objects here 
-    //instead of the exact moment when they are placed in the visual-spatial 
-    //field. 
+    //Finally, set the mind's eye terminus to be the current value of the 
+    //attention clock for the CHREST model associated with this mind's eye plus
+    //the lifespan specified for the mind's eye.
+    this._terminus = this._model.getAttentionClock() + this._lifespan;
     
     /**************************************************************************/
     /**************************************************************************/
