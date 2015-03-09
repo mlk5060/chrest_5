@@ -402,9 +402,11 @@ class MindsEye {
   }
   
   public Scene getMindsEyeScene(int time){
-    Scene mindsEyeScene = new Scene("Mind's eye scene", this._visualSpatialField.size(), this._visualSpatialField.get(0).size());
-    if(this.exists(time)){
+    Scene mindsEyeScene = null;
     
+    if(this.exists(time)){
+      mindsEyeScene = new Scene("Mind's eye scene", this._visualSpatialField.size(), this._visualSpatialField.get(0).size());
+      
       for(int row = 0; row < this._visualSpatialField.size(); row++){
         for(int col = 0; col < this._visualSpatialField.get(row).size(); col++){
           MindsEyeObject object = this._visualSpatialField.get(row).get(col);
