@@ -1242,13 +1242,10 @@ public class Chrest extends Observable {
   }
   
   /**
-   * Generates a new mind's eye, see {@link 
-   * jchrest.architecture.MindsEye#MindsEye(jchrest.architecture.Chrest, 
-   * java.lang.String[], int, int)} for more details on parameters to be passed.
+   * Creates a new mind's eye.
    * 
-   * @param vision The symbolic representation of the external environment as an
-   * array of strings with the following format: 
-   * { "objectIdentifier1, objectIdentifier2;x-coord;y-coord" ].
+   * @param scene The scene to render in the mind's eye (an instance of
+   * {@link jchrest.lib.Scene}.
    * 
    * @param lifespan The length of time (in milliseconds) that the mind's eye
    * can be inactive for before it its visual spatial field is set to null.
@@ -1265,17 +1262,22 @@ public class Chrest extends Observable {
    * @param domainTime The current time (in milliseconds) in the domain where 
    * this Chrest instance is located. 
    * 
+   * @param terminusForRecognisedObject The length of time (in milliseconds) 
+   * that an object will exist in the mind's eye for when it is created or 
+   * interacted with if it is committed to LTM.
+   * 
+   * @param terminusForUnrecognisedObject The length of time (in milliseconds) 
+   * that an object will exist in the mind's eye for when it is created or 
+   * interacted with if it is not committed to LTM.
+   * 
    * @return True if a minds eye has been created otherwise false (only occurs
    * if attention is not currently free).
    */
-  public boolean createNewMindsEye(String [] vision, int lifespan, int objectPlacementTime, int accessTime, int objectMovementTime, int domainTime){
-//  public boolean createNewMindsEye(TwoDimensionalMindsEyeObject [] vision, int lifespan, int objectPlacementTime, int accessTime, int objectMovementTime, int domainTime){
+  public boolean createNewMindsEye(Scene scene, int lifespan, int objectPlacementTime, int accessTime, int objectMovementTime, int domainTime, int terminusForRecognisedObject, int terminusForUnrecognisedObject){
     boolean mindsEyeCreated = false;
     
     if(this.attentionFree(domainTime)){
-      
-      //TODO: Sort this out, just commented to keep compiler happy.
-      //this._mindsEye = new MindsEye(this, vision, lifespan, objectPlacementTime, accessTime, objectMovementTime, domainTime );
+      this._mindsEye = new MindsEye(this, scene, lifespan, objectPlacementTime, accessTime, objectMovementTime, domainTime, terminusForRecognisedObject, terminusForUnrecognisedObject);
       mindsEyeCreated = true;
     }
     
@@ -1283,8 +1285,8 @@ public class Chrest extends Observable {
   }
   
   /**
-   * Retrieves complete contents of the mind's eye with object locations 
-   * translated to domain-specific coordinates.
+   * Retrieves the mind's eye visual-spatial field as an instance of 
+   * {@link jchrest.lib.Scene}.
    * 
    * @param domainTime The current time (in milliseconds) in the domain where 
    * this Chrest instance is located. 
@@ -1293,11 +1295,8 @@ public class Chrest extends Observable {
    * domain xcor/ycor if mind's eye exists and its visual-spatial field has not
    * decayed otherwise, null is returned.
    */
-  public ArrayList<String> getMindsEyeContent(int domainTime){
-    //TODO:revert back, this is just to keep compiler happy durings mind's eye
-    //redevelopment.
-    //return this._mindsEye.getAllContent(domainTime);
-    return new ArrayList<>();
+  public Scene getMindsEyeScene(int domainTime){
+    return this._mindsEye.getMindsEyeScene(domainTime);
   }
   
   /**

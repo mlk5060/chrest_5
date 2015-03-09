@@ -114,9 +114,7 @@ class MindsEye {
   //since the MindsEye should only be created/modified after scanning a scene.
   //This reduces the possibility of "hangovers" when identifying what objects
   //should have improved terminus times in the mind's eye.
-  public MindsEye(Chrest model, Scene currentScene, int lifespan, int objectPlacementTime, int accessTime, int objectMovementTime, int domainTime, int terminusForRecognisedObject, int terminusForUnrecognisedObject){
-//  public MindsEye(Chrest model, TwoDimensionalMindsEyeObject [] vision, int lifespan, int objectPlacementTime, int accessTime, int objectMovementTime, int domainTime){
-    
+  public MindsEye(Chrest model, Scene currentScene, int lifespan, int objectPlacementTime, int accessTime, int objectMovementTime, int domainTime, int terminusForRecognisedObject, int terminusForUnrecognisedObject){   
     this._model = model;
     this._accessTime = accessTime;
     this._lifespan = lifespan;
