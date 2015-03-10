@@ -132,11 +132,13 @@ public class Perceiver {
                 if (link.getTest().getItem (link.getTest().size() - 1) instanceof ItemSquarePattern) {
                   ItemSquarePattern testIos = (ItemSquarePattern)link.getTest().getItem (0);
                   // check all details of test are correct
-                  if (testIos.getColumn () - 1 == _fixationX && 
-                      testIos.getRow () - 1 == _fixationY &&
-                      testIos.getItem().equals (_currentScene.getItem (_fixationY, _fixationX))) {
+                  if (
+                    testIos.getColumn () - 1 == _fixationX && 
+                    testIos.getRow () - 1 == _fixationY &&
+                    _currentScene.getSquareContents (_fixationY, _fixationX).contains( testIos.getItem() )
+                  ){
                     _model.getVisualStm().replaceHypothesis (link.getChildNode ());
-                      }
+                  }
                 }
               }
             }
@@ -370,11 +372,13 @@ public class Perceiver {
     ListPattern fixatedPattern = new ListPattern (Modality.VISUAL);
     for (int i = _fixationsLearnFrom; i < _fixations.size () - 1; ++i) {
       if (!_currentScene.isEmpty (_fixations.get(i).getX (), _fixations.get(i).getY ())) {
-        fixatedPattern.add (new ItemSquarePattern (
-              _currentScene.getItem (_fixations.get(i).getX (), _fixations.get(i).getY ()),
-              _fixations.get(i).getY () + 1,
-              _fixations.get(i).getX () + 1
-              ));
+        for(String itemIdentifier : _currentScene.getSquareContents (_fixations.get(i).getX (), _fixations.get(i).getY ())){
+          fixatedPattern.add (new ItemSquarePattern (
+            itemIdentifier,
+            _fixations.get(i).getY () + 1,
+            _fixations.get(i).getX () + 1
+          ));
+        }
       }
     }
     _model.recogniseAndLearn (_model.getDomainSpecifics().normalise (fixatedPattern.append(_currentScene.getItems(_fixationX, _fixationY, 2))));

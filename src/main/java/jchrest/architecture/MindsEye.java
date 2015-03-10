@@ -60,13 +60,12 @@ class MindsEye {
   //instantiation.
   private final int _objectPlacementTime; //Look in Fernand's paper with Waters for time of this.
   
-  //The visual spatial field of the mind's eye (a 2D ArrayList).  First 
+  //The visual spatial field of the mind's eye (a 3D ArrayList).  First 
   //dimension elements represent the rows (y-coordinates) of a scene, second
-  //dimension elements represent the columns (x-coordinates) of a scene.  Thus,
-  //this instance variable should be able to transpose Scene instance contents
-  //easily.
-  private ArrayList<ArrayList<MindsEyeObject>> _visualSpatialField = new ArrayList<>();
-  
+  //dimension elements represent the columns (x-coordinates) of a scene, third
+  //dimension elements represent the objects on the square (there may be 
+  //multiple objects, especially if this is a mind's eye scene).
+  private ArrayList<ArrayList<ArrayList<MindsEyeObject>>> _visualSpatialField = new ArrayList<>();
   
   /**
    * Constructor for "MindsEye" object.
@@ -130,7 +129,7 @@ class MindsEye {
     for(int row = 0; row < currentScene.getHeight(); row++){
       this._visualSpatialField.add(new ArrayList<>());
       for(int col = 0; col < currentScene.getWidth(); col++){
-        this._visualSpatialField.get(row).add(null);
+        this._visualSpatialField.get(row).add(new ArrayList<>());
       }
     }
     
@@ -174,7 +173,7 @@ class MindsEye {
         for(PrimitivePattern patternInSceneAndVisualStmChunk : patternsPresentInSceneAndVisualStmChunk){
           if(patternInSceneAndVisualStmChunk instanceof ItemSquarePattern){
             ItemSquarePattern patternToProcess = (ItemSquarePattern)patternInSceneAndVisualStmChunk;
-            MindsEyeObject mindsEyeObjectAtPatternLocation = this._visualSpatialField.get(patternToProcess.getRow()).get(patternToProcess.getColumn());
+            ArrayList<MindsEyeObject> mindsEyeObjectsAtPatternLocation = this._visualSpatialField.get(patternToProcess.getRow()).get(patternToProcess.getColumn());
             
             //There is nothing currently at this location in the mind's eye so
             //create a new MindsEyeObject instance representing the object in
@@ -182,17 +181,19 @@ class MindsEye {
             //set its terminus to be whatever the attention clock of the CHREST
             //model associated with this clock is plus the lifespan specified
             //for a recognised object.
-            if(mindsEyeObjectAtPatternLocation == null){
-              MindsEyeObject newMindsEyeObject = new MindsEyeObject(patternToProcess.getItem(), this._model.getAttentionClock() + lifespanForRecognisedObjects);
-              this._visualSpatialField.get(patternToProcess.getRow()).set(patternToProcess.getColumn(), newMindsEyeObject);
+            if(mindsEyeObjectsAtPatternLocation.isEmpty()){
+              this._visualSpatialField.get(patternToProcess.getRow()).get(patternToProcess.getColumn()).add(new MindsEyeObject(patternToProcess.getItem(), this._model.getAttentionClock() + lifespanForRecognisedObjects));
             }
             //The pattern already has a mind's eye object representation so 
             //update its terminus value to be whatever the attention clock of 
             //the CHREST model associated with this clock is plus the lifespan 
             //specified for a recognised object.
             else{
-              mindsEyeObjectAtPatternLocation.setTerminus(_model.getAttentionClock() + lifespanForRecognisedObjects);
-              this._visualSpatialField.get(patternToProcess.getRow()).set(patternToProcess.getColumn(), mindsEyeObjectAtPatternLocation);
+              for(MindsEyeObject mindsEyeObjectAtPatternLocation : mindsEyeObjectsAtPatternLocation){
+                if(mindsEyeObjectAtPatternLocation.getIdentifier().equals(patternToProcess.getItem())){
+                  mindsEyeObjectAtPatternLocation.setTerminus(_model.getAttentionClock() + lifespanForRecognisedObjects);
+                }
+              }
             }
           }
         }
@@ -210,12 +211,12 @@ class MindsEye {
     
     //Populate visual spatial field using information from the current scene 
     //that isn't present in visual STM.  Placing such objects incurs a time cost
-    //for each object.
+    //for each object.  Don't add empty squares!
     Iterator<PrimitivePattern> sceneContents = scene.iterator();
     while(sceneContents.hasNext()){
       ItemSquarePattern sceneObject = (ItemSquarePattern)sceneContents.next();
-      if( !patternsPresentInSceneAndVisualStm.contains(sceneObject) ){
-        this._visualSpatialField.get(sceneObject.getRow()).set(sceneObject.getColumn(), new MindsEyeObject(sceneObject.getItem(), this._model.getAttentionClock() + lifespanForUnrecognisedObjects));
+      if( !patternsPresentInSceneAndVisualStm.contains(sceneObject) && !sceneObject.getItem().equals(".") ){
+        this._visualSpatialField.get(sceneObject.getRow()).get(sceneObject.getColumn()).add(new MindsEyeObject(sceneObject.getItem(), this._model.getAttentionClock() + lifespanForUnrecognisedObjects));
         this._model.advanceAttentionClock(this._objectPlacementTime);
       }
     }
@@ -446,9 +447,13 @@ class MindsEye {
       
       for(int row = 0; row < this._visualSpatialField.size(); row++){
         for(int col = 0; col < this._visualSpatialField.get(row).size(); col++){
-          MindsEyeObject object = this._visualSpatialField.get(row).get(col);
-          if(object != null && object.getTerminus() < time){
-            mindsEyeScene.setItem(row, col, object.getIdentifier());
+          ArrayList<MindsEyeObject> objects = this._visualSpatialField.get(row).get(col);
+          if( !objects.isEmpty() ){
+            for(MindsEyeObject object : objects){
+              if(object.getTerminus() > time){
+                mindsEyeScene.addItemToSquare(row, col, object.getIdentifier());
+              }
+            }
           }
         }
       }

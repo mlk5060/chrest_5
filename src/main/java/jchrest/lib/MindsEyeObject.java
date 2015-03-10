@@ -8,7 +8,7 @@ package jchrest.lib;
 public class MindsEyeObject {
   
   private final String _identifier;
-  private int _terminus;
+  private Integer _terminus;
   
   public MindsEyeObject(String identifier, int terminusValue){
     this._identifier = identifier;

@@ -770,7 +770,14 @@ class SceneDisplay extends JPanel {
       for (int i = 0; i < _scene.getHeight (); ++i) {
         for (int j = 0; j < _scene.getWidth (); ++j) {
           if (!_scene.isEmpty (i, j)) {
-            g2.drawString (_scene.getItem (i, j), offsetX + 5 + scale * j, offsetY + scale - 5 + scale * i);
+            String items = "";
+            for(String item : _scene.getSquareContents (i, j)){
+              items += ", " + item;
+            }
+            
+            //Draw "items" after removing the first comma and space since this 
+            //is erroneous: commas should separate items.
+            g2.drawString (items.replaceFirst(", ", ""), offsetX + 5 + scale * j, offsetY + scale - 5 + scale * i);
           }
         }
       }

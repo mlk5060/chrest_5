@@ -91,7 +91,7 @@ public class ChessDomain implements DomainSpecifics {
     for (int row = 0; row < 8; ++row) {
       for (int col = 0; col < 8; ++col) {
         String piece = definition.substring (col + 9*row, 1 + col + 9*row);
-        board.setItem (row, col, piece);
+        board.addItemToSquare (row, col, piece);
       }
     }
 
@@ -109,8 +109,8 @@ public class ChessDomain implements DomainSpecifics {
     for (int i = 0; i < scene.getWidth (); ++i) {
       for (int j = 0; j < scene.getHeight (); ++j) {
         if (!scene.isEmpty (i, j)) {
-          String item = scene.getItem (i, j);
-          if (!item.equalsIgnoreCase ("P")) {
+          List<String> items = scene.getSquareContents (i, j);
+          if ( !items.contains("P") && !items.contains("p") ) {
             result.add (new Square (i, j));
           }
         }
@@ -131,11 +131,15 @@ public class ChessDomain implements DomainSpecifics {
 
     for (int i = 0; i < scene.getHeight (); ++i) {
       for (int j = 0; j < scene.getWidth (); ++j) {
-        char piece = scene.getItem(i, j).charAt (0);
-        if (Character.isLowerCase (piece) && i >= 4) { // black piece on white side
-          result.add (new Square (i, j));
-        } else if (Character.isUpperCase (piece) && i <= 3) { // white piece on black side
-          result.add (new Square (i, j));
+        List<String> squareContents = scene.getSquareContents(i, j);
+        for(String itemOnSquare : squareContents){
+          char piece = itemOnSquare.charAt(0);
+          
+          if (Character.isLowerCase (piece) && i >= 4) { // black piece on white side
+            result.add (new Square (i, j));
+          } else if (Character.isUpperCase (piece) && i <= 3) { // white piece on black side
+            result.add (new Square (i, j));
+          }
         }
       }
     }
@@ -144,8 +148,8 @@ public class ChessDomain implements DomainSpecifics {
   }
 
   private boolean differentColour (Scene board, Square square1, Square square2) {
-    char item1 = board.getItem (square1.getRow (), square1.getColumn ()).charAt (0);
-    char item2 = board.getItem (square2.getRow (), square2.getColumn ()).charAt (0);
+    char item1 = board.getSquareContents (square1.getRow (), square1.getColumn ()).get(0).charAt (0);
+    char item2 = board.getSquareContents (square2.getRow (), square2.getColumn ()).get(0).charAt (0);
 
     return 
       (Character.isUpperCase (item1) && Character.isLowerCase (item2)) ||
@@ -367,7 +371,7 @@ public class ChessDomain implements DomainSpecifics {
    * Calculate a list of possible destination squares for a piece in a scene.
    */
   public List<Square> proposeMovementFixations (Scene board, Square square) {
-    String piece = board.getItem (square.getRow (), square.getColumn ());
+    String piece = board.getSquareContents (square.getRow (), square.getColumn ()).get(0);
 
     if (piece.equals ("P")) {
       return findWhitePawnMoves (board, square);

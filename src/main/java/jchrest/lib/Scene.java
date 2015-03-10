@@ -4,6 +4,11 @@
 package jchrest.lib;
 
 // TODO: Clarify order of row/column in methods calls/displays.
+
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+
 public class Scene {
   
   //Human-readable identifier for the scene.
@@ -15,7 +20,8 @@ public class Scene {
   
   //Two-dimensional array whose first-dimension array elements embody rows of
   //the scene and second-dimension array elements embody columns of the scene.
-  //Rows and columns are zero-indexed.
+  //Rows and columns are zero-indexed.  Each square can contain multiple objects
+  //separated by commas.
   private String[][] _scene;
 
   public Scene (String name, int height, int width) {
@@ -47,15 +53,18 @@ public class Scene {
   /**
    * Returns the scene (including empty squares).
    * 
-   * @return A ListPattern instance consisting of ItemSquarePattern instances 
-   * representing each square of the scene.
+   * @return A ListPattern instance consisting of String interpretations of 
+   * ItemSquarePattern instances representing each square of the scene.
    */
   public ListPattern getScene(){
     ListPattern scene = new ListPattern();
     
     for(int row = 0; row < _height; row++){
       for(int col = 0; col < _width; col++){
-       scene.add( new ItemSquarePattern(this._scene[row][col], row, col) );
+        String[] objectsOnSquare = this._scene[row][col].split(",");
+        for(String objectOnSquare : objectsOnSquare){
+          scene.add( new ItemSquarePattern(objectOnSquare, col, row) );
+        }
       }
     }
     
@@ -71,34 +80,57 @@ public class Scene {
    * have been processed.  If the number of items specified is greater than the
    * number of columns in the row, the extra items are ignored.
    * 
+   * If a row's square already contains an item, the new item is appended to the
+   * square using a comma i.e. if "B" is to be added to a square containing "A"
+   * the result would be "A,B".
+   * 
    * @param row The row to be modified.
    * @param items The items to add to the row in column order.
    */
   public void addItemsToRow (int row, char [] items) {
     for (int i = 0; i < items.length && i < _width; ++i) {
-      _scene[row][i] = items[i] + "";
+      String squareContents = _scene[row][i];
+      
+      //If the square is empty, replace it with the item specified.
+      if(squareContents.equals(".")){
+        _scene[row][i] = items[i] + "";
+      }
+      //The square isn't empty, append the item to the current contents.
+      else{
+        _scene[row][i] = squareContents + "," + items[i];
+      }
     }
   }
 
-  public String getItem (int row, int column) {
+  public List<String> getSquareContents (int row, int column) {
     if (row >= 0 && row < _height && column >= 0 && column < _width) {
-      return _scene[row][column];
+      return Arrays.asList(_scene[row][column].split(","));
     } else {
-      return "";
+      return Arrays.asList(new String[]{});
     }
   }
 
   /**
-   * Set the identifier for an item in the specified row and column of the 
-   * scene.
+   * Adds the item identifier to the specified square in the scene.  If the 
+   * specified square is currently empty, the item specified replaces the 
+   * "empty" identifier.  If the specified square is not currently empty, the 
+   * item identifier specified is appended to the current contents of the square
+   * with a comma prefix i.e. if the specified square contains "A" and "B" is
+   * to be added, the contents of the specified square will equal "A,B".
    * 
    * @param row
    * @param column
    * @param item 
    */
-  public void setItem (int row, int column, String item) {
+  public void addItemToSquare (int row, int column, String item) {
     assert (row >= 0 && row < _height && column >= 0 && column < _width);
-    _scene[row][column] = item;
+    
+    if(_scene[row][column].equals(".")){
+      _scene[row][column] = item;
+    }
+    else{
+      _scene[row][column] = _scene[row][column] + "," + item;
+    }
   }
 
   /**
@@ -136,8 +168,12 @@ public class Scene {
       if (col >= 0 && col < _width) {
         for (int row = startRow - size; row <= startRow + size; ++row) {
           if (row >= 0 && row < _height) {
-            if (!_scene[row][col].equals(".")) {
-              items.add (new ItemSquarePattern (_scene[row][col], col+1, row+1));
+            String squareContents = _scene[row][col];
+            if (!squareContents.equals(".")) {
+              String[] objectsOnSquare = squareContents.split(",");
+              for(String objectOnSquare : objectsOnSquare){
+                items.add (new ItemSquarePattern (objectOnSquare, col+1, row+1));
+              }
             }
           }
         }
@@ -154,10 +190,11 @@ public class Scene {
     int items = 0;
     for (int row = 0; row < _height; row++) {
       for (int col = 0; col < _width; col++) {
-        if (isEmpty (row, col)) {
-          ;
-        } else {
-          items += 1;
+        if(!isEmpty (row, col)){
+          String[] objectsOnSquare = this._scene[row][col].split(",");
+          for(String object : objectsOnSquare){
+            items ++;
+          }
         }
       }
     }
@@ -166,7 +203,10 @@ public class Scene {
 
   /**
    * Determines how many items are present both in this scene and the scene 
-   * specified on the same rows and columns.
+   * specified on the same rows and columns.  Note that the order of items on 
+   * the square does not matter so, if a square in scene A contains "A,B" and
+   * the same square in scene B contains "B,A", the number of overlapping pieces
+   * recorded for this square will be 2.
    * 
    * @param scene The scene to compare this scene against.
    * @return 
@@ -175,12 +215,22 @@ public class Scene {
     int items = 0;
     for (int row = 0; row < _height; row++) {
       for (int col = 0; col < _width; col++) {
-        if (isEmpty (row, col)) {
-          ;
-        } else if (_scene[row][col].equals (scene.getItem (row, col))) {
-          items += 1;
-        } else {
-          ;
+        if(!this.isEmpty(row, col)){
+          String[] thisSceneSquareContents = _scene[row][col].split(",");
+          
+          //Get the corresponsing square's contents from the other scene as a
+          //List instance since a List has a "remove" function that allows for
+          //easily removal of items.  This is required since multiple items with
+          //the same identifier may be present on the squares and we want to 
+          //ensure that we don't count the same piece more than once.
+          List<String> otherSceneSquareContents = scene.getSquareContents (row, col);
+          
+          for(String thisSceneSquareObject : thisSceneSquareContents){
+            if(otherSceneSquareContents.contains(thisSceneSquareObject)){
+              items++;
+              otherSceneSquareContents.remove(thisSceneSquareObject);
+            }
+          }
         }
       }
     }
@@ -219,12 +269,18 @@ public class Scene {
     int errors = 0;
     for (int row = 0; row < _height; row++) {
       for (int col = 0; col < _width; col++) {
-        if (isEmpty(row, col)) {
-          ; // do nothing for empty squares
-        } else if (_scene[row][col].equals (scene.getItem (row, col))) {
-          ; // no error if this and given scene have the same item
-        } else { // an item in this scene is not in given scene
-          errors += 1;
+        if(!this.isEmpty(row, col)){
+          List<String> thisSquareContents = this.getSquareContents(row, col);
+          List<String> otherSquareContents = scene.getSquareContents (row, col);
+          for(String object : thisSquareContents){
+            if(otherSquareContents.contains(object)){
+              thisSquareContents.remove(object);
+              otherSquareContents.remove(object);
+            }
+          }
+          
+          //Add the leftovers in this scene's square to the number of errors.
+          errors += thisSquareContents.size();
         }
       }
     }
@@ -239,12 +295,19 @@ public class Scene {
     int errors = 0;
     for (int row = 0; row < _height; row++) {
       for (int col = 0; col < _width; col++) {
-        if (scene.isEmpty (row, col)) {
-          ; // do nothing for empty squares in given scene
-        } else if (scene.getItem(row, col).equals (_scene[row][col])) {
-          ; // no error if given and this scene have the same item
-        } else { // an item in given scene is not in this scene
-          errors += 1;
+        if(!this.isEmpty(row, col)){
+          List<String> thisSquareContents = this.getSquareContents(row, col);
+          List<String> otherSquareContents = scene.getSquareContents (row, col);
+          for(String object : thisSquareContents){
+            if(otherSquareContents.contains(object)){
+              thisSquareContents.remove(object);
+              otherSquareContents.remove(object);
+            }
+          }
+          
+          //Add the leftovers in the other scene's square to the number of 
+          //errors.
+          errors += otherSquareContents.size();
         }
       }
     }

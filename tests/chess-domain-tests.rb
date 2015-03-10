@@ -5,7 +5,7 @@ unit_test "piece types" do
   board = ChessDomain.constructBoard("......../......../....N.../......../.......R/R...k.../....P.../N...R.p.")
 
   big_pieces = domain.getBigPieces(board)
-  assert_equal(6, big_pieces.size)
+  assert_equal(6, big_pieces.size, "Pieces: " + big_pieces.to_s + ".")
   assert_true(big_pieces.any?{|s| s.row == 7 and s.column == 0})
   assert_true(big_pieces.any?{|s| s.row == 7 and s.column == 4})
   assert_true(big_pieces.any?{|s| s.row == 5 and s.column == 0})
