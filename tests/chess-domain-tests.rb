@@ -46,14 +46,14 @@ unit_test "chess board and moves" do
   board4 = ChessDomain.constructBoard("N......./......../......../......../......../......../......../........")
   board5 = ChessDomain.constructBoard("N...R.p./....P.../R...k.../.......R/......../......../......../........")
 
-  assert_false(board1.isEmpty(3, 4))
+  assert_false(board1.isSquareEmpty(4, 3))
   # check knight moves
-  assert_equal(8, ChessDomain.new.proposeMovementFixations(board1, Square.new(3, 4)).size)
-  assert_equal(8, ChessDomain.new.proposeMovementFixations(board2, Square.new(3, 4)).size)
-  assert_equal(7, ChessDomain.new.proposeMovementFixations(board3, Square.new(3, 4)).size)
-  assert_equal(2, ChessDomain.new.proposeMovementFixations(board4, Square.new(0, 0)).size)
+  assert_equal(8, ChessDomain.new.proposeMovementFixations(board1, Square.new(4, 3)).size, "Knight move 1")
+  assert_equal(8, ChessDomain.new.proposeMovementFixations(board2, Square.new(4, 3)).size, "Knight move 2")
+  assert_equal(7, ChessDomain.new.proposeMovementFixations(board3, Square.new(4, 3)).size, "Knight move 3")
+  assert_equal(2, ChessDomain.new.proposeMovementFixations(board4, Square.new(0, 0)).size, "Knight move 4")
   # check rook moves
-  assert_equal(5, ChessDomain.new.proposeMovementFixations(board5, Square.new(0, 4)).size)
-  assert_equal(10, ChessDomain.new.proposeMovementFixations(board5, Square.new(2, 0)).size)
-  assert_equal(14, ChessDomain.new.proposeMovementFixations(board5, Square.new(3, 7)).size)
+  assert_equal(5, ChessDomain.new.proposeMovementFixations(board5, Square.new(4, 0)).size, "Rook move 1")
+  assert_equal(10, ChessDomain.new.proposeMovementFixations(board5, Square.new(0, 2)).size, "Rook move 2")
+  assert_equal(14, ChessDomain.new.proposeMovementFixations(board5, Square.new(7, 3)).size, "Rook move 3")
 end

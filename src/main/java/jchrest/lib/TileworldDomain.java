@@ -32,7 +32,7 @@ public class TileworldDomain implements DomainSpecifics{
   }
 
   /**
-   * In Tileworld, salient squares are those that aren't empty.
+   * In Tileworld, salient squares are those that aren't blind spots or empty.
    * 
    * @param scene
    * @param model
@@ -41,9 +41,10 @@ public class TileworldDomain implements DomainSpecifics{
   @Override
   public Set<Square> proposeSalientSquareFixations(Scene scene, Chrest model) {
     Set<Square> salientSquareFixations = new HashSet<Square> ();
-    for(int row = 0; row < scene.getHeight(); row++){
-      for(int col = 0; col < scene.getWidth(); col++){
-        if( !scene.getSquareContents(row, col).contains(".") ){
+    for(int col = 0; col < scene.getWidth(); col++){
+      for(int row = 0; row < scene.getHeight(); row++){
+        List<String> squareContents = scene.getSquareContents(col, row);
+        if( !squareContents.contains(scene.getBlindSpotIdentifier()) && !squareContents.contains(".") ){
           salientSquareFixations.add(new Square(col, row));
         }
       }

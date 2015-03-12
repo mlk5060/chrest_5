@@ -4,8 +4,10 @@
 package jchrest.lib;
 
 // TODO: Clarify order of row/column in methods calls/displays.
+// TODO: Support handling of "blind-spots": best way would seem to be to use
+// null values for blind spots.  Need to calculate widest width though and then
+// fill in as necessary (think of "in-cone" visions to visualise issue).
 
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
@@ -18,24 +20,34 @@ public class Scene {
   private final int _height;
   private final int _width;
   
-  //Two-dimensional array whose first-dimension array elements embody rows of
-  //the scene and second-dimension array elements embody columns of the scene.
-  //Rows and columns are zero-indexed.  Each square can contain multiple objects
-  //separated by commas.
+  //The string used to identify "blind-spots".
+  private final String _blindSpot = "null";
+  
+  //Two-dimensional array whose first-dimension array elements embody columns of
+  //the scene and second-dimension array elements embody rows of the scene 
+  //(congruent with the "along the corridor, up the stairs" approach to "D grid
+  //reading). Rows and columns are zero-indexed and each space in the array can 
+  //contain multiple objects separated by commas.
   private String[][] _scene;
 
   public Scene (String name, int height, int width) {
     _name = name;
     _height = height;
     _width = width;
-    _scene = new String[_height][_width];
+    _scene = new String[_width][_height];
     
-    //Instantiate scene with empty items at first.
-    for (int row = 0; row < _height; row++) {
-      for (int col = 0; col < _width; col++) {
-        _scene[row][col] = ".";
+    //Instantiate scene with null squares at first (empty squares must be 
+    //encoded explicitly).  This allows for "blind-spots" to be distinguished 
+    //from empty squares.
+    for (int col = 0; col < _width; col++) {
+      for (int row = 0; row < _height; row++) {
+        _scene[col][row] = this._blindSpot;
       }
     }
+  }
+  
+  public String getBlindSpotIdentifier(){
+    return this._blindSpot;
   }
 
   public String getName () {
@@ -59,9 +71,9 @@ public class Scene {
   public ListPattern getScene(){
     ListPattern scene = new ListPattern();
     
-    for(int row = 0; row < _height; row++){
-      for(int col = 0; col < _width; col++){
-        String[] objectsOnSquare = this._scene[row][col].split(",");
+    for(int col = 0; col < _width; col++){
+      for(int row = 0; row < _height; row++){
+        String[] objectsOnSquare = this._scene[col][row].split(",");
         for(String objectOnSquare : objectsOnSquare){
           scene.add( new ItemSquarePattern(objectOnSquare, col, row) );
         }
@@ -89,22 +101,32 @@ public class Scene {
    */
   public void addItemsToRow (int row, char [] items) {
     for (int i = 0; i < items.length && i < _width; ++i) {
-      String squareContents = _scene[row][i];
+      String squareContents = _scene[i][row];
+      String item = items[i] + "";
       
-      //If the square is empty, replace it with the item specified.
-      if(squareContents.equals(".")){
-        _scene[row][i] = items[i] + "";
+      //If the square is currently considered as "blind", add the item.
+      if(squareContents.equals(this._blindSpot)){
+        _scene[i][row] = item;
       }
-      //The square isn't empty, append the item to the current contents.
+      //Else, if the square is empty and the item to be added isn't also empty, or
+      //the square is not empty and the item to be added is empty, add the item.
+      else if(
+        (squareContents.equals(".") && !item.equals(".")) ||
+        (!squareContents.equals(".") && item.equals("."))
+      ){
+        _scene[i][row] = item;
+      }
+      //Otherwise, the square isn't empty and neither is the item so append the 
+      //item to the current contents.
       else{
-        _scene[row][i] = squareContents + "," + items[i];
+        _scene[i][row] = squareContents + "," + item;
       }
     }
   }
 
-  public List<String> getSquareContents (int row, int column) {
-    if (row >= 0 && row < _height && column >= 0 && column < _width) {
-      return Arrays.asList(_scene[row][column].split(","));
+  public List<String> getSquareContents (int col, int row) {
+    if (row >= 0 && row < _height && col >= 0 && col < _width) {
+      return Arrays.asList(_scene[col][row].split(","));
     } else {
       return Arrays.asList(new String[]{});
     }
@@ -119,17 +141,30 @@ public class Scene {
    * to be added, the contents of the specified square will equal "A,B".
    * 
    * @param row
-   * @param column
+   * @param col
    * @param item 
    */
-  public void addItemToSquare (int row, int column, String item) {
-    assert (row >= 0 && row < _height && column >= 0 && column < _width);
+  public void addItemToSquare (int col, int row, String item) {
+    assert (row >= 0 && row < _height && col >= 0 && col < _width);
     
-    if(_scene[row][column].equals(".")){
-      _scene[row][column] = item;
+    String squareContents = _scene[col][row];
+      
+    //If the square is currently considered as "blind", add the item.
+    if(squareContents.equals(this._blindSpot)){
+      _scene[col][row] = item;
     }
+    //Else, if the square is empty and the item to be added isn't also empty, or
+    //the square is not empty and the item to be added is empty, add the item.
+    else if(
+      (squareContents.equals(".") && !item.equals(".")) ||
+      (!squareContents.equals(".") && item.equals("."))
+    ){
+      _scene[col][row] = item;
+    }
+    //Otherwise, the square isn't empty and neither is the item so append the 
+    //item to the current contents.
     else{
-      _scene[row][column] = _scene[row][column] + "," + item;
+      _scene[col][row] = squareContents + "," + item;
     }
   }
 
@@ -138,39 +173,66 @@ public class Scene {
    * or not.  
    * 
    * @param row
-   * @param column
-   * @return False if there is an item on the coordinate specified in this 
-   * scene, true if not.  If the row or column specified is less than 0 or 
-   * greater than/equal to the max height/width of this scene then the 
-   * coordinate specified can't be seen.  Consequently, true is returned.
+   * @param col
+   * @return False if there is an item on the coordinate specified in this
+   * scene, true if not or the item is a blind-spot.  If the row or col 
+   * specified is less than 0 or greater than/equal to the max
+   * height/width of this scene then the coordinate specified is considered to
+   * be a blind spot.  Consequently, true is returned.
    */
-  public boolean isEmpty (int row, int column) {
+  public boolean isSquareEmpty (int col, int row) {
     if (
       row >= 0 && 
       row < _height && 
-      column >= 0 && 
-      column < _width
+      col >= 0 && 
+      col < _width 
     ) {
-      return _scene[row][column].equals (".");
+      if(_scene[col][row].equals (".") || this.isBlindSpot(col, row) ){
+        return true;
+      }
+      else{
+        return false;
+      }
     } else {
       return true; // no item off scene (!)
     }
   }
   
   /**
-   * Retrieve all items within given row +/- size, column +/- size
+   * Determines whether the coordinates specified are a blind spot in the scene.
+   * 
+   * @param col
+   * @param row
+   * @return True if the coordinate is a blind spot, false if not.
+   */
+  public boolean isBlindSpot(int col, int row){
+    if (
+      row >= 0 && 
+      row < _height && 
+      col >= 0 && 
+      col < _width 
+    ) {
+      return _scene[col][row].equals(this._blindSpot);
+    } else {
+      return true;
+    }
+  }
+  
+  /**
+   * Retrieve all items within given row +/- size, column +/- size (blind spots
+   * and empty squares are not returned).
+   * 
    * TODO: Convert this to use a circular field of view.
    */
-  public ListPattern getItems (int startRow, int startColumn, int size) {
+  public ListPattern getItems (int startCol, int startRow, int size) {
     ListPattern items = new ListPattern ();
 
-    for (int col = startColumn - size; col <= startColumn + size; ++col) {
+    for (int col = startCol - size; col <= startCol + size; ++col) {
       if (col >= 0 && col < _width) {
         for (int row = startRow - size; row <= startRow + size; ++row) {
           if (row >= 0 && row < _height) {
-            String squareContents = _scene[row][col];
-            if (!squareContents.equals(".")) {
-              String[] objectsOnSquare = squareContents.split(",");
+            if ( !this.isSquareEmpty(col, row) && !this.isBlindSpot(col, row)) {
+              String[] objectsOnSquare = _scene[col][row].split(",");
               for(String objectOnSquare : objectsOnSquare){
                 items.add (new ItemSquarePattern (objectOnSquare, col+1, row+1));
               }
@@ -188,10 +250,10 @@ public class Scene {
    */
   public int countItems () {
     int items = 0;
-    for (int row = 0; row < _height; row++) {
-      for (int col = 0; col < _width; col++) {
-        if(!isEmpty (row, col)){
-          String[] objectsOnSquare = this._scene[row][col].split(",");
+    for (int col = 0; col < _width; col++) {
+      for (int row = 0; row < _height; row++) {
+        if( !this.isSquareEmpty(col, row) && !this.isBlindSpot(col, row) ){
+          String[] objectsOnSquare = this._scene[col][row].split(",");
           for(String object : objectsOnSquare){
             items ++;
           }
@@ -213,17 +275,17 @@ public class Scene {
    */
   public int countOverlappingPieces (Scene scene) {
     int items = 0;
-    for (int row = 0; row < _height; row++) {
-      for (int col = 0; col < _width; col++) {
-        if(!this.isEmpty(row, col)){
-          String[] thisSceneSquareContents = _scene[row][col].split(",");
+    for (int col = 0; col < _width; col++) {
+      for (int row = 0; row < _height; row++) {
+        if(!this.isSquareEmpty(col, row) && !this.isBlindSpot(col, row)){
+          String[] thisSceneSquareContents = _scene[col][row].split(",");
           
           //Get the corresponsing square's contents from the other scene as a
           //List instance since a List has a "remove" function that allows for
           //easily removal of items.  This is required since multiple items with
           //the same identifier may be present on the squares and we want to 
           //ensure that we don't count the same piece more than once.
-          List<String> otherSceneSquareContents = scene.getSquareContents (row, col);
+          List<String> otherSceneSquareContents = scene.getSquareContents (col, row);
           
           for(String thisSceneSquareObject : thisSceneSquareContents){
             if(otherSceneSquareContents.contains(thisSceneSquareObject)){
@@ -267,11 +329,11 @@ public class Scene {
    */
   public int computeErrorsOfOmission (Scene scene) {
     int errors = 0;
-    for (int row = 0; row < _height; row++) {
-      for (int col = 0; col < _width; col++) {
-        if(!this.isEmpty(row, col)){
-          List<String> thisSquareContents = this.getSquareContents(row, col);
-          List<String> otherSquareContents = scene.getSquareContents (row, col);
+    for (int col = 0; col < _width; col++) {
+      for (int row = 0; row < _height; row++) {
+        if(!this.isSquareEmpty(col, row) && !this.isBlindSpot(col, row)){
+          List<String> thisSquareContents = this.getSquareContents(col, row);
+          List<String> otherSquareContents = scene.getSquareContents (col, row);
           for(String object : thisSquareContents){
             if(otherSquareContents.contains(object)){
               thisSquareContents.remove(object);
@@ -293,11 +355,11 @@ public class Scene {
    */
   public int computeErrorsOfCommission (Scene scene) {
     int errors = 0;
-    for (int row = 0; row < _height; row++) {
-      for (int col = 0; col < _width; col++) {
-        if(!this.isEmpty(row, col)){
-          List<String> thisSquareContents = this.getSquareContents(row, col);
-          List<String> otherSquareContents = scene.getSquareContents (row, col);
+    for (int col = 0; col < _width; col++) {
+      for (int row = 0; row < _height; row++) {
+        if(!this.isSquareEmpty(col, row) && !this.isBlindSpot(col, row)){
+          List<String> thisSquareContents = this.getSquareContents(col, row);
+          List<String> otherSquareContents = scene.getSquareContents (col, row);
           for(String object : thisSquareContents){
             if(otherSquareContents.contains(object)){
               thisSquareContents.remove(object);

@@ -108,10 +108,15 @@ class MindsEye {
    * interacted with if it is not committed to LTM.
    */
   
-  //TODO: I wonder if this should be placed in jchrest.architecture.Perceiver
-  //since the MindsEye should only be created/modified after scanning a scene.
-  //This reduces the possibility of "hangovers" when identifying what objects
-  //should have improved terminus times in the mind's eye.
+  // TODO: I wonder if this should be placed in jchrest.architecture.Perceiver
+  // since the MindsEye should only be created/modified after scanning a scene.
+  // This reduces the possibility of "hangovers" when identifying what objects
+  // should have improved terminus times in the mind's eye.
+  
+  // TODO: Add support for "blind-spots" when transposing scene.
+  
+  // TODO: Add parameter for empty square encoding time (see e-mails with 
+  // Fernand).
   public MindsEye(Chrest model, Scene currentScene, int lifespan, int objectPlacementTime, int accessTime, int objectMovementTime, int domainTime, int lifespanForRecognisedObjects, int lifespanForUnrecognisedObjects){   
     this._model = model;
     this._accessTime = accessTime;
@@ -275,7 +280,7 @@ class MindsEye {
           if( !objects.isEmpty() ){
             for(MindsEyeObject object : objects){
               if(object.getTerminus() > time){
-                mindsEyeScene.addItemToSquare(row, col, object.getIdentifier());
+                mindsEyeScene.addItemToSquare(col, row, object.getIdentifier());
               }
             }
           }
@@ -555,7 +560,7 @@ class MindsEye {
 //                      //the object identifier in question otherwise, append the 
 //                      //object identifier in question to the current content of the 
 //                      //mind's eye coordinates to move to preceeded by a comma.
-//                      if(mindsEyeCoordsToMoveToContentBeforeObjectMovement.isEmpty()){
+//                      if(mindsEyeCoordsToMoveToContentBeforeObjectMovement.isSquareEmpty()){
 //                        mindsEyeCoordsToMoveToContentAfterObjectMovement = objectToBeMoved;
 //                      }
 //                      else{

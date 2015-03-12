@@ -4,6 +4,7 @@
 package jchrest.lib;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -88,10 +89,10 @@ public class ChessDomain implements DomainSpecifics {
     assert (definition.length () == 71);
     Scene board = new Scene ("chess-board", 8, 8);
 
-    for (int row = 0; row < 8; ++row) {
-      for (int col = 0; col < 8; ++col) {
+    for (int col = 0; col < 8; ++col) {
+      for (int row = 0; row < 8; ++row) {
         String piece = definition.substring (col + 9*row, 1 + col + 9*row);
-        board.addItemToSquare (row, col, piece);
+        board.addItemToSquare (col, row, piece);
       }
     }
 
@@ -108,7 +109,7 @@ public class ChessDomain implements DomainSpecifics {
 
     for (int i = 0; i < scene.getWidth (); ++i) {
       for (int j = 0; j < scene.getHeight (); ++j) {
-        if (!scene.isEmpty (i, j)) {
+        if (!scene.isSquareEmpty (i, j) && !scene.isBlindSpot(i, j)) {
           List<String> items = scene.getSquareContents (i, j);
           if ( !items.contains("P") && !items.contains("p") ) {
             result.add (new Square (i, j));
@@ -129,16 +130,18 @@ public class ChessDomain implements DomainSpecifics {
   public Set<Square> getOffensivePieces (Scene scene) {
     Set<Square> result = new HashSet<Square> ();
 
-    for (int i = 0; i < scene.getHeight (); ++i) {
-      for (int j = 0; j < scene.getWidth (); ++j) {
-        List<String> squareContents = scene.getSquareContents(i, j);
-        for(String itemOnSquare : squareContents){
-          char piece = itemOnSquare.charAt(0);
-          
-          if (Character.isLowerCase (piece) && i >= 4) { // black piece on white side
-            result.add (new Square (i, j));
-          } else if (Character.isUpperCase (piece) && i <= 3) { // white piece on black side
-            result.add (new Square (i, j));
+    for (int i = 0; i < scene.getWidth (); ++i) {
+      for (int j = 0; j < scene.getHeight (); ++j) {
+        if(!scene.isBlindSpot(i, j)){
+          List<String> squareContents = scene.getSquareContents(i, j);
+          for(String itemOnSquare : squareContents){
+            char piece = itemOnSquare.charAt(0);
+
+            if (Character.isLowerCase (piece) && j >= 4) { // black piece on white side
+              result.add (new Square (i, j));
+            } else if (Character.isUpperCase (piece) && j <= 3) { // white piece on black side
+              result.add (new Square (i, j));
+            }
           }
         }
       }
@@ -148,8 +151,8 @@ public class ChessDomain implements DomainSpecifics {
   }
 
   private boolean differentColour (Scene board, Square square1, Square square2) {
-    char item1 = board.getSquareContents (square1.getRow (), square1.getColumn ()).get(0).charAt (0);
-    char item2 = board.getSquareContents (square2.getRow (), square2.getColumn ()).get(0).charAt (0);
+    char item1 = board.getSquareContents (square1.getColumn(), square1.getRow ()).get(0).charAt (0);
+    char item2 = board.getSquareContents (square2.getColumn(), square2.getRow ()).get(0).charAt (0);
 
     return 
       (Character.isUpperCase (item1) && Character.isLowerCase (item2)) ||
@@ -158,7 +161,7 @@ public class ChessDomain implements DomainSpecifics {
 
   // add destination square to given list if the move would be to an empty square, or a capture
   private void addValidMove (Scene board, Square source, Square destination, List<Square> moves) {
-    if (board.isEmpty (destination.getRow (), destination.getColumn ()) ||
+    if (board.isSquareEmpty (destination.getColumn (), destination.getRow ()) ||
         differentColour (board, source, destination)) {
       moves.add (destination);
         }
@@ -170,23 +173,23 @@ public class ChessDomain implements DomainSpecifics {
     List<Square> moves = new ArrayList<Square> ();
 
     // check move forward
-    if (board.isEmpty (square.getRow () + 1, square.getColumn ())) {
-      moves.add (new Square (square.getRow () + 1, square.getColumn ()));
+    if (board.isSquareEmpty (square.getColumn (), square.getRow () + 1)) {
+      moves.add (new Square (square.getColumn (), square.getRow () + 1));
       // initial move
-      if (square.getRow () == 1 && board.isEmpty (square.getRow () + 2, square.getColumn ())) {
-        moves.add (new Square (square.getRow () + 2, square.getColumn ()));
+      if (square.getRow () == 1 && board.isSquareEmpty (square.getColumn (), square.getRow () + 2)) {
+        moves.add (new Square (square.getColumn (), square.getRow () + 2));
       }
     }
 
     // check captures - e.p. ignored
     if (square.getColumn () > 0) { // not in column a
-      Square destination = new Square (square.getRow () + 1, square.getColumn () - 1);
+      Square destination = new Square (square.getColumn () - 1, square.getRow () + 1);
       if (differentColour (board, square, destination)) {
         moves.add (destination);
       }
     }
     if (square.getColumn () < 7) { // not in column h
-      Square destination = new Square (square.getRow () + 1, square.getColumn () + 1);
+      Square destination = new Square (square.getColumn () + 1, square.getRow () + 1);
       if (differentColour (board, square, destination)) {
         moves.add (destination);
       }
@@ -200,23 +203,23 @@ public class ChessDomain implements DomainSpecifics {
     List<Square> moves = new ArrayList<Square> ();
 
     // check move forward
-    if (board.isEmpty (square.getRow () - 1, square.getColumn ())) {
-      moves.add (new Square (square.getRow () - 1, square.getColumn ()));
+    if (board.isSquareEmpty (square.getColumn (), square.getRow () - 1)) {
+      moves.add (new Square (square.getColumn (), square.getRow () - 1));
       // initial move
-      if (square.getRow () == 1 && board.isEmpty (square.getRow () - 2, square.getColumn ())) {
-        moves.add (new Square (square.getRow () - 2, square.getColumn ()));
+      if (square.getRow () == 1 && board.isSquareEmpty (square.getColumn (), square.getRow () - 2)) {
+        moves.add (new Square (square.getColumn (), square.getRow () - 2));
       }
     }
 
     // check captures - e.p. ignored
     if (square.getColumn () > 0) { // not in column a
-      Square destination = new Square (square.getRow () - 1, square.getColumn () - 1);
+      Square destination = new Square (square.getColumn () - 1, square.getRow () - 1);
       if (differentColour (board, square, destination)) {
         moves.add (destination);
       }
     }
     if (square.getColumn () < 7) { // not in column h
-      Square destination = new Square (square.getRow () - 1, square.getColumn () + 1);
+      Square destination = new Square (square.getColumn () + 1, square.getRow () - 1);
       if (differentColour (board, square, destination)) {
         moves.add (destination);
       }
@@ -232,37 +235,37 @@ public class ChessDomain implements DomainSpecifics {
 
     if (square.getRow () < 6) { // not rows 7 or 8
       if (square.getColumn () > 0) { // not column a
-        addValidMove (board, square, new Square (square.getRow () + 2, square.getColumn () - 1), moves);
+        addValidMove (board, square, new Square (square.getColumn () - 1, square.getRow () + 2), moves);
       }
       if (square.getColumn () < 7) { // not column h
-        addValidMove (board, square, new Square (square.getRow () + 2, square.getColumn () + 1), moves);
+        addValidMove (board, square, new Square (square.getColumn () + 1, square.getRow () + 2), moves);
       }
     }
 
     if (square.getRow () > 1) { // not rows 1 or 2
       if (square.getColumn () > 0) { // not column a
-        addValidMove (board, square, new Square (square.getRow () - 2, square.getColumn () - 1), moves);
+        addValidMove (board, square, new Square (square.getColumn () - 1, square.getRow () - 2), moves);
       }
       if (square.getColumn () < 7) { // not column h
-        addValidMove (board, square, new Square (square.getRow () - 2, square.getColumn () + 1), moves);
+        addValidMove (board, square, new Square (square.getColumn () + 1, square.getRow () - 2), moves);
       }
     }
 
     if (square.getColumn () > 1) { // not columns a or b
       if (square.getRow () > 0) { // not row 1
-        addValidMove (board, square, new Square (square.getRow () - 1, square.getColumn () - 2), moves);
+        addValidMove (board, square, new Square (square.getColumn () - 2, square.getRow () - 1), moves);
       }
       if (square.getRow () < 7) { // not row 8
-        addValidMove (board, square, new Square (square.getRow () + 1, square.getColumn () - 2), moves);
+        addValidMove (board, square, new Square (square.getColumn () - 2, square.getRow () + 1), moves);
       }
     }
 
     if (square.getColumn () < 6) { // not columns g or h
       if (square.getRow () > 0) { // not row 1
-        addValidMove (board, square, new Square (square.getRow () - 1, square.getColumn () + 2), moves);
+        addValidMove (board, square, new Square (square.getColumn () + 2, square.getRow () - 1), moves);
       }
       if (square.getRow () < 7) { // not row 8
-        addValidMove (board, square, new Square (square.getRow () + 1, square.getColumn () + 2), moves);
+        addValidMove (board, square, new Square (square.getColumn () + 2, square.getRow () + 1), moves);
       }
     }
 
@@ -276,28 +279,28 @@ public class ChessDomain implements DomainSpecifics {
     List<Square> moves = new ArrayList<Square> ();
 
     if (square.getRow () > 0) { // not in row 8
-      addValidMove (board, square, new Square (square.getRow () - 1, square.getColumn ()), moves);
+      addValidMove (board, square, new Square (square.getColumn (), square.getRow () - 1), moves);
     }
     if (square.getRow () < 7) { // not in row 1
-      addValidMove (board, square, new Square (square.getRow () + 1, square.getColumn ()), moves);
+      addValidMove (board, square, new Square (square.getColumn (), square.getRow () + 1), moves);
     }
     if (square.getColumn () > 0) { // not in column 1
-      addValidMove (board, square, new Square (square.getRow (), square.getColumn () - 1), moves);
+      addValidMove (board, square, new Square (square.getColumn () - 1, square.getRow ()), moves);
     }
     if (square.getColumn () < 7) { // not in column 8
-      addValidMove (board, square, new Square (square.getRow (), square.getColumn () + 1), moves);
+      addValidMove (board, square, new Square (square.getColumn () + 1, square.getRow ()), moves);
     }
     if (square.getRow () > 0 && square.getColumn () > 0) { // not in row 8 or column 1
-      addValidMove (board, square, new Square (square.getRow () - 1, square.getColumn () - 1), moves);
+      addValidMove (board, square, new Square (square.getColumn () - 1, square.getRow () - 1), moves);
     }
     if (square.getRow () > 0 && square.getColumn () < 7) { // not in row 8 or column 8
-      addValidMove (board, square, new Square (square.getRow () - 1, square.getColumn () + 1), moves);
+      addValidMove (board, square, new Square (square.getColumn () + 1, square.getRow () - 1), moves);
     }
     if (square.getRow () < 7 && square.getColumn () > 0) { // not in row 1 or column 1
-      addValidMove (board, square, new Square (square.getRow () + 1, square.getColumn () - 1), moves);
+      addValidMove (board, square, new Square (square.getColumn () - 1, square.getRow () + 1), moves);
     }
     if (square.getRow () < 7 && square.getColumn () < 7) { // not in row 8 or column 8
-      addValidMove (board, square, new Square (square.getRow () + 1, square.getColumn () + 1), moves);
+      addValidMove (board, square, new Square (square.getColumn () + 1, square.getRow () + 1), moves);
     }
 
     return moves;
@@ -353,8 +356,8 @@ public class ChessDomain implements DomainSpecifics {
     int tryCol = square.getColumn () + colDelta;
     boolean metPiece = false;
     while (!metPiece && tryRow >=0 && tryRow <= 7 && tryCol >= 0 && tryCol <= 7) {
-      Square destination = new Square (tryRow, tryCol);
-      if (board.isEmpty (destination.getRow (), destination.getColumn ())) {
+      Square destination = new Square (tryCol, tryRow);
+      if (board.isSquareEmpty (destination.getColumn (), destination.getRow ())) {
         moves.add (destination);
         tryRow += rowDelta;
         tryCol += colDelta;
@@ -371,7 +374,7 @@ public class ChessDomain implements DomainSpecifics {
    * Calculate a list of possible destination squares for a piece in a scene.
    */
   public List<Square> proposeMovementFixations (Scene board, Square square) {
-    String piece = board.getSquareContents (square.getRow (), square.getColumn ()).get(0);
+    String piece = board.getSquareContents (square.getColumn(), square.getRow()).get(0);
 
     if (piece.equals ("P")) {
       return findWhitePawnMoves (board, square);

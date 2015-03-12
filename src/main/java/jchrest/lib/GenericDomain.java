@@ -27,9 +27,9 @@ public class GenericDomain implements DomainSpecifics {
   public Set<Square> proposeSalientSquareFixations (Scene scene, Chrest model) {
     Set<Square> result = new HashSet<Square> ();
     result.add (new Square (
-          (new java.util.Random()).nextInt (scene.getHeight ()), 
-          (new java.util.Random()).nextInt (scene.getWidth ()) 
-          ));
+      (new java.util.Random()).nextInt (scene.getWidth ()),
+      (new java.util.Random()).nextInt (scene.getHeight ()) 
+    ));
     return result;
   }
 

@@ -135,7 +135,7 @@ public class Perceiver {
                   if (
                     testIos.getColumn () - 1 == _fixationX && 
                     testIos.getRow () - 1 == _fixationY &&
-                    _currentScene.getSquareContents (_fixationY, _fixationX).contains( testIos.getItem() )
+                    _currentScene.getSquareContents (_fixationX, _fixationY).contains( testIos.getItem() )
                   ){
                     _model.getVisualStm().replaceHypothesis (link.getChildNode ());
                   }
@@ -160,7 +160,7 @@ public class Perceiver {
       int xDisplacement = _random.nextInt (_fieldOfView * 2 + 1) - _fieldOfView;
       int yDisplacement = _random.nextInt (_fieldOfView * 2 + 1) - _fieldOfView;
       if (
-        !_currentScene.isEmpty (_fixationY + yDisplacement, _fixationX + xDisplacement) && 
+        !_currentScene.isSquareEmpty (_fixationX + xDisplacement, _fixationY + yDisplacement) && 
         _fixationX < _currentScene.getWidth () && 
         _fixationY < _currentScene.getHeight ()
       ) {
@@ -214,7 +214,7 @@ public class Perceiver {
     if (r < 0.3333) { // try movement fixation
       List<Square> pieceMoves = _model.getDomainSpecifics().proposeMovementFixations (
           _currentScene, 
-          new Square (_fixationY, _fixationX)
+          new Square (_fixationX, _fixationY)
           );
       if (pieceMoves.size () > 0) { 
         int move = (new java.util.Random ()).nextInt (pieceMoves.size ());
@@ -342,7 +342,7 @@ public class Perceiver {
     }
     Fixation lastFixation = _fixations.get (lastFixationIndex);
     // is last fixation to an empty square?
-    if (_currentScene.isEmpty (lastFixation.getX (), lastFixation.getY ())) {
+    if (_currentScene.isSquareEmpty (lastFixation.getX (), lastFixation.getY ())) {
       return true;
     }
     // is fixation a global strategy?
@@ -371,8 +371,8 @@ public class Perceiver {
   private void learnFixatedPattern () {
     ListPattern fixatedPattern = new ListPattern (Modality.VISUAL);
     for (int i = _fixationsLearnFrom; i < _fixations.size () - 1; ++i) {
-      if (!_currentScene.isEmpty (_fixations.get(i).getX (), _fixations.get(i).getY ())) {
-        for(String itemIdentifier : _currentScene.getSquareContents (_fixations.get(i).getX (), _fixations.get(i).getY ())){
+      if (!_currentScene.isSquareEmpty (_fixations.get(i).getX (), _fixations.get(i).getY ())) {
+        for(String itemIdentifier : _currentScene.getSquareContents (_fixations.get(i).getY(), _fixations.get(i).getX())){
           fixatedPattern.add (new ItemSquarePattern (
             itemIdentifier,
             _fixations.get(i).getY () + 1,

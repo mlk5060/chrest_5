@@ -769,9 +769,9 @@ class SceneDisplay extends JPanel {
       // draw entries within grid
       for (int i = 0; i < _scene.getHeight (); ++i) {
         for (int j = 0; j < _scene.getWidth (); ++j) {
-          if (!_scene.isEmpty (i, j)) {
+          if (!_scene.isSquareEmpty (j, i) && !_scene.isBlindSpot(j, i)) {
             String items = "";
-            for(String item : _scene.getSquareContents (i, j)){
+            for(String item : _scene.getSquareContents (j, i)){
               items += ", " + item;
             }
             

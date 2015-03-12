@@ -1036,7 +1036,7 @@ public class Chrest extends Observable {
       for (PrimitivePattern item : recalledInformation) {
         if (item instanceof ItemSquarePattern) {
           ItemSquarePattern ios = (ItemSquarePattern)item;
-          recalledScene.addItemToSquare (ios.getRow ()-1, ios.getColumn ()-1, ios.getItem ());
+          recalledScene.addItemToSquare (ios.getColumn ()-1, ios.getRow ()-1, ios.getItem ());
         }
       }
     }
