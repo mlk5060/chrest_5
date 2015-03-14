@@ -350,9 +350,11 @@ public class VisualSearchPane extends JPanel {
   private JLabel _precision, _recall, _omission, _commission;
   private JPanel recallResultsPanel () {
     _recallSceneLabel = new JLabel ("RECALLED SCENE");
-    _recalledSceneDisplay = new SceneDisplay (new Scene ("empty", 
-          _scenes.get(0).getHeight (), 
-          _scenes.get(0).getWidth ()));
+    _recalledSceneDisplay = new SceneDisplay (new Scene (
+      "empty",
+      _scenes.get(0).getWidth(), 
+      _scenes.get(0).getHeight()
+    ));
     _precision = new JLabel ("");
     _recall = new JLabel ("");
     _omission = new JLabel ("");
@@ -769,10 +771,10 @@ class SceneDisplay extends JPanel {
       // draw entries within grid
       for (int i = 0; i < _scene.getHeight (); ++i) {
         for (int j = 0; j < _scene.getWidth (); ++j) {
-          if (!_scene.isSquareEmpty (j, i) && !_scene.isBlindSpot(j, i)) {
+          if (!_scene.isSquareEmpty (j, i) && !_scene.isSquareBlind(j, i)) {
             String items = "";
-            for(String item : _scene.getSquareContents (j, i)){
-              items += ", " + item;
+            for(PrimitivePattern itemOnSquare : _scene.getItemsOnSquare(j, i)){
+              items += ", " + ( (ItemSquarePattern)itemOnSquare ).getItem();
             }
             
             //Draw "items" after removing the first comma and space since this 

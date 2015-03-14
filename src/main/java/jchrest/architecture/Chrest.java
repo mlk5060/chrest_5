@@ -1024,8 +1024,11 @@ public class Chrest extends Observable {
       _perceiver.moveEye ();
     }
     // build up and return recalled scene
-    Scene recalledScene = new Scene ("Recalled scene of " + scene.getName (), 
-        scene.getHeight (), scene.getWidth ());
+    Scene recalledScene = new Scene (
+      "Recalled scene of " + scene.getName (), 
+      scene.getWidth (), 
+      scene.getHeight ()
+    );
     // -- get items from image in STM, and optionally template slots
     // TODO: use frequency count in recall
     for (Node node : _visualStm) {

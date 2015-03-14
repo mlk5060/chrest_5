@@ -50,7 +50,7 @@ public class Scenes {
       if (line == null) break;  // finish calmly if last position followed by blank line
       sceneNumber += 1;
 
-      Scene scene = new Scene ("Scene " + sceneNumber, height, width);
+      Scene scene = new Scene ("Scene " + sceneNumber, width, height);
       for (int i = 0; i < height; ++i) {
         if (line == null) throw new IOException ();         // finished in the middle of a position
         if (line.length() != width) throw new IOException (); // incorrect width of row
@@ -99,7 +99,7 @@ public class Scenes {
       if (line == null) break;  // finish calmly if last position followed by blank line
       sceneNumber += 1;
 
-      Scene scene = new Scene ("Scene " + sceneNumber, height, width);
+      Scene scene = new Scene ("Scene " + sceneNumber, width, height);
       for (int i = 0; i < height; ++i) {
         if (line == null) throw new IOException ("Finished in middle of position");         // finished in the middle of a position
         if (line.length() != width) throw new IOException ("Row is wrong size"); // incorrect width of row

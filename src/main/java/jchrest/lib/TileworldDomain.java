@@ -43,8 +43,8 @@ public class TileworldDomain implements DomainSpecifics{
     Set<Square> salientSquareFixations = new HashSet<Square> ();
     for(int col = 0; col < scene.getWidth(); col++){
       for(int row = 0; row < scene.getHeight(); row++){
-        List<String> squareContents = scene.getSquareContents(col, row);
-        if( !squareContents.contains(scene.getBlindSpotIdentifier()) && !squareContents.contains(".") ){
+        ListPattern squareContents = scene.getItemsOnSquare(col, row);
+        if( !squareContents.isEmpty() ){
           salientSquareFixations.add(new Square(col, row));
         }
       }
