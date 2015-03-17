@@ -22,8 +22,10 @@ import jchrest.lib.Scene;
 import jchrest.lib.Square;
 
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
+import jchrest.lib.DomainSpecifics;
 import jchrest.lib.PrimitivePattern;
 
 /**
@@ -31,8 +33,8 @@ import jchrest.lib.PrimitivePattern;
  * two-dimensional scene.
  */
 public class Perceiver {
+  
   private final static java.util.Random _random = new java.util.Random ();
-
   private final Chrest _model;
   private int _fixationX, _fixationY, _fieldOfView;
   FixationType _lastHeuristic;
@@ -63,14 +65,25 @@ public class Perceiver {
   }
 
   /** 
-   * Initial fixation point - the centre of the scene.
+   * Initial fixation point: either the location of the Scene creator if 
+   * identified in the scene or the centre of the scene if not.
+   * 
+   * @param targetNumberFixations
    */
   public void start (int targetNumberFixations) {
     _recognisedNodes.clear ();
     _targetNumberFixations = targetNumberFixations;
-
-    _fixationX = _currentScene.getWidth () / 2;
-    _fixationY = _currentScene.getHeight () / 2;
+    Square locationOfSelf = _currentScene.getLocationOfSelf();
+    
+    if(locationOfSelf == null){
+      _fixationX = _currentScene.getWidth () / 2;
+      _fixationY = _currentScene.getHeight () / 2;
+    }
+    else{
+      _fixationX = locationOfSelf.getColumn();
+      _fixationY = locationOfSelf.getRow();
+    }
+    
     _lastHeuristic = FixationType.start;
     addFixation (new Fixation (_lastHeuristic, _fixationX, _fixationY));
   }
@@ -160,6 +173,7 @@ public class Perceiver {
       int yDisplacement = _random.nextInt (_fieldOfView * 2 + 1) - _fieldOfView;
       if (
         !_currentScene.isSquareEmpty (_fixationX + xDisplacement, _fixationY + yDisplacement) && 
+        !_currentScene.isSquareBlind(_fixationX + xDisplacement, _fixationY + yDisplacement) &&
         _fixationX < _currentScene.getWidth () && 
         _fixationY < _currentScene.getHeight ()
       ) {
@@ -168,7 +182,7 @@ public class Perceiver {
         _lastHeuristic = FixationType.randomItem;
 
         return true;
-          }
+      }
     }
     return false;
   }

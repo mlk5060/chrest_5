@@ -1298,9 +1298,9 @@ public class Chrest extends Observable {
    * domain xcor/ycor if mind's eye exists and its visual-spatial field has not
    * decayed otherwise, null is returned.
    */
-  public Scene getMindsEyeScene(int domainTime){
-    return this._mindsEye.getMindsEyeScene(domainTime);
-  }
+//  public Scene getMindsEyeScene(int domainTime){
+//    return this._mindsEye.getMindsEyeScene(domainTime);
+//  }
   
   /**
    * Retrieves the contents of one mind's eye coordinate specified using 

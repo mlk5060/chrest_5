@@ -1,8 +1,5 @@
 # jchrest.lib.Scene tests
 
-# Blind spot identifier and empty square identifiers not publicly settable so
-# not possible to test functions that return them accurately.
-
 unit_test "constructor" do
   scene = Scene.new("test", 2, 2)
   expected_scene_contents = ListPattern.new()
@@ -332,6 +329,15 @@ unit_test "get_all_items_in_scene" do
   assert_equal(expected_items, scene.getAllItemsInScene())
 end
 
+# Blind square identifier not publicly settable so not possible to test 
+# "getBlindSquareIdentifier" accurately.
+
+# Empty square identifier not publicly settable so not possible to test 
+# "getEmptySquareIdentifier" accurately.
+
+# Self identifier not publicly settable so not possible to test 
+# "getSelfIdentifier" accurately.
+
 unit_test "get_height" do
   height = 3
   scene = Scene.new("test-scene", 5, height)
@@ -361,21 +367,101 @@ unit_test "get_items_in_scope" do
 end
 
 unit_test "get_items_on_square" do
+  
+  # Set and get items from a scene where the scene creator is not identified.
+  # In this case, item coordinates should be Scene-specific.
   scene = Scene.new("test", 5, 5)
-  scene.addItemsToRow(0, " .f. ".to_java.toCharArray);
-  scene.addItemsToRow(1, ". a .".to_java.toCharArray);
-  scene.addItemsToRow(2, ".bce.".to_java.toCharArray);
-  scene.addItemsToRow(3, ". d .".to_java.toCharArray);
-  scene.addItemsToRow(4, " .g. ".to_java.toCharArray);
+  scene.addItemsToRow(0, " .f. ".to_java.toCharArray)
+  scene.addItemsToRow(1, ". a .".to_java.toCharArray)
+  scene.addItemsToRow(2, ".bce.".to_java.toCharArray)
+  scene.addItemsToRow(3, ". d .".to_java.toCharArray)
+  scene.addItemsToRow(4, " .g. ".to_java.toCharArray)
   scene.addItemToSquare(3, 2, "h");
   
-  assert_equal(ListPattern.new, scene.getItemsOnSquare(0, 0), "checking blind square")
-  assert_equal(ListPattern.new, scene.getItemsOnSquare(4, 3), "checking empty square")
+  assert_equal(ListPattern.new, scene.getItemsOnSquare(0, 0), "no self identifier and checking blind square")
+  assert_equal(ListPattern.new, scene.getItemsOnSquare(4, 3), "no self identifier and checking empty square")
   
   expected_list_pattern = ListPattern.new
   expected_list_pattern.add(ItemSquarePattern.new("e", 3, 2))
   expected_list_pattern.add(ItemSquarePattern.new("h", 3, 2))
-  assert_equal(expected_list_pattern, scene.getItemsOnSquare(3, 2), "checking square with multiple items")
+  assert_equal(expected_list_pattern, scene.getItemsOnSquare(3, 2), "no self identifier and checking square with multiple items")
+  
+  # Set and get items from a scene where the scene creator is identified.  In 
+  # this case, item coordinates should be relative to the creator's position.
+  scene = Scene.new("test", 5, 3)
+  scene.addItemsToRow(2, ".bcd.".to_java.toCharArray)
+  scene.addItemsToRow(1, " .a. ".to_java.toCharArray)
+  scene.addItemsToRow(0, "  .  ".to_java.toCharArray)
+  scene.addItemToSquare(2, 0, Scene.getSelfIdentifier())
+  scene.addItemToSquare(1, 2, "e")
+  
+  assert_equal(ListPattern.new, scene.getItemsOnSquare(0, 1), "with self identifier and checking blind square")
+  assert_equal(ListPattern.new, scene.getItemsOnSquare(1, 1), "with self identifier and checking empty square")
+  
+  expected = ListPattern.new
+  expected.add(ItemSquarePattern.new(Scene.getSelfIdentifier(), 0, 0))
+  assert_equal(expected, scene.getItemsOnSquare(2, 0), "with self identifier and checking location of self")
+  
+  expected = ListPattern.new
+  expected.add(ItemSquarePattern.new("a", 0, 1))
+  assert_equal(expected, scene.getItemsOnSquare(2, 1), "with self identifier and checking location of 'a'")
+  
+  expected = ListPattern.new
+  expected.add(ItemSquarePattern.new("b", -1, 2))
+  expected.add(ItemSquarePattern.new("e", -1, 2))
+  assert_equal(expected, scene.getItemsOnSquare(1, 2), "with self identifier and checking location of 'b' and 'e'")
+  
+  expected = ListPattern.new
+  expected.add(ItemSquarePattern.new("c", 0, 2))
+  assert_equal(expected, scene.getItemsOnSquare(2, 2), "with self identifier and checking location of 'c'")
+  
+  expected = ListPattern.new
+  expected.add(ItemSquarePattern.new("d", 1, 2))
+  assert_equal(expected, scene.getItemsOnSquare(3, 2), "with self identifier and checking location of 'd'")
+end
+
+unit_test "get_location_of_self" do
+  scene = Scene.new("test", 5, 5)
+  scene.addItemToSquare(1, 0, ".");
+  scene.addItemToSquare(2, 0, "f");
+  scene.addItemToSquare(3, 0, ".");
+  scene.addItemToSquare(0, 1, ".");
+  scene.addItemToSquare(2, 1, "a");
+  scene.addItemToSquare(4, 1, ".");
+  scene.addItemToSquare(0, 2, ".");
+  scene.addItemToSquare(1, 2, "b");
+  scene.addItemToSquare(2, 2, Scene.getSelfIdentifier());
+  scene.addItemToSquare(3, 2, "e");
+  scene.addItemToSquare(4, 2, ".");
+  scene.addItemToSquare(0, 3, ".");
+  scene.addItemToSquare(2, 3, "d");
+  scene.addItemToSquare(4, 3, ".");
+  scene.addItemToSquare(1, 4, ".");
+  scene.addItemToSquare(2, 4, "g");
+  scene.addItemToSquare(3, 4, ".");
+  
+  assert_equal(Square.new(2, 2).toString(), scene.getLocationOfSelf().toString())
+  
+  scene = Scene.new("test", 5, 5)
+  scene.addItemToSquare(1, 0, ".");
+  scene.addItemToSquare(2, 0, "f");
+  scene.addItemToSquare(3, 0, ".");
+  scene.addItemToSquare(0, 1, ".");
+  scene.addItemToSquare(2, 1, "a");
+  scene.addItemToSquare(4, 1, ".");
+  scene.addItemToSquare(0, 2, ".");
+  scene.addItemToSquare(1, 2, "b");
+  scene.addItemToSquare(2, 2, "c");
+  scene.addItemToSquare(3, 2, "e");
+  scene.addItemToSquare(4, 2, ".");
+  scene.addItemToSquare(0, 3, ".");
+  scene.addItemToSquare(2, 3, "d");
+  scene.addItemToSquare(4, 3, ".");
+  scene.addItemToSquare(1, 4, ".");
+  scene.addItemToSquare(2, 4, "g");
+  scene.addItemToSquare(3, 4, ".");
+  
+  assert_equal(nil, scene.getLocationOfSelf())
 end
 
 unit_test "get_name" do
@@ -388,12 +474,15 @@ unit_test "get_name" do
 end
 
 unit_test "get_scene" do
+  
+  # Set and get scene where scene creator is not identified.  In this case, 
+  # coordinates returned should be Scene-specific.
   scene = Scene.new("test", 5, 5)
-  scene.addItemsToRow(0, " .f. ".to_java.toCharArray);
-  scene.addItemsToRow(1, ". a .".to_java.toCharArray);
-  scene.addItemsToRow(2, ".bce.".to_java.toCharArray);
-  scene.addItemsToRow(3, ". d .".to_java.toCharArray);
-  scene.addItemsToRow(4, " .g. ".to_java.toCharArray);
+  scene.addItemsToRow(0, " .f. ".to_java.toCharArray)
+  scene.addItemsToRow(1, ". a .".to_java.toCharArray)
+  scene.addItemsToRow(2, ".bce.".to_java.toCharArray)
+  scene.addItemsToRow(3, ". d .".to_java.toCharArray)
+  scene.addItemsToRow(4, " .g. ".to_java.toCharArray)
   scene.addItemToSquare(3, 2, "h");
   
   expected_scene = ListPattern.new
@@ -427,7 +516,51 @@ unit_test "get_scene" do
   expected_scene.add(ItemSquarePattern.new("g", 2, 4))
   expected_scene.add(ItemSquarePattern.new(".", 3, 4))
   expected_scene.add(ItemSquarePattern.new("null", 4, 4))
-  assert_equal(expected_scene, scene.getScene())
+  assert_equal(expected_scene, scene.getScene(), "with no self-identifier")
+  
+  # Set and get scene where the scene creator is identified.  In this case, 
+  # coordinates returned should be relative to the creator.
+  scene = Scene.new("test", 5, 5)
+  scene.addItemsToRow(0, " .f. ".to_java.toCharArray)
+  scene.addItemsToRow(1, ". a .".to_java.toCharArray)
+  scene.addItemsToRow(2, ".b.e.".to_java.toCharArray)
+  scene.addItemsToRow(3, ". d .".to_java.toCharArray)
+  scene.addItemsToRow(4, " .g. ".to_java.toCharArray)
+  scene.addItemToSquare(2, 2, Scene.getSelfIdentifier())
+  scene.addItemToSquare(3, 2, "h");
+  
+  expected_scene = ListPattern.new
+  expected_scene.add(ItemSquarePattern.new("null", -2, -2))
+  expected_scene.add(ItemSquarePattern.new(".", -1, -2))
+  expected_scene.add(ItemSquarePattern.new("f", 0, -2))
+  expected_scene.add(ItemSquarePattern.new(".", 1, -2))
+  expected_scene.add(ItemSquarePattern.new("null", 2, -2))
+  
+  expected_scene.add(ItemSquarePattern.new(".", -2, -1))
+  expected_scene.add(ItemSquarePattern.new("null", -1, -1))
+  expected_scene.add(ItemSquarePattern.new("a", 0, -1))
+  expected_scene.add(ItemSquarePattern.new("null", 1, -1))
+  expected_scene.add(ItemSquarePattern.new(".", 2, -1))
+  
+  expected_scene.add(ItemSquarePattern.new(".", -2, 0))
+  expected_scene.add(ItemSquarePattern.new("b", -1, 0))
+  expected_scene.add(ItemSquarePattern.new(Scene.getSelfIdentifier(), 0, 0))
+  expected_scene.add(ItemSquarePattern.new("e", 1, 0))
+  expected_scene.add(ItemSquarePattern.new("h", 1, 0))
+  expected_scene.add(ItemSquarePattern.new(".", 2, 0))
+  
+  expected_scene.add(ItemSquarePattern.new(".", -2, 1))
+  expected_scene.add(ItemSquarePattern.new("null", -1, 1))
+  expected_scene.add(ItemSquarePattern.new("d", 0, 1))
+  expected_scene.add(ItemSquarePattern.new("null", 1, 1))
+  expected_scene.add(ItemSquarePattern.new(".", 2, 1))
+  
+  expected_scene.add(ItemSquarePattern.new("null", -2, 2))
+  expected_scene.add(ItemSquarePattern.new(".", -1, 2))
+  expected_scene.add(ItemSquarePattern.new("g", 0, 2))
+  expected_scene.add(ItemSquarePattern.new(".", 1, 2))
+  expected_scene.add(ItemSquarePattern.new("null", 2, 2))
+  assert_equal(expected_scene, scene.getScene(), "with self-identifier")
 end
 
 unit_test "get_width" do

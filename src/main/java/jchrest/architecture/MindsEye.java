@@ -268,44 +268,44 @@ class MindsEye {
     }
   }
   
-  public Scene getMindsEyeScene(int time){
-    Scene mindsEyeScene = null;
-    
-    if(this.exists(time)){
-      mindsEyeScene = new Scene(
-        "Mind's eye scene", 
-        this._visualSpatialField.size(), 
-        this._visualSpatialField.get(0).size()
-      );
-      
-      for(int row = 0; row < this._visualSpatialField.size(); row++){
-        for(int col = 0; col < this._visualSpatialField.get(row).size(); col++){
-          ArrayList<MindsEyeObject> objects = this._visualSpatialField.get(row).get(col);
-          if( !objects.isEmpty() ){
-            for(MindsEyeObject object : objects){
-              if(object.getTerminus() > time){
-                mindsEyeScene.addItemToSquare(col, row, object.getIdentifier());
-              }
-            }
-          }
-        }
-      }
-    }
-    
-    return mindsEyeScene;
-  }
+//  public Scene getMindsEyeScene(int time){
+//    Scene mindsEyeScene = null;
+//    
+//    if(this.exists(time)){
+//      mindsEyeScene = new Scene(
+//        "Mind's eye scene", 
+//        this._visualSpatialField.size(), 
+//        this._visualSpatialField.get(0).size(),
+//      );
+//      
+//      for(int row = 0; row < this._visualSpatialField.size(); row++){
+//        for(int col = 0; col < this._visualSpatialField.get(row).size(); col++){
+//          ArrayList<MindsEyeObject> objects = this._visualSpatialField.get(row).get(col);
+//          if( !objects.isEmpty() ){
+//            for(MindsEyeObject object : objects){
+//              if(object.getTerminus() > time){
+//                mindsEyeScene.addItemToSquare(col, row, object.getIdentifier());
+//              }
+//            }
+//          }
+//        }
+//      }
+//    }
+//    
+//    return mindsEyeScene;
+//  }
   
-  public void scanMindsEyeScene(int time, int numberFixations){
-    if(this.exists(time)){
-      this._model.scanScene(this.getMindsEyeScene(time), numberFixations);
-    }
-  }
+//  public void scanMindsEyeScene(int time, int numberFixations){
+//    if(this.exists(time)){
+//      this._model.scanScene(this.getMindsEyeScene(time), numberFixations);
+//    }
+//  }
   
-  public void learnMindsEyeScene(int time, int numberFixations){
-    if(this.exists(time)){
-      this._model.learnScene(this.getMindsEyeScene(time), numberFixations);
-    }
-  }
+//  public void learnMindsEyeScene(int time, int numberFixations){
+//    if(this.exists(time)){
+//      this._model.learnScene(this.getMindsEyeScene(time), numberFixations);
+//    }
+//  }
   
   /**
    * Retrieves the entire contents of the mind's eye along in relation to domain

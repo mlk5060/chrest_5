@@ -21,9 +21,7 @@ public class TileworldDomain implements DomainSpecifics{
     //fixations.
     for(PrimitivePattern prim : pattern){
       ItemSquarePattern item = (ItemSquarePattern)prim;
-      
-      //TODO: replace "SELF" with a variable.
-      if(!item.getItem().equalsIgnoreCase("SELF") && !result.contains(prim)){
+      if(!item.getItem().equalsIgnoreCase(Scene.getSelfIdentifier()) && !result.contains(prim)){
         result.add(prim);
       }
     }
