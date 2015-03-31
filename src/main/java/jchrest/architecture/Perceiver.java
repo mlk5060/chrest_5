@@ -20,12 +20,9 @@ import jchrest.lib.Modality;
 import jchrest.lib.Pattern;
 import jchrest.lib.Scene;
 import jchrest.lib.Square;
-
 import java.util.ArrayList;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
-import jchrest.lib.DomainSpecifics;
 import jchrest.lib.PrimitivePattern;
 
 /**
@@ -147,7 +144,7 @@ public class Perceiver {
                   ItemSquarePattern testIos = (ItemSquarePattern)link.getTest().getItem (0);
                   // check all details of test are correct
                   if (
-                    _currentScene.getItemsOnSquare(_fixationX, _fixationY).contains( testIos )
+                    _currentScene.getItemsOnSquare(_fixationX, _fixationY, false, false).contains( testIos )
                   ){
                     _model.getVisualStm().replaceHypothesis (link.getChildNode ());
                   }
@@ -256,6 +253,7 @@ public class Perceiver {
   /**
    * Find the next fixation point using one of the available 
    * heuristics, and then learn from the new pattern.
+   * @param time The domain time (in milliseconds) when this method was called.
    */
   public void moveEyeAndLearn () {
     boolean fixationDone = false;
@@ -290,7 +288,7 @@ public class Perceiver {
     if (doingInitialFixations ()) {
       fixationDone = doInitialFixation ();
       if (fixationDone) {
-        node = _model.recognise (_model.getDomainSpecifics().normalise (_currentScene.getItemsInScope (_fixationX, _fixationY, 2, 2)));
+        node = _model.recognise (_model.getDomainSpecifics().normalise (_currentScene.getItemsInScope (_fixationX, _fixationY, 2, 2, true)));
       }
     }
     if (!fixationDone) {
@@ -301,13 +299,14 @@ public class Perceiver {
     }
     if (!fixationDone) {
       moveEyeUsingHeuristics ();
-      node = _model.recognise (_model.getDomainSpecifics().normalise (_currentScene.getItemsInScope (_fixationX, _fixationY, 2, 2)));
+      node = _model.recognise (_model.getDomainSpecifics().normalise (_currentScene.getItemsInScope (_fixationX, _fixationY, 2, 2, true)));
     }
+    
     _recognisedNodes.add (node);
     // Attempt to fill out the slots on the top-node of visual STM with the currently 
     // fixated items
     if (_model.getVisualStm().getCount () >= 1) {
-      _model.getVisualStm().getItem(0).fillSlots (_currentScene.getItemsInScope (_fixationX, _fixationY, 2, 2));
+      _model.getVisualStm().getItem(0).fillSlots (_currentScene.getItemsInScope (_fixationX, _fixationY, 2, 2, true));
     }
   }
 
@@ -384,13 +383,16 @@ public class Perceiver {
   private void learnFixatedPattern () {
     ListPattern fixatedPattern = new ListPattern (Modality.VISUAL);
     for (int i = _fixationsLearnFrom; i < _fixations.size () - 1; ++i) {
-      if (!_currentScene.isSquareEmpty (_fixations.get(i).getX (), _fixations.get(i).getY ())) {
-        for( PrimitivePattern itemOnSquare : _currentScene.getItemsOnSquare(_fixations.get(i).getY(), _fixations.get(i).getX()) ){
+      if (
+        !_currentScene.isSquareEmpty (_fixations.get(i).getX (), _fixations.get(i).getY ()) &&
+        !_currentScene.isSquareBlind (_fixations.get(i).getX (), _fixations.get(i).getY ())
+      ) {
+        for( PrimitivePattern itemOnSquare : _currentScene.getItemsOnSquare(_fixations.get(i).getY(), _fixations.get(i).getX(), true, false) ){
           fixatedPattern.add ( (ItemSquarePattern)itemOnSquare );
         }
       }
     }
-    _model.recogniseAndLearn (_model.getDomainSpecifics().normalise (fixatedPattern.append(_currentScene.getItemsInScope(_fixationX, _fixationY, 2, 2))));
+    _model.recogniseAndLearn (_model.getDomainSpecifics().normalise (fixatedPattern.append(_currentScene.getItemsInScope(_fixationX, _fixationY, 2, 2, true)))).getImage();
     // begin cycle again, from point where we stopped
     _fixationsLearnFrom = _fixations.size () - 1;
   }

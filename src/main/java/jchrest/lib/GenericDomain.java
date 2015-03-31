@@ -14,22 +14,56 @@ import jchrest.architecture.Chrest;
   * The GenericDomain is used when no domain-specific methods have been created.
   */
 public class GenericDomain implements DomainSpecifics {
+  
   /**
-   * No change to pattern, as no definition of normalise.
+   * Remove self from pattern since the creator will never need to learn its 
+   * own location given that everything will be relative to it if it exists in
+   * the pattern passed.  Also, remove duplicates.
    */
   public ListPattern normalise (ListPattern pattern) {
-    return pattern;
+    ListPattern result = new ListPattern();
+    
+    for(PrimitivePattern prim : pattern){
+      String identifier = "";
+      
+      if(prim instanceof StringPattern){
+        StringPattern stringPrim = (StringPattern)prim;
+        identifier = stringPrim.getString();
+      }
+      else if(prim instanceof ItemSquarePattern){
+        ItemSquarePattern itemSquarePrim = (ItemSquarePattern)prim;
+        identifier = itemSquarePrim.getItem();
+      }
+      
+      if( 
+        ( !identifier.equalsIgnoreCase(Scene.getSelfIdentifier()) || identifier.isEmpty() ) && 
+        !result.contains(prim)
+      ){
+        result.add(prim);
+      }
+    }
+    
+    return result;
   }
 
   /** 
-   * Return a random square on scene.
+   * Return a random square on scene that isn't blind or empty.
+   * @param scene
+   * @param model
+   * @return 
    */
   public Set<Square> proposeSalientSquareFixations (Scene scene, Chrest model) {
     Set<Square> result = new HashSet<Square> ();
-    result.add (new Square (
-      (new java.util.Random()).nextInt (scene.getWidth ()),
-      (new java.util.Random()).nextInt (scene.getHeight ()) 
-    ));
+    
+    int randomCol = new java.util.Random().nextInt(scene.getWidth ());
+    int randomRow = new java.util.Random().nextInt(scene.getHeight ());
+    
+    while( scene.getItemsOnSquare(randomCol, randomRow, false, false).isEmpty() ){
+      randomCol = new java.util.Random().nextInt(scene.getWidth ());
+      randomRow = new java.util.Random().nextInt(scene.getHeight ());
+    }
+    
+    result.add (new Square(randomCol, randomRow));
     return result;
   }
 

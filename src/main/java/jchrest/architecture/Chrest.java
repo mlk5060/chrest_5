@@ -4,8 +4,6 @@
 
 package jchrest.architecture;
 
-
-import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.Writer;
 import java.util.ArrayList;
@@ -13,13 +11,12 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Observable;
+import java.util.TreeMap;
 import jchrest.lib.*;
 import jchrest.lib.ReinforcementLearning.ReinforcementLearningTheories;
 
 /**
  * The parent class for an instance of a Chrest model.
- *
- * TODO: Implement CHREST clock considerations regarding mind's eye actions.
  * 
  * @author Peter C. R. Lane
  */
@@ -56,8 +53,15 @@ public class Chrest extends Observable {
   private final Stm _actionStm; // TODO: Incorporate into displays
   // Perception module
   private final Perceiver _perceiver;
-  //Mind's Eye module
-  private MindsEye _mindsEye;
+  
+  //Mind's Eye database - stores domain times as keys and mind's eye instances
+  //as values.  Since a mind's eye can only transpose one Scene instance, 
+  //multiple instances may be required throughout the lifespan of one CHREST
+  //model.  To enable correct visualisation of the mind's eye at any point in 
+  //time, a CHREST model needs to be able to store and retrieve mind's eye 
+  //instances.  This variable provides such functionality.
+  private final TreeMap<Integer, MindsEye> _mindsEyes = new TreeMap<>();
+  
   // Emotions module
   private EmotionAssociator _emotionAssociator;
   //Reinforcement learning module
@@ -83,7 +87,6 @@ public class Chrest extends Observable {
     _actionStm = new Stm (4);
     _emotionAssociator = new EmotionAssociator ();
     _reinforcementLearningTheory = null; //Must be set explicitly using Chrest.setReinforcementLearningTheory()
-    _mindsEye = null;
             
     _createTemplates = true;
     _createSemanticLinks = true;
@@ -896,7 +899,12 @@ public class Chrest extends Observable {
   /**
    * Learn a scene with an attached next move.  The move is linked to any chunks 
    * in visual STM.
+   * 
    * TODO: think about if there should be limitations on this.
+   * 
+   * @param scene
+   * @param move
+   * @param numFixations
    */
   public void learnSceneAndMove (Scene scene, Move move, int numFixations) {
     learnScene (scene, numFixations);
@@ -923,9 +931,16 @@ public class Chrest extends Observable {
 
   /**
    * Return a map of moves vs frequencies.
+   * 
+   * @param scene
+   * @param numFixations
+   * @param colour
+   * @param time
+   * 
+   * @return 
    */
-  public Map<ListPattern, Integer> getMovePredictions (Scene scene, int numFixations, String colour) {
-    scanScene (scene, numFixations);
+  public Map<ListPattern, Integer> getMovePredictions (Scene scene, int numFixations, String colour, int time) {
+    scanScene (scene, numFixations, time);
     // create a map of moves to their frequency of occurrence in nodes of STM
     Map<ListPattern, Integer> moveFrequencies = new HashMap<ListPattern, Integer> ();
     for (Node node : _visualStm) {
@@ -947,10 +962,17 @@ public class Chrest extends Observable {
 
   /**
    * Predict a move using a CHUMP-like mechanism.
+   * 
    * TODO: Improve the heuristics here.
+   * 
+   * @param scene
+   * @param numFixations
+   * @param time
+   * 
+   * @return 
    */
-  public Move predictMove (Scene scene, int numFixations) {
-    Map<ListPattern, Integer> moveFrequencies = getMovePredictions (scene, numFixations, null);
+  public Move predictMove (Scene scene, int numFixations, int time) {
+    Map<ListPattern, Integer> moveFrequencies = getMovePredictions (scene, numFixations, null, time);
     // find the most frequent pattern
     ListPattern best = null;
     int bestFrequency = 0;
@@ -976,10 +998,18 @@ public class Chrest extends Observable {
 
   /**
    * Predict a move using a CHUMP-like mechanism.
+   * 
    * TODO: Improve the heuristics here.
+   * 
+   * @param scene
+   * @param numFixations
+   * @param colour
+   * @param time
+   * 
+   * @return 
    */
-  public Move predictMove (Scene scene, int numFixations, String colour) {
-    Map<ListPattern, Integer> moveFrequencies = getMovePredictions (scene, numFixations, colour);
+  public Move predictMove (Scene scene, int numFixations, String colour, int time) {
+    Map<ListPattern, Integer> moveFrequencies = getMovePredictions (scene, numFixations, colour, time);
     // find the most frequent pattern
     ListPattern best = null;
     int bestFrequency = 0;
@@ -1006,40 +1036,128 @@ public class Chrest extends Observable {
   /** 
    * Scan given scene, then return a scene which would be recalled.
    * Default behaviour is to clear STM before scanning a scene.
+   * @param scene
+   * @param numFixations
+   * @param time
+   * @return 
    */
-  public Scene scanScene (Scene scene, int numFixations) {  
-    return scanScene (scene, numFixations, true);
+  public Scene scanScene (Scene scene, int numFixations, int time) {  
+    return scanScene (scene, numFixations, true, time);
   }
   
   /** 
-   * Scan given scene, then return a scene which would be recalled.
+   * Scan given scene, then return a scene which would be recalled.  The 
+   * recognised status and terminus values for all objects that may be present 
+   * in the visual-spatial field of the mind's eye associated with this scene 
+   * are also updated (if applicable).
+   * 
+   * @param scene
+   * @param numFixations
+   * @param clearStm
+   * @param time
+   * @return 
    */
-  public Scene scanScene (Scene scene, int numFixations, boolean clearStm) {
-    if (clearStm) { // only clear STM if flag is set
+  public Scene scanScene (Scene scene, int numFixations, boolean clearStm, int time) {
+    
+    //Set the mind's eye associated with the scene so that objects in the 
+    //related visual-spatial field can have their terminus values updated since
+    //the scene is being interacted with.
+    MindsEye associatedMindsEye = null;
+    for(Map.Entry<Integer, MindsEye> mindsEyeEntry : this._mindsEyes.entrySet()){
+      if(mindsEyeEntry.getValue().getSceneTransposed().equals(scene)){
+        associatedMindsEye = mindsEyeEntry.getValue();
+        break;
+      }
+    }
+    
+    //Create a data structure to hold a list of all objects in the scene that
+    //have been recognised.  This will be used to set the "recognised" status
+    //of objects in the associated mind's eye after the scene has been scanned.
+    ArrayList<MindsEyeObject> recognisedObjects = new ArrayList<>();
+    
+    // only clear STM if flag is set
+    if (clearStm) { 
       _visualStm.clear ();
     }
+    
+    //Scan the scene.
     _perceiver.setScene (scene);
     _perceiver.start (numFixations);
     for (int i = 0; i < numFixations; i++) {
       _perceiver.moveEye ();
     }
-    // build up and return recalled scene
+    
+    // Build up and return recalled scene
     Scene recalledScene = new Scene (
       "Recalled scene of " + scene.getName (), 
       scene.getWidth (), 
       scene.getHeight ()
     );
+    
+    //Get the location of the creator in the scene.  If the creator of the scene 
+    //is present in it then all learned info will have coordinates relative to 
+    //the position of the creator.  Therefore, when visual STM is used to create
+    //the recalled scene below, coordinates will be relative to the creator and
+    //need to be converted into non-relative coordinates so that the scene can
+    //be constructed correctly.
+    Square self = scene.getLocationOfSelf();
+    
     // -- get items from image in STM, and optionally template slots
     // TODO: use frequency count in recall
     for (Node node : _visualStm) {
       ListPattern recalledInformation = node.getImage();
+      
       if (_createTemplates) { // check if templates needed
         recalledInformation = recalledInformation.append(node.getFilledSlots ());
       }
+      
+      //Add all recognised items to the scene to be returned and flag the 
+      //corresponding mind's eye objects as being recognised.
       for (PrimitivePattern item : recalledInformation) {
         if (item instanceof ItemSquarePattern) {
           ItemSquarePattern ios = (ItemSquarePattern)item;
-          recalledScene.addItemToSquare (ios.getColumn ()-1, ios.getRow ()-1, ios.getItem ());
+          int col = ios.getColumn ();
+          int row = ios.getRow ();
+          
+          //Translate domain-specific coordinates if necessary.
+          if(self != null){
+           col += self.getColumn();
+           row += self.getRow();
+          }
+          
+          //Add the item to the recalled scene.
+          recalledScene.addItemToSquare (col, row, ios.getItem ());
+          
+          //Update the recognised status of the associated mind's eye object, if
+          //applicable.
+          if(associatedMindsEye != null){
+            ArrayList<MindsEyeObject> objects = associatedMindsEye.getObjectsOnVisualSpatialSquare(col, row);
+            for(MindsEyeObject object: objects){
+              if(object.getIdentifier().equals(ios.getItem())){
+                object.setRecognised(time);
+                recognisedObjects.add(object);
+              }
+            }
+          }
+        }
+      }
+    }
+    
+    //Finally, cycle through the objects in the original scene and flag all 
+    //unrecognised items as being unrecognised in the mind's eye associated with
+    //the scene (if applicable).
+    if(associatedMindsEye != null){
+      for(int col = 0; col < scene.getWidth(); col++){
+        for(int row = 0; row < scene.getHeight(); row++){
+          ArrayList<MindsEyeObject> objects = associatedMindsEye.getObjectsOnVisualSpatialSquare(col, row);
+          for(MindsEyeObject object: objects){
+            if(
+              !object.getIdentifier().equals(Scene.getBlindSquareIdentifier()) && //Only update termini of actual objects.
+              !recognisedObjects.contains(object) //Do not process recognised objects!
+            ){
+              object.setUnrecognised(time);
+            }
+          }
         }
       }
     }
@@ -1219,180 +1337,51 @@ public class Chrest extends Observable {
     return domainTime >= this.getAttentionClock(); 
   }
   
+  /****************************************************************************/
+  /****************************************************************************/
+  /**************************** MINDS EYE METHODS *****************************/
+  /****************************************************************************/
+  /****************************************************************************/
+  
   /**
-   * Determines if the terminus value of the mind's eye associated with this 
-   * CHREST instance is greater than the current domain time.  If a minds eye 
-   * does not exist, the attention clock of the CHREST model is set to the 
-   * domain time passed to this function.
+   * Creates a new mind's eye and registers it in the database of mind's eyes 
+   * associated with this CHREST instance at the time specified.
    * 
-   * @param domainTime The current time (in milliseconds) in the domain where 
-   * this Chrest instance is located. 
+   * Description of parameters are provided here: {@link 
+   * jchrest.architecture.MindsEye#MindsEye(jchrest.architecture.Chrest, 
+   * jchrest.lib.Scene, int, int, int, int, int, int, int, int)}.
    * 
-   * @return True if a mind's eye is associated with this CHREST instance and 
-   * its visual-spatial field is not null, false otherwise.
+   * @param sceneToTranspose
+   * @param objectEncodingTime
+   * @param emptySquareEncodingTime
+   * @param accessTime
+   * @param objectMovementTime
+   * @param lifespanForRecognisedObjects
+   * @param lifespanForUnrecognisedObjects
+   * @param numberFixations
+   * @param domainTime
    */
-  public boolean mindsEyeExists(int domainTime){
-    boolean mindsEyeExists = false;
-    
-    if(this._mindsEye != null){
-      mindsEyeExists = this._mindsEye.exists(domainTime);
-    }
-    else{
-      this.setAttentionClock(domainTime);
-    }
-    
-    return mindsEyeExists;
+  public void createNewMindsEye(Scene sceneToTranspose, int objectEncodingTime, int emptySquareEncodingTime, int accessTime, int objectMovementTime, int lifespanForRecognisedObjects, int lifespanForUnrecognisedObjects, int numberFixations, int domainTime){
+    this._mindsEyes.put(domainTime, new MindsEye(
+      this,
+      sceneToTranspose,
+      objectEncodingTime,
+      emptySquareEncodingTime,
+      accessTime,
+      objectMovementTime,
+      lifespanForRecognisedObjects,
+      lifespanForUnrecognisedObjects,
+      numberFixations,
+      domainTime
+    ));
   }
   
   /**
-   * Creates a new mind's eye.
+   * Returns the history of mind's eye instance creation for this model.
    * 
-   * @param scene The scene to render in the mind's eye (an instance of
-   * {@link jchrest.lib.Scene}.
-   * 
-   * @param lifespan The length of time (in milliseconds) that the mind's eye
-   * can be inactive for before it its visual spatial field is set to null.
-   * 
-   * @param objectPlacementTime The time it takes (in milliseconds) to place an
-   * object on a visual unit in the mind's eye.
-   * 
-   * @param accessTime The time it takes (in milliseconds) to access the mind's 
-   * eye whenever it is accessed.
-   * 
-   * @param objectMovementTime The time it takes (in milliseconds) to move an
-   * object in the mind's eye.
-   * 
-   * @param domainTime The current time (in milliseconds) in the domain where 
-   * this Chrest instance is located. 
-   * 
-   * @param lifespanForRecognisedObjects The length of time (in milliseconds) 
-   * that an object will exist in the mind's eye for when it is created or 
-   * interacted with if it is committed to LTM.
-   * 
-   * @param lifespanForUnrecognisedObjects The length of time (in milliseconds) 
-   * that an object will exist in the mind's eye for when it is created or 
-   * interacted with if it is not committed to LTM.
-   * 
-   * @return True if a minds eye has been created otherwise false (only occurs
-   * if attention is not currently free).
+   * @return 
    */
-  public boolean createNewMindsEye(Scene scene, int lifespan, int objectPlacementTime, int accessTime, int objectMovementTime, int domainTime, int lifespanForRecognisedObjects, int lifespanForUnrecognisedObjects){
-    boolean mindsEyeCreated = false;
-    
-    if(this.attentionFree(domainTime)){
-      this._mindsEye = new MindsEye(this, scene, lifespan, objectPlacementTime, accessTime, objectMovementTime, domainTime, lifespanForRecognisedObjects, lifespanForUnrecognisedObjects);
-      mindsEyeCreated = true;
-    }
-    
-    return mindsEyeCreated;
-  }
-  
-  /**
-   * Retrieves the mind's eye visual-spatial field as an instance of 
-   * {@link jchrest.lib.Scene}.
-   * 
-   * @param domainTime The current time (in milliseconds) in the domain where 
-   * this Chrest instance is located. 
-   * 
-   * @return The content of the mind's eye from min domain xcor/ycor to max
-   * domain xcor/ycor if mind's eye exists and its visual-spatial field has not
-   * decayed otherwise, null is returned.
-   */
-//  public Scene getMindsEyeScene(int domainTime){
-//    return this._mindsEye.getMindsEyeScene(domainTime);
-//  }
-  
-  /**
-   * Retrieves the contents of one mind's eye coordinate specified using 
-   * domain-specific coordinates. See {@link 
-   * jchrest.architecture.MindsEye#getMindsEyeContentUsingDomainSpecificCoords(int, int)}
-   * for more information about parameters etc.
-   * 
-   * @param domainSpecificXCor Must be absolute/relative (same as when mind's 
-   * eye was instantiated).
-   * 
-   * @param domainSpecificYCor Must be absolute/relative (same as when mind's 
-   * eye was instantiated).
-   * 
-   * @param domainTime The current time (in milliseconds) in the domain where 
-   * this Chrest instance is located. 
-   * 
-   * @return The content of the mind's eye at the domain coordinates passed if 
-   * mind's eye exists and its visual-spatial field has not decayed otherwise, 
-   * null is returned.
-   */
-  public String getSpecificMindsEyeContent(int domainSpecificXCor, int domainSpecificYCor, int domainTime){
-    String mindsEyeContent = null;
-    
-    //TODO:revert back, this is just to keep compiler happy durings mind's eye
-    //redevelopment.
-    if(this.mindsEyeExists(domainTime)){
-      //mindsEyeContent = this._mindsEye.getSpecificContent(domainSpecificXCor, domainSpecificYCor, domainTime);
-    }
-    
-    return mindsEyeContent;
-  }
-  
-  /**
-   * Moves objects in the mind's eye using domain-specific coordinates supplied.
-   * 
-   * @param moves See 
-   * {@link jchrest.architecture.MindsEye#moveObjects(java.util.ArrayList, int)} 
-   * for details.
-   * 
-   * @param domainTime The current time (in milliseconds) in the domain where 
-   * this Chrest instance is located. 
-   * 
-   * @return A two element array whose first element is a boolean value 
-   * indicating whether the move sequence passed was successfully executed in 
-   * the mind's eye and whose second element is a string that is empty if the
-   * move sequence was executed successfully or contains a description of why 
-   * the move sequence failed if execution was unsuccessful.
-   * 
-   * @throws jchrest.lib.MindsEyeMoveObjectException If an illegal object move
-   * is specified.  See 
-   * {@link jchrest.architecture.MindsEye#moveObjects(java.util.ArrayList, int)} 
-   * for details of illegal moves.
-   */
-  public boolean moveObjectsInMindsEye(ArrayList<ArrayList<String>> moves, int domainTime) throws MindsEyeMoveObjectException  {
-    //return this._mindsEye.moveObjects(moves, domainTime);
-    
-    //TODO:revert back, this is just to keep compiler happy durings mind's eye
-    //redevelopment.
-    return true;
-  }
-  
-  /**
-   * Returns the current terminus value of the mind's eye associated with this
-   * CHREST model.
-   * 
-   * @param domainTime The current time (in milliseconds) in the domain where 
-   * this Chrest instance is located. 
-   * 
-   * @return The time at which the visual-spatial field of the mind's eye
-   * will completely decay if a mind's eye exists and its visual-spatial field 
-   * has not decayed otherwise, null is returned.
-   */
-  public Integer getMindsEyeTerminus(int domainTime){
-    Integer mindsEyeTerminus = null;
-    
-    if( this.mindsEyeExists(domainTime) ){
-      mindsEyeTerminus = this._mindsEye.getTerminus();
-    }
-    
-    return mindsEyeTerminus;
-  }
-  
-  /**
-   * Destroys the current MindsEye instance set to this instance's "_mindsEye" 
-   * variable by setting this variable's value to to null and this Chrest
-   * instance's "_attentionClock" value to the domain time passed.
-   * 
-   * @param domainTime The current time (in milliseconds) in the domain where 
-   * this Chrest instance is located. 
-   */
-  public void destroyMindsEye(int domainTime){
-    this._mindsEye = null;
-    this.setAttentionClock(domainTime);
+  public TreeMap<Integer,MindsEye> getMindsEyes(){
+    return this._mindsEyes;
   }
 }

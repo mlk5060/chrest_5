@@ -6,7 +6,23 @@ package jchrest.lib;
 // TODO: Clarify order of row/column in methods calls/displays.
 import java.util.Arrays;
 import java.util.LinkedList;
+import jchrest.architecture.MindsEye;
 
+/**
+ * The Scene class is intended to represent the external environment that a 
+ * CHREST model can "see"; either the whole environment if CHREST's sight is 
+ * allocentric or a portion of the environment if it is egocentric.
+ * 
+ * NOTE: All "get" methods pertaining to retrieval of Scene information should
+ * be routed through the {@link #getItemsOnSquare(int, int, boolean, boolean, int)}
+ * method since this will also update the corresponding 
+ * {@link jchrest.lib.MindsEyeObject} instances in the visual-spatial field of 
+ * the {@link jchrest.architecture.MindsEye} instance that is associated with
+ * this Scene instance.
+ * 
+ * @author Peter C. R. Lane <p.c.lane@herts.ac.uk>
+ * @author Martyn Lloyd-Kelly <martynlk@liverpool.ac.uk>
+ */
 public class Scene {
   
   //Human-readable identifier for the scene.
@@ -33,6 +49,16 @@ public class Scene {
   //contain multiple objects separated by commas.
   private final String[][] _scene;
 
+  /**
+   * Constructor: the instance created is initially "blind", empty squares and
+   * items must be added using the appropriate methods from this class.
+   * 
+   * @param name Human-readable identifier for the Scene instance created.
+   * @param width Represents the maximum number of indivisible x-coordinates 
+   * that can be "seen" in an external vision.
+   * @param height Represents the maximum number of indivisible y-coordinates 
+   * that can be "seen" in an external vision.
+   */
   public Scene (String name, int width, int height) {
     this._name = name;
     this._height = height;
@@ -50,12 +76,32 @@ public class Scene {
   }
   
   /**
-   * Adds the item identifier to the specified square in the scene.  If the 
-   * specified square is currently empty, the item specified replaces the 
-   * "empty" identifier.  If the specified square is not currently empty, the 
-   * item identifier specified is appended to the current contents of the square
-   * with a comma prefix i.e. if the specified square contains "A" and "B" is
-   * to be added, the contents of the specified square will equal "A,B".
+   * Adds the item identifier to the specified square in the scene.  
+   * <ul>
+   *  <li>
+   *    If the square is currently considered as being a blind spot, add the
+   *    item.  This may seem nonsensical but if addition is blocked on blind
+   *    squares, no Scene would ever contain anything other than blind squares
+   *    since Scene instances are completely blind after initial instantiation.
+   *  </li>
+   *  <li>
+   *    If the specified square is currently empty, the item specified replaces 
+   *    the "empty" identifier.
+   *  </li>
+   *  <li>
+   *    If the specified square is not currently empty and the item to be added
+   *    is not empty, then the item is appended to the current contents of the 
+   *    square with a comma prefix i.e. if the specified square contains "A" and 
+   *    "B" is to be added, the contents of the specified square will equal 
+   *    "A,B".
+   *  </li>
+   *  <li>
+   *    If the specified square is not currently empty and the item to be added
+   *    is empty, then the square becomes empty i.e. if the specified square 
+   *    contains "A,B" and the square is to become empty, the contents of the 
+   *    specified square will contain the empty square identifier only.
+   *  </li>
+   * </ul>
    * 
    * @param row
    * @param col
@@ -70,15 +116,17 @@ public class Scene {
     if(squareContents.equals(Scene.BLIND_SQUARE_IDENTIFIER)){
       _scene[col][row] = item;
     }
-    //Else, if the square is empty and the item to be added isn't also empty, or
-    //the square is not empty and the item to be added is empty, add the item.
+    //Else, if the square is empty and the item to be added isn't empty, or
+    //the square is not empty and the item to be added is empty, overwrite the
+    //existing square content (square is always "wiped clean" if not empty and
+    //empty identifier is added).
     else if(
       (squareContents.equals(Scene.EMPTY_SQUARE_IDENTIFIER) && !item.equals(Scene.EMPTY_SQUARE_IDENTIFIER)) ||
       (!squareContents.equals(Scene.EMPTY_SQUARE_IDENTIFIER) && item.equals(Scene.EMPTY_SQUARE_IDENTIFIER))
     ){
       _scene[col][row] = item;
     }
-    //If the square contents is empty and the item is empty, do nothing.
+    //If the square is empty and the item is empty, do nothing.
     else if(squareContents.equals(Scene.EMPTY_SQUARE_IDENTIFIER) && item.equals(Scene.EMPTY_SQUARE_IDENTIFIER)){}
     //Otherwise, the square isn't empty and neither is the item so append the 
     //item to the current contents.
@@ -124,10 +172,14 @@ public class Scene {
    * this one.
    * 
    * @param sceneToCompareAgainst
+   * @param selfRelativeCoordinates Set to true to return square coordinates 
+   * relative to the creator of the scene if the creator is identified in the 
+   * scene itself.
+   * 
    * @return 
    */
-  public int computeErrorsOfCommission (Scene sceneToCompareAgainst) {
-    return sceneToCompareAgainst.getAllItemsInScene().size() - this.getAllItemsInScene().size();
+  public int computeErrorsOfCommission (Scene sceneToCompareAgainst, boolean selfRelativeCoordinates) {
+    return sceneToCompareAgainst.getItemsInScene(selfRelativeCoordinates).size() - this.getItemsInScene(selfRelativeCoordinates).size();
   }
   
   /**
@@ -136,10 +188,14 @@ public class Scene {
    * given one.
    * 
    * @param sceneToCompareAgainst
+   * @param selfRelativeCoordinates Set to true to return square coordinates 
+   * relative to the creator of the scene if the creator is identified in the 
+   * scene itself.
+   * 
    * @return 
    */
-  public int computeErrorsOfOmission (Scene sceneToCompareAgainst) {
-    return this.getAllItemsInScene().size() - sceneToCompareAgainst.getAllItemsInScene().size();
+  public int computeErrorsOfOmission (Scene sceneToCompareAgainst, boolean selfRelativeCoordinates) {
+    return this.getItemsInScene(selfRelativeCoordinates).size() - sceneToCompareAgainst.getItemsInScene(selfRelativeCoordinates).size();
   }
   
   /**
@@ -148,18 +204,25 @@ public class Scene {
    * to the other.
    * 
    * @param sceneToCompareAgainst
+   * @param selfRelativeCoordinates Set to true to return square coordinates 
+   * relative to the creator of the scene if the creator is identified in the 
+   * scene itself.
+   * 
    * @return 
    */
-  public float computePrecision (Scene sceneToCompareAgainst) {
-    if(this.getAllItemsInScene().isEmpty() || sceneToCompareAgainst.getAllItemsInScene().isEmpty()){
+  public float computePrecision (Scene sceneToCompareAgainst, boolean selfRelativeCoordinates) {
+    if(
+      this.getItemsInScene(selfRelativeCoordinates).isEmpty() || 
+      sceneToCompareAgainst.getItemsInScene(selfRelativeCoordinates).isEmpty()
+    ){
       return 0.0f;
     }
     else{
       int numberOfCorrectlyPlacedItems = 0;
       for(int row = 0; row < this._height; row++){
         for(int col = 0; col < this._width; col++){
-          ListPattern itemsOnSquareInThisScene = this.getItemsOnSquare(col, row);
-          ListPattern itemsOnSquareInOtherScene = sceneToCompareAgainst.getItemsOnSquare(col, row);
+          ListPattern itemsOnSquareInThisScene = this.getItemsOnSquare(col, row, selfRelativeCoordinates, false);
+          ListPattern itemsOnSquareInOtherScene = sceneToCompareAgainst.getItemsOnSquare(col, row, selfRelativeCoordinates, false);
 
           for(PrimitivePattern itemOnSquareInOtherScene : itemsOnSquareInOtherScene){
             if(itemsOnSquareInThisScene.contains(itemOnSquareInOtherScene)){
@@ -169,7 +232,7 @@ public class Scene {
         }
       }
 
-      return (float)numberOfCorrectlyPlacedItems / (float)sceneToCompareAgainst.getAllItemsInScene().size();
+      return (float)numberOfCorrectlyPlacedItems / (float)sceneToCompareAgainst.getItemsInScene(selfRelativeCoordinates).size();
     }
   }
   
@@ -179,35 +242,22 @@ public class Scene {
    * recalled, irrespective of correct placement.
    * 
    * @param sceneToCompareAgainst
+   * @param selfRelativeCoordinates Set to true to return square coordinates 
+   * relative to the creator of the scene if the creator is identified in the 
+   * scene itself.
+   * 
    * @return 
    */
-  public float computeRecall (Scene sceneToCompareAgainst) {
-    int numberOfItemsInThisScene = this.getAllItemsInScene().size();
-    int numberOfItemsInOtherScene = sceneToCompareAgainst.getAllItemsInScene().size();
+  public float computeRecall (Scene sceneToCompareAgainst, boolean selfRelativeCoordinates) {
+    float numberOfItemsInThisScene = (float)this.getItemsInScene(selfRelativeCoordinates).size();
+    float numberOfItemsInOtherScene = (float)sceneToCompareAgainst.getItemsInScene(selfRelativeCoordinates).size();
     
     if(numberOfItemsInThisScene == 0 || numberOfItemsInOtherScene == 0){
       return 0.0f;
     }
     else{
-      return (float)this.getAllItemsInScene().size() / (float)sceneToCompareAgainst.getAllItemsInScene().size();
+      return numberOfItemsInThisScene / numberOfItemsInOtherScene;
     }
-  }
-  
-   /**
-   * Returns the items in this scene (no blind or empty spots included).
-   * 
-   * @return 
-   */
-  public ListPattern getAllItemsInScene(){
-    ListPattern itemsInScene = new ListPattern();
-    
-    for (int row = 0; row < this._height; row++) {
-      for (int col = 0; col < this._width; col++) {
-        itemsInScene = itemsInScene.append(this.getItemsOnSquare(col, row));
-      }
-    }
-    
-    return itemsInScene;
   }
   
   /**
@@ -229,11 +279,52 @@ public class Scene {
   }
   
   /**
-   * Returns the string used to denote the creator of a scene in the scene.
-   * @return 
+   * Returns the scene (including blind and empty squares) from east -> west 
+   * then south -> north.  If the creator of the Scene is present in the Scene
+   * coordinates will be relative to the agent (unless overridden by the 
+   * "noRelativeCoordinates" parameter) otherwise, coordinates will be 
+   * Scene-specific.
+   * 
+   * @param noRelativeCoordinates Set to true to force the function to return 
+   * Scene specific coordinates even when the Scene's creator is identified in 
+   * the Scene.
+   * 
+   * @return A ListPattern instance consisting of String interpretations of 
+   * ItemSquarePattern instances representing each square of the scene.
    */
-  public static String getSelfIdentifier(){
-    return Scene.SELF_IDENTIFIER;
+  public ListPattern getEntireScene(boolean noRelativeCoordinates){
+    ListPattern scene = new ListPattern();
+    
+    //Get the location of the agent that constructed this scene in the 
+    //scene.  This will be used to determine if the coordinates for the
+    //items are to be absolute (Scene-specific) or relative to the creator.
+    Square locationOfSelf = this.getLocationOfSelf();
+    
+    for(int row = 0; row < _height; row++){
+      for(int col = 0; col < _width; col++){
+        
+        ListPattern itemsOnSquare = this.getItemsOnSquare(col, row, noRelativeCoordinates, true);
+        
+        if(locationOfSelf == null || noRelativeCoordinates){
+          for(PrimitivePattern item : itemsOnSquare){
+            if(item instanceof ItemSquarePattern){
+              ItemSquarePattern itemOnSquare = (ItemSquarePattern)item;
+              scene.add( new ItemSquarePattern(itemOnSquare.getItem(), col, row) );
+            }
+          }
+        }
+        else {
+          for(PrimitivePattern item : itemsOnSquare){
+            if(item instanceof ItemSquarePattern){
+              ItemSquarePattern itemOnSquare = (ItemSquarePattern)item;
+              scene.add(new ItemSquarePattern(itemOnSquare.getItem(), (col - locationOfSelf.getColumn()), (row - locationOfSelf.getRow())));
+            }
+          }
+        }
+      }
+    }
+    
+    return scene;
   }
   
   /**
@@ -246,107 +337,86 @@ public class Scene {
   }
   
   /**
-   * Retrieve all items within given row +/- size, column +/- size (blind spots
+   * Returns the items in this scene (excluding blind and empty squares) from 
+   * east -> west then south -> north.
+   * 
+   * @param selfRelativeCoordinates Set to true to return square coordinates 
+   * relative to the creator of the scene if the creator is identified in the 
+   * scene itself.
+   * 
+   * @return 
+   */
+  public ListPattern getItemsInScene(boolean selfRelativeCoordinates){
+    ListPattern itemsInScene = new ListPattern();
+    
+    for (int row = 0; row < this._height; row++) {
+      for (int col = 0; col < this._width; col++) {
+        itemsInScene = itemsInScene.append(this.getItemsOnSquare(col, row, selfRelativeCoordinates, false));
+      }
+    }
+    
+    return itemsInScene;
+  }
+  
+  /**
+   * Retrieve all items within given row +/- size, column +/- size (blind 
    * and empty squares are not returned).
    * 
    * @param startCol
    * @param startRow
    * @param colScope
    * @param rowScope
+   * @param selfRelativeCoordinates Set to true to return square coordinates 
+   * relative to the creator of the scene if the creator is identified in the 
+   * scene itself.
    * 
    * @return 
    */
-  public ListPattern getItemsInScope (int startCol, int startRow, int colScope, int rowScope) {
+  public ListPattern getItemsInScope (int startCol, int startRow, int colScope, int rowScope, boolean selfRelativeCoordinates) {
     ListPattern items = new ListPattern ();
 
     for (int row = startRow - rowScope; row <= startRow + rowScope; row++) {
       if (row >= 0 && row < _height) {
-        
         for (int col = startCol - colScope; col <= startCol + colScope; col++) {
           if (col >= 0 && col < _width) {
-            items = items.append(this.getItemsOnSquare(col, row));
+            items = items.append(this.getItemsOnSquare(col, row, selfRelativeCoordinates, false));
           }
         }
-        
       }
     }
-
     return items;
-  }
-
-  /**
-   * Returns the name of the scene.
-   * 
-   * @return 
-   */
-  public String getName () {
-    return _name;
-  }
-
-  /**
-   * Returns the maximum width of the scene.
-   * 
-   * @return 
-   */
-  public int getWidth () {
-    return _width;
   }
   
   /**
-   * Returns the scene (including blind and empty squares) from east -> west 
-   * then south -> north.
-   * 
-   * @return A ListPattern instance consisting of String interpretations of 
-   * ItemSquarePattern instances representing each square of the scene.
-   */
-  public ListPattern getScene(){
-    ListPattern scene = new ListPattern();
-    
-    for(int row = 0; row < _height; row++){
-      for(int col = 0; col < _width; col++){
-        String[] objectsOnSquare = this._scene[col][row].split(",");
-        
-        //Get the location of the agent that constructed this scene in the 
-        //scene.  This will be used to determine if the coordinates for the
-        //items are to be absolute (Scene-specific) or relative to the creator.
-        Square locationOfSelf = this.getLocationOfSelf();
-        
-        //Process each item on the square accordingly.
-        for(String objectOnSquare : objectsOnSquare){
-          if(locationOfSelf == null){
-            scene.add( new ItemSquarePattern(objectOnSquare, col, row) );
-          }
-          else {
-            scene.add(new ItemSquarePattern(objectOnSquare, (col - locationOfSelf.getColumn()), (row - locationOfSelf.getRow())));
-          }
-        }
-      }
-    }
-    
-    return scene;
-  }
-
-  /**
-   * Returns all "actual" items on a square in the scene.  If the creator of the
-   * scene has identified itself in the scene itself then the coordinates for
-   * items returned will be relative to the agent's location in the scene.
+   * Returns all items on a square in the scene.  If the creator of the scene 
+   * has identified itself in the scene itself then the coordinates for items 
+   * returned will be relative to the agent's location in the scene.
    * 
    * @param col
    * @param row
+   * @param selfRelativeCoordinates Set to true to return square coordinates 
+   * relative to the creator of the scene if the creator is identified in the 
+   * scene itself.
+   * @param includeBlindAndEmptySquares Set to true to return blind and empty
+   * square identifiers.
+   * 
    * @return 
    */
-  public ListPattern getItemsOnSquare (int col, int row) {
+  public ListPattern getItemsOnSquare (int col, int row, boolean selfRelativeCoordinates, boolean includeBlindAndEmptySquares) {
     ListPattern itemsOnSquare = new ListPattern();
     
     if (row >= 0 && row < _height && col >= 0 && col < _width) {
+      
       LinkedList<String> squareContents = new LinkedList<>(Arrays.asList(_scene[col][row].split(",")));
       
       //Remove empty and blind identifiers
-      while(squareContents.contains(Scene.EMPTY_SQUARE_IDENTIFIER)){
-        squareContents.remove(Scene.EMPTY_SQUARE_IDENTIFIER);
-      }
-      while(squareContents.contains(Scene.BLIND_SQUARE_IDENTIFIER)){
-        squareContents.remove(Scene.BLIND_SQUARE_IDENTIFIER);
+      if(!includeBlindAndEmptySquares){
+        while(squareContents.contains(Scene.EMPTY_SQUARE_IDENTIFIER)){
+          squareContents.remove(Scene.EMPTY_SQUARE_IDENTIFIER);
+        }
+        while(squareContents.contains(Scene.BLIND_SQUARE_IDENTIFIER)){
+          squareContents.remove(Scene.BLIND_SQUARE_IDENTIFIER);
+        }
       }
       
       //If there are items then add ItemSquarePattern representations of the 
@@ -360,11 +430,11 @@ public class Scene {
       
         //Process each item on the square accordingly.
         for(String itemIdentifier : squareContents){
-          if(locationOfSelf == null){
-            itemsOnSquare.add(new ItemSquarePattern(itemIdentifier, col, row));
-          }
-          else {
+          if(selfRelativeCoordinates && locationOfSelf != null){
             itemsOnSquare.add(new ItemSquarePattern(itemIdentifier, (col - locationOfSelf.getColumn()), (row - locationOfSelf.getRow())));
+          }
+          else{
+            itemsOnSquare.add(new ItemSquarePattern(itemIdentifier, col, row));
           }
         }
       }
@@ -375,7 +445,7 @@ public class Scene {
   
   /**
    * Returns the location of the entity that constructed this Scene instance (if
-   * it identified itself).
+   * it identified itself) in the Scene itself.
    * 
    * @return An instance of {@link jchrest.lib.Square} with the Scene 
    * coordinates that the entity which created this Scene is located at or null
@@ -391,6 +461,32 @@ public class Scene {
     }
     
     return null;
+  }
+
+  /**
+   * Returns the name of the scene.
+   * 
+   * @return 
+   */
+  public String getName () {
+    return _name;
+  }
+  
+   /**
+   * Returns the string used to denote the creator of a scene in the scene.
+   * @return 
+   */
+  public static String getSelfIdentifier(){
+    return Scene.SELF_IDENTIFIER;
+  }
+
+  /**
+   * Returns the maximum width of the scene.
+   * 
+   * @return 
+   */
+  public int getWidth () {
+    return _width;
   }
   
   /**
@@ -436,6 +532,6 @@ public class Scene {
     } else {
       return true; // no item off scene (!)
     }
-  } 
+  }
 }
 

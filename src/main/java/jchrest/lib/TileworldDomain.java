@@ -38,10 +38,10 @@ public class TileworldDomain implements DomainSpecifics{
    */
   @Override
   public Set<Square> proposeSalientSquareFixations(Scene scene, Chrest model) {
-    Set<Square> salientSquareFixations = new HashSet<Square> ();
+    Set<Square> salientSquareFixations = new HashSet<>();
     for(int col = 0; col < scene.getWidth(); col++){
       for(int row = 0; row < scene.getHeight(); row++){
-        ListPattern squareContents = scene.getItemsOnSquare(col, row);
+        ListPattern squareContents = scene.getItemsOnSquare(col, row, false, false);
         if( !squareContents.isEmpty() ){
           salientSquareFixations.add(new Square(col, row));
         }

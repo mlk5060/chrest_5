@@ -1,28 +1,24 @@
 package jchrest.architecture;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.Iterator;
-import java.util.LinkedHashMap;
-import java.util.TreeMap;
 import jchrest.lib.ItemSquarePattern;
 import jchrest.lib.ListPattern;
+import jchrest.lib.MindsEyeMoveObjectException;
 import jchrest.lib.MindsEyeObject;
 import jchrest.lib.PrimitivePattern;
 import jchrest.lib.Scene;
+import jchrest.lib.Square;
 
 /**
  * Class that implements the "Mind's Eye", specifically one that handles
  * <i>attention-based imagery</i> (see page 301 of "Image and Brain" by Stephen
  * Kosslyn).
  * 
- * Package-access only.
- * 
- * The mind's eye is implemented as a 2D ArrayList whose size is finite after
- * creation (consistent with the view proposed by Kosslyn on page 305 of "Image 
- * and Brain)".  The minds eye contains a visual-spatial field that represents 
- * the vision of the observer in the domain whose CHREST model is associated 
- * with a mind's eye instance.
+ * The mind's eye contains a visual-spatial field whose coordinates maintain
+ * a history of objects that have been placed on them.  The visual-spatial field
+ * is a 2D ArrayList whose size is finite after creation (consistent with the 
+ * view proposed by Kosslyn on page 305 of "Image and Brain)".
  * 
  * Information in the mind's eye can be manipulated independently of the
  * environment that the observer is currently situated in to test outcomes of 
@@ -31,6 +27,7 @@ import jchrest.lib.Scene;
  * TODO: After instantiation, the access time may decrease depending upon how
  *       many times the image has been re-encoded (see page 307 of "Image and
  *       Brain" by Kosslyn).
+ * 
  * TODO: The size of the visual-spatial field may be finite before creation 
  *       according to Kosslyn (proposed that reliable encoding of object 
  *       locations occurs when the matrix is 3 x 3, anything larger causes 
@@ -38,390 +35,445 @@ import jchrest.lib.Scene;
  * 
  * @author Martyn Lloyd-Kelly <martynlk@liverpool.ac.uk>
  */
-class MindsEye {
+public class MindsEye {
+  
+  //The CHREST model that the mind's eye instance is associated with.
+  private final Chrest _model;
+  
+  //The visual spatial field of the mind's eye (a 3D ArrayList).  First 
+  //dimension elements represent the columns (x-coordinates) of a scene, second
+  //dimension elements represent the rows (y-coordinates) of a scene, third
+  //dimension elements represent the objects on the square (there may be 
+  //multiple objects on one square).
+  private ArrayList<ArrayList<ArrayList<MindsEyeObject>>> _visualSpatialField = new ArrayList<>();
+  
+  //The scene that was transposed into the mind's eye originally.
+  private final Scene _sceneTransposed;
   
   //Time taken (ms) to access the mind's eye.
   private final int _accessTime;
-  
-  //The length of time (in milliseconds) that the minds eye exists for after
-  //it is created/accessed.
-  private final int _lifespan;
-  
-  //The domain time (in milliseconds) when the minds eye will be cleared.
-  private int _terminus;
-  
-   //The CHREST model that the mind's eye instance is associated with.
-  private final Chrest _model;
   
   //The time taken (in milliseconds) to move an object in the mind's eye.
   private final int _objectMovementTime;
   
   //The time taken (in milliseconds) to place an object in the mind's eye during
   //instantiation.
-  private final int _objectPlacementTime; //Look in Fernand's paper with Waters for time of this.
+  private final int _objectPlacementTime;
   
-  //The visual spatial field of the mind's eye (a 3D ArrayList).  First 
-  //dimension elements represent the rows (y-coordinates) of a scene, second
-  //dimension elements represent the columns (x-coordinates) of a scene, third
-  //dimension elements represent the objects on the square (there may be 
-  //multiple objects, especially if this is a mind's eye scene).
-  private ArrayList<ArrayList<ArrayList<MindsEyeObject>>> _visualSpatialField = new ArrayList<>();
+  //The length of time (in milliseconds) that an object will exist in the mind's
+  //eye for if it is part of a chunk (_lifespanForRecognisedObjects) or if it
+  //isn't (_lifespanForUnrecognisedObjects).
+  private final int _lifespanForRecognisedObjects;
+  private final int _lifespanForUnrecognisedObjects;
   
   /**
-   * Constructor for "MindsEye" object.
+   * Constructor for "MindsEye" object.  The constructor creates 
+   * {@link jchrest.lib.MindsEyeObject} instances that represent objects in the 
+   * {@link jchrest.lib.Scene} passed in the visual-spatial field of the mind's 
+   * eye.
+   * 
+   * The {@link jchrest.lib.Scene} to be transposed is first scanned using
+   * {@link jchrest.architecture.Chrest#scanScene(jchrest.lib.Scene, int, int)}
+   * and objects that are recognised are transposed first in the visual-spatial 
+   * field.  The rest of the {@link jchrest.lib.Scene} is then processed from 
+   * south-west to north-east first along the x-axis, then the y-axis.
+   * 
+   * When transposing objects in a chunk, the attention clock of the
+   * {@link jchrest.architecture.Chrest} instance associated with this mind's 
+   * eye is advanced by the time specified to encode one object.  In other 
+   * words, a chunk is considered as one object rather than multiple objects 
+   * with respect to mind's eye transposition time.
+   * 
+   * If an object is recognised more than once, its terminus value will be set
+   * to the time at which the object was last seen during mind's eye 
+   * instantiation plus the lifespan specified for recognised objects 
+   * (implements refreshment of objects on visual-spatial field).
    * 
    * @param model The CHREST model instance that the mind's eye instance is 
    * associated with.
    * 
-   * @param vision An instance of {@link jchrest.lib.Scene}, usually the one 
-   * last used by the 
-   * {@link jchrest.architecture.Chrest#learnScene(jchrest.lib.Scene, int)},
-   * {@link jchrest.architecture.Chrest#learnSceneAndMove(jchrest.lib.Scene, jchrest.lib.Move, int)} or
-   * {@link jchrest.architecture.Chrest#scanScene(jchrest.lib.Scene, int)}
-   * functions.
+   * @param sceneToTranspose The {@link jchrest.lib.Scene} instance that is to 
+   * be transposed into the visual-spatial field.
    * 
-   * @param lifespan The length of time (in milliseconds) that the mind's eye
-   * exists for after creation/access.
+   * @param objectEncodingTime The length of time (in milliseconds) that it 
+   * takes to transpose an object into the visual-spatial field during 
+   * instantiation.
    * 
-   * @param objectPlacementTime The length of time (in milliseconds) that it 
-   * takes to place an object in the mind's eye during instantiation.
+   * @param emptySquareEncodingTime The length of time (in milliseconds) that it 
+   * takes to transpose an empty square into the visual-spatial field during 
+   * instantiation.
    * 
-   * @param accessTime The time taken (in milliseconds) to access the mind's eye 
-   * when the 
-   * {@link jchrest.architecture.MindsEye#moveObjects(java.util.ArrayList, int)  
-   * function is used.
+   * @param accessTime The time taken (in milliseconds) to access the mind's 
+   * eye at any time.
    * 
    * @param objectMovementTime The time taken (in milliseconds) to move an 
-   * object in the mind's eye when the 
+   * object in the visual-spatial field when the 
    * {@link jchrest.architecture.MindsEye#moveObjects(java.util.ArrayList, int)  
    * function is used.
    * 
-   * @param domainTime The current time (in milliseconds) in the domain where 
-   * the CHREST model associated with the mind's eye instance is located.
-   * 
    * @param lifespanForRecognisedObjects The length of time (in milliseconds) 
-   * that an object will exist in the mind's eye for when it is created or 
-   * interacted with if it is committed to LTM.
+   * that a recognised object will exist in the visual-spatial field for when it 
+   * is transposed or interacted with after transposition.
    * 
    * @param lifespanForUnrecognisedObjects The length of time (in milliseconds) 
-   * that an object will exist in the mind's eye for when it is created or 
-   * interacted with if it is not committed to LTM.
+   * that an unrecognised object will exist in the visual-spatial field for when 
+   * it is transposed or interacted with after transposition.
+   * 
+   * @param numberFixations The number of fixations that should be used when 
+   * scanning the {@link jchrest.lib.Scene} that is to be transposed into the
+   * visual-spatial field.
+   * 
+   * @param domainTime The current time (in milliseconds) in the domain where 
+   * the CHREST model associated with the mind's eye instance is located.
+   * 
    */
-  
-  // TODO: I wonder if this should be placed in jchrest.architecture.Perceiver
-  // since the MindsEye should only be created/modified after scanning a scene.
-  // This reduces the possibility of "hangovers" when identifying what objects
-  // should have improved terminus times in the mind's eye.
-  
-  // TODO: Add support for "blind-spots" when transposing scene.
-  
-  // TODO: Add parameter for empty square encoding time (see e-mails with 
-  // Fernand).
-  public MindsEye(Chrest model, Scene currentScene, int lifespan, int objectPlacementTime, int accessTime, int objectMovementTime, int domainTime, int lifespanForRecognisedObjects, int lifespanForUnrecognisedObjects){   
+  public MindsEye(Chrest model, Scene sceneToTranspose, int objectEncodingTime, int emptySquareEncodingTime, int accessTime, int objectMovementTime, int lifespanForRecognisedObjects, int lifespanForUnrecognisedObjects, int numberFixations, int domainTime){   
+    
     this._model = model;
+    this._sceneTransposed = sceneToTranspose;
     this._accessTime = accessTime;
-    this._lifespan = lifespan;
     this._objectMovementTime = objectMovementTime;
-    this._objectPlacementTime = objectPlacementTime;
+    this._objectPlacementTime = objectEncodingTime;
+    this._lifespanForRecognisedObjects = lifespanForRecognisedObjects;
+    this._lifespanForUnrecognisedObjects = lifespanForUnrecognisedObjects;
     
-    //Set the model's attention clock to be equal to the time that the
-    //constructor was called in the domain plus mind's eye access time.
-    this._model.setAttentionClock(domainTime + accessTime);
+    //Set a local "time" variable to be equal to the time that the constructor 
+    //was called in the domain plus mind's eye access time.  This variable will
+    //be used to set the attention clock of the CHREST model associated with 
+    //the mind's eye later.
+    int time = domainTime + this._accessTime;
     
-    //Create the visual-spatial field using currentScene as a basis.  The field
-    //will be empty at first.
+    //Create the visual-spatial field using the scene to transpose as a basis.  
+    //The visual spatial field will consist entirely of blind squares at first.
     this._visualSpatialField = new ArrayList<>();
-    for(int row = 0; row < currentScene.getHeight(); row++){
+    for(int col = 0; col < this._sceneTransposed.getWidth(); col++){
       this._visualSpatialField.add(new ArrayList<>());
-      for(int col = 0; col < currentScene.getWidth(); col++){
-        this._visualSpatialField.get(row).add(new ArrayList<>());
+      for(int row = 0; row < this._sceneTransposed.getHeight(); row++){
+        this._visualSpatialField.get(col).add(new ArrayList<>());
+        this._visualSpatialField.get(col).get(row).add(new MindsEyeObject(this, Scene.getBlindSquareIdentifier(), time));
       }
     }
     
-    //Get visual STM so that we know what objects should have superior terminus
-    //times.
-    Iterator<Node> visualStm = this._model.getVisualStm().iterator();
-    
-    //Get the current scene so that it can be transposed into the mind's eye.
-    ListPattern scene = currentScene.getScene();
-    
-    ArrayList<PrimitivePattern> patternsPresentInSceneAndVisualStm = new ArrayList<>();
-    
-    //Populate visual spatial field using visual STM chunks.
-    while(visualStm.hasNext()){
-      
-      //Create an ArrayList to store patterns present both in this chunk and the
-      //scene that is being transposed.  A list is used since we want to retain 
-      //insertion order because minds eye object termini needs to be set based 
-      //upon recency of pattern recognition (receny of pattern occurrence in 
-      //STM and in the chunk itself).
-      ArrayList<PrimitivePattern> patternsPresentInSceneAndVisualStmChunk = new ArrayList<>();
-      
-      //Add patterns that are present in both the scene to be transposed and the 
-      //chunk to the pattern-occurrence list.
-      Iterator<PrimitivePattern> chunkPatterns = visualStm.next().getImage().iterator();
-      while(chunkPatterns.hasNext()){
-        PrimitivePattern chunkPattern = chunkPatterns.next();
-        if(chunkPattern instanceof ItemSquarePattern){
-          ItemSquarePattern pattern = (ItemSquarePattern)chunkPattern;
-          if(scene.contains(pattern)){
-            patternsPresentInSceneAndVisualStmChunk.add( pattern );
-          }
+    //Check for an entirely blind scene, if this is the case, stop the procedure
+    //at this point otherwise the function will hang when the scene to transpose
+    //is scanned below.
+    boolean sceneToTransposeIsEntirelyBlind = true;
+    Iterator<PrimitivePattern> sceneItems = sceneToTranspose.getEntireScene(true).iterator();
+    while(sceneItems.hasNext()){
+      PrimitivePattern sceneItem = sceneItems.next();
+      if(sceneItem instanceof ItemSquarePattern){
+        ItemSquarePattern sceneContent = (ItemSquarePattern)sceneItem;
+        if(!sceneContent.getItem().equals(Scene.getBlindSquareIdentifier())){
+          sceneToTransposeIsEntirelyBlind = false;
+          break;
         }
       }
-      
-      //If some patterns from the chunk where present in the scene being 
-      //transposed, add or update their corresponding mind's eye object.  An 
-      //update will occur if the pattern was present in a STM chunk that was
-      //processed earlier.
-      if( !patternsPresentInSceneAndVisualStmChunk.isEmpty() ){
-        for(PrimitivePattern patternInSceneAndVisualStmChunk : patternsPresentInSceneAndVisualStmChunk){
-          if(patternInSceneAndVisualStmChunk instanceof ItemSquarePattern){
-            ItemSquarePattern patternToProcess = (ItemSquarePattern)patternInSceneAndVisualStmChunk;
-            ArrayList<MindsEyeObject> mindsEyeObjectsAtPatternLocation = this._visualSpatialField.get(patternToProcess.getRow()).get(patternToProcess.getColumn());
-            
-            //There is nothing currently at this location in the mind's eye so
-            //create a new MindsEyeObject instance representing the object in
-            //the pattern, place it in the visual-spatial field accordingly and
-            //set its terminus to be whatever the attention clock of the CHREST
-            //model associated with this clock is plus the lifespan specified
-            //for a recognised object.
-            if(mindsEyeObjectsAtPatternLocation.isEmpty()){
-              this._visualSpatialField.get(patternToProcess.getRow()).get(patternToProcess.getColumn()).add(new MindsEyeObject(patternToProcess.getItem(), this._model.getAttentionClock() + lifespanForRecognisedObjects));
-            }
-            //The pattern already has a mind's eye object representation so 
-            //update its terminus value to be whatever the attention clock of 
-            //the CHREST model associated with this clock is plus the lifespan 
-            //specified for a recognised object.
-            else{
+    }
+    if(!sceneToTransposeIsEntirelyBlind){
+    
+      //Get the location of the creator in the Scene being transposed so that
+      //it can be determined whether object coordinates in the scene to be 
+      //transposed need to be translated from creator-relative to non 
+      //creator-relative in the next step.  This will happen if chunks in LTM
+      //have creator-relative coordinates.  Translation is necessary since 
+      //recognised objects can not be placed correctly in the visual-spatial 
+      //field otherwise.
+      Square locationOfSelf = sceneToTranspose.getLocationOfSelf();
+
+      //Create a data structure that will contain items that have been 
+      //recognised on the scene to transpose.  This allows for the filtering of 
+      //unrecognised objects in the scene to be transposed, so that mind's eye 
+      //object terminus values can be set correctly. 
+      ArrayList<String> recognisedPatterns = new ArrayList<>();
+
+      //Scan the scene to be transposed to populate visual STM so that 
+      //recognised objects can be identified.
+      this._model.scanScene(sceneToTranspose, numberFixations, time);
+      Stm visualStm = this._model.getVisualStm();
+
+      //Process visual STM items that aren't empty and aren't root nodes from 
+      //oldest to newest (since STM is a FIFO list we need to go from back to 
+      //front and STM is zero-indexed).
+      for(int visualStmItem = (visualStm.getCount() -1); visualStmItem >= 0; visualStmItem--){
+        Node stmItem = visualStm.getItem(visualStmItem);
+
+        if(
+          !stmItem.getImage().isEmpty() && //If the item isn't empty
+          !stmItem.equals(this._model.getVisualLtm()) //If the item isn't the root node for visual LTM
+        ){
+
+          //Advance the local "time" variable by the time it takes to place one 
+          //object in the mind's eye.  Thus, when terminus values for chunk 
+          //items are set, they'll be set to the time after encoding the chunk 
+          //plus the specified lifespan for recognised objects (encoding the 
+          //chunk won't prematurely age the objects as it would if the attention 
+          //clock were advanced after terminus values are set).
+          time += this._objectPlacementTime;
+
+          //Get the contents (patterns) of the next visual STM chunk (may have 
+          //relative coordinates) and process each one.
+          Iterator<PrimitivePattern> chunkPatternsWithPossibleRelativeCoordinates = visualStm.getItem(visualStmItem).getImage().iterator();
+          while(chunkPatternsWithPossibleRelativeCoordinates.hasNext()){          
+            PrimitivePattern patternWithPossibleRelativeCoordinates = chunkPatternsWithPossibleRelativeCoordinates.next();
+            if(patternWithPossibleRelativeCoordinates instanceof ItemSquarePattern){
+              ItemSquarePattern patternToProcess = (ItemSquarePattern)patternWithPossibleRelativeCoordinates;
+
+              //Translate coordinates if necessary.
+              if(locationOfSelf != null){
+                patternToProcess = new ItemSquarePattern(
+                  patternToProcess.getItem(),
+                  patternToProcess.getColumn() + locationOfSelf.getColumn(),
+                  patternToProcess.getRow() + locationOfSelf.getRow()
+                );
+              }
+
+              //Get the current contents of the mind's eye coordinates specified 
+              //by the pattern to process.  If there are objects here already, 
+              //check each one to see if its identifier matches the identifier 
+              //for the pattern being processed.  If this is the case, set the 
+              //terminus for the corresponding minds eye object to be equal to 
+              //the current attention clock plus the lifespan for recognised 
+              //objects (thus implementing refreshment).  If there are other,
+              //non-blind objects here, set their terminus accordingly since
+              //they have been "looked-at" too.
+              ArrayList<MindsEyeObject> mindsEyeObjectsAtPatternLocation = this._visualSpatialField.get(patternToProcess.getColumn()).get(patternToProcess.getRow());
+              boolean objectAlreadyAtCoordinates = false;
               for(MindsEyeObject mindsEyeObjectAtPatternLocation : mindsEyeObjectsAtPatternLocation){
-                if(mindsEyeObjectAtPatternLocation.getIdentifier().equals(patternToProcess.getItem())){
-                  mindsEyeObjectAtPatternLocation.setTerminus(_model.getAttentionClock() + lifespanForRecognisedObjects);
+                String objectIdentifier = mindsEyeObjectAtPatternLocation.getIdentifier();
+
+                if(objectIdentifier.equals(patternToProcess.getItem())){
+                  mindsEyeObjectAtPatternLocation.setTerminus(time, false);
+                  objectAlreadyAtCoordinates = true;
+                }
+                else if(!objectIdentifier.equals(Scene.getBlindSquareIdentifier())){
+                  mindsEyeObjectAtPatternLocation.setTerminus(time, false);
                 }
               }
+
+              //If the pattern isn't already on the coordinates, add it.
+              if(!objectAlreadyAtCoordinates){
+
+                //If the first blind spot object on these coordinates is set to
+                //null then this is the first object to be placed on the 
+                //coordinates.  Consequently, set the terminus of the first 
+                //blind-spot object to the current time to indicate that the
+                //coordinates are no longer considered blind.
+                if(mindsEyeObjectsAtPatternLocation.get(0).getTerminus() == null){
+                  mindsEyeObjectsAtPatternLocation.get(0).setTerminus(time, true);
+                }
+
+                //Now, add the recognised object.
+                MindsEyeObject mindsEyeObject = new MindsEyeObject(this, patternToProcess.getItem(), time);
+                mindsEyeObject.setRecognised(time);
+                this._visualSpatialField.get(patternToProcess.getColumn()).get(patternToProcess.getRow()).add(mindsEyeObject);
+              }
+
+              //Add the pattern with its non creator-specific coordinates to the 
+              //recognised patterns data structure so that it will be ignored 
+              //when unrecognised objects are transposed into the visual-spatial 
+              //field below.
+              recognisedPatterns.add(patternToProcess.toString());
             }
           }
         }
-        
-        //Now add the patterns present in the chunk and the scene to the list
-        //of patterns present in the scene and visual STM in general.
-        patternsPresentInSceneAndVisualStm.addAll(patternsPresentInSceneAndVisualStmChunk);
-        
-        //Finally, advance the attention clock by the time it takes to place an 
-        //object in the mind's eye (multiple objects that are part of a chunk 
-        //are considered to be one object).
-        this._model.advanceAttentionClock(this._objectPlacementTime);
+      }//Process next STM chunk (if there is one)
+
+      //Transpose the remainder of the scene that isn't recognised.  Encoding 
+      //each unrecognised object incurs a time cost unless the square is blind.
+      Iterator<PrimitivePattern> patternsInSceneToTranspose = sceneToTranspose.getEntireScene(true).iterator();
+      while(patternsInSceneToTranspose.hasNext()){
+        ItemSquarePattern patternToTranspose = (ItemSquarePattern)patternsInSceneToTranspose.next();
+
+        //Check that the pattern to transpose hasn't already been recognised and
+        //transposed earlier.  If so, don't transpose it now.
+        if( !recognisedPatterns.contains(patternToTranspose.toString()) ){
+          String objectIdentifier = patternToTranspose.getItem();
+
+          //If the square to transpose is empty, set the terminus of the object 
+          //already on these coordinates (a blind-square) to the current time.  
+          //The attention clock of the CHREST model associated with this mind's 
+          //eye should also be incremented by the time taken to encode an empty 
+          //square.  Note that there is no "empty square object" added here.
+          if(objectIdentifier.equals(Scene.getEmptySquareIdentifier())){
+            time += emptySquareEncodingTime;
+            for(MindsEyeObject blindSpot : this._visualSpatialField.get(patternToTranspose.getColumn()).get(patternToTranspose.getRow())){
+              blindSpot.setTerminus(time, true);
+            }
+          }
+          //Otherwise, if the square to transpose isn't empty advance the 
+          //attention clock of the CHREST model associated with this mind's 
+          //eye by the time taken to encode an object.  Now, cycle through the
+          //objects already on these coordinates and set their terminus 
+          //appropriately:
+          //
+          // 1) If the object is a blind square identifier and its terminus
+          //    currently isn't set, set its terminus to the current time since
+          //    the square is no longer blind given that there's an object seen
+          //    on these coordinates in the scene being transposed.
+          // 2) If the object isn't a blind square, set its terminus according 
+          //    to the current time (thus implementing refreshment).
+          //
+          //After this, add the object to the coordinates.
+          else if(!objectIdentifier.equals(Scene.getBlindSquareIdentifier())){
+            time += this._objectPlacementTime;
+            ArrayList<MindsEyeObject> objectsOnSquare = this._visualSpatialField.get(patternToTranspose.getColumn()).get(patternToTranspose.getRow());
+            for(MindsEyeObject object : objectsOnSquare){
+              String identifier = object.getIdentifier();
+              if(identifier.equals(Scene.getBlindSquareIdentifier()) && object.getTerminus() == null){
+                object.setTerminus(time, true);
+              }
+              else if(!identifier.equals(Scene.getBlindSquareIdentifier())){
+                object.setTerminus(time, false);
+              }
+            }
+            
+            this._visualSpatialField.get(patternToTranspose.getColumn()).get(patternToTranspose.getRow()).add(new MindsEyeObject(this, patternToTranspose.getItem(), time));
+          }
+        }
       }
-    }//Process next STM chunk (if there is one)
+    } //End entirely blind check
     
-    //Populate visual spatial field using information from the current scene 
-    //that isn't present in visual STM.  Placing such objects incurs a time cost
-    //for each object.  Don't add empty squares!
-    Iterator<PrimitivePattern> sceneContents = scene.iterator();
-    while(sceneContents.hasNext()){
-      ItemSquarePattern sceneObject = (ItemSquarePattern)sceneContents.next();
-      if( !patternsPresentInSceneAndVisualStm.contains(sceneObject) && !sceneObject.getItem().equals(".") ){
-        this._visualSpatialField.get(sceneObject.getRow()).get(sceneObject.getColumn()).add(new MindsEyeObject(sceneObject.getItem(), this._model.getAttentionClock() + lifespanForUnrecognisedObjects));
-        this._model.advanceAttentionClock(this._objectPlacementTime);
+    //Finally, set the attention clock of the CHREST model associated with this 
+    //mind's eye to the time calculated for instantiation.
+    this._model.setAttentionClock(time);
+  }
+  
+  /**
+   * Returns all objects on the visual-spatial field at the coordinates 
+   * specified.
+   * 
+   * @param col
+   * @param row
+   * @return All {@link jchrest.lib.MindsEyeObject} instances on the square 
+   * specified in the visual-spatial field.
+   */
+  public ArrayList<MindsEyeObject> getObjectsOnVisualSpatialSquare(int col, int row){
+    return this._visualSpatialField.get(col).get(row);
+  }
+  
+  /**
+   * Returns the lifespan specified for recognised objects.
+   * 
+   * @return 
+   */
+  public int getRecognisedObjectLifespan(){
+    return this._lifespanForRecognisedObjects;
+  }
+  
+  /**
+   * Returns the {@link jchrest.lib.Scene} that was transposed into the 
+   * visual-spatial field of this mind's eye originally.
+   * 
+   * @return 
+   */
+  public Scene getSceneTransposed(){
+    return this._sceneTransposed;
+  }
+  
+  /**
+   * Returns the lifespan specified for unrecognised objects.
+   * 
+   * @return 
+   */
+  public int getUnrecognisedObjectLifespan(){
+    return this._lifespanForUnrecognisedObjects;
+  }
+  
+  /**
+   * Returns the state of the visual-spatial field of the mind's eye at the time
+   * specified as a {@link jchrest.lib.Scene} instance.
+   * 
+   * TODO: should this incur an attentional time cost?
+   * TODO: should this incur an access time cost?
+   * 
+   * @param time The time in the domain when this function was invoked.
+   * 
+   * @return An instance of {@link jchrest.lib.Scene} representing the current
+   * state of the visual-spatial field of the mind's eye at the time specified.
+   */
+  public Scene getVisualSpatialFieldAsScene(int time){
+      
+    //Create a new Scene instance based on the current dimensions of the 
+    //visual-spatial field and associate this mind's eye instance with it.
+    Scene mindsEyeScene = new Scene(
+      "Mind's eye scene", 
+      this._sceneTransposed.getWidth(), 
+      this._sceneTransposed.getHeight()
+    );
+
+    for(int row = 0; row < this._sceneTransposed.getHeight(); row++){
+      for(int col = 0; col < this._sceneTransposed.getWidth(); col++){
+
+        //Get objects on square.
+        ArrayList<MindsEyeObject> objects = this._visualSpatialField.get(col).get(row);
+        ArrayList<MindsEyeObject> itemsThatExistAtTime = new ArrayList<>();
+        
+        //If any objects on square have a terminus of null then this is a blind
+        //square so should be added to the list of items that exist on this
+        //square at this time.  Otherwise, if the terminus for the object is not
+        //null check that its creation time is earlier than or equal to the time 
+        //specified and its terminus is later than the time specified.  If this 
+        //is the case, add it to the list of items that exist on this square at 
+        //this time.
+        for(MindsEyeObject object : objects){
+          if(object.getTerminus() == null){
+            itemsThatExistAtTime.add(object);
+          }
+          else if(
+            time >= object.getTimeCreated() &&
+            time < object.getTerminus()
+          ){
+            itemsThatExistAtTime.add(object);
+          }
+        }
+
+        //If no items exist on the square at the time passed then add an empty
+        //square to the Scene.  Otherwise, add each of the items that exist on
+        //the square at the time specified to the Scene.
+        if(itemsThatExistAtTime.isEmpty()){
+          mindsEyeScene.addItemToSquare(col, row, Scene.getEmptySquareIdentifier());
+        }
+        else{
+          for(MindsEyeObject object : itemsThatExistAtTime){
+            mindsEyeScene.addItemToSquare(col, row, object.getIdentifier());
+          }
+        }
       }
     }
     
-    //Finally, set the mind's eye terminus to be the current value of the 
-    //attention clock for the CHREST model associated with this mind's eye plus
-    //the lifespan specified for the mind's eye.
-    this._terminus = this._model.getAttentionClock() + this._lifespan;
+    return mindsEyeScene;
   }
   
   /**
-   * Checks the value of the "domainTime" parameter passed against the value of
-   * the "_mindsEyeTerminus" instance variable value.
+   * Moves objects in the mind's eye according to the sequence of moves 
+   * specified.  Object movement can only occur if the attention of the CHREST 
+   * model associated with this mind's eye instance is free.  
    * 
-   * @param domainTime The current time (in milliseconds) in the domain where 
-   * the CHREST model associated with the mind's eye instance is located.
+   * If all moves are successful, the attention clock of the CHREST model 
+   * associated with this mind's eye will be set to the product of the time 
+   * taken to access the mind's eye plus the number of moves performed 
+   * multiplied by the time specified to move an object in the mind's eye.
    * 
-   * @return True if the "_mindsEyeTerminus" value is greater than the value 
-   * of the "domainTime" parameter passed, false if not.
-   */
-  public boolean exists(int domainTime){
-    return this.getTerminus() > domainTime;
-  }
-  
-  /**
-   * Accessor for the "_mindsEyeTerminus" instance variable.
-   * 
-   * @return The current value of the "_mindsEyeTerminus" instance variable.
-   */
-  public int getTerminus(){
-    return this._terminus;
-  }
-  
-  /**
-   * Sets the mind's eye terminus value to the (domain) time specified.
-   * 
-   * @param time The (domain) time that the "_mindsEyeLifespan" should be added 
-   * to.
-   */
-  private void setTerminus(int time){
-    int newMindsEyeTerminus = time + this._lifespan;
-    if( newMindsEyeTerminus > this._terminus ){
-      this._terminus = newMindsEyeTerminus;
-    }
-  }
-  
-//  public Scene getMindsEyeScene(int time){
-//    Scene mindsEyeScene = null;
-//    
-//    if(this.exists(time)){
-//      mindsEyeScene = new Scene(
-//        "Mind's eye scene", 
-//        this._visualSpatialField.size(), 
-//        this._visualSpatialField.get(0).size(),
-//      );
-//      
-//      for(int row = 0; row < this._visualSpatialField.size(); row++){
-//        for(int col = 0; col < this._visualSpatialField.get(row).size(); col++){
-//          ArrayList<MindsEyeObject> objects = this._visualSpatialField.get(row).get(col);
-//          if( !objects.isEmpty() ){
-//            for(MindsEyeObject object : objects){
-//              if(object.getTerminus() > time){
-//                mindsEyeScene.addItemToSquare(col, row, object.getIdentifier());
-//              }
-//            }
-//          }
-//        }
-//      }
-//    }
-//    
-//    return mindsEyeScene;
-//  }
-  
-//  public void scanMindsEyeScene(int time, int numberFixations){
-//    if(this.exists(time)){
-//      this._model.scanScene(this.getMindsEyeScene(time), numberFixations);
-//    }
-//  }
-  
-//  public void learnMindsEyeScene(int time, int numberFixations){
-//    if(this.exists(time)){
-//      this._model.learnScene(this.getMindsEyeScene(time), numberFixations);
-//    }
-//  }
-  
-  /**
-   * Retrieves the entire contents of the mind's eye along in relation to domain
-   * specific coordinates. This operation does not incur a time cost.
-   * 
-   * @param domainTime The current time (in milliseconds) in the domain where 
-   * the CHREST model associated with the mind's eye instance is located.
-   * 
-   * @return Null if the mind's eye does not exist, otherwise, an ArrayList of 
-   * strings containing the contents of each mind's eye coordinate along with 
-   * the relevant domain-specific x and y coordinates.  Object, x-cor and y-cor 
-   * information are separated by a semi-colon (;) and so can be used as a 
-   * delimiter to split information.  Commas (,) are used to separate object 
-   * identifiers in mind's eye content so can be used as a 
-   * delimiter to extract object information.
-   * 
-   * TODO: should this incur a time cost and if so, should it be longer than 
-   *       the time cost incurred by getting content from specific coordinates?
-   * TODO: should coordinates further from the object thatthe mind's eye belongs
-   *       to take longer to retrieve (see chapter 9 of "Image and Brain" by 
-   *       Kosslyn).
-   */
-//  public ArrayList<String> getAllContent(int domainTime){
-//    ArrayList<String> mindsEyeContent = null;
-//    
-//    if( this.exists(domainTime) && this._model.attentionFree(domainTime) ){
-//      mindsEyeContent = new ArrayList<>();
-//      for(int mindsEyeXCor = 0; mindsEyeXCor < this._visualSpatialField.size(); mindsEyeXCor++){
-//        ArrayList rowArray = this._visualSpatialField.get(mindsEyeXCor);
-//        for(int mindsEyeYCor = 0; mindsEyeYCor < rowArray.size(); mindsEyeYCor++){
-//          String[] domainSpecificXAndYCoordinates = this._mindsEyeToDomainSpecificCoordMappings.get(Integer.toString(mindsEyeXCor) + "," + Integer.toString(mindsEyeYCor)).split(",");
-//          String domainSpecificXCorString = domainSpecificXAndYCoordinates[0];
-//          String domainSpecificYCorString = domainSpecificXAndYCoordinates[1];
-//          String contents = this.getSpecificContent(Integer.valueOf(domainSpecificXCorString), Integer.valueOf(domainSpecificYCorString), domainTime);
-//          mindsEyeContent.add(contents + ";" + domainSpecificXCorString + ";" + domainSpecificYCorString);
-//        }
-//      }
-//      
-//      //The "_mindsEyeTerminus" value is not modified in this action since the
-//      //call to the "getMindsEyeContentUsingDomainSpecificCoords()" method 
-//      //performs this task.
-//    }
-//    
-//    return mindsEyeContent;
-//  }
-  
-  /**
-   * Takes domain-specific x and y coordinates and returns the object identifier 
-   * found at the resolved mind's eye x and y coordinates.  This operation does
-   * not incur a time cost.
-   * 
-   * @param domainSpecificXCor
-   * 
-   * @param domainSpecificYCor
-   * 
-   * @param domainTime The current time (in milliseconds) in the domain where 
-   * the CHREST model associated with the mind's eye instance is located.
-   * 
-   * @return Null if the mind's eye does not exist, otherwise, a string 
-   * containing the current contents of the minds eye coordinates that are 
-   * equivalent to the domain coordinates specified.  Commas (,) are used to 
-   * separate object identifiers so can be used as a delimiter to extract object 
-   * information.
-   */
-//  public String getSpecificContent(int domainSpecificXCor, int domainSpecificYCor, int domainTime){
-//    String mindsEyeContent = null;
-//    
-//    if( this.exists(domainTime) && this._model.attentionFree(domainTime) ){
-//      int[] mindsEyeXAndYCoords = this.resolveDomainSpecificCoord(domainSpecificXCor, domainSpecificYCor);
-//      
-//      //The "String.valueOf()" call ensures that, if the domain-specific 
-//      //coordinates are not represented in the mind's eye and null is returned,
-//      //this null value is converted to "null" i.e. a string.  This 
-//      //differentiates between the possible conflation of non-string and string
-//      //nulls in the local "mindsEyeContent" variable.
-//      mindsEyeContent = String.valueOf(this._visualSpatialField.get( mindsEyeXAndYCoords[0] ).get( mindsEyeXAndYCoords[1] ));
-//      
-//      this.setTerminus(domainTime);
-//    }
-//    
-//    return mindsEyeContent;
-//  }
-  
-  /**
-   * Moves objects in the mind's eye according to the sequence of moves passed
-   * in as a parameter to this function if the domain time at which this method
-   * is called is earlier than the "_terminus" value of the mind's eye and the
-   * attention of the CHREST model associated with this mind's eye instance is
-   * free.  
-   * 
-   * If all moves are successful, the clock of the CHREST model associated with 
-   * this mind's eye will be advanced by the product of: 
-   * this._accessTime + (this._movementTime * total number of moves).
+   * This method does not constrain the number of squares moved by an object in
+   * the visual-spatial field.  In other words, according to this method, it 
+   * takes the same amount of time to move an object across 5 squares as it does
+   * to move it across one-square.  Any movement constraints like this should be 
+   * implemented by the function that accesses this one.
    * 
    * Note that if an an object is moved to mind's eye coordinates that are
    * already occupied then the two objects will co-exist on the coordinates; the 
    * new object does not overwrite the old object.
    * 
-   * @param domainSpecificMoves A 2D ArrayList whose first dimension elements 
-   * should contain ArrayLists whose elements should be strings that prescribe a 
-   * sequence of moves for one object in the domain by specifying 
-   * domain-specific coordinates.  For example, if two objects, A and B, are to 
-   * be moved from domain specific x/y coordinates 0/1 and 0/2 to 1/1 and 1/2 
-   * respectively, the ArrayList passed should contain: 
-   * [ ["A;0;1", "A;1;1"], ["B;0;2","B;1;2"] ].  See the discussion of the 
-   * function's caveats above for further implementation and usage details of 
-   * this parameter.
+   * @param objectMoves A 2D ArrayList whose first dimension elements 
+   * should contain ArrayLists of {@link jchrest.lib.ItemSquarePattern} 
+   * instances that prescribe a sequence of moves for one object in the domain
+   * using domain-specific coordinates.  For example, if two objects, A and 
+   * B, are to be moved the ArrayList passed should contain: 
+   * [[A sourceX sourceY], [A destinationX desitinationY]], 
+   * [[B sourceX sourceY], [B desitinationX destinationY]].
    * 
-   * @param domainTime The current time (in milliseconds) in the domain where 
-   * the CHREST model associated with the mind's eye instance is located.
-   * 
-   * @return Boolean False if the minds eye does not exist or the attention of
-   * the CHREST model isn't free when this function is called according to the 
-   * value of the domainTime parameter passed.  Boolean true if mind's eye 
-   * exists, the attention of the CHREST model is free and all moves specified 
-   * are legal.
+   * @param time The current time (in milliseconds) in the domain when object
+   * movement is requested.
    * 
    * @throws jchrest.lib.MindsEyeMoveObjectException If any of the moves passed
    * cause any of the following statements to be evaluated as true:
@@ -432,200 +484,175 @@ class MindsEye {
    *  </li>
    *  <li>
    *    An object's first "move" does not correctly identify where the object 
-   *    is currently located in the mind's eye (using domain-specific 
-   *    coordinates).  If the object has previously been moved in the mind's eye 
-   *    then the initial location passed for the object should be relative to 
-   *    its current coordinates in the mind's eye.
+   *    is currently located in the mind's eye.  If the object has previously 
+   *    been moved in the mind's eye but not in physical space, the initial 
+   *    location passed for the object should be its current coordinates in the 
+   *    mind's eye.
    *  </li>
    *  <li>
    *    Only the initial location of an object is specified.
    *  </li>
-   *  <li>
-   *    After moving an object to coordinates not represented in the mind's eye,
-   *    further moves are attempted with this object.
-   *  </li>
    * </ol>
    */
-//  public boolean moveObjects(ArrayList<ArrayList<String>> domainSpecificMoves, int domainTime) throws MindsEyeMoveObjectException {
-//    
-//    //Indicates whether objects have all been moved successfully.
-//    boolean moveObjectsSuccessful = false;
-//    
-//    if(this.exists(domainTime) && this._model.attentionFree(domainTime)){
-//      
-//      //Copy the current contents of "_visualSpatialField" before any moves are
-//      //applied so that if any object's move is illegal, all changes made to 
-//      //"_visualSpatialField" up until the illegal move can be reversed.
-//      ArrayList<ArrayList<String>> visualSpatialFieldBeforeMovesApplied = new ArrayList<>();
-//      for(int mindsEyeXCor = 0; mindsEyeXCor < this._visualSpatialField.size(); mindsEyeXCor++){
-//        visualSpatialFieldBeforeMovesApplied.add(new ArrayList<>());
-//        for(int mindsEyeYCor = 0; mindsEyeYCor < this._visualSpatialField.get(mindsEyeXCor).size(); mindsEyeYCor++){
-//          visualSpatialFieldBeforeMovesApplied.get(mindsEyeXCor).add( String.valueOf( this._visualSpatialField.get(mindsEyeXCor).get(mindsEyeYCor) ) );
-//        }
-//      }
-//
-//      int mindsEyeTerminusBeforeMovesApplied = this.getTerminus();
-//      
-//      try{
-//
-//        //Counter for how many moves have been applied - acts as a multiplier for 
-//        //the "_movementTime" parameter multiplicand so that the clock of the CHREST
-//        //model associated with this mind's eye can be incremented correctly.
-//        int movesApplied = 0;
-//
-//        //Process each object's move sequence.
-//        for(int objectMoveSequence = 0; objectMoveSequence < domainSpecificMoves.size(); objectMoveSequence++){
-//
-//          ArrayList<String> objectMoves = domainSpecificMoves.get(objectMoveSequence);
-//          //Check to see if at least one move has been specified for an object along
-//          //with information regarding its current location in the domain.
-//          if(objectMoves.size() >= 2){
-//
-//            //Extract the initial information for the object
-//            String[] initialDomainSpecificObjectInformation = this.processObjectInfo(objectMoves.get(0));
-//            String initialObjectIdentifier = initialDomainSpecificObjectInformation[0];
-//
-//            //Check that only one object has been specified to be moved.
-//            if(initialObjectIdentifier.split(",").length == 1){
-//
-//              //Set the "currentMindsEyeXCor" and "currentMindsEyeYCor" values to
-//              //the relevant minds eye xcor and ycor values after translating
-//              //domain-specific xcor and ycor values.
-//              int currentDomainSpecificXCor = Integer.valueOf(initialDomainSpecificObjectInformation[1]);
-//              int currentDomainSpecificYCor = Integer.valueOf(initialDomainSpecificObjectInformation[2]);
-//              int[] initialMindsEyeCoords = this.resolveDomainSpecificCoord(currentDomainSpecificXCor, currentDomainSpecificYCor);
-//              int currentMindsEyeXCor = initialMindsEyeCoords[0];
-//              int currentMindsEyeYCor = initialMindsEyeCoords[1];
-//
-//              //Process each move for this object starting from the first element of 
-//              //the current second dimension array.
-//              for(int move = 1; move < objectMoves.size(); move++){
-//
-//                String objectMove = objectMoves.get(move);
-//
-//                //Extract domain specific move information.
-//                String[] domainSpecificMoveInformation = this.processObjectInfo(objectMove);
-//                String objectToBeMoved = domainSpecificMoveInformation[0];
-//
-//                //Check to see if the object being moved is the object originally 
-//                //specified in the first element of the move sequence.
-//                if( initialObjectIdentifier.equals(objectToBeMoved) ){
-//
-//                  //Check to see if the object is currently located at the current 
-//                  //mind's eye x/ycor specified by the move.
-//                  String currentMindsEyeCoordinateContents = String.valueOf(this._visualSpatialField.get(currentMindsEyeXCor).get(currentMindsEyeYCor));
-//
-//                  //Check that the current minds eye coordinate contents contains 
-//                  //the object specified initially. If the previous move caused 
-//                  //the object to be placed on a blind spot, then this check will 
-//                  //return false since the current minds eye coordinates will be
-//                  //set to the coordinates specified before the move to the blind
-//                  //spot and the object will no longer be at these coordinates.
-//                  if(currentMindsEyeCoordinateContents.contains(initialObjectIdentifier)){
-//
-//                    //Extract domain specific row/col to move to.
-//                    int domainXCorToMoveObjectTo = Integer.valueOf(domainSpecificMoveInformation[1]);
-//                    int domainYCorToMoveObjectTo = Integer.valueOf(domainSpecificMoveInformation[2]);
-//
-//                    //Convert domain-specific coordinates to move to into their 
-//                    //relevant mind's eye coordinates.
-//                    int[] mindsEyeCoordsToMoveTo = this.resolveDomainSpecificCoord( domainXCorToMoveObjectTo, domainYCorToMoveObjectTo);
-//
-//                    //Remove the object from its current coordinates in 
-//                    //"_visualSpatialField" and tidy up any double/leading/trailing
-//                    //commas in the contents of the mind's eye row/column that the
-//                    //object has been moved from.
-//                    
-//                    //TODO: Sort this out, just commented to keep compiler happy.
-//                    //String mindsEyeCurrentCoordsContentAfterObjectRemoval = this._visualSpatialField.get( currentMindsEyeXCor ).get( currentMindsEyeYCor ).replaceFirst(initialObjectIdentifier, "").replaceAll(",,", ",").replaceAll("^,\\s*|,\\s*$", "");
-//                    //this._visualSpatialField.get(currentMindsEyeXCor).set(currentMindsEyeYCor, mindsEyeCurrentCoordsContentAfterObjectRemoval);
-//
-//                    //Check to see if the mind's eye coordinates that were resolved 
-//                    //above are represented in the visual spatial field.  If they 
-//                    //are, add the object identifier to the new mind's eye 
-//                    //coordinates.
-//                    if(mindsEyeCoordsToMoveTo != null){
-//
-//                      //Extract mind's eye coordinates to move to using 
-//                      //domain-specific coordinates to move to.
-//                      int mindsEyeXCorToMoveTo = mindsEyeCoordsToMoveTo[0];
-//                      int mindsEyeYCorToMoveTo = mindsEyeCoordsToMoveTo[1];
-//
-//                      //Get the current content of the mind's eye coordinates that 
-//                      //the object will be moved to.
-//                      String mindsEyeCoordsToMoveToContentBeforeObjectMovement = this.getSpecificContent(domainXCorToMoveObjectTo, domainYCorToMoveObjectTo, domainTime);
-//
-//                      //Create a blank string to hold the new mind's eye coordinate
-//                      //contents that the object will be moved to.
-//                      String mindsEyeCoordsToMoveToContentAfterObjectMovement;
-//
-//                      //Check to see if the mind's eye coordinates to move to 
-//                      //content is empty.  If so, simply overwrite the content with
-//                      //the object identifier in question otherwise, append the 
-//                      //object identifier in question to the current content of the 
-//                      //mind's eye coordinates to move to preceeded by a comma.
-//                      if(mindsEyeCoordsToMoveToContentBeforeObjectMovement.isSquareEmpty()){
-//                        mindsEyeCoordsToMoveToContentAfterObjectMovement = objectToBeMoved;
-//                      }
-//                      else{
-//                        mindsEyeCoordsToMoveToContentAfterObjectMovement = mindsEyeCoordsToMoveToContentBeforeObjectMovement + "," + objectToBeMoved;
-//                      }
-//
-//                      //Set the content of the mind's eye row/col to move to to the
-//                      //content specified above.
-//                      
-//                      //TODO: Sort this out, just commented to keep compiler happy.
-//                      //this._visualSpatialField.get(mindsEyeXCorToMoveTo).set(mindsEyeYCorToMoveTo, mindsEyeCoordsToMoveToContentAfterObjectMovement);
-//
-//                      //Set the values of "currentMindsEyeRow" and 
-//                      //"currentMindsEyeCol" to the values of "mindsEyeRowToMoveTo"
-//                      //and "mindsEyeColToMoveTo" so that any subsequent moves for
-//                      //the object in this sequence will remove the object from the
-//                      //correct coordinates in the mind's eye.
-//                      currentMindsEyeXCor = mindsEyeXCorToMoveTo;
-//                      currentMindsEyeYCor = mindsEyeYCorToMoveTo;  
-//                    }
-//
-//                    //Increment the "movesApplied" counter value by 1 since the
-//                    //object to be moved will have been moved from its current 
-//                    //coordinates.
-//                    movesApplied++;
-//                  }
-//                  else{
-//                    throw new MindsEyeMoveObjectException("For move " + move + " of object " + objectToBeMoved + ", object " + objectToBeMoved + " is not present at the coordinates specified: " + domainSpecificMoveInformation[1] + ", " + domainSpecificMoveInformation[2] + ".  This is either because the object has been moved out of mind's eye range or because the object's specified location is incorrect.");
-//                  }
-//                }
-//                //The object being moved is not the original object specified.
-//                else {
-//                  throw new MindsEyeMoveObjectException("Object " + objectToBeMoved + " is not the object initially specified for this move sequence: " + initialObjectIdentifier + ".");
-//                }
-//              }//End second dimension loop
-//            }
-//            else{
-//              throw new MindsEyeMoveObjectException("More than one object has been specified to be moved for coordinates " + initialDomainSpecificObjectInformation[1] + ", " + initialDomainSpecificObjectInformation[1] + ": " + initialObjectIdentifier + "."); 
-//            }
-//          }//End check for number of object moves being greater than or equal to 2.
-//          else{
-//            throw new MindsEyeMoveObjectException("The move sequence " + domainSpecificMoves.get(objectMoveSequence) + " does not contain any moves after the current location of the object is specified.");
-//          }
-//        }//End first dimension loop
-//
-//        moveObjectsSuccessful = true;
-//        this._model.setAttentionClock(domainTime + ( this._accessTime + (movesApplied * this._movementTime) ) );
-//        this.setTerminus(this._model.getAttentionClock());
-//      } 
-//      catch (MindsEyeMoveObjectException e){
-//        this.resetTerminusAndVisualSpatialField(visualSpatialFieldBeforeMovesApplied, mindsEyeTerminusBeforeMovesApplied);
-//        throw e;
-//      }
-//    }
-//    
-//    return moveObjectsSuccessful;
-//  }
-//  
-//  private void resetTerminusAndVisualSpatialField(ArrayList<ArrayList<String>>visualSpatialField, int terminus){
-//    //TODO: Sort this out, just commented to keep compiler happy.
-//    //this._visualSpatialField = visualSpatialField;
-//    this._mindsEyeTerminus = terminus;
-//  }
+  public void moveObjects(ArrayList<ArrayList<ItemSquarePattern>> objectMoves, int time) throws MindsEyeMoveObjectException {
+    
+    //Check that attention is free, if so, continue.
+    if(this._model.attentionFree(time)){
+      
+      //Clone the current contents of "_visualSpatialField" and the current 
+      //value of the mind's eye terminus so that if any moves are illegal, all 
+      //changes made up until the illegal move can be reversed.
+      ArrayList<ArrayList<ArrayList<MindsEyeObject>>> visualSpatialFieldBeforeMovesApplied = new ArrayList<>();
+      for(int col = 0; col < this._visualSpatialField.size(); col++){
+        visualSpatialFieldBeforeMovesApplied.add(new ArrayList<>());
+        for(int row = 0; row < this._visualSpatialField.get(col).size(); row++){
+          visualSpatialFieldBeforeMovesApplied.get(col).add(new ArrayList<>());
+          for(int object = 0; object < this._visualSpatialField.get(col).get(row).size(); object++){
+            MindsEyeObject original = this._visualSpatialField.get(col).get(row).get(object);
+            MindsEyeObject clone = original.createClone();
+            visualSpatialFieldBeforeMovesApplied.get(col).get(row).add(clone);
+          }
+        }
+      }
+      
+      //Tracks the time taken so far to process the object moves.  Used to 
+      //assign terminus values for moved objects and the time that the attention
+      //of the CHREST model associated with this mind's eye will be free.
+      int timeTakenToMoveObjects = time + this._accessTime;
+      
+      //Process each object move sequence.
+      try{
+        for(int objectMoveSequence = 0; objectMoveSequence < objectMoves.size(); objectMoveSequence++){
+
+          //Get the first move sequence for an object and check to see if at 
+          //least one movement has been specified for it.
+          ArrayList<ItemSquarePattern> moveSequence = objectMoves.get(objectMoveSequence);
+          if(moveSequence.size() >= 2){
+
+            //Extract the source information for the object to move.
+            ItemSquarePattern currentObjectLocation = moveSequence.get(0);
+
+            //Process each move for this object starting from the first element of 
+            //the current second dimension array.
+            for(int movement = 1; movement < moveSequence.size(); movement++){
+              
+              //Get the destination info for the object.
+              ItemSquarePattern destinationInfo = moveSequence.get(movement);
+              
+              //Check to see if the object in the destination info is the object 
+              //originally specified in the first element of the move sequence.
+              //If it isn't, serial movement is not implemented so the entire
+              //move sequence should fail.
+              if( currentObjectLocation.getItem().equals(destinationInfo.getItem()) ){
+
+                //Check to see if the object to be moved is currently at the
+                //location specified.  If the previous move caused the object to 
+                //be placed on a blind spot or the item is on the square but its
+                //terminus has passed, this check will return false.
+                ListPattern currentObjectCoordinateContents = this.getVisualSpatialFieldAsScene(timeTakenToMoveObjects).getItemsOnSquare(currentObjectLocation.getColumn(), currentObjectLocation.getRow(), false, false);
+                if(currentObjectCoordinateContents.contains(currentObjectLocation)){
+
+                  //Remove the object from its current coordinates in
+                  //"_visualSpatialField" by setting its terminus to the current 
+                  //time.  Update the terminus values of any objects on this
+                  //location since they will have also been "looked at" so long
+                  //as they aeren't blind squares that already have their 
+                  //terminus set and the object's terminus hasn't already been 
+                  //reached.
+                  ArrayList<MindsEyeObject> currentObjectLocationContents = this._visualSpatialField.get(currentObjectLocation.getColumn()).get(currentObjectLocation.getRow());
+                  for(MindsEyeObject object : currentObjectLocationContents){
+                    if(object.getIdentifier().equals(currentObjectLocation.getItem())){
+                      object.setTerminus(timeTakenToMoveObjects, true);
+                    }
+                    else if(
+                      (
+                        !object.getIdentifier().equals(Scene.getBlindSquareIdentifier()) && 
+                        object.getTerminus() != null
+                      ) &&
+                      object.getTerminus() > timeTakenToMoveObjects
+                    ){
+                      object.setTerminus(timeTakenToMoveObjects, false);
+                    }
+                  }
+
+                  //Increment the time tracker variable by the time taken to 
+                  //move the object.  Do this now since it should still take 
+                  //time to move an object even if it is moved to a blind spot.
+                  timeTakenToMoveObjects += this._objectMovementTime;
+
+                  //Check to see if the mind's eye coordinates that were 
+                  //resolved above are both represented in the visual spatial 
+                  //field and aren't a blind spot.  If both conditions are true, 
+                  //add the object identifier to the new mind's eye coordinates.  
+                  //Otherwise, don't.
+                  if(
+                    (destinationInfo.getColumn() < this._sceneTransposed.getWidth() && destinationInfo.getRow() < this._sceneTransposed.getHeight() ) &&
+                    !this.getVisualSpatialFieldAsScene(timeTakenToMoveObjects).isSquareBlind(destinationInfo.getColumn(), destinationInfo.getRow())
+                  ){
+                    
+                    //Update the termini of objects on the destination square
+                    //since they have been "looked" at.  Do not do this for 
+                    //blind squares whose termini are already set and "dead" 
+                    //objects (objects whose termini have already expired).
+                    Iterator<MindsEyeObject> destinationSquareContents = this._visualSpatialField.get(destinationInfo.getColumn()).get(destinationInfo.getRow()).iterator();
+                    while(destinationSquareContents.hasNext()){
+                      MindsEyeObject object = destinationSquareContents.next();
+                      if(
+                        (
+                          !object.getIdentifier().equals(Scene.getBlindSquareIdentifier()) && 
+                          object.getTerminus() != null
+                        ) &&
+                        object.getTerminus() > timeTakenToMoveObjects
+                      ){
+                        object.setTerminus(timeTakenToMoveObjects, false);
+                      }
+                    }
+                    
+                    //Now, "move" the object to be moved to its destination 
+                    //coordinates.
+                    this._visualSpatialField.get(destinationInfo.getColumn()).get(destinationInfo.getRow()).add(new MindsEyeObject(this, destinationInfo.getItem(), timeTakenToMoveObjects));
+                  }
+                  
+                  //Set the current location of the object to be its destination 
+                  //so that the next move can be processed correctly.
+                  currentObjectLocation = destinationInfo;
+                }
+                //The object is not at the location specified.
+                else{
+                  
+                  //If this is the first movement then the actual object 
+                  //location specification is incorrect so throw an exception 
+                  //since this may indicate an issue with coordinate translation
+                  //or experiment code.
+                  if(movement == 1){
+                    throw new MindsEyeMoveObjectException("The initial location specified for object " + currentObjectLocation.getItem() + " (" + currentObjectLocation.toString() + ") is incorrect.");                
+                  }
+                  //Otherwise, the object has decayed since a number of other
+                  //moves have been performed or, it has been moved to a blind
+                  //square in a previous move so start to process the next 
+                  //object move set.
+                  else{
+                    break;
+                  }
+                }
+              }
+              //The object being moved is not the original object specified.
+              else {
+                throw new MindsEyeMoveObjectException("Object " + destinationInfo.getItem() + " is not the object initially specified for this move sequence: " + destinationInfo.getItem() + ".");
+              }
+            }//End move for an object.
+          }//End check for number of object moves being greater than or equal to 2.
+          else{
+            throw new MindsEyeMoveObjectException("The move sequence " + moveSequence.toString() + " does not contain any moves after the current location of the object is specified.");
+          }
+        }//End entire movement sequence for all objects.
+
+        this._model.setAttentionClock(timeTakenToMoveObjects);
+      } 
+      catch (MindsEyeMoveObjectException e){
+        this._visualSpatialField = visualSpatialFieldBeforeMovesApplied;
+        throw e;
+      }
+    }
+  }
 }

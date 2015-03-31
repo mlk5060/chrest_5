@@ -7,21 +7,29 @@ require "modellers_testing_framework"
 include TestFramework
 
 # Import all required classes
+import "java.util.ArrayList"
+
 [
-  "Chrest", "Node"
+  "Chrest", 
+  "Node", 
+  "MindsEye"
 ].each do |klass|
   import "jchrest.architecture.#{klass}"
 end
 [
   "ChessDomain",
+  "GenericDomain",
   "ItemSquarePattern",
   "ListPattern",
+  "MindsEyeObject",
+  "MindsEyeMoveObjectException",
   "NumberPattern",
   "Pattern",
   "ReinforcementLearning",
   "Scene",
   "Square",
-  "StringPattern"
+  "StringPattern",
+  "TileworldDomain"
 ].each do |klass|
   import "jchrest.lib.#{klass}"
 end
