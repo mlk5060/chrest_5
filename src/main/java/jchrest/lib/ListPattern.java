@@ -248,7 +248,7 @@ public class ListPattern extends Pattern implements Iterable<PrimitivePattern> {
    */
   public ListPattern append (ListPattern pattern) {
     ListPattern result = new ListPattern (_modality);
-
+    
     for (PrimitivePattern item : _list) {
       result.add (item);
     }

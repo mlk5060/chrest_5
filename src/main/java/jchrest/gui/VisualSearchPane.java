@@ -43,7 +43,7 @@ public class VisualSearchPane extends JPanel {
 
   public VisualSearchPane (Chrest model, Scenes scenes) {
     super ();
-
+    
     _model = model;
     _scenes = scenes;
     _model.getPerceiver().setScene (_scenes.get (0));
@@ -198,7 +198,7 @@ public class VisualSearchPane extends JPanel {
   private class TrainingThread extends SwingWorker<List<Pair>, Pair> {
     private Chrest _model;
     private Scenes _scenes;
-    private int _maxCycles, _maxSize, _numFixations;
+    private int _maxCycles, _maxSize, _numFixations, _time;
 
     TrainingThread (Chrest model, Scenes scenes, int maxCycles, int maxSize, int numFixations) {
       _model = model;
@@ -351,9 +351,11 @@ public class VisualSearchPane extends JPanel {
   private JLabel _precision, _recall, _omission, _commission;
   private JPanel recallResultsPanel () {
     _recallSceneLabel = new JLabel ("RECALLED SCENE");
-    _recalledSceneDisplay = new SceneDisplay (new Scene ("empty", 
-          _scenes.get(0).getHeight (), 
-          _scenes.get(0).getWidth ()));
+    _recalledSceneDisplay = new SceneDisplay (new Scene (
+      "empty",
+      _scenes.get(0).getWidth(), 
+      _scenes.get(0).getHeight()
+    ));
     _precision = new JLabel ("");
     _recall = new JLabel ("");
     _omission = new JLabel ("");
@@ -450,11 +452,7 @@ public class VisualSearchPane extends JPanel {
         // loop through each scene, doing recall
         for (int i = 0; i < _scenes.size () && !isCancelled (); i++) {
           Scene scene = _scenes.get (i);
-          _model.scanScene (
-            scene, 
-            ((SpinnerNumberModel)(_numFixations.getModel())).getNumber().intValue (),
-            _model.getDomainSpecifics().getCurrentTime()//TODO: this is probably wrong but inserted to get S/LTM history views working.
-          );
+          _model.scanScene (scene, ((SpinnerNumberModel)(_numFixations.getModel())).getNumber().intValue (), 0);
           for (Node node : _model.getPerceiver().getRecognisedNodes ()) {
             int id = node.getReference ();
             if (_recallFrequencies.containsKey (id)) {
@@ -496,12 +494,13 @@ public class VisualSearchPane extends JPanel {
         ((SpinnerNumberModel)(_numFixations.getModel())).getNumber().intValue (),
         _model.getDomainSpecifics().getCurrentTime()//TODO: this is probably wrong but inserted to get S/LTM history views working.
       );
+
       _recallSceneLabel.setText (recalledScene.getName ());
       _recalledSceneDisplay.updateScene (recalledScene);
-      _precision.setText ("" + scene.computePrecision (recalledScene));
-      _recall.setText ("" + scene.computeRecall (recalledScene));
-      _omission.setText ("" + scene.computeErrorsOfOmission (recalledScene));
-      _commission.setText ("" + scene.computeErrorsOfCommission (recalledScene));
+      _precision.setText ("" + scene.computePrecision (recalledScene, false));
+      _recall.setText ("" + scene.computeRecall (recalledScene, false));
+      _omission.setText ("" + scene.computeErrorsOfOmission (recalledScene, false));
+      _commission.setText ("" + scene.computeErrorsOfCommission (recalledScene, false));
       _sceneDisplay.setFixations (_model.getPerceiver().getFixations ());
       // log results
       addLog ("\n" + recalledScene.getName ());
@@ -526,10 +525,10 @@ public class VisualSearchPane extends JPanel {
         }
       }
       addLog ("Performance: ");
-      addLog ("   Precision: " + scene.computePrecision (recalledScene));
-      addLog ("   Recall: " + scene.computeRecall (recalledScene));
-      addLog ("   Errors of Omission: " + scene.computeErrorsOfOmission (recalledScene));
-      addLog ("   Errors of Commission: " + scene.computeErrorsOfCommission (recalledScene));
+      addLog ("   Precision: " + scene.computePrecision (recalledScene, false));
+      addLog ("   Recall: " + scene.computeRecall (recalledScene, false));
+      addLog ("   Errors of Omission: " + scene.computeErrorsOfOmission (recalledScene, false));
+      addLog ("   Errors of Commission: " + scene.computeErrorsOfCommission (recalledScene, false));
     }
   }
 
@@ -778,8 +777,15 @@ class SceneDisplay extends JPanel {
       // draw entries within grid
       for (int i = 0; i < _scene.getHeight (); ++i) {
         for (int j = 0; j < _scene.getWidth (); ++j) {
-          if (!_scene.isEmpty (i, j)) {
-            g2.drawString (_scene.getItem (i, j), offsetX + 5 + scale * j, offsetY + scale - 5 + scale * i);
+          if (!_scene.isSquareEmpty (j, i) && !_scene.isSquareBlind(j, i)) {
+            String items = "";
+            for(PrimitivePattern itemOnSquare : _scene.getItemsOnSquare(j, i, false, false)){
+              items += ", " + ( (ItemSquarePattern)itemOnSquare ).getItem();
+            }
+            
+            //Draw "items" after removing the first comma and space since this 
+            //is erroneous: commas should separate items.
+            g2.drawString (items.replaceFirst(", ", ""), offsetX + 5 + scale * j, offsetY + scale - 5 + scale * i);
           }
         }
       }

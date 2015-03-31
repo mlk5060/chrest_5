@@ -15,8 +15,8 @@ public class Square {
   /**
    * Constructor makes an instance from given row and column.
    */
-  public Square (int row, int column) {
-    _column = column;
+  public Square (int col, int row) {
+    _column = col;
     _row = row;
   }
 
@@ -35,7 +35,7 @@ public class Square {
   }
 
   public String toString () {
-    return "(" + _row + ", " + _column + ")";
+    return "(" + _column + ", " + _row + ")";
   }
 }
 

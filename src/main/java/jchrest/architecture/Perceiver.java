@@ -20,18 +20,18 @@ import jchrest.lib.Modality;
 import jchrest.lib.Pattern;
 import jchrest.lib.Scene;
 import jchrest.lib.Square;
-
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
+import jchrest.lib.PrimitivePattern;
 
 /**
- * Perceiver class manages the model's interaction with an external, two-dimensional 
- * scene.
+ * Perceiver class manages the model's visual interaction with an external, 
+ * two-dimensional scene.
  */
 public class Perceiver {
+  
   private final static java.util.Random _random = new java.util.Random ();
-
   private final Chrest _model;
   private int _fixationX, _fixationY, _fieldOfView;
   FixationType _lastHeuristic;
@@ -62,14 +62,25 @@ public class Perceiver {
   }
 
   /** 
-   * Initial fixation point - the centre of the scene.
+   * Initial fixation point: either the location of the Scene creator if 
+   * identified in the scene or the centre of the scene if not.
+   * 
+   * @param targetNumberFixations
    */
   public void start (int targetNumberFixations) {
     _recognisedNodes.clear ();
     _targetNumberFixations = targetNumberFixations;
-
-    _fixationX = _currentScene.getWidth () / 2;
-    _fixationY = _currentScene.getHeight () / 2;
+    Square locationOfSelf = _currentScene.getLocationOfSelf();
+    
+    if(locationOfSelf == null){
+      _fixationX = _currentScene.getWidth () / 2;
+      _fixationY = _currentScene.getHeight () / 2;
+    }
+    else{
+      _fixationX = locationOfSelf.getColumn();
+      _fixationY = locationOfSelf.getRow();
+    }
+    
     _lastHeuristic = FixationType.start;
     addFixation (new Fixation (_lastHeuristic, _fixationX, _fixationY));
   }
@@ -132,11 +143,11 @@ public class Perceiver {
                 if (link.getTest().getItem (link.getTest().size() - 1) instanceof ItemSquarePattern) {
                   ItemSquarePattern testIos = (ItemSquarePattern)link.getTest().getItem (0);
                   // check all details of test are correct
-                  if (testIos.getColumn () - 1 == _fixationX && 
-                      testIos.getRow () - 1 == _fixationY &&
-                      testIos.getItem().equals (_currentScene.getItem (_fixationY, _fixationX))) {
-                    _model.getVisualStm().replaceHypothesis (link.getChildNode (), _model.getDomainSpecifics().getCurrentTime());
-                      }
+                  if (
+                    _currentScene.getItemsOnSquare(_fixationX, _fixationY, false, false).contains( testIos )
+                  ){
+                    _model.getVisualStm().replaceHypothesis (link.getChildNode ());
+                  }
                 }
               }
             }
@@ -157,15 +168,18 @@ public class Perceiver {
     for (int i = 0; i < 3; ++i) { // *** Parameter controls how likely 'item' over 'place'
       int xDisplacement = _random.nextInt (_fieldOfView * 2 + 1) - _fieldOfView;
       int yDisplacement = _random.nextInt (_fieldOfView * 2 + 1) - _fieldOfView;
-      if (!_currentScene.isEmpty (_fixationY + yDisplacement, _fixationX + xDisplacement)
-          && _fixationX < _currentScene.getWidth ()
-          && _fixationY < _currentScene.getHeight ()) {
+      if (
+        !_currentScene.isSquareEmpty (_fixationX + xDisplacement, _fixationY + yDisplacement) && 
+        !_currentScene.isSquareBlind(_fixationX + xDisplacement, _fixationY + yDisplacement) &&
+        _fixationX < _currentScene.getWidth () && 
+        _fixationY < _currentScene.getHeight ()
+      ) {
         _fixationX += xDisplacement;
         _fixationY += yDisplacement;
         _lastHeuristic = FixationType.randomItem;
 
         return true;
-          }
+      }
     }
     return false;
   }
@@ -210,7 +224,7 @@ public class Perceiver {
     if (r < 0.3333) { // try movement fixation
       List<Square> pieceMoves = _model.getDomainSpecifics().proposeMovementFixations (
           _currentScene, 
-          new Square (_fixationY, _fixationX)
+          new Square (_fixationX, _fixationY)
           );
       if (pieceMoves.size () > 0) { 
         int move = (new java.util.Random ()).nextInt (pieceMoves.size ());
@@ -239,6 +253,7 @@ public class Perceiver {
   /**
    * Find the next fixation point using one of the available 
    * heuristics, and then learn from the new pattern.
+   * @param time The domain time (in milliseconds) when this method was called.
    */
   public void moveEyeAndLearn () {
     boolean fixationDone = false;
@@ -257,7 +272,7 @@ public class Perceiver {
     }
 
     // simplified version of learning, learns pattern at current point
-//    _model.recogniseAndLearn (_model.getDomainSpecifics().normalise (_currentScene.getItems (_fixationX, _fixationY, 2)));
+//    _model.recogniseAndLearn (_model.getDomainSpecifics().normalise (_currentScene.getItemsInScope (_fixationX, _fixationY, 2)));
 
     // NB: template construction is only assumed to occur after training, so 
     // template completion code is not included here
@@ -273,10 +288,7 @@ public class Perceiver {
     if (doingInitialFixations ()) {
       fixationDone = doInitialFixation ();
       if (fixationDone) {
-        node = _model.recognise (
-          _model.getDomainSpecifics().normalise (_currentScene.getItems (_fixationX, _fixationY, 2)),
-          _model.getDomainSpecifics().getCurrentTime()//TODO: this is probably wrong but inserted to get S/LTM history views working.
-        );
+        node = _model.recognise (_model.getDomainSpecifics().normalise (_currentScene.getItemsInScope (_fixationX, _fixationY, 2, 2, true)));
       }
     }
     if (!fixationDone) {
@@ -287,16 +299,14 @@ public class Perceiver {
     }
     if (!fixationDone) {
       moveEyeUsingHeuristics ();
-      node = _model.recognise (
-        _model.getDomainSpecifics().normalise (_currentScene.getItems (_fixationX, _fixationY, 2)),
-        _model.getDomainSpecifics().getCurrentTime()//TODO: this is probably wrong but inserted to get S/LTM history views working.
-      );
+      node = _model.recognise (_model.getDomainSpecifics().normalise (_currentScene.getItemsInScope (_fixationX, _fixationY, 2, 2, true)));
     }
+    
     _recognisedNodes.add (node);
     // Attempt to fill out the slots on the top-node of visual STM with the currently 
     // fixated items
     if (_model.getVisualStm().getCount () >= 1) {
-      _model.getVisualStm().getItem(0).fillSlots (_currentScene.getItems (_fixationX, _fixationY, 2));
+      _model.getVisualStm().getItem(0).fillSlots (_currentScene.getItemsInScope (_fixationX, _fixationY, 2, 2, true));
     }
   }
 
@@ -344,7 +354,7 @@ public class Perceiver {
     }
     Fixation lastFixation = _fixations.get (lastFixationIndex);
     // is last fixation to an empty square?
-    if (_currentScene.isEmpty (lastFixation.getX (), lastFixation.getY ())) {
+    if (_currentScene.isSquareEmpty (lastFixation.getX (), lastFixation.getY ())) {
       return true;
     }
     // is fixation a global strategy?
@@ -373,15 +383,16 @@ public class Perceiver {
   private void learnFixatedPattern () {
     ListPattern fixatedPattern = new ListPattern (Modality.VISUAL);
     for (int i = _fixationsLearnFrom; i < _fixations.size () - 1; ++i) {
-      if (!_currentScene.isEmpty (_fixations.get(i).getX (), _fixations.get(i).getY ())) {
-        fixatedPattern.add (new ItemSquarePattern (
-              _currentScene.getItem (_fixations.get(i).getX (), _fixations.get(i).getY ()),
-              _fixations.get(i).getY () + 1,
-              _fixations.get(i).getX () + 1
-              ));
+      if (
+        !_currentScene.isSquareEmpty (_fixations.get(i).getX (), _fixations.get(i).getY ()) &&
+        !_currentScene.isSquareBlind (_fixations.get(i).getX (), _fixations.get(i).getY ())
+      ) {
+        for( PrimitivePattern itemOnSquare : _currentScene.getItemsOnSquare(_fixations.get(i).getY(), _fixations.get(i).getX(), true, false) ){
+          fixatedPattern.add ( (ItemSquarePattern)itemOnSquare );
+        }
       }
     }
-    _model.recogniseAndLearn (_model.getDomainSpecifics().normalise (fixatedPattern.append(_currentScene.getItems(_fixationX, _fixationY, 2))));
+    _model.recogniseAndLearn (_model.getDomainSpecifics().normalise (fixatedPattern.append(_currentScene.getItemsInScope(_fixationX, _fixationY, 2, 2, true)))).getImage();
     // begin cycle again, from point where we stopped
     _fixationsLearnFrom = _fixations.size () - 1;
   }
