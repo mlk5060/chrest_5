@@ -33,7 +33,7 @@ end
 process_test "base case" do
   model = Chrest.new
   emptyList = Pattern.makeVisualList([].to_java(:int))
-  assert_true(Pattern.makeVisualList(["Root"].to_java(:String)).equals(model.recognise(emptyList).getImage))
+  assert_true(Pattern.makeVisualList(["Root"].to_java(:String)).equals(model.recognise(emptyList, 0).getImage))
 end
 
 process_test "learning case 1" do
@@ -93,8 +93,8 @@ process_test "simple retrieval 1" do
   prim_test = Pattern.makeVisualList([1].to_java(:int))
   prim.setFinished
 
-  model.recogniseAndLearn list
-  node = model.recognise list
+  model.recogniseAndLearn(list, 0)
+  node = model.recognise(list, 0)
 
   assert_false emptyList.equals(node.getContents)
   assert_true prim_test.equals(node.getContents)
@@ -121,7 +121,7 @@ process_test "simple learning 2" do
   # by first overlearning
   model.recogniseAndLearn list
   model.recogniseAndLearn list
-  assert_true model.recognise(list).getImage.equals(Pattern.makeVisualList([1,2].to_java(:int)))
+  assert_true model.recognise(list, 0).getImage.equals(Pattern.makeVisualList([1,2].to_java(:int)))
   node = model.getLtmByModality(list).getChildren.get(0).getChildNode
   assert_equal(0, node.getChildren.size)
   model.recogniseAndLearn list3 # first learn the '3' to use as test
@@ -143,12 +143,12 @@ process_test "check learning of < $ >" do
   8.times do 
     model.recogniseAndLearn list1
   end
-  assert_true list1.equals(model.recallPattern(list1))
-  assert_true list1.equals(model.recallPattern(list2))
-  node = model.recognise list2
+  assert_true list1.equals(model.recallPattern(list1, model.getLearningClock()))
+  assert_true list1.equals(model.recallPattern(list2, model.getLearningClock()))
+  node = model.recognise(list2, model.getLearningClock())
   assert_true list1.equals(node.getImage)
   # learning should result in discrimination with < $ >
-  model.recogniseAndLearn list2
+  model.recogniseAndLearn(list2, model.getLearningClock())
   assert_equal(1, node.getChildren.size)
 end
 
@@ -162,8 +162,8 @@ process_test "full learning" do
     model.recogniseAndLearn list2
   end
 
-  assert_true list1.equals(model.recallPattern(list1))
-  assert_true list2.equals(model.recallPattern(list2))
+  assert_true list1.equals(model.recallPattern(list1, model.getLearningClock()))
+  assert_true list2.equals(model.recallPattern(list2, model.getLearningClock()))
 end
 
 #The aim of this test is to check for the correct operation of setting a CHREST
@@ -241,19 +241,19 @@ process_test "reinforcement theory tests" do
     reinforcementLearningTheoryName = reinforcementLearningTheory.toString
   
     #Learn visual and action patterns.
-    model.recogniseAndLearn(visualPattern)
-    model.recogniseAndLearn(actionPattern)
+    model.recogniseAndLearn(visualPattern, model.getLearningClock())
+    model.recogniseAndLearn(actionPattern, model.getLearningClock())
   
     #Retrieve visual and action nodes after learning.
-    visualNode = model.recognise(visualPattern)
-    actionNode = model.recognise(actionPattern)
+    visualNode = model.recognise(visualPattern, model.getLearningClock())
+    actionNode = model.recognise(actionPattern, model.getLearningClock())
   
     #Test 1.
     visualNodeActionLinks = visualNode.getActionLinks
     assert_equal(0, visualNodeActionLinks.size, "See test 1.")
   
     #Test 2 and 3.
-    visualNode.addActionLink(actionNode)
+    visualNode.addActionLink(actionNode, model.getLearningClock())
     visualNodeActionLinks = visualNode.getActionLinks
     visualNodeActionLinkValue = visualNodeActionLinks.get(actionNode)
     assert_true(visualNodeActionLinks.containsKey(actionNode), "After adding " + actionPatternString + " to the _actionLinks variable of " + visualPatternString + ", " + visualPatternString + "'s _actionLinks does not contain " + actionPatternString + ".")
@@ -317,7 +317,7 @@ process_test "reinforcement theory tests" do
     correctVariables.each do |groupOfCorrectVariables|
       assert_true(reinforcementLearningTheory.correctNumberOfVariables(groupOfCorrectVariables), "FOR " + reinforcementLearningTheoryName + ": The number of variables in item " + index.to_s + " of the 'correctvariables' parameter is incorrect.")
       calculationValue = reinforcementLearningTheory.calculateReinforcementValue(groupOfCorrectVariables)
-      visualNode.reinforceActionLink(actionNode, groupOfCorrectVariables)
+      visualNode.reinforceActionLink(actionNode, groupOfCorrectVariables, model.getLearningClock())
       visualNodeActionLinkValue = visualNode.getActionLinks.get(actionNode)
       assert_equal(expectedCalculationValues[index], calculationValue, "Triggered by the " + reinforcementLearningTheoryName + ".calculateReinforcementValue() method.  See item " + index.to_s + " in the 'expectedCalculationValues' variable.")
       assert_equal(expectedReinforcementValues[index], visualNodeActionLinkValue, "Triggered by the Node.reinforceActionLink() method (addition of current and new reinforcement values incorrect).  See item " + index.to_s + " in the 'expectedReinforcementValues' variable for the '" + reinforcementLearningTheoryName + "' reinforcement learning theory.")

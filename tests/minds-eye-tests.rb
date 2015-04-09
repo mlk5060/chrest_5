@@ -241,7 +241,7 @@ process_test "constructor (scene with non-creator-specific coordinates)" do
   
   # Learn for a minute.
   until domain_time == 6000 do
-    model.learnScene(scene, number_fixations)
+    model.learnScene(scene, number_fixations, domain_time)
     domain_time += 1
   end
   
@@ -659,7 +659,7 @@ process_test "constructor (scene with creator-specific coordinates)" do
   
   # Learn for a minute.
   until domain_time == 6000 do
-    model.learnScene(scene, number_fixations)
+    model.learnScene(scene, number_fixations, domain_time)
     domain_time += 1
   end
   

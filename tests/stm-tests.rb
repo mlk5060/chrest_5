@@ -7,7 +7,7 @@ process_test "stm tests 1" do
   patternA = Pattern.makeVisualList(["A", "E", "F"].to_java(:String))
 
   assert_equal(0, model.getVisualStm.getCount)
-  model.recognise patternA
+  model.recognise(patternA, 0)
   assert_equal(1, model.getVisualStm.getCount)
   assert_true(model.getLtmByModality(patternA) == model.getVisualStm.getItem(0))
 end
@@ -52,7 +52,7 @@ process_test "stm test: repeated item" do
   patternC = Pattern.makeVisualList(["C", "E", "F"].to_java(:String))
   patternD = Pattern.makeVisualList(["D", "E", "F"].to_java(:String))
 
-  model.recogniseAndLearn patternA
+  model.recogniseAndLearn(patternA, 0)
   node = model.getVisualStm.getItem 0
   model.recogniseAndLearn patternB
   model.recogniseAndLearn patternC
@@ -64,7 +64,7 @@ process_test "stm test: repeated item" do
   end
   assert_equal(1, count)
   # check newly recognised node occurs only once int he STM, and at first place
-  model.recognise patternA
+  model.recognise(patternA, 0)
   assert_equal(node, model.getVisualStm.getItem(0))
   count = 0
   model.getVisualStm.getSize.times do |i|
