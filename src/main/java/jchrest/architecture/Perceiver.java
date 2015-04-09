@@ -110,7 +110,7 @@ public class Perceiver {
    *            so hypothesis not changed, and so next link in sequence will
    *            be tried.)
    */
-  private boolean ltmHeuristic () {
+  private boolean ltmHeuristic (int time) {
     if (_model.getVisualStm().getCount () >= 1) {
       List<Link> hypothesisChildren = _model.getVisualStm().getItem(0).getChildren ();
       if (hypothesisChildren.isEmpty ()) return false;
@@ -146,7 +146,7 @@ public class Perceiver {
                   if (
                     _currentScene.getItemsOnSquare(_fixationX, _fixationY, false, false).contains( testIos )
                   ){
-                    _model.getVisualStm().replaceHypothesis (link.getChildNode ());
+                    _model.getVisualStm().replaceHypothesis (link.getChildNode (), time);
                   }
                 }
               }
@@ -255,13 +255,13 @@ public class Perceiver {
    * heuristics, and then learn from the new pattern.
    * @param time The domain time (in milliseconds) when this method was called.
    */
-  public void moveEyeAndLearn () {
+  public void moveEyeAndLearn (int time) {
     boolean fixationDone = false;
     if (doingInitialFixations ()) {
       fixationDone = doInitialFixation ();
     }
     if (!fixationDone) {
-      fixationDone = ltmHeuristic ();
+      fixationDone = ltmHeuristic (time);
     }
     if (!fixationDone) {
       moveEyeUsingHeuristics ();
@@ -272,7 +272,7 @@ public class Perceiver {
     }
 
     // simplified version of learning, learns pattern at current point
-//    _model.recogniseAndLearn (_model.getDomainSpecifics().normalise (_currentScene.getItemsInScope (_fixationX, _fixationY, 2)));
+    _model.recogniseAndLearn (_model.getDomainSpecifics().normalise (_currentScene.getItemsInScope (_fixationX, _fixationY, 2, 2, true)));
 
     // NB: template construction is only assumed to occur after training, so 
     // template completion code is not included here
@@ -281,25 +281,26 @@ public class Perceiver {
   /**
    * Find the next fixation point using one of the available 
    * heuristics, and simply move the eye to that point.
+   * @param time The domain time (in milliseconds) when this method was called.
    */
-  public void moveEye () {
+  public void moveEye (int time) {
     Node node = _model.getVisualLtm ();
     boolean fixationDone = false;
     if (doingInitialFixations ()) {
       fixationDone = doInitialFixation ();
       if (fixationDone) {
-        node = _model.recognise (_model.getDomainSpecifics().normalise (_currentScene.getItemsInScope (_fixationX, _fixationY, 2, 2, true)));
+        node = _model.recognise (_model.getDomainSpecifics().normalise (_currentScene.getItemsInScope (_fixationX, _fixationY, 2, 2, true)), time);
       }
     }
     if (!fixationDone) {
-      fixationDone = ltmHeuristic ();
+      fixationDone = ltmHeuristic (time);
       if (fixationDone && _model.getVisualStm().getCount () >= 1) {
         node = _model.getVisualStm().getItem(0);
       }
     }
     if (!fixationDone) {
       moveEyeUsingHeuristics ();
-      node = _model.recognise (_model.getDomainSpecifics().normalise (_currentScene.getItemsInScope (_fixationX, _fixationY, 2, 2, true)));
+      node = _model.recognise (_model.getDomainSpecifics().normalise (_currentScene.getItemsInScope (_fixationX, _fixationY, 2, 2, true)), time);
     }
     
     _recognisedNodes.add (node);

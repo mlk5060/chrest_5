@@ -1334,26 +1334,35 @@ public class Chrest extends Observable {
     learnAndNamePatterns (pattern1, pattern2, _learningClock);
   }
 
-  public void learnScene (Scene scene, int numFixations) {
+  /**
+   * Learns the {@link jchrest.lib.Scene} specified.
+   * 
+   * @param scene The {@link jchrest.lib.Scene} to learn.
+   * @param numFixations The number of fixations to make on the 
+   * {@link jchrest.lib.Scene} to be learned.
+   * @param time The current domain time (in milliseconds).
+   */
+  public void learnScene (Scene scene, int numFixations, int time) {
     _perceiver.setScene (scene);
     _perceiver.start (numFixations);
     for (int i = 0; i < numFixations; i++) {
-      _perceiver.moveEyeAndLearn ();
+      _perceiver.moveEyeAndLearn (time);
     }
   }
 
   /**
-   * Learn a scene with an attached next move.  The move is linked to any chunks 
-   * in visual STM.
+   * Learn the {@link jchrest.lib.Scene} specified with an attached next move.  
+   * The move is linked to any chunks in visual STM.
    * 
    * TODO: think about if there should be limitations on this.
    * 
    * @param scene
    * @param move
    * @param numFixations
+   * @param time The current domain time (in milliseconds).
    */
   public void learnSceneAndMove (Scene scene, Move move, int numFixations, int time) {
-    learnScene (scene, numFixations);
+    learnScene (scene, numFixations, time);
     recogniseAndLearn (move.asListPattern ());
     // attempt to link action with each perceived chunk
     if (_visualStm.getCount () > 0 && _actionStm.getCount () > 0) {
@@ -1500,7 +1509,7 @@ public class Chrest extends Observable {
    * @param scene
    * @param numFixations
    * @param clearStm
-   * @param time
+   * @param time The current domain time (in milliseconds).
    * @return 
    */
   public Scene scanScene (Scene scene, int numFixations, boolean clearStm, int time) {
@@ -1530,7 +1539,7 @@ public class Chrest extends Observable {
     _perceiver.setScene (scene);
     _perceiver.start (numFixations);
     for (int i = 0; i < numFixations; i++) {
-      _perceiver.moveEye ();
+      _perceiver.moveEye (time);
     }
     
     // Build up and return recalled scene

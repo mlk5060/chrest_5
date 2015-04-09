@@ -40,6 +40,7 @@ public class VisualSearchPane extends JPanel {
   private final Chrest _model;
   private final Scenes _scenes;
   private final SceneDisplay _sceneDisplay;
+  private int _time;
 
   public VisualSearchPane (Chrest model, Scenes scenes) {
     super ();
@@ -200,12 +201,13 @@ public class VisualSearchPane extends JPanel {
     private Scenes _scenes;
     private int _maxCycles, _maxSize, _numFixations, _time;
 
-    TrainingThread (Chrest model, Scenes scenes, int maxCycles, int maxSize, int numFixations) {
+    TrainingThread (Chrest model, Scenes scenes, int maxCycles, int maxSize, int numFixations, int time) {
       _model = model;
       _scenes = scenes;
       _maxCycles = maxCycles;
       _maxSize = maxSize;
       _numFixations = numFixations;
+      _time = time;
     }
 
     @Override
@@ -228,7 +230,7 @@ public class VisualSearchPane extends JPanel {
           for (int i = 0, lastSceneIndex = _scenes.size (); 
               i < lastSceneIndex && (_model.getTotalLtmNodes () < _maxSize) && !isCancelled (); 
               i++) {
-            _model.learnScene (_scenes.get (i), _numFixations);
+            _model.learnScene (_scenes.get (i), _numFixations, _time);
             positionsSeen += 1;
             if (positionsSeen % stepSize == 0) {
               result = new Pair (positionsSeen, _model.getTotalLtmNodes ());
@@ -280,10 +282,14 @@ public class VisualSearchPane extends JPanel {
     private int getMaxNetworkSize () {
       return ((SpinnerNumberModel)(_maxNetworkSize.getModel())).getNumber().intValue ();
     }
+    
+    private int getCurrentTime(){
+      return _time;
+    }
 
     public void actionPerformed (ActionEvent e) {
       _model.setEngagedInExperiment();
-      _task = new TrainingThread (_model, _scenes, getMaxCycles (), getMaxNetworkSize (), getNumFixations ());
+      _task = new TrainingThread (_model, _scenes, getMaxCycles (), getMaxNetworkSize (), getNumFixations (), getCurrentTime());
       _task.addPropertyChangeListener(
           new java.beans.PropertyChangeListener() {
             public  void propertyChange(java.beans.PropertyChangeEvent evt) {
