@@ -6,11 +6,13 @@ repositories.remote << 'http://repo1.maven.org/maven2'
 
 JCOMMON = 'jfree:jcommon:jar:1.0.16'
 JFREECHART = 'jfree:jfreechart:jar:1.0.13'
+JSOUP = 'org.jsoup:jsoup:jar:1.8.2'
+STATISTICS = 'org.apache.commons:commons-math:jar:2.2'
 SQLITE4JAVA = 'com.almworks.sqlite4java:sqlite4java:jar:1.0.392'
 
 define 'chrest' do
   project.version = VERSION
-  compile.with JCOMMON, JFREECHART, SQLITE4JAVA
+  compile.with JCOMMON, JFREECHART, JSOUP, STATISTICS, SQLITE4JAVA
   package(:jar).with(
     :manifest=>{'Main-Class'=>'jchrest.gui.Shell'}
   ).merge(

@@ -14,6 +14,8 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Observable;
 import java.util.TreeMap;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeoutException;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -1070,7 +1072,7 @@ public class Node extends Observable {
    * It is assumed the given pattern is non-empty and is a valid extension.
    */
   private Node extendImage (ListPattern newInformation, int time) {
-    setImage (_model.getDomainSpecifics().normalise (_image.append (newInformation)), time);
+    this.setImage (_model.getDomainSpecifics().normalise (_image.append (newInformation)), time);
     this.updateImageHistory(time);
     _model.advanceLearningClock (_model.getFamiliarisationTime ());
 
@@ -1099,43 +1101,58 @@ public class Node extends Observable {
       if (_model.recognise (newInformation, time).getContents ().equals (newInformation) ) {
         // 2. if so, use as test
         description += "and is already encoded as a LTM node so it will be added as a test.";
-        this._model.addToHistory(time, operation, description);
+        try {
+          this._model.addToHistory(time, operation, description);
+        } catch (InterruptedException | ExecutionException | TimeoutException ex) {
+          Logger.getLogger(Node.class.getName()).log(Level.SEVERE, null, ex);
+        }
         return addTest (newInformation, time);
       } else {
         // 3. if not, then learn it
         Node child = new Node (_model, newInformation, newInformation, time);
-        _model.getLtmByModality(newInformation).addTestLink (newInformation, child, time, _model.getCurrentExperimentName());
+        _model.getVisualLtm().addTestLink (newInformation, child, time, _model.getCurrentExperimentName());
         description += "and isn't encoded in a LTM node so a test link and child node containing the list-pattern will be added to the " + newInformation.getModalityString() + " LTM root node.";
-        this._model.addToHistory(time, operation, description);
-        
+        try {
+          this._model.addToHistory(time, operation, description);
+        } catch (InterruptedException | ExecutionException | TimeoutException ex) {
+          Logger.getLogger(Node.class.getName()).log(Level.SEVERE, null, ex);
+        }
         return child;
       }
     }
-    
+
     Node retrievedChunk = _model.recognise (newInformation, time);
     description += "List-pattern presented (" + newInformation.toString() + ") isn't empty and after sorting through LTM, " + retrievedChunk.getContents().toString() + " has been retrieved.  ";
     if (retrievedChunk == _model.getLtmByModality (pattern)) {
       // 3. if root node is retrieved, then the primitive must be learnt
       description += "This is a modality root node so " + newInformation.getFirstItem() + " will be added as a test link and child node to the " + newInformation.getModalityString() + " root node.";
-      this._model.addToHistory(time, operation, description);
-      
+      try {
+        this._model.addToHistory(time, operation, description);
+      } catch (InterruptedException | ExecutionException | TimeoutException ex) {
+        Logger.getLogger(Node.class.getName()).log(Level.SEVERE, null, ex);
+      }
       return _model.getLtmByModality(newInformation).learnPrimitive (newInformation.getFirstItem (), time);
-    } 
-    else if (retrievedChunk.getContents().matches (newInformation)) {
+    } else if (retrievedChunk.getContents().matches (newInformation)) {
       // 5. retrieved chunk can be used as a test
+      description += "This matches " + newInformation.toString() + " so " + pattern.toString() + " will be added as a test link from " + retrievedChunk.getContents().toString() + " with an empty child node.";
+      try {
+        this._model.addToHistory(time, operation, description);
+      } catch (InterruptedException | ExecutionException | TimeoutException ex) {
+        Logger.getLogger(Node.class.getName()).log(Level.SEVERE, null, ex);
+      }
       ListPattern testPattern = retrievedChunk.getContents().clone ();
-      description += "This matches " + newInformation.toString() + " so " + testPattern.toString() + " will be added as a test link from " + retrievedChunk.getContents().toString() + " with an empty child node.";
-      this._model.addToHistory(time, operation, description);
-      
       return addTest (testPattern, time);
-    } 
-    else { 
+    } else { 
       // 6. mismatch, so use only the first item for test
       // NB: first-item must be in network as retrievedChunk was not the root node
       ListPattern firstItem = newInformation.getFirstItem ();
       firstItem.setNotFinished ();
       description += "This doesn't match " + newInformation.toString() + " so " + firstItem.toString() + " will be added as a test link from " + retrievedChunk.getContents().toString() + " with an empty child node.";
-      this._model.addToHistory(time, operation, description);
+      try {
+        this._model.addToHistory(time, operation, description);
+      } catch (InterruptedException | ExecutionException | TimeoutException ex) {
+        Logger.getLogger(Node.class.getName()).log(Level.SEVERE, null, ex);
+      }
       
       return addTest (firstItem, time);
     }
@@ -1146,10 +1163,18 @@ public class Node extends Observable {
    * information from the given pattern.
    */
   Node familiarise (ListPattern pattern, int domainTime) {
+    String operation = Operations.FAMILIARISE.name();
     ListPattern newInformation = pattern.remove (_image).getFirstItem ();
+    String description = "New information to add to node " + this.getReference() + " with image " + this.getImage().toString() + " from " + pattern.toString() + ": " + newInformation.toString() + ".  ";
     newInformation.setNotFinished ();
     // EXIT if nothing to learn
-    if (newInformation.isEmpty ()) { 
+    if (newInformation.isEmpty ()) {
+      description += "No new information to be learned, abandoning familiarisation.";
+      try {
+        this._model.addToHistory(domainTime, operation, description);
+      } catch (InterruptedException | ExecutionException | TimeoutException ex) {
+        Logger.getLogger(Node.class.getName()).log(Level.SEVERE, null, ex);
+      }
       return this;
     }
     //
@@ -1160,8 +1185,21 @@ public class Node extends Observable {
     Node retrievedChunk = _model.recognise (newInformation, domainTime);
     if (retrievedChunk == _model.getLtmByModality (pattern)) {
       // primitive not known, so learn it
+      description += "New information unrecognised so a new test link and node will be added to LTM.";
+      try {
+        this._model.addToHistory(domainTime, operation, description);
+      } catch (InterruptedException | ExecutionException | TimeoutException ex) {
+        Logger.getLogger(Node.class.getName()).log(Level.SEVERE, null, ex);
+      }
       return _model.getLtmByModality(newInformation).learnPrimitive (newInformation, domainTime);
     } else {
+      description += "New information recognised so will be used to extend existing image.";
+      try {      
+        this._model.addToHistory(domainTime, operation, description);
+      } catch (InterruptedException | ExecutionException | TimeoutException ex) {
+        Logger.getLogger(Node.class.getName()).log(Level.SEVERE, null, ex);
+      }
+      
       // extend image with new item
       return extendImage (newInformation, domainTime);
     }

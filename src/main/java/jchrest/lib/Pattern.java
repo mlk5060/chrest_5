@@ -3,6 +3,8 @@
 
 package jchrest.lib;
 
+import java.util.ArrayList;
+
 /** 
  * Parent class of all patterns.
  *

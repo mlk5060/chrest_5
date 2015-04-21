@@ -9,7 +9,6 @@ import jchrest.architecture.Chrest;
 import jchrest.lib.FileUtilities;
 import jchrest.lib.ListPattern;
 import jchrest.lib.PairedPattern;
-import jchrest.lib.Pattern;
 import jchrest.lib.Scenes;
 
 import java.awt.BorderLayout;
@@ -17,27 +16,34 @@ import java.awt.Component;
 import java.awt.GridLayout;
 import java.awt.event.*;
 import java.io.*;
+import java.lang.reflect.Constructor;
+import java.lang.reflect.InvocationTargetException;
 import java.text.DecimalFormat;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Observable;
 import java.util.Observer;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeoutException;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import javax.swing.*;
 import javax.swing.border.TitledBorder;
 import javax.swing.event.ChangeEvent;
 import javax.swing.event.ChangeListener;
+import javax.swing.filechooser.FileNameExtensionFilter;
+import javax.swing.filechooser.FileView;
 import javax.swing.table.AbstractTableModel;
 import javax.swing.table.TableCellRenderer;
 import javax.swing.table.TableColumnModel;
 import javax.swing.table.TableModel;
 import javax.swing.text.DefaultFormatter;
+import jchrest.lib.InputOutput;
+import jchrest.lib.PairedAssociateExperiment;
 
 import org.jfree.chart.*;
 import org.jfree.chart.plot.*;
-import org.jfree.data.*;
 import org.jfree.data.statistics.*;
 
 /**
@@ -91,6 +97,10 @@ public class Shell extends JFrame implements Observer {
     mb.add (createDataMenu ());
     mb.add (createModelMenu ());
     setJMenuBar (mb);
+  }
+  
+  public Chrest getModel(){
+    return this._model;
   }
 
   @Override
@@ -164,6 +174,50 @@ public class Shell extends JFrame implements Observer {
   }
   
   /**
+   * Action to load in a scripted experiment from file.
+   */
+  class LoadScriptedExperimentAction extends AbstractAction implements ActionListener {
+    private Shell _parent;
+    private String _scriptedExperimentClassFileName;
+
+    LoadScriptedExperimentAction (Shell parent, String scriptedExperimentName, String scriptedExperimentClassFileName) {
+      super (scriptedExperimentName); 
+      this._parent = parent;
+      this._scriptedExperimentClassFileName = scriptedExperimentClassFileName;
+    }
+    
+    @Override
+    public void actionPerformed(ActionEvent e) {
+      
+      //Retrieve the selected file as a File object and get the file's path 
+      //as a string so that file.getPath() isn't repeated.
+      File file = new File("classes" + File.separator + "jchrest" + File.separator + "experimentScripts" + File.separator + this._scriptedExperimentClassFileName + ".class");
+      String filePath = file.getPath();
+
+      //Now, invoke the static "main" method of the cripted experiment class
+      //specified by first retrieving the fully qualified scripted 
+      //experiment.  To do this the following operations are performed:
+      // 1. Replace all file path seperators with periods (standard java 
+      //    class name specification).
+      // 2. Get the file path from "jchrest" to where the file extension 
+      //    begins i.e. the first part of the class name to the last.
+      String fullyQualifiedExperimentClassName = filePath.replaceAll(File.separator, ".").substring(filePath.indexOf("jchrest"), filePath.lastIndexOf("."));
+
+      //Second, actually invoke the static "main" method of the scripted
+      //experiment.
+      try {
+        Class<?> scriptedExperimentClass = Class.forName(fullyQualifiedExperimentClassName);
+        Constructor scriptedExperimentConstructor = scriptedExperimentClass.getDeclaredConstructor(jchrest.gui.Shell.class);
+        scriptedExperimentConstructor.setAccessible(true);
+        scriptedExperimentConstructor.newInstance(this._parent);
+
+      } catch (ClassNotFoundException | NoSuchMethodException | SecurityException | IllegalArgumentException | InstantiationException | IllegalAccessException | InvocationTargetException ex) {
+        Logger.getLogger(Shell.class.getName()).log(Level.SEVERE, null, ex);
+      }
+    }
+  }
+  
+  /**
    * Action to load in a new pre-experiment data set from file.
    */
   class LoadPreExperimentDataAction extends AbstractAction implements ActionListener {
@@ -209,8 +263,8 @@ public class Shell extends JFrame implements Observer {
   /**
    * Worker thread to handle loading the data.
    */
-  private class LoadDataThread extends SwingWorker<Void, Void> {
-    private Shell _parent;
+  public class LoadDataThread extends SwingWorker<Void, Void> {
+    private final Shell _parent;
     private String _task;
     private List<ListPattern> _items;
     private List<PairedPattern> _pairs;
@@ -220,7 +274,7 @@ public class Shell extends JFrame implements Observer {
     private final boolean _experiment;
     private String _experimentName;
 
-    LoadDataThread (Shell parent, String openDialogTitle, boolean experiment) {
+    public LoadDataThread (Shell parent, String openDialogTitle, boolean experiment) {
       _parent = parent;
       _task = "";
       _items = null;
@@ -231,155 +285,120 @@ public class Shell extends JFrame implements Observer {
     }
 
     @Override
-      public Void doInBackground () {
-        JFileChooser fileChooser = new JFileChooser(".");
-        fileChooser.setDialogTitle(_openDialogTitle);
-        int resultOfFileSelect = fileChooser.showOpenDialog(_parent);
-        if(resultOfFileSelect == JFileChooser.APPROVE_OPTION){
-          File file = fileChooser.getSelectedFile();
-          
-          if (file == null) {
-            _status = Status.CANCELLED_SELECTION;
-          } else {
-            try {
-              _status = Status.OK; // assume all will be fine
-              _experimentName = file.getName().replaceFirst("\\..*$", "");
-              _task = "";
-              // add a monitor to the input stream, to show a message if input is taking a while
-              InputStream inputStream = new ProgressMonitorInputStream(
-                  _parent, 
-                  "Reading the input file", 
-                  new FileInputStream (file));
-              BufferedReader input = new BufferedReader (new InputStreamReader (inputStream));
+    public Void doInBackground () {
+      JFileChooser fileChooser = new JFileChooser(".");
+      fileChooser.setDialogTitle(_openDialogTitle);
+      int resultOfFileSelect = fileChooser.showOpenDialog(_parent);
+      if(resultOfFileSelect == JFileChooser.APPROVE_OPTION){
+        File file = fileChooser.getSelectedFile();
 
-              String line = input.readLine ();
-              if (line != null) {
-                _task = line.trim ();
-              }
+        if (file == null) {
+          _status = Status.CANCELLED_SELECTION;
+        } else {
+          try {
+            _status = Status.OK; // assume all will be fine
+            _experimentName = file.getName().replaceFirst("\\..*$", "");
+            _task = "";
+            // add a monitor to the input stream, to show a message if input is taking a while
+            InputStream inputStream = new ProgressMonitorInputStream(
+                _parent, 
+                "Reading the input file", 
+                new FileInputStream (file));
+            BufferedReader input = new BufferedReader (new InputStreamReader (inputStream));
+
+            String line = input.readLine ();
+            if (line != null) {
+              _task = line.trim ();
+            }
 
               if (_task.equals ("recognise-and-learn")) {
-                _items = readItems (input, false);
+                _items = InputOutput.readItems (input, false);
               } else if (_task.equals ("serial-anticipation")) {
-                _items = readItems (input, true);
+                _items = InputOutput.readItems (input, true);
               } else if (_task.equals ("paired-associate")) {
-                _pairs = readPairedItems (input, false);
+                _pairs = InputOutput.readPairedItems (input, false);
               } else if (_task.equals ("categorisation")) {
-                _pairs = readPairedItems (input, true);
+                _pairs = InputOutput.readPairedItems (input, true);
               } else if (_task.equals ("visual-search")) {
                 _scenes = Scenes.read (input); // throws IOException if any problem
               } else if (_task.equals ("visual-search-with-move")){
                 _scenes = Scenes.readWithMove (input); // throws IOException if any problem
-              }
-            } catch (InterruptedIOException ioe) {
-              _status = Status.CANCELLED_RUNNING; // flag cancelled error
-            } catch (IOException ioe) {
-              _status = Status.ERROR; // flag an IO error
             }
+          } catch (InterruptedIOException ioe) {
+            _status = Status.CANCELLED_RUNNING; // flag cancelled error
+          } catch (IOException ioe) {
+            ioe.printStackTrace(System.err); //Give some meaningful info for debugging.
+            _status = Status.ERROR; // flag an IO error
           }
         }
-        else if(resultOfFileSelect == JFileChooser.CANCEL_OPTION){
-          _status = Status.CANCELLED_SELECTION;
-        }
-        return null;
       }
-
-    @Override
-      protected void done () {
-        switch (_status) {
-          case CANCELLED_SELECTION:
-            break;
-          case ERROR:
-            JOptionPane.showMessageDialog (_parent, 
-                "There was an error in processing your file", 
-                "File error",
-                JOptionPane.ERROR_MESSAGE);
-            break;
-          case CANCELLED_RUNNING:
-            JOptionPane.showMessageDialog (_parent, 
-                "You cancelled the operation : no change", 
-                "File Load Cancelled",
-                JOptionPane.WARNING_MESSAGE);
-            break;
-          case OK:
-            //Before loading a new experiment, save the current learning clock 
-            //of the model in this experiment so that the most recent state of
-            //the model for this experiment can be rendered graphically, if
-            //requested.
-            _model.setMaxmimumTimeInExperiment(_model.getLearningClock());
-            
-            if(this._experiment){
-              _model.setLoadedIntoExperiment();
-              _model.addExperimentsLocatedInName(_experimentName);
-            }
-            else{
-              _model.setNotLoadedIntoExperiment();
-              _model.addExperimentsLocatedInName(_model.getPreExperimentPrepend() + _experimentName);
-            }
-            
-            if (_task.equals ("recognise-and-learn") && _items != null) {
-              _parent.setContentPane (new RecogniseAndLearnDemo (_model, _items));
-            } else if (_task.equals ("serial-anticipation") && _items != null) {
-              _parent.setContentPane (new PairedAssociateExperiment (_model, PairedAssociateExperiment.makePairs(_items)));
-            } else if (_task.equals ("paired-associate") && _pairs != null) {
-              _parent.setContentPane (new PairedAssociateExperiment (_model, _pairs));
-            } else if (_task.equals ("categorisation") && _pairs != null) {
-              _parent.setContentPane (new CategorisationExperiment (_model, _pairs));
-            } else if (_task.equals ("visual-search") && _scenes != null) {
-              _parent.setContentPane (new VisualSearchPane (_model, _scenes));
-            } else {
-              JOptionPane.showMessageDialog (_parent,
-                  "Invalid task on first line of file",
-                  "File error",
-                  JOptionPane.ERROR_MESSAGE);
-            }
-            _parent.validate ();
-            
-            break;
-        }
+      else if(resultOfFileSelect == JFileChooser.CANCEL_OPTION){
+        _status = Status.CANCELLED_SELECTION;
       }
-
-    private List<ListPattern> readItems (BufferedReader input, boolean verbal) throws IOException {
-      List<ListPattern> items = new ArrayList<ListPattern> ();
-      String line = input.readLine ();
-
-      while (line != null) {
-        ListPattern pattern;
-        if (verbal) {
-          pattern = Pattern.makeVerbalList (line.trim().split("[, ]"));
-        } else {
-          pattern = Pattern.makeVisualList (line.trim().split("[, ]"));
-        }
-        pattern.setFinished ();
-        items.add (pattern);
-        line = input.readLine ();
-      } 
-
-      return items;
+      return null;
     }
 
-    // categorisation = false => make both verbal
-    // categorisation = true  => make first visual, second verbal
-    private List<PairedPattern> readPairedItems (BufferedReader input, boolean categorisation) throws IOException {
-      List<PairedPattern> items = new ArrayList<PairedPattern> ();
-      String line = input.readLine ();
-      while (line != null) {
-        String[] pair = line.split (":");
-        if (pair.length != 2) throw new IOException (); // malformed pair
-        ListPattern pat1;
-        if (categorisation) {
-          pat1 = Pattern.makeVisualList (pair[0].trim().split("[, ]"));
-        } else {
-          pat1 = Pattern.makeVerbalList (pair[0].trim().split("[, ]"));
-        }
-        pat1.setFinished ();
-        ListPattern pat2 = Pattern.makeVerbalList (pair[1].trim().split("[, ]"));
-        pat2.setFinished ();
-        items.add (new PairedPattern (pat1, pat2));
+    @Override
+    protected void done () {
+      switch (_status) {
+        case CANCELLED_SELECTION:
+          break;
+        case ERROR:
+          JOptionPane.showMessageDialog (_parent, 
+              "There was an error in processing your file", 
+              "File error",
+              JOptionPane.ERROR_MESSAGE);
+          break;
+        case CANCELLED_RUNNING:
+          JOptionPane.showMessageDialog (_parent, 
+              "You cancelled the operation : no change", 
+              "File Load Cancelled",
+              JOptionPane.WARNING_MESSAGE);
+          break;
+        case OK:
+          //Before loading a new experiment, save the current learning clock 
+          //of the model in this experiment so that the most recent state of
+          //the model for this experiment can be rendered graphically, if
+          //requested.
+          _model.setMaxmimumTimeInExperiment(_model.getLearningClock());
 
-        line = input.readLine ();
+          if(this._experiment){
+            _model.setLoadedIntoExperiment();
+            _model.addExperimentsLocatedInName(_experimentName);
+          }
+          else{
+            _model.setNotLoadedIntoExperiment();
+            _model.addExperimentsLocatedInName(Chrest.getPreExperimentPrepend() + _experimentName);
+          }
+
+          if (_task.equals ("recognise-and-learn") && _items != null) {
+            _parent.setContentPane (new RecogniseAndLearnDemo (_model, _items));
+          } else if (_task.equals ("serial-anticipation") && _items != null) {
+            _parent.setContentPane (new PairedAssociateInterface (_model, PairedAssociateExperiment.makePairs(_items)));
+          } else if (_task.equals ("paired-associate") && _pairs != null) {
+            _parent.setContentPane (new PairedAssociateInterface (_model, _pairs));
+          } else if (_task.equals ("categorisation") && _pairs != null) {
+            _parent.setContentPane (new CategorisationExperiment (_model, _pairs));
+          } else if (_task.equals ("visual-search") && _scenes != null) {
+            _parent.setContentPane (new VisualSearchPane (_model, _scenes));
+          } else {
+            JOptionPane.showMessageDialog (_parent,
+                "Invalid task on first line of file",
+                "File error",
+                JOptionPane.ERROR_MESSAGE);
+          }
+          _parent.validate ();
+
+          break;
       }
+    }
 
-      return items;
+    public List<ListPattern> getItems(){
+      return this._items;
+    }
+    
+    public List<PairedPattern> getPairs(){
+      return this._pairs;
     }
   }
 
@@ -635,20 +654,22 @@ public class Shell extends JFrame implements Observer {
   private JTable _historyTable;
   private final List<List<String>> _history = new ArrayList<>();
   
-  private void updateHistory(SQLiteStatement sqlResults){
-    _history.clear();
-    int row = 0;
-
-    try {
-      while(sqlResults.step()){
-        _history.add(new ArrayList<>());
-        for(int col = 0; col < sqlResults.columnCount(); col++){
-          _history.get(row).add(sqlResults.columnString(col));
+  public void updateHistory(SQLiteStatement sqlResults){
+    this._history.clear();
+    
+    if(sqlResults != null){
+      try {
+        int row = 0;
+        while(sqlResults.step()){
+          _history.add(new ArrayList<>());
+          for(int col = 0; col < sqlResults.columnCount(); col++){
+            _history.get(row).add(sqlResults.columnString(col));
+          }
+          row += 1;
         }
-        row += 1;
+      } catch (SQLiteException ex) {
+        Logger.getLogger(Shell.class.getName()).log(Level.SEVERE, null, ex);
       }
-    } catch (SQLiteException ex) {
-      Logger.getLogger(Shell.class.getName()).log(Level.SEVERE, null, ex);
     }
   }
   
@@ -675,11 +696,26 @@ public class Shell extends JFrame implements Observer {
     }
   }
   
+  private void displayHistoryRetrievalErrorDialog(String message){
+    JOptionPane.showMessageDialog (this, 
+      message, 
+      "History Retrieval Error",
+      JOptionPane.ERROR_MESSAGE
+    );
+  }
+  
   private JPanel getHistoryPane() {
-    
+    this._history.clear();
     JPanel historyPanel = new JPanel();
-    updateHistory(this._model.getHistory());
-    
+    try {
+      this._model.getHistory(this, Shell.class.getMethod("updateHistory", new Class[]{SQLiteStatement.class}));
+    } catch (InterruptedException | ExecutionException | NoSuchMethodException | SecurityException ex) {
+      Logger.getLogger(Shell.class.getName()).log(Level.SEVERE, null, ex);
+    } catch (TimeoutException ex) {
+      Logger.getLogger(Shell.class.getName()).log(Level.SEVERE, null, ex);
+      this.displayHistoryRetrievalErrorDialog("Execution history has timed out");
+    }
+
     if(_history.isEmpty()){
       String emptyMessage = "No execution history recorded yet.<br><hr><br>";
 
@@ -871,10 +907,35 @@ public class Shell extends JFrame implements Observer {
     public void actionPerformed(ActionEvent e) {
       
       if(_operations.getValue().toString().equals("")){
-       updateHistory(_model.getHistory((Integer)_timeFrom.getValue(), (Integer)_timeTo.getValue()));
+        try{
+          _model.getHistory(
+            (Integer)_timeFrom.getValue(), 
+            (Integer)_timeTo.getValue(),
+            this,
+            Shell.class.getDeclaredMethod("updateHistory", new Class[]{SQLiteStatement.class})
+          );
+        } catch (InterruptedException | ExecutionException | NoSuchMethodException | SecurityException ex) {
+          Logger.getLogger(Shell.class.getName()).log(Level.SEVERE, null, ex);
+        } catch (TimeoutException ex) {
+          Logger.getLogger(Shell.class.getName()).log(Level.SEVERE, null, ex);
+          Shell.this.displayHistoryRetrievalErrorDialog("Execution history has timed out");
+        }
       }
       else{
-        updateHistory(_model.getHistory((String) _operations.getValue(), (Integer)_timeFrom.getValue(), (Integer)_timeTo.getValue()));
+        try{
+          _model.getHistory(
+            (String) _operations.getValue(),
+            (Integer)_timeFrom.getValue(), 
+            (Integer)_timeTo.getValue(),
+            this,
+            Shell.class.getDeclaredMethod("updateHistory", new Class[]{SQLiteStatement.class})
+          );
+        } catch (InterruptedException | ExecutionException | NoSuchMethodException | SecurityException ex) {
+          Logger.getLogger(Shell.class.getName()).log(Level.SEVERE, null, ex);
+        } catch (TimeoutException ex) {
+          Logger.getLogger(Shell.class.getName()).log(Level.SEVERE, null, ex);
+          Shell.this.displayHistoryRetrievalErrorDialog("Execution history has timed out");
+        }
       }
 
       ((AbstractTableModel)_historyTable.getModel()).fireTableStructureChanged();
@@ -954,6 +1015,16 @@ public class Shell extends JFrame implements Observer {
   private JMenu createDataMenu () {
     this._dataMenu = new JMenu ("Data");
     this._dataMenu.setMnemonic (KeyEvent.VK_D);
+    
+    JMenu scriptedExperimentSubMenu = new JMenu ("Load Scripted Experiment");
+    
+    //TODO: fix this.
+    //if(!_model.engagedInExperiment()){
+      scriptedExperimentSubMenu.setMnemonic(KeyEvent.VK_S);
+      scriptedExperimentSubMenu.add(new LoadScriptedExperimentAction(this, "Paired Associate: Fast/Slow", "PairedAssociateFastSlow"));
+    //}
+    this._dataMenu.add(scriptedExperimentSubMenu);
+    
     this._dataMenu.add (new LoadPreExperimentDataAction (this)).setAccelerator (KeyStroke.getKeyStroke('P', java.awt.Event.CTRL_MASK, false));
     this._dataMenu.add (new LoadExperimentDataAction (this)).setAccelerator(KeyStroke.getKeyStroke('O', java.awt.Event.CTRL_MASK, false));
     return this._dataMenu;

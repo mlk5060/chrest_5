@@ -16,33 +16,33 @@ import jchrest.architecture.Chrest;
 public class GenericDomain implements DomainSpecifics {
   
   /**
-   * Remove self from pattern since the creator will never need to learn its 
-   * own location given that everything will be relative to it if it exists in
-   * the pattern passed.  Also, remove duplicates.
+   * Remove self and empty identifiers along with duplicates from pattern passed 
+   * since: 
+   * 1) The creator will never need to learn its own location given that 
+   *    everything will be relative to it if it exists in the pattern passed
+   * 2) Empty identifiers are useless
+   * 3) Duplicates are useless.
    */
   public ListPattern normalise (ListPattern pattern) {
-    ListPattern result = new ListPattern();
+    ListPattern result = new ListPattern(pattern.getModality());
     
     for(PrimitivePattern prim : pattern){
-      String identifier = "";
-      
-      if(prim instanceof StringPattern){
-        StringPattern stringPrim = (StringPattern)prim;
-        identifier = stringPrim.getString();
-      }
-      else if(prim instanceof ItemSquarePattern){
+      if(prim instanceof ItemSquarePattern){
         ItemSquarePattern itemSquarePrim = (ItemSquarePattern)prim;
-        identifier = itemSquarePrim.getItem();
+        String identifier = itemSquarePrim.getItem();
+        if( 
+          !identifier.equalsIgnoreCase(Scene.getSelfIdentifier()) &&
+          !identifier.equals(Scene.getEmptySquareIdentifier()) && 
+          !result.contains(prim)
+        ){
+          result.add(prim);
+        } 
       }
-      
-      if( 
-        ( !identifier.equalsIgnoreCase(Scene.getSelfIdentifier()) || identifier.isEmpty() ) && 
-        !result.contains(prim)
-      ){
+      else{
         result.add(prim);
       }
     }
-    
+    result.setFinished();
     return result;
   }
 

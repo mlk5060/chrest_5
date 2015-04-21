@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<experiment>
+	<stimulus-repsonse-pair auditory-loop-priority="2">F E P : H A J</stimulus-repsonse-pair>
+	<stimulus-repsonse-pair auditory-loop-priority="3">Z U X : M A F</stimulus-repsonse-pair>
+	<stimulus-repsonse-pair auditory-loop-priority="1">P I J : Y U F</stimulus-repsonse-pair>
+	<fast-presentation>
+		<percentage-correct>
+			<data>0.5</data>
+			<data>1.0</data>
+			<data>1.5</data>
+			<data>2.8</data>
+			<data>3.3</data>
+			<data>3.7</data>
+			<data>3.75</data>
+			<data>4.3</data>
+			<data>5.0</data>
+			<data>5.5</data>
+		</percentage-correct>
+		<serial-position-errors>
+			<data id="F E P : H A J">5</data>
+			<data id="Z U X : M A F">6</data>
+			<data id="P I J : Y U F">7</data>
+		</serial-position-errors>
+	</fast-presentation>
+	<slow-presentation>
+		<percentage-correct>
+			<data>0.6</data>
+			<data>1.4</data>
+			<data>2.8</data>
+			<data>3.7</data>
+			<data>4.5</data>
+			<data>5.0</data>
+			<data>5.6</data>
+			<data>6.6</data>
+			<data>6.65</data>
+			<data>7.4</data>
+		</percentage-correct>
+		<serial-position-errors>
+			<data id="F E P : H A J">4</data>
+			<data id="Z U X : M A F">3</data>
+			<data id="P I J : Y U F">6</data>
+		</serial-position-errors>
+	</slow-presentation>
+</experiment>

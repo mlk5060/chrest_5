@@ -9,5 +9,4 @@ package jchrest.lib;
  *
  * @author Peter C. R. Lane
  */
-public abstract class PrimitivePattern extends Pattern {
-}
+public abstract class PrimitivePattern extends Pattern {}

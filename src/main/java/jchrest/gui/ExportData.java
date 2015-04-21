@@ -15,6 +15,7 @@ import javax.swing.JFileChooser;
 import javax.swing.JOptionPane;
 import javax.swing.JTable;
 import javax.swing.table.AbstractTableModel;
+import org.jsoup.Jsoup;
 
 /**
  * Contains methods for exporting CHREST data.
@@ -104,7 +105,7 @@ public class ExportData {
           try {
             file.createNewFile();
           } catch (IOException ex) {
-            Logger.getLogger(PairedAssociateExperiment.class.getName()).log(Level.SEVERE, null, ex);
+            Logger.getLogger(PairedAssociateInterface.class.getName()).log(Level.SEVERE, null, ex);
           }
 
           file.setWritable(true, true);
@@ -116,7 +117,7 @@ public class ExportData {
           try (PrintWriter filePrintWriter = new PrintWriter(file)) {
             filePrintWriter.write(data.get(0));
           } catch (FileNotFoundException ex) {
-            Logger.getLogger(PairedAssociateExperiment.class.getName()).log(Level.SEVERE, null, ex);
+            Logger.getLogger(PairedAssociateInterface.class.getName()).log(Level.SEVERE, null, ex);
           }
         }
       } else {
@@ -139,13 +140,13 @@ public class ExportData {
     String tableData = "";
 
     for (int col = 0; col < nCol; col++) {
-      tableData += "," + atm.getColumnName(col);
+      tableData += "," + Jsoup.parse(atm.getColumnName(col)).text();
     }
     tableData += "\n";
 
     for (int row = 0; row < nRow; row++) {
       for (int col = 0; col < nCol; col++) {
-        tableData += "," + atm.getValueAt(row, col);
+        tableData += "," + Jsoup.parse(atm.getValueAt(row, col).toString()).text();
       }
       tableData += "\n";
     }

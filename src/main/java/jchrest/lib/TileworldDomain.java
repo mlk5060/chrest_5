@@ -14,7 +14,7 @@ public class TileworldDomain implements DomainSpecifics{
 
   @Override
   public ListPattern normalise(ListPattern pattern) {
-    ListPattern result = new ListPattern();
+    ListPattern result = new ListPattern(pattern.getModality());
     
     //Remove self from pattern since the location of self doesn't need to be
     //learned and remove duplicates that may have been added due to random 

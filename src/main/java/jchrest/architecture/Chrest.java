@@ -8,6 +8,8 @@ import com.almworks.sqlite4java.*;
 import java.io.IOException;
 import java.io.Writer;
 import java.lang.reflect.Field;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -17,6 +19,10 @@ import java.util.Observable;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.TreeMap;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
+import javax.swing.JDialog;
 import jchrest.lib.*;
 import jchrest.lib.ReinforcementLearning.ReinforcementLearningTheories;
 
@@ -51,9 +57,11 @@ public class Chrest extends Observable {
   private final static String _preExperimentPrepend = "Pre-expt: ";
   
   //CHREST execution history variables
-  private boolean _historyEnabled = false;
-  private SQLiteConnection _historyConnection;
+  private SQLiteQueue _historyThread = null;
+  private boolean _historyEnabled = true;
+  private SQLiteConnection _historyConnection = null;
   private final static String _historyTableName = "history";
+  private final long _historyTimeout = 5;
   
   // internal clocks
   private int _attentionClock; //Indicates the time at which CHREST will be free to perform mind's eye operations.
@@ -119,14 +127,8 @@ public class Chrest extends Observable {
     //Execution history set-up.
     SQLite.setLibraryPath("../sqlite4java-392"); //Extremely important: without this, execution history will not be able to operate.
     Logger.getLogger("com.almworks.sqlite4java").setLevel(Level.OFF); //Turn off extensive logging by "default".
-    this._historyConnection = new SQLiteConnection(); //No argument: creates new DB in memory not on disk.
     
-    try {
-      this._historyConnection.open(true);
-      this._historyConnection.exec("CREATE TABLE " + this._historyTableName + " (id INTEGER PRIMARY KEY, time INT, operation TEXT, description TEXT);");
-    } catch (SQLiteException ex) {
-      Logger.getLogger(Chrest.class.getName()).log(Level.SEVERE, null, ex);
-    }
+    this.instantiateHistoryDatabase();
     
     //Set learning parameters.
     _addLinkTime = 10000;
@@ -404,8 +406,38 @@ public class Chrest extends Observable {
   }
   
   /**
-   * This function adds an episode to the "history" DB table in memory if the 
-   * model can record history.
+   * Instantiates a history database for this model if the model can record
+   * history and the history database connection has not already been 
+   * instantiated.
+   */
+  private void instantiateHistoryDatabase(){
+    if(this.canRecordHistory() && this._historyThread == null){
+      this._historyThread = new SQLiteQueue();
+      
+        this._historyThread.execute(new SQLiteJob<Object>() {
+          protected Object job(SQLiteConnection connection) throws SQLiteException {
+            
+            try {
+              _historyConnection = new SQLiteConnection(); //No argument: creates new DB in memory not on disk.
+              _historyConnection.open(true);
+              _historyConnection.exec("CREATE TABLE " + Chrest._historyTableName + " (id INTEGER PRIMARY KEY, time INT, operation TEXT, description TEXT);");
+              _historyConnection.profile();
+            } catch (SQLiteException ex) {
+              Logger.getLogger(Chrest.class.getName()).log(Level.SEVERE, null, ex);
+            }
+            
+            return null;
+          }
+        });
+
+        this._historyThread.start();
+
+    }
+  }
+  
+  /**
+   * This function adds an episode to the "history" DB table in memory if there 
+   * is an active history database connection.
    * 
    * @param time The time that the event occurred (either simulation time or
    * real time).
@@ -416,23 +448,31 @@ public class Chrest extends Observable {
    * @param description An informative description of what the function 
    * referenced in the "operation" parameter is doing in this episode.
    */
-  public void addToHistory(Integer time, String operation, String description) {
-    if(this.canRecordHistory()){
-      
-      try{        
-        SQLiteStatement sql = this._historyConnection.prepare("INSERT INTO " + this._historyTableName + " (time, operation, description) VALUES (?, ?, ?)");
+  public void addToHistory(Integer time, String operation, String description) throws InterruptedException, ExecutionException, TimeoutException {
+    this.instantiateHistoryDatabase();
+    if(this._historyThread != null){
+      this._historyThread.execute(new SQLiteJob<Object>() {
         
-        try{
-          sql.bind(1, time).bind(2, operation).bind(3, description);
-          sql.stepThrough();
+        @Override
+        protected Object job(SQLiteConnection connection) throws SQLiteException {
+          try{
+            SQLiteStatement sql = _historyConnection.prepare("INSERT INTO " + Chrest._historyTableName + " (time, operation, description) VALUES (?, ?, ?)");
+
+            try{
+              sql.bind(1, time).bind(2, operation).bind(3, description);
+              sql.stepThrough();
+            }
+            finally{
+              sql.dispose();
+            }
+          }
+          catch (SQLiteException ex) {
+            Logger.getLogger(Chrest.class.getName()).log(Level.SEVERE, null, ex);
+          }
+
+          return null;
         }
-        finally{
-          sql.dispose();
-        }
-      }
-      catch (SQLiteException ex) {
-        Logger.getLogger(Chrest.class.getName()).log(Level.SEVERE, null, ex);
-      }
+      }).get(this._historyTimeout, TimeUnit.SECONDS);
     }
   }
   
@@ -455,69 +495,159 @@ public class Chrest extends Observable {
   }
   
   /**
-   * Returns the entire execution history of this model.
+   * Asynchronous retrieval of history: retrieves entire execution history if 
+   * there is an active history database thread and then passes this execution 
+   * history to the specified method of the specified object.
    * 
-   * @return The model's entire execution history.
+   * @param object The object to invoke the specified method on when the history
+   * database thread completes retrieval of execution history.
+   * @param method The method to invoke in the specified object when the history
+   * database thread completes retrieval of execution history.
+   * @throws java.lang.InterruptedException
+   * @throws java.util.concurrent.ExecutionException
+   * @throws java.util.concurrent.TimeoutException
    */
-  public SQLiteStatement getHistory() {
-    SQLiteStatement history = null;
-    try {
-      history = this._historyConnection.prepare("SELECT * FROM " + this._historyTableName).stepThrough();
-    } catch (SQLiteException ex) {
-      Logger.getLogger(Chrest.class.getName()).log(Level.SEVERE, null, ex);
+  public void getHistory(Object object, Method method) throws InterruptedException, ExecutionException, TimeoutException {
+    if(this._historyThread != null){
+      
+      this._historyThread.execute(new SQLiteJob<SQLiteStatement>() {
+
+        @Override
+        protected SQLiteStatement job(SQLiteConnection connection) throws SQLiteException {
+          SQLiteStatement history = null;
+          try {
+            history = _historyConnection.prepare("SELECT * FROM " + Chrest._historyTableName).stepThrough();
+          } catch (SQLiteException ex) {
+            Logger.getLogger(Chrest.class.getName()).log(Level.SEVERE, null, ex);
+          }
+
+          return history;
+        }
+
+        @Override
+        protected void jobFinished(SQLiteStatement history){
+          try {
+            method.invoke(object, history);
+          } catch (IllegalAccessException | IllegalArgumentException | InvocationTargetException ex) {
+            Logger.getLogger(Chrest.class.getName()).log(Level.SEVERE, null, ex);
+          }
+        }
+      }).get(this._historyTimeout, TimeUnit.SECONDS);
     }
-    
-    return history;
   }
   
   /**
-   * Returns the model's execution history from the time specified to the time
-   * specified.
+   * Asynchronous retrieval of history: retrieves the model's execution history 
+   * from the time specified to the time specified if there is an active history 
+   * database thread and then passes this execution history to the specified 
+   * method of the specified object.
    * 
    * @param from Domain-time to return model's execution history from.
    * @param to Domain-time to return model's execution history to.
-   * @return The model's execution history from the time specified to the time
-   * specified.
+   * @param object The object to invoke the specified method on when the history
+   * database thread completes retrieval of execution history.
+   * @param method The method to invoke in the specified object when the history
+   * database thread completes retrieval of execution history.
+   * @throws java.lang.InterruptedException
+   * @throws java.util.concurrent.ExecutionException
+   * @throws java.util.concurrent.TimeoutException
    */
-  public SQLiteStatement getHistory(int from, int to) {
-    SQLiteStatement history = null;
-    try {
-      history = this._historyConnection.prepare("SELECT * FROM " + this._historyTableName + " WHERE time >= ? AND time <= ?").bind(1, from).bind(2, to).stepThrough();
-    } catch (SQLiteException ex) {
-      Logger.getLogger(Chrest.class.getName()).log(Level.SEVERE, null, ex);
+  public void getHistory(int from, int to, Object object, Method method) throws InterruptedException, ExecutionException, TimeoutException {
+    if(this._historyThread != null){
+      this._historyThread.execute(new SQLiteJob<SQLiteStatement>() {
+
+        @Override
+        protected SQLiteStatement job(SQLiteConnection connection) throws SQLiteException {
+          SQLiteStatement history = null;
+
+          try {
+            history = _historyConnection.prepare("SELECT * FROM " + Chrest._historyTableName + " WHERE time >= ? AND time <= ?").bind(1, from).bind(2, to).stepThrough();
+          } catch (SQLiteException ex) {
+            Logger.getLogger(Chrest.class.getName()).log(Level.SEVERE, null, ex);
+          }
+
+          return history;
+        }
+        
+        @Override
+        protected void jobFinished(SQLiteStatement history){
+          try {
+            method.invoke(object, history);
+          } catch (IllegalAccessException | IllegalArgumentException | InvocationTargetException ex) {
+            Logger.getLogger(Chrest.class.getName()).log(Level.SEVERE, null, ex);
+          }
+        }
+      }).get(this._historyTimeout, TimeUnit.SECONDS);
     }
-    
-    return history;
   }
   
   /**
-   * Returns the model's execution history filtered by the operation specified.
+   * Returns the model's execution history filtered by the operation specified 
+   * if there is an active history database connection.
    * 
    * @param operation The operation to filter execution history by.
    * @param from Domain-time to return model's execution history from.
    * @param to Domain-time to return model's execution history to.
-   * @return 
+   * @param object The object to invoke the specified method on when the history
+   * database thread completes retrieval of execution history.
+   * @param method The method to invoke in the specified object when the history
+   * database thread completes retrieval of execution history.
+   * @throws java.lang.InterruptedException 
+   * @throws java.util.concurrent.ExecutionException 
+   * @throws java.util.concurrent.TimeoutException 
    */
-  public SQLiteStatement getHistory(String operation, int from, int to) {
-    SQLiteStatement history = null;
-    
-    try {
-      history = this._historyConnection.prepare("SELECT * FROM " + this._historyTableName + " WHERE operation = ? AND time >= ? AND time <= ?").bind(1, operation).bind(2, from).bind(3, to).stepThrough();
-    } catch (SQLiteException ex) {
-      Logger.getLogger(Chrest.class.getName()).log(Level.SEVERE, null, ex);
+  public void getHistory(String operation, int from, int to, Object object, Method method) throws InterruptedException, ExecutionException, TimeoutException {
+    if(this._historyThread != null){
+      
+      this._historyThread.execute(new SQLiteJob<SQLiteStatement>() {
+
+        @Override
+        protected SQLiteStatement job(SQLiteConnection connection) throws SQLiteException {
+          SQLiteStatement history = null;
+          try {
+            history = _historyConnection.prepare("SELECT * FROM " + Chrest._historyTableName + " WHERE operation = ? AND time >= ? AND time <= ?").bind(1, operation).bind(2, from).bind(3, to).stepThrough();
+          } catch (SQLiteException ex) {
+            Logger.getLogger(Chrest.class.getName()).log(Level.SEVERE, null, ex);
+          }
+          return history;
+        }
+
+        @Override
+        protected void jobFinished(SQLiteStatement history){
+          try {
+            method.invoke(object, history);
+          } catch (IllegalAccessException | IllegalArgumentException | InvocationTargetException ex) {
+            Logger.getLogger(Chrest.class.getName()).log(Level.SEVERE, null, ex);
+          }
+        }
+      }).get(this._historyTimeout, TimeUnit.SECONDS);
     }
-    
-    return history;
   }
   
   /**
-   * Clears the model's current execution history.
+   * Clears the model's current execution history if there is an active history 
+   * database connection.
    */
   public void clearHistory() {
-    try {
-      this._historyConnection.exec("DELETE FROM " + this._historyTableName);
-    } catch (SQLiteException ex) {
-      Logger.getLogger(Chrest.class.getName()).log(Level.SEVERE, null, ex);
+    if(this._historyThread != null){
+      
+      this._historyThread.execute(new SQLiteJob<Object>() {
+
+        @Override
+        protected Object job(SQLiteConnection connection) throws SQLiteException {
+
+          try {
+            _historyConnection.exec("DROP TABLE " + Chrest._historyTableName);
+          } catch (SQLiteException ex) {
+            Logger.getLogger(Chrest.class.getName()).log(Level.SEVERE, null, ex);
+          }
+
+          _historyConnection.dispose();
+          return null;
+        }
+      }).complete();
+      
+      this._historyThread.stop(true);
     }
   }
 
@@ -1018,6 +1148,7 @@ public class Chrest extends Observable {
    */
   public Node recognise (ListPattern pattern, int domainTime) {
     Node currentNode = getLtmByModality (pattern);
+    
     List<Link> children = currentNode.getChildren ();
     ListPattern sortedPattern = pattern;
     int nextLink = 0;
@@ -1038,7 +1169,7 @@ public class Chrest extends Observable {
 
     // try to retrieve a more informative node in semantic links
     currentNode = currentNode.searchSemanticLinks (_maximumSemanticDistance);
-
+    
     // add retrieved node to STM
     addToStm (currentNode, domainTime);
 
@@ -1061,7 +1192,8 @@ public class Chrest extends Observable {
         if (!currentNode.getImage().equals (pattern)) { // only try any learning if image differs from pattern
           if (currentNode == getLtmByModality (pattern) || // if is rootnode
             !currentNode.getImage().matches (pattern) || // or mismatch on image
-              currentNode.getImage().isFinished ()) {      // or image finished
+            currentNode.getImage().isFinished () // or image finished
+          ) {
             currentNode = currentNode.discriminate (pattern, time); // then discriminate
           } else  { // else familiarise
             currentNode = currentNode.familiarise (pattern, time);
@@ -1226,15 +1358,12 @@ public class Chrest extends Observable {
    */
   private Node learnAndLinkPatterns (ListPattern pattern1, ListPattern pattern2, int time) {
     Node pat1Retrieved = recognise (pattern1, time);
-  
-    // 1. is retrieved node image a match for pattern1?
+    
+   // 1. is retrieved node image a match for pattern1?
     if (pat1Retrieved.getImage().matches (pattern1)) {
       
       // 2. does retrieved node have a lateral link?
       if (pat1Retrieved.getAssociatedNode() != null) {
-        
-        
-          
         // if yes
         //   3. is linked node image match pattern2? if not, learn pattern2
         if (pat1Retrieved.getAssociatedNode().getImage().matches (pattern2)) {
@@ -1248,7 +1377,6 @@ public class Chrest extends Observable {
           }
         } else {
           recogniseAndLearn (pattern2, time);
-          // force it to correct a mistake
           recogniseAndLearn (pattern1, time);
           
           if (_learningClock <= time) {
@@ -1268,12 +1396,11 @@ public class Chrest extends Observable {
         // 6. if pattern2 retrieved node image match for pattern2, learn link, else learn pattern2
         if (pat2Retrieved.getImage().matches (pattern2)) {  
           associatePatterns(pat1Retrieved, pat2Retrieved, "", time);
-        } else { // image not a match, so we need to learn pattern 2
+        } 
+        else { // image not a match, so we need to learn pattern 2
           recogniseAndLearn (pattern2, time);
-          
           // 5. sort pattern2
           pat2Retrieved = recognise (pattern2, time);
-          
           // 6. if pattern2 retrieved node image match for pattern2, learn link, else learn pattern2
           if (pat2Retrieved.getImage().matches (pattern2)) {
             associatePatterns(pat1Retrieved, pat2Retrieved, "", time);
@@ -1625,6 +1752,7 @@ public class Chrest extends Observable {
    */
   public void clear () {
     this.clearHistory();
+    this.instantiateHistoryDatabase();
     _attentionClock = 0;
     _learningClock = 0;
     _visualLtm.clear ();
@@ -1637,6 +1765,7 @@ public class Chrest extends Observable {
     _visualStm.clear (0);
     _verbalStm.clear (0);
     _experimentsLocatedInNames.clear();
+    this._engagedInExperiment = false;
     setChanged ();
     if (!_frozen) notifyObservers ();
   }

@@ -2,32 +2,40 @@
 
 process_test "timings" do
   model = Chrest.new
-  model.setRho 1.0
+  model.setRho 1.0 # Will always pass rho test in Chrest.recogniseAndLearn()
   model.setFamiliarisationTime 2000
   model.setDiscriminationTime 10000
   patternA = Pattern.makeVisualList(["B", "I", "F"].to_java(:String))
   patternB = Pattern.makeVisualList(["X", "A", "Q"].to_java(:String))
-
+  
   assert_equal(0, model.getLearningClock)
+  
   # check changed on one learning operation
-  model.recogniseAndLearn patternA # -- discriminate node for 'B'
-  assert_equal(10000, model.getLearningClock)
+  model.recogniseAndLearn(patternA, 0) # -- discriminate node for 'B'
+  assert_equal(10000, model.getLearningClock, "discriminate B")
+  
   # check changed on second learning operation
-  model.recogniseAndLearn patternA # -- familiarise node for 'B'
-  assert_equal(12000, model.getLearningClock)
+  model.recogniseAndLearn(patternA, 10000) # -- familiarise node for 'B'
+  assert_equal(12000, model.getLearningClock, "familiarise B")
+  
   # check a busy model is not changed
   model.recogniseAndLearn(patternB, 10000) # -- busy, no change
-  assert_equal(12000, model.getLearningClock)
-  model.recogniseAndLearn patternA # -- discriminate node for 'I'
-  assert_equal(22000, model.getLearningClock)
-  model.recogniseAndLearn patternA # -- familiarise node with 'BI'
-  assert_equal(24000, model.getLearningClock)
-  model.recogniseAndLearn patternA # -- discriminate node for 'F'
-  assert_equal(34000, model.getLearningClock)
-  model.recogniseAndLearn patternA # -- familiarise node for 'BIF'
-  assert_equal(36000, model.getLearningClock)
-  model.recogniseAndLearn patternA # -- no change, pattern fully learnt
-  assert_equal(36000, model.getLearningClock)
+  assert_equal(12000, model.getLearningClock, "busy while familiarising B")
+  
+  model.recogniseAndLearn(patternA, 12000) # -- discriminate node for 'I'
+  assert_equal(22000, model.getLearningClock, "discriminate I")
+  
+  model.recogniseAndLearn(patternA, 22000) # -- familiarise node with 'BI'
+  assert_equal(24000, model.getLearningClock, "familiarise I with B")
+  
+  model.recogniseAndLearn(patternA, 24000) # -- discriminate node for 'F'
+  assert_equal(34000, model.getLearningClock, "discriminate F")
+  
+  model.recogniseAndLearn(patternA, 34000) # -- familiarise node for 'BIF'
+  assert_equal(36000, model.getLearningClock, "familiarise F with BI")
+  
+  model.recogniseAndLearn(patternA, 36000) # -- no change, pattern fully learnt
+  assert_equal(36000, model.getLearningClock, "pattern fully learned")
 end
 
 process_test "base case" do

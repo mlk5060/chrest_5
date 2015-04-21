@@ -12,6 +12,7 @@ package jchrest.lib;
 public enum Operations {
   DISCRIMINATE,
   FAMILIARISE,
+  LEARN_AND_LINK_PATTERNS,
   PRODUCTION_MANAGEMENT,
   TEMPLATE_MANAGEMENT
 }

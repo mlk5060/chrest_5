@@ -1,0 +1,8 @@
+<?xml version="1.0"?>
+<xs:schema>
+
+<xs:element name="experiment">
+<!-- INCOMPLETE, NEEDS TO BE CONSTRUCTED -->
+</xs:element>
+
+</xs:schema>
