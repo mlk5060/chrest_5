@@ -272,6 +272,25 @@ public class PairedAssociateFastSlow {
   private void createModelPercentageCorrectDataTable(){
     TableModel tm = new AbstractTableModel () {
       
+      private int convertRowToExperimentCondition(int row){
+        int maxNumberTrials = Math.max(
+          PairedAssociateFastSlow.this._humanPercentageCorrectData.get("fast").size(), 
+          PairedAssociateFastSlow.this._humanPercentageCorrectData.get("slow").size()
+        );
+
+        row++;
+
+        int integer = row / maxNumberTrials;
+        int fraction = row % maxNumberTrials;
+
+        if(fraction != 0){
+          return integer + 1;
+        }
+        else{
+          return integer;
+        }
+      }
+      
       @Override
       public int getRowCount () {
         
@@ -286,30 +305,20 @@ public class PairedAssociateFastSlow {
       
       @Override
       public int getColumnCount () {
-        return 3; 
+        return 6; 
       }
       
       @Override
       public Object getValueAt (int row, int column) {
         if(column == 0){
-          int maxNumberTrials = Math.max(
-            PairedAssociateFastSlow.this._humanPercentageCorrectData.get("fast").size(), 
-            PairedAssociateFastSlow.this._humanPercentageCorrectData.get("slow").size()
-          );
-          
-          row++;
-          
-          int integer = row / maxNumberTrials;
-          int fraction = row % maxNumberTrials;
-          
-          if(fraction != 0){
-            return integer + 1;
-          }
-          else{
-            return integer;
-          }
-        }
-        else if (column == 1) {
+          return this.convertRowToExperimentCondition(row);
+        } else if(column == 1){
+          return PairedAssociateFastSlow.this._experimentConditionsTable.getValueAt(this.convertRowToExperimentCondition(row) - 1, column);
+        } else if(column == 2){
+          return PairedAssociateFastSlow.this._experimentConditionsTable.getValueAt(this.convertRowToExperimentCondition(row) - 1, column);
+        } else if(column == 3){
+          return PairedAssociateFastSlow.this._experimentConditionsTable.getValueAt(this.convertRowToExperimentCondition(row) - 1, column);
+        } else if (column == 4) {
           
           //Want the last digit (or 2 if 10).
           String rowAsString = String.valueOf(row + 1);
@@ -335,6 +344,12 @@ public class PairedAssociateFastSlow {
         if(column == 0){
           return "Experiment Condition";
         } else if (column == 1) {
+          return "Presentation Speed";
+        } else if (column == 2){
+          return "Auditory Loop Size";
+        } else if (column == 3){
+          return "Pre-Learning Type";
+        } else if (column == 4) {
           return "Trial #";
         } else {
           return "Result";
@@ -356,6 +371,22 @@ public class PairedAssociateFastSlow {
   private void createModelSerialPositionDataTable(){
     TableModel tm = new AbstractTableModel () {
       
+      private int convertRowToExperimentCondition(int row){
+        int numberStimRespPairs = PairedAssociateFastSlow.this._stimRespPairs.size();
+          
+        row++;
+
+        int integer = row / numberStimRespPairs;
+        int fraction = row % numberStimRespPairs;
+
+        if(fraction != 0){
+          return integer + 1;
+        }
+        else{
+          return integer;
+        }
+      }
+      
       @Override
       public int getRowCount () {
         
@@ -367,27 +398,20 @@ public class PairedAssociateFastSlow {
       
       @Override
       public int getColumnCount () {
-        return 3; 
+        return 6; 
       }
       
       @Override
       public Object getValueAt (int row, int column) {
         if(column == 0){
-          int numberStimRespPairs = PairedAssociateFastSlow.this._stimRespPairs.size();
-          
-          row++;
-          
-          int integer = row / numberStimRespPairs;
-          int fraction = row % numberStimRespPairs;
-          
-          if(fraction != 0){
-            return integer + 1;
-          }
-          else{
-            return integer;
-          }
-        }
-        else if (column == 1) {
+          return this.convertRowToExperimentCondition(row);
+        } else if(column == 1){
+          return PairedAssociateFastSlow.this._experimentConditionsTable.getValueAt(this.convertRowToExperimentCondition(row) - 1, column);
+        } else if(column == 2){
+          return PairedAssociateFastSlow.this._experimentConditionsTable.getValueAt(this.convertRowToExperimentCondition(row) - 1, column);
+        } else if(column == 3){
+          return PairedAssociateFastSlow.this._experimentConditionsTable.getValueAt(this.convertRowToExperimentCondition(row) - 1, column);
+        } else if (column == 4) {
           return PairedAssociateFastSlow.this._stimRespPairs.get(PairedAssociateFastSlow.this.getStimulusResponsePairIndexForExperimentNumber(row + 1)).getFirst().toString();
         } 
         else {
@@ -429,6 +453,12 @@ public class PairedAssociateFastSlow {
         if(column == 0){
           return "Experiment Condition";
         } else if (column == 1) {
+          return "Presentation Speed";
+        } else if (column == 2){
+          return "Auditory Loop Size";
+        } else if (column == 3){
+          return "Pre-Learning Type";
+        } else if (column == 4) {
           return "Stimulus";
         } else {
           return "Result";
@@ -450,6 +480,10 @@ public class PairedAssociateFastSlow {
   private void createRSquarePercentageCorrectDataTable(){
     TableModel tm = new AbstractTableModel () {
       
+      private int convertRowToExperimentCondition(int row){
+        return row + 1;
+      }
+      
       @Override
       public int getRowCount () {
         
@@ -459,15 +493,20 @@ public class PairedAssociateFastSlow {
       
       @Override
       public int getColumnCount () {
-        return 3; 
+        return 6; 
       }
       
       @Override
       public Object getValueAt (int row, int column) {
         if(column == 0){
-          return row + 1;
-        }
-        else if(column == 1){
+          return this.convertRowToExperimentCondition(row);
+        } else if(column == 1){
+          return PairedAssociateFastSlow.this._experimentConditionsTable.getValueAt(this.convertRowToExperimentCondition(row) - 1, column);
+        } else if(column == 2){
+          return PairedAssociateFastSlow.this._experimentConditionsTable.getValueAt(this.convertRowToExperimentCondition(row) - 1, column);
+        } else if(column == 3){
+          return PairedAssociateFastSlow.this._experimentConditionsTable.getValueAt(this.convertRowToExperimentCondition(row) - 1, column);
+        } else if(column == 4){
           String value = "";
           if(row < PairedAssociateFastSlow.this._percentageCorrectRSquares.size()){
             value = String.format("%.2f", PairedAssociateFastSlow.this._percentageCorrectRSquares.get(row));
@@ -487,7 +526,13 @@ public class PairedAssociateFastSlow {
       public String getColumnName (int column) {
         if(column == 0){
           return "Experiment Condition";
-        } else if(column == 1){
+        } else if (column == 1) {
+          return "Presentation Speed";
+        } else if (column == 2){
+          return "Auditory Loop Size";
+        } else if (column == 3){
+          return "Pre-Learning Type";
+        } else if(column == 4){
           return "<html>R<sup>2</sup></html>";
         } else {
           return "RMSE";
@@ -511,63 +556,30 @@ public class PairedAssociateFastSlow {
       
       @Override
       public int getRowCount () {
-        
-        return PairedAssociateFastSlow.this._numberExperimentConditions * 
-          PairedAssociateFastSlow.this._stimRespPairs.size();
+        return PairedAssociateFastSlow.this._numberExperimentConditions;
       }
       
       @Override
       public int getColumnCount () {
-        return 4; 
+        return 6; 
       }
       
       @Override
       public Object getValueAt (int row, int column) {
+        
         if(column == 0){
-          int numberStimRespPairs = PairedAssociateFastSlow.this._stimRespPairs.size();
-          
-          row++;
-          
-          int integer = row / numberStimRespPairs;
-          int fraction = row % numberStimRespPairs;
-          
-          if(fraction != 0){
-            return integer + 1;
-          }
-          else{
-            return integer;
-          }
-        }
-        else if(column == 1){
-          return PairedAssociateFastSlow.this._stimRespPairs.get(PairedAssociateFastSlow.this.getStimulusResponsePairIndexForExperimentNumber(row + 1)).getFirst().toString();
-        }
-        else if(column == 2){
+          return row + 1;
+        } else if(column == 1){
+          return PairedAssociateFastSlow.this._experimentConditionsTable.getValueAt(row, column);
+        } else if(column == 2){
+          return PairedAssociateFastSlow.this._experimentConditionsTable.getValueAt(row, column);
+        } else if(column == 3){
+          return PairedAssociateFastSlow.this._experimentConditionsTable.getValueAt(row, column);
+        } else if(column == 4){
           String value = "";
           
-          //Convert the row into an experiment number by adding 1 to row 
-          //experiment numbers are non-zero indexed).
-          int experimentNumber = row + 1;
-          
-          //Get the number of stimulus response pairs and divide the experiment
-          //number by this and retrieve the fraction too.  We divide by the 
-          //number of stimulus-response pairs since each experiment conidition
-          //is comprised of n stimulus-response pairs in the table.
-          int numberStimRespPairs = PairedAssociateFastSlow.this._stimRespPairs.size();
-          int experimentCondition = experimentNumber / numberStimRespPairs;
-          int fraction = experimentNumber % numberStimRespPairs;
-
-          //If the fraction is 0 then this is the last-stimulus-response pair
-          //of the experiment condition and the experiment condition will be 1
-          //greater than what it should be, so correct this.
-          if(fraction == 0){
-            experimentCondition--;
-          }
-
-          //Now, check to see if the experiment condition calculated has a value
-          //in the data used to populate the table model.  If so, get the value
-          //for the stimulus in the experiment condition.
-          if(experimentCondition < PairedAssociateFastSlow.this._serialPositionRSquares.size()){
-            value = String.format("%.2f", PairedAssociateFastSlow.this._serialPositionRSquares.get(experimentCondition));
+          if(row < PairedAssociateFastSlow.this._serialPositionRSquares.size()){
+            value = String.format("%.2f", PairedAssociateFastSlow.this._serialPositionRSquares.get(row));
           }
           
           return value;
@@ -575,30 +587,8 @@ public class PairedAssociateFastSlow {
         else{
           String value = "";
           
-          //Convert the row into an experiment number by adding 1 to row 
-          //experiment numbers are non-zero indexed).
-          int experimentNumber = row + 1;
-          
-          //Get the number of stimulus response pairs and divide the experiment
-          //number by this and retrieve the fraction too.  We divide by the 
-          //number of stimulus-response pairs since each experiment conidition
-          //is comprised of n stimulus-response pairs in the table.
-          int numberStimRespPairs = PairedAssociateFastSlow.this._stimRespPairs.size();
-          int experimentCondition = experimentNumber / numberStimRespPairs;
-          int fraction = experimentNumber % numberStimRespPairs;
-
-          //If the fraction is 0 then this is the last-stimulus-response pair
-          //of the experiment condition and the experiment condition will be 1
-          //greater than what it should be, so correct this.
-          if(fraction == 0){
-            experimentCondition--;
-          }
-
-          //Now, check to see if the experiment condition calculated has a value
-          //in the data used to populate the table model.  If so, get the value
-          //for the stimulus in the experiment condition.
-          if(experimentCondition < PairedAssociateFastSlow.this._cumulativeErrorRootMeanSquaredErrors.size()){
-            value = String.format("%.2f", PairedAssociateFastSlow.this._cumulativeErrorRootMeanSquaredErrors.get(experimentCondition));
+          if(row < PairedAssociateFastSlow.this._cumulativeErrorRootMeanSquaredErrors.size()){
+            value = String.format("%.2f", PairedAssociateFastSlow.this._cumulativeErrorRootMeanSquaredErrors.get(row));
           }
           
           return value;
@@ -609,9 +599,13 @@ public class PairedAssociateFastSlow {
       public String getColumnName (int column) {
         if(column == 0){
           return "Experiment Condition";
-        } else if(column == 1){
-          return "Stimulus";
-        } else if(column == 2){
+        } else if (column == 1) {
+          return "Presentation Speed";
+        } else if (column == 2){
+          return "Auditory Loop Size";
+        } else if (column == 3){
+          return "Pre-Learning Type";
+        } else if(column == 4){
           return "<html>R<sup>2</sup></html>";
         } else {
           return "RMSE";
@@ -1216,14 +1210,24 @@ public class PairedAssociateFastSlow {
   class ExportDataAction extends AbstractAction implements ActionListener {
     
     ExportDataAction () {
-      super ("Export Model Fit Data as CSV");
+      super ("Export Data Tables as CSV Files");
     }
     
     @Override
     public void actionPerformed(ActionEvent e) {
       
+      ArrayList<String> percentageCorrectModel = new ArrayList<>();
+      ArrayList<String> cumulativeErrorModel = new ArrayList<>();
       ArrayList<String> percentageCorrectRSquare = new ArrayList<>();
       ArrayList<String> cumulativeErrorRSquare = new ArrayList<>();
+      
+      percentageCorrectModel.add(ExportData.extractJTableDataAsCsv(PairedAssociateFastSlow.this._modelPercentageCorrectDataTable));
+      percentageCorrectModel.add("percentageCorrectModelData");
+      percentageCorrectModel.add("csv");
+      
+      cumulativeErrorModel.add(ExportData.extractJTableDataAsCsv(PairedAssociateFastSlow.this._modelSerialPositionDataTable));
+      cumulativeErrorModel.add("cumulativeErrorModelData");
+      cumulativeErrorModel.add("csv");
       
       percentageCorrectRSquare.add(ExportData.extractJTableDataAsCsv(PairedAssociateFastSlow.this._percentageCorrectRSquareDataTable));
       percentageCorrectRSquare.add("percentageCorrectRSquareData");
@@ -1234,6 +1238,8 @@ public class PairedAssociateFastSlow {
       cumulativeErrorRSquare.add("csv");
       
       ArrayList<ArrayList<String>> dataToSave = new ArrayList<>();
+      dataToSave.add(percentageCorrectModel);
+      dataToSave.add(cumulativeErrorModel);
       dataToSave.add(percentageCorrectRSquare);
       dataToSave.add(cumulativeErrorRSquare);
       
