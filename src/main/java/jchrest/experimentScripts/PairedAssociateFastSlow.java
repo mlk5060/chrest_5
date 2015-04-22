@@ -102,6 +102,8 @@ public class PairedAssociateFastSlow {
   //when constructing data tables.
   private List<PairedPattern> _stimRespPairs = new ArrayList<>();
   
+  private JTable _experimentConditionsTable;
+  
   private Map<String, List<Double>> _humanPercentageCorrectData;
   private JTable _humanPercentageCorrectDataTable;
   private Map<String, Map<ListPattern, Double>> _humanSerialPositionData;
@@ -111,8 +113,10 @@ public class PairedAssociateFastSlow {
   private List<Map<ListPattern, Double>> _modelSerialPositionData;
   private JTable _modelSerialPositionDataTable;
   private List<Double> _percentageCorrectRSquares;
+  private List<Double> _percentageCorrectRootMeanSquaredErrors;
   private JTable _percentageCorrectRSquareDataTable;
   private List<Double> _serialPositionRSquares;
+  private List<Double> _cumulativeErrorRootMeanSquaredErrors;
   private JTable _serialPositionRSquareDataTable;
     
   public PairedAssociateFastSlow(Shell shell){
@@ -156,16 +160,21 @@ public class PairedAssociateFastSlow {
       
       @Override
       public Object getValueAt (int row, int column) {
-
+        String value = "";
+        
         if (column == 0) {
-          return row + 1;
+          value = String.valueOf(row + 1);
         } 
-        else if(column == 1) {
-          return String.valueOf(PairedAssociateFastSlow.this._humanPercentageCorrectData.get("fast").get(row));
+        else if(column == 1 && row < PairedAssociateFastSlow.this._humanPercentageCorrectData.get("fast").size()) {
+          value = String.valueOf(PairedAssociateFastSlow.this._humanPercentageCorrectData.get("fast").get(row));
         }
         else{
-          return String.valueOf(PairedAssociateFastSlow.this._humanPercentageCorrectData.get("slow").get(row));
+          if(row < PairedAssociateFastSlow.this._humanPercentageCorrectData.get("slow").size()){
+            value = String.valueOf(PairedAssociateFastSlow.this._humanPercentageCorrectData.get("slow").get(row));
+          }
         }
+        
+        return value;
       }
       
       @Override
@@ -271,7 +280,7 @@ public class PairedAssociateFastSlow {
         return PairedAssociateFastSlow.this._numberExperimentConditions * 
           Math.max(
             PairedAssociateFastSlow.this._humanPercentageCorrectData.get("fast").size(), 
-            PairedAssociateFastSlow.this._humanPercentageCorrectData.get("fast").size()
+            PairedAssociateFastSlow.this._humanPercentageCorrectData.get("slow").size()
           );
       }
       
@@ -285,7 +294,7 @@ public class PairedAssociateFastSlow {
         if(column == 0){
           int maxNumberTrials = Math.max(
             PairedAssociateFastSlow.this._humanPercentageCorrectData.get("fast").size(), 
-            PairedAssociateFastSlow.this._humanPercentageCorrectData.get("fast").size()
+            PairedAssociateFastSlow.this._humanPercentageCorrectData.get("slow").size()
           );
           
           row++;
@@ -324,7 +333,7 @@ public class PairedAssociateFastSlow {
       @Override
       public String getColumnName (int column) {
         if(column == 0){
-          return "Experiment #";
+          return "Experiment Condition";
         } else if (column == 1) {
           return "Trial #";
         } else {
@@ -418,7 +427,7 @@ public class PairedAssociateFastSlow {
       @Override
       public String getColumnName (int column) {
         if(column == 0){
-          return "Experiment #";
+          return "Experiment Condition";
         } else if (column == 1) {
           return "Stimulus";
         } else {
@@ -450,7 +459,7 @@ public class PairedAssociateFastSlow {
       
       @Override
       public int getColumnCount () {
-        return 2; 
+        return 3; 
       }
       
       @Override
@@ -458,10 +467,17 @@ public class PairedAssociateFastSlow {
         if(column == 0){
           return row + 1;
         }
-        else {
+        else if(column == 1){
           String value = "";
           if(row < PairedAssociateFastSlow.this._percentageCorrectRSquares.size()){
             value = String.format("%.2f", PairedAssociateFastSlow.this._percentageCorrectRSquares.get(row));
+          }
+          return value;
+        }
+        else{
+          String value = "";
+          if(row < PairedAssociateFastSlow.this._percentageCorrectRootMeanSquaredErrors.size()){
+            value = String.format("%.2f", PairedAssociateFastSlow.this._percentageCorrectRootMeanSquaredErrors.get(row));
           }
           return value;
         }
@@ -470,9 +486,11 @@ public class PairedAssociateFastSlow {
       @Override
       public String getColumnName (int column) {
         if(column == 0){
-          return "Experiment #";
-        } else {
+          return "Experiment Condition";
+        } else if(column == 1){
           return "<html>R<sup>2</sup></html>";
+        } else {
+          return "RMSE";
         }
       }
       
@@ -500,7 +518,7 @@ public class PairedAssociateFastSlow {
       
       @Override
       public int getColumnCount () {
-        return 3; 
+        return 4; 
       }
       
       @Override
@@ -523,7 +541,7 @@ public class PairedAssociateFastSlow {
         else if(column == 1){
           return PairedAssociateFastSlow.this._stimRespPairs.get(PairedAssociateFastSlow.this.getStimulusResponsePairIndexForExperimentNumber(row + 1)).getFirst().toString();
         }
-        else {
+        else if(column == 2){
           String value = "";
           
           //Convert the row into an experiment number by adding 1 to row 
@@ -554,16 +572,49 @@ public class PairedAssociateFastSlow {
           
           return value;
         }
+        else{
+          String value = "";
+          
+          //Convert the row into an experiment number by adding 1 to row 
+          //experiment numbers are non-zero indexed).
+          int experimentNumber = row + 1;
+          
+          //Get the number of stimulus response pairs and divide the experiment
+          //number by this and retrieve the fraction too.  We divide by the 
+          //number of stimulus-response pairs since each experiment conidition
+          //is comprised of n stimulus-response pairs in the table.
+          int numberStimRespPairs = PairedAssociateFastSlow.this._stimRespPairs.size();
+          int experimentCondition = experimentNumber / numberStimRespPairs;
+          int fraction = experimentNumber % numberStimRespPairs;
+
+          //If the fraction is 0 then this is the last-stimulus-response pair
+          //of the experiment condition and the experiment condition will be 1
+          //greater than what it should be, so correct this.
+          if(fraction == 0){
+            experimentCondition--;
+          }
+
+          //Now, check to see if the experiment condition calculated has a value
+          //in the data used to populate the table model.  If so, get the value
+          //for the stimulus in the experiment condition.
+          if(experimentCondition < PairedAssociateFastSlow.this._cumulativeErrorRootMeanSquaredErrors.size()){
+            value = String.format("%.2f", PairedAssociateFastSlow.this._cumulativeErrorRootMeanSquaredErrors.get(experimentCondition));
+          }
+          
+          return value;
+        }
       }
       
       @Override
       public String getColumnName (int column) {
         if(column == 0){
-          return "Experiment #";
+          return "Experiment Condition";
         } else if(column == 1){
           return "Stimulus";
-        } else {
+        } else if(column == 2){
           return "<html>R<sup>2</sup></html>";
+        } else {
+          return "RMSE";
         }
       }
       
@@ -621,8 +672,9 @@ public class PairedAssociateFastSlow {
   
   private JPanel renderInputView(){
     JPanel input = new JPanel();
-    input.setLayout(new GridLayout(4, 1));
+    input.setLayout(new GridLayout(5, 1));
     input.add(this.renderExperimentInformation());
+    input.add(this.renderExperimentConditionsView());
     input.add(this.renderStimulusResponsePrioritiesView());
     input.add(this.renderExperimentInputView());
     input.add(this.renderExperimentControlsView());
@@ -650,10 +702,10 @@ public class PairedAssociateFastSlow {
     modelSerialPositionDataTableScrollPane.setBorder(new TitledBorder("Model Cumulative Errors"));
     
     JScrollPane percentageCorrectRSquareDataTableScrollPane = new JScrollPane (this._percentageCorrectRSquareDataTable);
-    percentageCorrectRSquareDataTableScrollPane.setBorder(new TitledBorder("<html>% Correct R<sup>2</sup></html>"));
+    percentageCorrectRSquareDataTableScrollPane.setBorder(new TitledBorder("<html>% Correct Human/Model Fit</html>"));
     
     JScrollPane serialPositionRSquareDataTableScrollPane = new JScrollPane (this._serialPositionRSquareDataTable);
-    serialPositionRSquareDataTableScrollPane.setBorder(new TitledBorder("<html>Cumulative Errors R<sup>2</sup></html>"));
+    serialPositionRSquareDataTableScrollPane.setBorder(new TitledBorder("<html>Cumulative Error Human/Model Fit</html>"));
     
     JPanel dataPanel = new JPanel();
     dataPanel.setLayout(new GridLayout(3, 2));
@@ -674,11 +726,12 @@ public class PairedAssociateFastSlow {
     experimentInfo.setEditorKit(new HTMLEditorKit());
     experimentInfo.setText(
       "<html>"
+        + "<h2>Experiment Overview</h2>"
         + "This is the fast/slow paired-associate scripted experiment originally "
         + "created for Dmitry Bennet, a third year student of Fernand Gobet who "
         + "used it to prepare his third year dissertation in 2015 while studying "
         + "at the University of Liverpool."
-        + "<p>"
+        + "<h2>Experiment Input</h2>"
         + "This scripted experiment compares the performance of CHREST in a "
         + "number of paired-associate experiments using the stimulus-response "
         + "pairs and human data specified in its <code>input.xml</code> file "
@@ -692,11 +745,15 @@ public class PairedAssociateFastSlow {
         + "corresponding <code>schema.xsd</code> file (found in the same "
         + "directory defined above)."
         + "<p>"
-        + "During experiment set-up, this interface will ask you to specify the "
-        + "location of two files containing pre-learning data that CHREST will "
-        + "process before a paired-associate experiment is undertaken.  There "
-        + "are three types of pre-learning undertaken that produce three "
-        + "distinct experiment conditions, these are:"
+        + "After reading in the data specified in <code>input.xml</code>, the "
+        + "<i>Human % Correct</i> and <i>Human Cumulative Errors</i> tables in"
+        + "the <i>Data View</i> panel will be updated for verification."
+        + "<h3>Pre-Learning</h3>"
+        + "During experiment set-up, you will be asked to specify the location "
+        + "of two files containing pre-learning data that CHREST will process "
+        + "before a paired-associate experiment is undertaken.  There are three "
+        + "types of pre-learning undertaken that produce three distinct "
+        + "experiment conditions, these are:"
         + "<ol>"
         + "<li>Scan a dictionary</li> "
         + "<li>Learn some letters</li> "
@@ -711,7 +768,7 @@ public class PairedAssociateFastSlow {
         + "chrest-directory<br/>"
         + "&nbsp &#8627 examples<br/>"
         + "&nbsp &nbsp &#8627 sample-data"
-        + "<p>"
+        + "<h3>Presentation Speed</h3>"
         + "After pre-learning, the model will take part in one of two types of "
         + "paired-associate experiment, producing a further two experiment "
         + "conditions:"
@@ -724,26 +781,56 @@ public class PairedAssociateFastSlow {
         + "<code>inter-item</code> and </code>inter-trial</code> times.  The "
         + "values for these times can be set in the <i>Experiment Controls</i> "
         + "panel below."
-        + "<p>"
-        + "Thus, there are at least six basic experiment conditions that CHREST "
-        + "is tested on (three types of pre-learning for each presentation "
-        + "speed condition: 3 &times 2).  Depending on the number of "
-        + "stimulus-response pairs specified in the <code>input.xml</code> file, "
-        + "there will be at most 6 &times <i>n</i> conditions set-up where "
-        + "<i>n</i> = the maximum size of CHREST's auditory loop.  The size "
-        + "of CHREST's auditory loop is limited by the total number of "
-        + "stimulus-response pairs specified; there is no reason to an auditory "
-        + "loop that can hold more stimulus-response pairs than the amount "
-        + "specified."
+        + "<h3>Auditory Loop</h3>"
+        + "CHREST's auditory loop in this experiment is limited by the total "
+        + "number of stimulus-response pairs specified; there is no reason for "
+        + "an auditory loop that can hold more stimulus-response pairs than the "
+        + "amount specified."
         + "<p>"
         + "It is possible to specify the priority with which stimulus-response "
         + "pairs are placed into the model's auditory loop by either specifying "
         + "the priorities in the <code>input.xml</code> file or altering the "
         + "priority for each stimulus-response pair in the table contained "
         + "within the <i>Auditory Loop</i> panel below."
+        + "<h2>Experiment Progression</h2>"
+        + "There are at least six basic experiment conditions that CHREST is "
+        + "tested on (three types of pre-learning for each presentation speed "
+        + "condition: 3 &times 2).  Depending on the number of stimulus-response "
+        + "pairs specified in the <code>input.xml</code> file, there will be at "
+        + "most 6 &times <i>n</i> conditions set-up where <i>n</i> = the maximum "
+        + "size of CHREST's auditory loop."
+        + "<p>"
+        + "After reading in the data specified in the <code>input.xml</code> "
+        + "file, the experiment conditions will be displayed in the "
+        + "<i>Experiment Conditions</i> table and the value of <i>n</i> will be "
+        + "displayed as the denominator in the <i>Experiments Processed</i> "
+        + "label in the <i>Experiment Controls</i> panel."
+        + "<p>"
+        + "Each experiment condition has CHREST undertake one paired-associate "
+        + "experiment for <i>t</i> trials where <i>t</i> = the number of trials "
+        + "for the presentation speed of the current experiment condition "
+        + "specified in the <code>input.xml</code> file.  So, if there are 5 "
+        + "percentage-correct data items specified for the fast presentation "
+        + "speed and 6 for the slow presentation speed, <i>t</i> will equal 5 "
+        + "in fast presentation speed experiment conditions and 6 in slow "
+        + "presentation speed experiment conditions."  
+        + "<h2>Experiment Output</h2>"
+        + "For each trial in an experiment condition, the percentage of correct "
+        + "responses and cumulative number of errors for each stimulus-response "
+        + "pair made by CHREST is recorded.  When CHREST has undertaken <i>t</i> "
+        + "trials for an experiment condition, the R<sup>2</sup> and "
+        + "root-mean-squared-error (RMSE) is calculated by comparing the model's "
+        + "performance with regard to these variables against the human data "
+        + "specified in the <code>input.xml</code> file."
+        + "<p>"
+        + "After all experiment conditions have been undertaken by CHREST, the "
+        + "<i>Model % Correct</i>, <i>Model Cumulative Errors</i>, "
+        + "<i>% Correct Human/Model Fit</i> and <i>Cumulative Error Human/Model "
+        + "Fit</i> data tables will be updated with relevant values and the "
+        + "option to export the data from these tables will become available to "
+        + "you."
         + "</html>"
     );
-
 
     JScrollPane jsp = new JScrollPane(
       experimentInfo
@@ -755,6 +842,92 @@ public class PairedAssociateFastSlow {
     //default (no idea why).
     experimentInfo.setCaretPosition(0);
     return jsp;
+  }
+  
+  private JScrollPane renderExperimentConditionsView(){
+    TableModel tm = new AbstractTableModel () {
+      
+      @Override
+      public boolean isCellEditable(int row, int column) {
+        return false;
+      }
+
+      @Override
+      public int getRowCount() {
+        return PairedAssociateFastSlow.this._numberExperimentConditions;
+      }
+
+      @Override
+      public int getColumnCount() {
+        return 4;
+      }
+
+      @Override
+      public Object getValueAt(int row, int col) {
+        String value;
+        int experimentCondition = row + 1;
+        
+        if(col == 0){
+          value = String.valueOf(experimentCondition);
+        } else if(col == 1){
+          if(experimentCondition < PairedAssociateFastSlow.this._numberExperimentConditions/2){
+            value = "Fast";
+          } else {
+            value = "Slow";
+          }
+        } else if(col == 2){
+          int auditoryLoopSize = experimentCondition / PairedAssociateFastSlow.this._stimRespPairs.size();
+          int fraction = experimentCondition % PairedAssociateFastSlow.this._stimRespPairs.size();
+          if(fraction > 0){
+            auditoryLoopSize++;
+          }
+          
+          if(experimentCondition > PairedAssociateFastSlow.this._numberExperimentConditions/2){
+            auditoryLoopSize -= 3;
+          }
+          
+          value = String.valueOf(auditoryLoopSize);
+        } else{
+          int fraction = experimentCondition % 3;
+          if(fraction == 1){
+            value = "Dictionary";
+          } else if(fraction == 2){
+            value = "Letters";
+          } else{
+            value = "None";
+          }
+        }
+        
+        return value;
+      }
+      
+      @Override
+      public String getColumnName (int column) {
+        if (column == 0) {
+          return "Experiment Condition";
+        } else if (column == 1) {
+          return "Presentation Speed";
+        } else if (column == 2){
+          return "Auditory Loop Size";
+        } else {
+          return "Pre-Learning Type";
+        }
+      }
+      
+      @Override
+      public void fireTableStructureChanged() {
+        super.fireTableStructureChanged ();
+        JTableCustomOperations.resizeColumnsToFitWidestCellContentInColumn(PairedAssociateFastSlow.this._humanSerialPositionDataTable);
+      }
+    };
+    
+    PairedAssociateFastSlow.this._experimentConditionsTable = new JTable (tm);
+    PairedAssociateFastSlow.this._experimentConditionsTable.setAutoResizeMode (JTable.AUTO_RESIZE_OFF);
+    JTableCustomOperations.resizeColumnsToFitWidestCellContentInColumn(PairedAssociateFastSlow.this._experimentConditionsTable);
+    
+    JScrollPane experimentConditionsView = new JScrollPane(PairedAssociateFastSlow.this._experimentConditionsTable);
+    experimentConditionsView.setBorder (new TitledBorder ("Experiment Conditions"));
+    return experimentConditionsView;
   }
   
   private JScrollPane renderStimulusResponsePrioritiesView () {
@@ -903,6 +1076,18 @@ public class PairedAssociateFastSlow {
     return stimulusResponsePairs;
   }
   
+  /**
+   * Instantiates the data structures used to record results from the experiment.
+   */
+  public void instantiateResultsStorage(){
+    PairedAssociateFastSlow.this._modelPercentageCorrectData = new ArrayList();
+    PairedAssociateFastSlow.this._modelSerialPositionData = new ArrayList();
+    PairedAssociateFastSlow.this._percentageCorrectRSquares = new ArrayList();
+    PairedAssociateFastSlow.this._serialPositionRSquares = new ArrayList();
+    PairedAssociateFastSlow.this._percentageCorrectRootMeanSquaredErrors = new ArrayList();
+    PairedAssociateFastSlow.this._cumulativeErrorRootMeanSquaredErrors = new ArrayList();
+  }
+  
   private void populateStimulusResponsePriorityTableModel(){
     
     //Check that there are stimulus-response-priorites.
@@ -931,6 +1116,13 @@ public class PairedAssociateFastSlow {
       };
       this._stimulusResponsePriorityTableModel.addRow(rowData);
     }
+  }
+  
+  private void updateDataTables(){
+    ((AbstractTableModel)PairedAssociateFastSlow.this._modelPercentageCorrectDataTable.getModel()).fireTableStructureChanged();
+    ((AbstractTableModel)PairedAssociateFastSlow.this._modelSerialPositionDataTable.getModel()).fireTableStructureChanged();
+    ((AbstractTableModel)PairedAssociateFastSlow.this._percentageCorrectRSquareDataTable.getModel()).fireTableStructureChanged();
+    ((AbstractTableModel)PairedAssociateFastSlow.this._serialPositionRSquareDataTable.getModel()).fireTableStructureChanged();
   }
   
   private void updateExperimentsProcessedLabel(){
@@ -1024,7 +1216,7 @@ public class PairedAssociateFastSlow {
   class ExportDataAction extends AbstractAction implements ActionListener {
     
     ExportDataAction () {
-      super ("Export Data");
+      super ("Export Model Fit Data as CSV");
     }
     
     @Override
@@ -1061,6 +1253,8 @@ public class PairedAssociateFastSlow {
       PairedAssociateFastSlow.this._model.clear();
       PairedAssociateFastSlow.this._experimentNumber = 0;
       PairedAssociateFastSlow.this._runExperiments = true;
+      PairedAssociateFastSlow.this.instantiateResultsStorage();
+      PairedAssociateFastSlow.this.updateDataTables();
       PairedAssociateFastSlow.this.getExportDataButton().setEnabled(false);
       PairedAssociateFastSlow.this.getRestartButton().setEnabled(false);
       PairedAssociateFastSlow.this.getRunButton().setEnabled(true);
@@ -1153,13 +1347,6 @@ public class PairedAssociateFastSlow {
       //recording.
       this._originalRecordKeepingSetting = _model.canRecordHistory();
       _model.setRecordHistory(false);
-      
-      //Run model through n trials for each experiment where n = maximum number 
-      //of human trials specified for a fast/slow experiment.
-      int maxNumberTrials = Math.max(
-        PairedAssociateFastSlow.this._humanPercentageCorrectData.get("fast").size(), 
-        PairedAssociateFastSlow.this._humanPercentageCorrectData.get("slow").size()
-      );
 
       for(
         PairedAssociateFastSlow.this._experimentNumber = 1; 
@@ -1250,7 +1437,7 @@ public class PairedAssociateFastSlow {
         
         Map<ListPattern, Double> serialPositionsForModelOverExperiment = new HashMap<>();
         
-        for(int trialNumber = 1; trialNumber <= maxNumberTrials; trialNumber++){
+        for(int trialNumber = 1; trialNumber <= PairedAssociateFastSlow.this._humanPercentageCorrectData.get(presentationSpeed).size(); trialNumber++){
           _experiment.runTrial(false);
           
           int totalErrors = 0;
@@ -1307,11 +1494,13 @@ public class PairedAssociateFastSlow {
           }
         }
           
-        //Now compute R^2 and R^2 mean for percentage correct and serial 
+        //Now compute R^2 and RSME mean for percentage correct and serial 
         //position for this experiment.
         PairedAssociateFastSlow.this._percentageCorrectRSquares.add(percentageCorrectRegression.getRSquare());
+        PairedAssociateFastSlow.this._percentageCorrectRootMeanSquaredErrors.add(Math.sqrt(percentageCorrectRegression.getMeanSquareError()));
         PairedAssociateFastSlow.this._serialPositionRSquares.add(serialPositionRegression.getRSquare());
-
+        PairedAssociateFastSlow.this._cumulativeErrorRootMeanSquaredErrors.add(Math.sqrt(serialPositionRegression.getMeanSquareError()));
+        
         _model.clear();
         PairedAssociateFastSlow.this.updateExperimentsProcessedLabel();
       }
@@ -1335,8 +1524,7 @@ public class PairedAssociateFastSlow {
       PairedAssociateFastSlow.this.getSlowPresentationTime().setEnabled(true);
       PairedAssociateFastSlow.this.getShell().setCursor(null);
       
-      ((AbstractTableModel)PairedAssociateFastSlow.this._modelPercentageCorrectDataTable.getModel()).fireTableStructureChanged();
-      ((AbstractTableModel)PairedAssociateFastSlow.this._modelSerialPositionDataTable.getModel()).fireTableStructureChanged();
+      PairedAssociateFastSlow.this.updateDataTables();
     }
       
     //USED TO UPDATE GUI - SHOULD UPDATE RESULTS TABLE.  NEED TO DETERMINE WHAT
@@ -1476,10 +1664,7 @@ public class PairedAssociateFastSlow {
       PairedAssociateFastSlow.this._numberExperimentConditions = 3 * 2 * PairedAssociateFastSlow.this._stimRespPairs.size();
       PairedAssociateFastSlow.this.updateExperimentsProcessedLabel();
       
-      PairedAssociateFastSlow.this._modelPercentageCorrectData = new ArrayList();
-      PairedAssociateFastSlow.this._modelSerialPositionData = new ArrayList();
-      PairedAssociateFastSlow.this._percentageCorrectRSquares = new ArrayList();
-      PairedAssociateFastSlow.this._serialPositionRSquares = new ArrayList();
+      PairedAssociateFastSlow.this.instantiateResultsStorage();
       
       JSplitPane jsp = new JSplitPane (
         JSplitPane.HORIZONTAL_SPLIT, 

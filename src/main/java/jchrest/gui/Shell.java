@@ -106,12 +106,14 @@ public class Shell extends JFrame implements Observer {
   @Override
   public void update(Observable o, Object arg) {
     if(_model.engagedInExperiment()){
-      this._dataMenu.getItem(0).setEnabled(false);
-      this._dataMenu.getItem(1).setEnabled(false);
+      for(int menuItem = 0; menuItem < this._dataMenu.getItemCount(); menuItem++){
+        this._dataMenu.getItem(menuItem).setEnabled(false);
+      }
     }
     else {
-      this._dataMenu.getItem(0).setEnabled(true);
-      this._dataMenu.getItem(1).setEnabled(true);
+      for(int menuItem = 0; menuItem < this._dataMenu.getItemCount(); menuItem++){
+        this._dataMenu.getItem(menuItem).setEnabled(true);
+      }
     }
   }
 
@@ -1017,12 +1019,8 @@ public class Shell extends JFrame implements Observer {
     this._dataMenu.setMnemonic (KeyEvent.VK_D);
     
     JMenu scriptedExperimentSubMenu = new JMenu ("Load Scripted Experiment");
-    
-    //TODO: fix this.
-    //if(!_model.engagedInExperiment()){
-      scriptedExperimentSubMenu.setMnemonic(KeyEvent.VK_S);
-      scriptedExperimentSubMenu.add(new LoadScriptedExperimentAction(this, "Paired Associate: Fast/Slow", "PairedAssociateFastSlow"));
-    //}
+    scriptedExperimentSubMenu.setMnemonic(KeyEvent.VK_S);
+    scriptedExperimentSubMenu.add(new LoadScriptedExperimentAction(this, "Paired Associate: Fast/Slow", "PairedAssociateFastSlow"));
     this._dataMenu.add(scriptedExperimentSubMenu);
     
     this._dataMenu.add (new LoadPreExperimentDataAction (this)).setAccelerator (KeyStroke.getKeyStroke('P', java.awt.Event.CTRL_MASK, false));
