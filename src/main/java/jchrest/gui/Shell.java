@@ -28,6 +28,7 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeoutException;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import java.util.regex.Pattern;
 import javax.swing.*;
 import javax.swing.border.TitledBorder;
 import javax.swing.event.ChangeEvent;
@@ -200,10 +201,11 @@ public class Shell extends JFrame implements Observer {
       //specified by first retrieving the fully qualified scripted 
       //experiment.  To do this the following operations are performed:
       // 1. Replace all file path seperators with periods (standard java 
-      //    class name specification).
+      //    class name specification).  Note that the file seperator needs to
+      //    be escaped in the regex otherwise it will throw an error on Windows.
       // 2. Get the file path from "jchrest" to where the file extension 
       //    begins i.e. the first part of the class name to the last.
-      String fullyQualifiedExperimentClassName = filePath.replaceAll(File.separator, ".").substring(filePath.indexOf("jchrest"), filePath.lastIndexOf("."));
+      String fullyQualifiedExperimentClassName = filePath.replaceAll(Pattern.quote(File.separator), ".").substring(filePath.indexOf("jchrest"), filePath.lastIndexOf("."));
 
       //Second, actually invoke the static "main" method of the scripted
       //experiment.
