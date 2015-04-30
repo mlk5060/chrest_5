@@ -55,9 +55,7 @@ import jchrest.lib.PairedPattern;
 import org.apache.commons.math.stat.regression.SimpleRegression;
 
 /**
- * Script to run the fast/slow paired associate presentation experiments used by 
- * Dmitri Bennett in his third year dissertation at the University of Liverpool
- * (2015).
+ * Script to run the fast/slow paired associate presentation experiments.
  * 
  * @author Martyn Lloyd-Kelly <martynlk@liverpool.ac.uk>
  */
@@ -1544,108 +1542,161 @@ public class PairedAssociateFastSlow {
   
   class ReadExperimentData extends SwingWorker<Void, Void>{
     private final Map<String, List<Double>> _percentageCorrectData = new HashMap();
-    private final Map<String, Map<ListPattern, Double>> _serialPositionData = new HashMap();
+    private final Map<String, Map<ListPattern, Double>> _cumulativeErrorData = new HashMap();
     private final Map<PairedPattern, Integer> _stimulusResponsePairsAndPriorities = new LinkedHashMap<>();
     
     @Override
     protected Void doInBackground() throws Exception {
-      //TODO: Validate XML document using InputOutput.validiteXmlInputData with 
-      //before continuing.
       
-      XMLInputFactory inputFactory = XMLInputFactory.newInstance();
-      InputStream in = new FileInputStream(".." + File.separator + "scripted-experiment-inputs" + File.separator + "PairedAssociateFastSlow" + File.separator + "input.xml");
-      XMLEventReader eventReader = inputFactory.createXMLEventReader(in);
+      //Validate the input data to be used using the corresponding schema.
+      String experimentInputDirectory = ".." + File.separator + "scripted-experiment-inputs" + File.separator + "PairedAssociateFastSlow";
+      String experimentInputDataFile = experimentInputDirectory + File.separator + "input.xml";
+      String experimentInputDataSchema = experimentInputDirectory + File.separator + "schema.xsd";
+      if(InputOutput.validateXmlInputData(PairedAssociateFastSlow.this._shell,experimentInputDataFile, experimentInputDataSchema)){
       
-      while(eventReader.hasNext()){
-        XMLEvent event = eventReader.nextEvent();
-          
-        if (event.isStartElement()) {
-          StartElement startElement = event.asStartElement();
-          String elementName = startElement.getName().getLocalPart();
-          
-          if(elementName.equalsIgnoreCase("stimulus-repsonse-pair")){
-            Attribute auditoryLoopPriority = startElement.getAttributeByName(new QName("auditory-loop-priority"));
-            event = eventReader.nextEvent();
-            this._stimulusResponsePairsAndPriorities.put(
-              InputOutput.generatePairedPattern(event.asCharacters().getData(), false),
-              Integer.valueOf(auditoryLoopPriority.getValue())
-            );
-          }
-          
-          if(elementName.equalsIgnoreCase("fast-presentation") || elementName.equalsIgnoreCase("slow-presentation")){
-            
-            String presentationSpeed = "";
-            if(elementName.equalsIgnoreCase("fast-presentation")){
-              presentationSpeed = "fast";
-            }
-            else if(elementName.equalsIgnoreCase("slow-presentation")){
-              presentationSpeed = "slow";
-            }
-            
-            boolean presentationEndTagEncountered = false;
-            while(!presentationEndTagEncountered){
+        XMLInputFactory inputFactory = XMLInputFactory.newInstance();
+        InputStream in = new FileInputStream(experimentInputDataFile);
+        XMLEventReader eventReader = inputFactory.createXMLEventReader(in);
+
+        while(eventReader.hasNext()){
+          XMLEvent event = eventReader.nextEvent();
+
+          if (event.isStartElement()) {
+            StartElement startElement = event.asStartElement();
+            String elementName = startElement.getName().getLocalPart();
+
+            if(elementName.equalsIgnoreCase("stimulus-response-pair")){
               
-              event = eventReader.nextEvent();
-              if(event.isStartElement()){
+              boolean stimulusResponsePairEndTagEncountered = false;
+              PairedPattern pair = null;
+              Integer auditoryLoopPriority = null;
+              
+              while(!stimulusResponsePairEndTagEncountered){
                 
-                String startElementName = event.asStartElement().getName().getLocalPart();
-                if(startElementName.equalsIgnoreCase("percentage-correct")){
+                event = eventReader.nextEvent();
+                if(event.isStartElement()){
                   
-                  this._percentageCorrectData.put(presentationSpeed, new ArrayList<>());
-                  
-                  boolean percentageCorrectEndTagEncountered = false;
-                  while(!percentageCorrectEndTagEncountered){
-                    
+                  String startElementName = event.asStartElement().getName().getLocalPart();
+                  if(startElementName.equals("auditory-loop-priority")){
                     event = eventReader.nextEvent();
-                    if(event.isStartElement()){
-                      if(event.asStartElement().getName().getLocalPart().equalsIgnoreCase("data")){
-                        event = eventReader.nextEvent();
-                        this._percentageCorrectData.get(presentationSpeed).add(Double.valueOf(event.asCharacters().getData()));
-                      }
-                    }
-                    else if(event.isEndElement()){
-                      if(event.asEndElement().getName().getLocalPart().equalsIgnoreCase("percentage-correct")){
-                        percentageCorrectEndTagEncountered = true;
-                      }
-                    }
-                    
+                    auditoryLoopPriority = Integer.valueOf(event.asCharacters().getData());
+                  }
+                  else if(startElementName.equals("pair")){
+                    event = eventReader.nextEvent();
+                    pair = InputOutput.generatePairedPattern(event.asCharacters().getData(), false);
+                  }
+                  
+                  if(pair != null && auditoryLoopPriority != null){
+                    this._stimulusResponsePairsAndPriorities.put(pair, auditoryLoopPriority);
                   }
                 }
-                
-                if(startElementName.equals("serial-position-errors")){
-                  this._serialPositionData.put(presentationSpeed, new HashMap<>());
-                  
-                  boolean serialPositionEndTagEncountered = false;
-                  while(!serialPositionEndTagEncountered){
-                    
-                    event = eventReader.nextEvent();
-                    if(event.isStartElement()){
-                      if(event.asStartElement().getName().getLocalPart().equalsIgnoreCase("data")){
-                        Attribute idAttribute = event.asStartElement().getAttributeByName(new QName("id"));
-                        String stimulusResponseString = idAttribute.getValue();
-                        ListPattern key = InputOutput.generatePairedPattern(stimulusResponseString, false).getFirst();
-                        event = eventReader.nextEvent();
-                        this._serialPositionData.get(presentationSpeed).put(key, Double.valueOf(event.asCharacters().getData()));
-                      }
-                    }
-                    else if(event.isEndElement()){
-                      if(event.asEndElement().getName().getLocalPart().equalsIgnoreCase("serial-position-errors")){
-                        serialPositionEndTagEncountered = true;
-                      }
-                    }
-                    
+                else if(event.isEndElement()){
+                  if(event.asEndElement().getName().getLocalPart().equalsIgnoreCase("stimulus-response-pair")){
+                    stimulusResponsePairEndTagEncountered = true;
                   }
                 }
               }
-              if(event.isEndElement()){
-                if(event.asEndElement().getName().getLocalPart().equalsIgnoreCase(presentationSpeed + "-presentation")){
-                  presentationEndTagEncountered = true;
-                }
-              }
+              
             }
-          } //End fast presentation check
-        } //End start element check
-      }//End read loop
+
+            if(elementName.equalsIgnoreCase("fast-presentation") || elementName.equalsIgnoreCase("slow-presentation")){
+
+              String presentationSpeed = "";
+              if(elementName.equalsIgnoreCase("fast-presentation")){
+                presentationSpeed = "fast";
+              }
+              else if(elementName.equalsIgnoreCase("slow-presentation")){
+                presentationSpeed = "slow";
+              }
+
+              boolean presentationEndTagEncountered = false;
+              while(!presentationEndTagEncountered){
+
+                event = eventReader.nextEvent();
+                if(event.isStartElement()){
+
+                  String startElementName = event.asStartElement().getName().getLocalPart();
+                  if(startElementName.equalsIgnoreCase("percentage-correct")){
+
+                    this._percentageCorrectData.put(presentationSpeed, new ArrayList<>());
+
+                    boolean percentageCorrectEndTagEncountered = false;
+                    while(!percentageCorrectEndTagEncountered){
+
+                      event = eventReader.nextEvent();
+                      if(event.isStartElement()){
+                        if(event.asStartElement().getName().getLocalPart().equalsIgnoreCase("percentage-correct-data")){
+                          event = eventReader.nextEvent();
+                          this._percentageCorrectData.get(presentationSpeed).add(Double.valueOf(event.asCharacters().getData()));
+                        }
+                      }
+                      else if(event.isEndElement()){
+                        if(event.asEndElement().getName().getLocalPart().equalsIgnoreCase("percentage-correct")){
+                          percentageCorrectEndTagEncountered = true;
+                        }
+                      }
+
+                    }
+                  }
+
+                  if(startElementName.equals("cumulative-errors")){
+                    this._cumulativeErrorData.put(presentationSpeed, new HashMap<>());
+
+                    boolean cumulativeErrorsEndTagEncountered = false;
+                    while(!cumulativeErrorsEndTagEncountered){
+
+                      event = eventReader.nextEvent();
+                      if(event.isStartElement()){
+                        if(event.asStartElement().getName().getLocalPart().equalsIgnoreCase("cumulative-errors-data")){
+                          
+                          boolean cumulativeErrorsDataEndTagEncountered = false;
+                          ListPattern stimulus = null;
+                          Double cumulativeError = null;
+                          
+                          while(!cumulativeErrorsDataEndTagEncountered){
+                          
+                            event = eventReader.nextEvent();
+                            if(event.isStartElement()){
+                              if(event.asStartElement().getName().getLocalPart().equalsIgnoreCase("pair")){
+                                event = eventReader.nextEvent();
+                                stimulus = InputOutput.generatePairedPattern(event.asCharacters().getData(), false).getFirst();
+                              }
+                              else if(event.asStartElement().getName().getLocalPart().equalsIgnoreCase("cumulative-error")){
+                                event = eventReader.nextEvent();
+                                cumulativeError = Double.valueOf(event.asCharacters().getData());
+                              }
+                              
+                              if(stimulus != null && cumulativeError != null){
+                                this._cumulativeErrorData.get(presentationSpeed).put(stimulus, cumulativeError);
+                              }
+                            }
+                            else if(event.isEndElement()){
+                              if(event.asEndElement().getName().getLocalPart().equalsIgnoreCase("cumulative-errors-data")){
+                                cumulativeErrorsDataEndTagEncountered = true;
+                              }
+                            }
+                          }
+                        }
+                      }
+                      else if(event.isEndElement()){
+                        if(event.asEndElement().getName().getLocalPart().equalsIgnoreCase("cumulative-errors")){
+                          cumulativeErrorsEndTagEncountered = true;
+                        }
+                      }
+
+                    }
+                  }
+                }
+                if(event.isEndElement()){
+                  if(event.asEndElement().getName().getLocalPart().equalsIgnoreCase(presentationSpeed + "-presentation")){
+                    presentationEndTagEncountered = true;
+                  }
+                }
+              }
+            } //End fast presentation check
+          } //End start element check
+        }//End read loop
+      }
       
       return null;
     }
@@ -1654,7 +1705,7 @@ public class PairedAssociateFastSlow {
     protected void done(){
       PairedAssociateFastSlow.this.setStimRespPairsAndPriorities(this._stimulusResponsePairsAndPriorities);
       PairedAssociateFastSlow.this.setHumanPercentageCorrectData(this._percentageCorrectData);
-      PairedAssociateFastSlow.this.setHumanSerialPositionData(this._serialPositionData);
+      PairedAssociateFastSlow.this.setHumanSerialPositionData(this._cumulativeErrorData);
       
       ArrayList<PairedPattern> stimulusResponsePairs = new ArrayList<>();
       for(PairedPattern stimulusResponsePair : this._stimulusResponsePairsAndPriorities.keySet()){

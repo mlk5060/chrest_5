@@ -1,8 +1,86 @@
-<?xml version="1.0"?>
-<xs:schema>
-
-<xs:element name="experiment">
-<!-- INCOMPLETE, NEEDS TO BE CONSTRUCTED -->
-</xs:element>
-
+<?xml version="1.0" encoding="UTF-8"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema" elementFormDefault="qualified">
+  <xs:element name="experiment">
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element maxOccurs="unbounded" ref="stimulus-response-pair"/>
+        <xs:element ref="fast-presentation"/>
+        <xs:element ref="slow-presentation"/>
+      </xs:sequence>
+    </xs:complexType>
+    <xs:unique name="auditory-loop-priority-unique">
+      <xs:selector xpath="stimulus-response-pair"/>
+      <xs:field xpath="auditory-loop-priority"/>
+    </xs:unique>
+    <xs:key name="stimulus-response-pair-key">
+      <xs:selector xpath="stimulus-response-pair"/>
+      <xs:field xpath="pair"/>
+    </xs:key>
+    <xs:keyref name="fast-presentation-cumulative-error-pair-ref" refer="stimulus-response-pair-key">
+      <xs:selector xpath="fast-presentation/cumulative-errors/cumulative-errors-data"/>
+      <xs:field xpath="pair"/>
+    </xs:keyref>
+    <xs:unique name="fast-presentation-cumulative-error-pair-unique">
+      <xs:selector xpath="fast-presentation/cumulative-errors/cumulative-errors-data"/>
+      <xs:field xpath="pair"/>
+    </xs:unique>
+    <xs:keyref name="slow-presentation-cumulative-error-pair-ref" refer="stimulus-response-pair-key">
+      <xs:selector xpath="slow-presentation/cumulative-errors/cumulative-errors-data"/>
+      <xs:field xpath="pair"/>
+    </xs:keyref>
+    <xs:unique name="slow-presentation-cumulative-error-pair-unique">
+      <xs:selector xpath="slow-presentation/cumulative-errors/cumulative-errors-data"/>
+      <xs:field xpath="pair"/>
+    </xs:unique>
+  </xs:element>
+  <xs:element name="stimulus-response-pair">
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element ref="auditory-loop-priority"/>
+        <xs:element ref="pair"/>
+      </xs:sequence>
+    </xs:complexType>
+  </xs:element>
+  <xs:element name="auditory-loop-priority" type="xs:integer"/>
+  <xs:element name="fast-presentation">
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element ref="percentage-correct"/>
+        <xs:element ref="cumulative-errors"/>
+      </xs:sequence>
+    </xs:complexType>
+  </xs:element>
+  <xs:element name="slow-presentation">
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element ref="percentage-correct"/>
+        <xs:element ref="cumulative-errors"/>
+      </xs:sequence>
+    </xs:complexType>
+  </xs:element>
+  <xs:element name="pair" type="xs:string"/>
+  <xs:element name="percentage-correct">
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element maxOccurs="unbounded" ref="percentage-correct-data"/>
+      </xs:sequence>
+    </xs:complexType>
+  </xs:element>
+  <xs:element name="percentage-correct-data" type="xs:decimal"/>
+  <xs:element name="cumulative-errors">
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element maxOccurs="unbounded" ref="cumulative-errors-data"/>
+      </xs:sequence>
+    </xs:complexType>
+  </xs:element>
+  <xs:element name="cumulative-errors-data">
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element ref="pair"/>
+        <xs:element ref="cumulative-error"/>
+      </xs:sequence>
+    </xs:complexType>
+  </xs:element>
+  <xs:element name="cumulative-error" type="xs:integer"/>
 </xs:schema>

@@ -47,6 +47,7 @@ end
 desc 'run all Chrest tests'
 task :tests => :compile do
   Dir.chdir('tests') do
+    #Make sure sqlite4java JAR is on classpath or tests won't run due to missing dependencies
     sh 'jruby -J-cp ../target/classes:../sqlite4java-392/sqlite4java.jar all-chrest-tests.rb'
   end
 end

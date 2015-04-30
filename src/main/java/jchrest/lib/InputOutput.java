@@ -12,6 +12,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import javax.swing.JOptionPane;
 import javax.xml.XMLConstants;
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
@@ -22,6 +23,7 @@ import javax.xml.transform.stream.StreamSource;
 import javax.xml.validation.Schema;
 import javax.xml.validation.SchemaFactory;
 import javax.xml.validation.Validator;
+import jchrest.gui.Shell;
 import org.w3c.dom.Document;
 import org.xml.sax.SAXException;
 
@@ -91,11 +93,14 @@ public class InputOutput {
     return items;
   }
   
-  public boolean validiteXmlInputData(String filepathToXmlInputData, String filepathToXmlInputDataSchema){
+  public static boolean validateXmlInputData(Shell shell, String filepathToXmlInputData, String filepathToXmlInputDataSchema){
     
     try {
       // parse an XML document into a DOM tree
-      DocumentBuilder parser = DocumentBuilderFactory.newInstance().newDocumentBuilder();
+      DocumentBuilderFactory factoryA = DocumentBuilderFactory.newInstance();
+      factoryA.setNamespaceAware(true);
+      
+      DocumentBuilder parser = factoryA.newDocumentBuilder();
       Document document = parser.parse(new File(filepathToXmlInputData));
       
       // create a SchemaFactory capable of understanding WXS schemas
@@ -111,8 +116,19 @@ public class InputOutput {
       
     } catch (ParserConfigurationException ex) {
       Logger.getLogger(InputOutput.class.getName()).log(Level.SEVERE, null, ex);
+      return false;
     } catch (SAXException | IOException ex) {
+      JOptionPane.showMessageDialog (shell,
+        "<html><body><p style='width: 400px;'>"
+        + "<b>" + ex.getMessage() + "</b>" 
+          + "<br/><br/><i>XML input:</i> '" + filepathToXmlInputData.replace("..", "chrest-dir") + "' "
+          + "<br/><br/><i>XML schema:</i> '" + filepathToXmlInputDataSchema.replace("..", "chrest-dir") + "'"
+          + "</p></body></html>", 
+        "XML Validation Error",
+        JOptionPane.ERROR_MESSAGE
+      );
       Logger.getLogger(InputOutput.class.getName()).log(Level.SEVERE, null, ex);
+      return false;
     }
     
     return true;

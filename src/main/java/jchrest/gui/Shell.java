@@ -180,13 +180,13 @@ public class Shell extends JFrame implements Observer {
    * Action to load in a scripted experiment from file.
    */
   class LoadScriptedExperimentAction extends AbstractAction implements ActionListener {
-    private Shell _parent;
-    private String _scriptedExperimentClassFileName;
+    private final Shell _parent;
+    private final String _scriptedExperimentClassName;
 
-    LoadScriptedExperimentAction (Shell parent, String scriptedExperimentName, String scriptedExperimentClassFileName) {
+    LoadScriptedExperimentAction (Shell parent, String scriptedExperimentName, String scriptedExperimentClassName) {
       super (scriptedExperimentName); 
       this._parent = parent;
-      this._scriptedExperimentClassFileName = scriptedExperimentClassFileName;
+      this._scriptedExperimentClassName = scriptedExperimentClassName;
     }
     
     @Override
@@ -194,27 +194,24 @@ public class Shell extends JFrame implements Observer {
       
       //Retrieve the selected file as a File object and get the file's path 
       //as a string so that file.getPath() isn't repeated.
-      File file = new File("classes" + File.separator + "jchrest" + File.separator + "experimentScripts" + File.separator + this._scriptedExperimentClassFileName + ".class");
+      File file = new File("classes" + File.separator + "jchrest" + File.separator + "experimentScripts" + File.separator + this._scriptedExperimentClassName + ".class");
       String filePath = file.getPath();
 
-      //Now, invoke the static "main" method of the cripted experiment class
-      //specified by first retrieving the fully qualified scripted 
-      //experiment.  To do this the following operations are performed:
-      // 1. Replace all file path seperators with periods (standard java 
-      //    class name specification).  Note that the file seperator needs to
-      //    be escaped in the regex otherwise it will throw an error on Windows.
-      // 2. Get the file path from "jchrest" to where the file extension 
-      //    begins i.e. the first part of the class name to the last.
+      //Now, replace all file path seperators with periods to get a standard 
+      //Java path specification.  Note that the file seperator needs to be 
+      //escaped in the regex otherwise in Windows it will be a "\" and this is
+      //used to indicate that the next character should be escaped in regex.  
+      //Thus, a regex error will be thrown.  After this, get the path from 
+      //"jchrest" to where the file extension begins i.e. the first part of the 
+      //path to the scripted experiment class to the last.
       String fullyQualifiedExperimentClassName = filePath.replaceAll(Pattern.quote(File.separator), ".").substring(filePath.indexOf("jchrest"), filePath.lastIndexOf("."));
 
-      //Second, actually invoke the static "main" method of the scripted
-      //experiment.
+      //Finally, invoke the constructor for the scripted experiment class.
       try {
         Class<?> scriptedExperimentClass = Class.forName(fullyQualifiedExperimentClassName);
         Constructor scriptedExperimentConstructor = scriptedExperimentClass.getDeclaredConstructor(jchrest.gui.Shell.class);
         scriptedExperimentConstructor.setAccessible(true);
         scriptedExperimentConstructor.newInstance(this._parent);
-
       } catch (ClassNotFoundException | NoSuchMethodException | SecurityException | IllegalArgumentException | InstantiationException | IllegalAccessException | InvocationTargetException ex) {
         Logger.getLogger(Shell.class.getName()).log(Level.SEVERE, null, ex);
       }
@@ -1021,7 +1018,6 @@ public class Shell extends JFrame implements Observer {
     this._dataMenu.setMnemonic (KeyEvent.VK_D);
     
     JMenu scriptedExperimentSubMenu = new JMenu ("Load Scripted Experiment");
-    scriptedExperimentSubMenu.setMnemonic(KeyEvent.VK_S);
     scriptedExperimentSubMenu.add(new LoadScriptedExperimentAction(this, "Paired Associate: Fast/Slow", "PairedAssociateFastSlow"));
     this._dataMenu.add(scriptedExperimentSubMenu);
     
