@@ -1050,19 +1050,34 @@ public class Node extends Observable {
    * non-empty and constitutes a valid, new test for the current Node.
    */
   private Node addTest (ListPattern pattern, int domainTime) {
+    
+    //Set-up history variables
+    HashMap<String, Object> historyRowToInsert = new HashMap<>();
+    historyRowToInsert.put(Chrest._historyTableTimeColumnName, domainTime);
+    historyRowToInsert.put(Chrest._historyTableOperationColumnName , Operations.ADD_TEST.name());
+    historyRowToInsert.put(Chrest._historyTableInputColumnName, pattern.toString());
+    
     // ignore if already a test
-    for (Link child : _children) {
+    for (Link child : this._children) {
       if (child.getTest().equals (pattern)) {
+        historyRowToInsert.put(Chrest._historyTableDescriptionColumnName, "Input already a test for node " + this.getReference() + ", exiting.");
+        historyRowToInsert.put(Chrest._historyTableOutputColumnName, "Node (ref: " + this.getReference() + ", image: " + this.getImage().toString() + ")");
+        this._model.addToHistory(historyRowToInsert);
         return this;
       }
     }
+    
+    historyRowToInsert.put(Chrest._historyTableDescriptionColumnName, "Input not already a test for node " + this.getReference() + ", creating new test & child.");
+    this._model.addToHistory(historyRowToInsert);
+
     Node child = new Node (
       _model, 
       ( (_reference == 0) ? pattern : _model.getDomainSpecifics().normalise (_contents.append(pattern))), // don't append to 'Root'
       ( (_reference == 0) ? pattern : _model.getDomainSpecifics().normalise (_contents.append(pattern))), // make same as contents vs Chrest 2
       domainTime
     );
-    addTestLink (pattern, child, domainTime, _model.getCurrentExperimentName());
+
+    this.addTestLink (pattern, child, domainTime, _model.getCurrentExperimentName());
     _model.advanceLearningClock (_model.getDiscriminationTime ());
     return child;
   }
@@ -1088,73 +1103,77 @@ public class Node extends Observable {
    * This may be needed later for semantic/template learning.
    */
   Node discriminate (ListPattern pattern, int time) {
-    String operation = Operations.DISCRIMINATE.name();
-    String description = "";
+    
     ListPattern newInformation = pattern.remove (_contents);
+    
+    //Set-up history variables.
+    HashMap<String, Object> historyRowToInsert = new HashMap<>();
+    historyRowToInsert.put(Chrest._historyTableTimeColumnName, time);
+    historyRowToInsert.put(Chrest._historyTableOperationColumnName, Operations.DISCRIMINATE.name());
+    historyRowToInsert.put(Chrest._historyTableInputColumnName, pattern.toString() + "(" + pattern.getModalityString() + ")");
+    String description = "New info in input: " + newInformation.toString();
 
     // cases 1 & 2 if newInformation is empty
     if (newInformation.isEmpty ()) {
-      description += "List-pattern presented (" + newInformation.toString() + ") is empty ";
+      description += ", empty,";
+      
       // change for conformance
       newInformation.setFinished ();
+      
       // 1. is < $ > known?
       if (_model.recognise (newInformation, time).getContents ().equals (newInformation) ) {
+        
         // 2. if so, use as test
-        description += "and is already encoded as a LTM node so it will be added as a test.";
-        try {
-          this._model.addToHistory(time, operation, description);
-        } catch (InterruptedException | ExecutionException | TimeoutException ex) {
-          Logger.getLogger(Node.class.getName()).log(Level.SEVERE, null, ex);
-        }
-        return addTest (newInformation, time);
+        description += ", encoded in LTM, add as test to node " + this._reference + ".";
+        historyRowToInsert.put(Chrest._historyTableDescriptionColumnName, description);
+        this._model.addToHistory(historyRowToInsert);
+        return this.addTest(newInformation, time);
+          
       } else {
         // 3. if not, then learn it
+        historyRowToInsert.put(Chrest._historyTableDescriptionColumnName, description);
+        this._model.addToHistory(historyRowToInsert);
+        
         Node child = new Node (_model, newInformation, newInformation, time);
-        _model.getVisualLtm().addTestLink (newInformation, child, time, _model.getCurrentExperimentName());
-        description += "and isn't encoded in a LTM node so a test link and child node containing the list-pattern will be added to the " + newInformation.getModalityString() + " LTM root node.";
-        try {
-          this._model.addToHistory(time, operation, description);
-        } catch (InterruptedException | ExecutionException | TimeoutException ex) {
-          Logger.getLogger(Node.class.getName()).log(Level.SEVERE, null, ex);
-        }
+        _model.getLtmByModality(newInformation).addTestLink (newInformation, child, time, _model.getCurrentExperimentName());
         return child;
       }
     }
 
     Node retrievedChunk = _model.recognise (newInformation, time);
-    description += "List-pattern presented (" + newInformation.toString() + ") isn't empty and after sorting through LTM, " + retrievedChunk.getContents().toString() + " has been retrieved.  ";
+    description += ", not empty, node " + retrievedChunk.getReference() + " retrieved";
+
     if (retrievedChunk == _model.getLtmByModality (pattern)) {
-      // 3. if root node is retrieved, then the primitive must be learnt
-      description += "This is a modality root node so " + newInformation.getFirstItem() + " will be added as a test link and child node to the " + newInformation.getModalityString() + " root node.";
-      try {
-        this._model.addToHistory(time, operation, description);
-      } catch (InterruptedException | ExecutionException | TimeoutException ex) {
-        Logger.getLogger(Node.class.getName()).log(Level.SEVERE, null, ex);
-      }
+
+      // 4. if root node is retrieved, then the primitive must be learnt
+      description += ", modality root node, add as test to " + newInformation.getModalityString() + " root node.";
+      historyRowToInsert.put(Chrest._historyTableDescriptionColumnName, description);
+      this._model.addToHistory(historyRowToInsert);
+      
       return _model.getLtmByModality(newInformation).learnPrimitive (newInformation.getFirstItem (), time);
+
     } else if (retrievedChunk.getContents().matches (newInformation)) {
+
       // 5. retrieved chunk can be used as a test
-      description += "This matches " + newInformation.toString() + " so " + pattern.toString() + " will be added as a test link from " + retrievedChunk.getContents().toString() + " with an empty child node.";
-      try {
-        this._model.addToHistory(time, operation, description);
-      } catch (InterruptedException | ExecutionException | TimeoutException ex) {
-        Logger.getLogger(Node.class.getName()).log(Level.SEVERE, null, ex);
-      }
+      description += ", image matches new info so add node retrieved's image as test to node " + this.getReference() + ".";
+      historyRowToInsert.put(Chrest._historyTableDescriptionColumnName, description);
+      this._model.addToHistory(historyRowToInsert);
+      
       ListPattern testPattern = retrievedChunk.getContents().clone ();
-      return addTest (testPattern, time);
-    } else { 
+      return this.addTest (testPattern, time);
+
+    } else {
+
       // 6. mismatch, so use only the first item for test
-      // NB: first-item must be in network as retrievedChunk was not the root node
+      // NB: first-item must be in network as retrievedChunk was not the root 
+      //     node
       ListPattern firstItem = newInformation.getFirstItem ();
       firstItem.setNotFinished ();
-      description += "This doesn't match " + newInformation.toString() + " so " + firstItem.toString() + " will be added as a test link from " + retrievedChunk.getContents().toString() + " with an empty child node.";
-      try {
-        this._model.addToHistory(time, operation, description);
-      } catch (InterruptedException | ExecutionException | TimeoutException ex) {
-        Logger.getLogger(Node.class.getName()).log(Level.SEVERE, null, ex);
-      }
+      description += ", image does not match new info so add " + firstItem.toString() + " as test to node " + this.getReference() + ".";
+      historyRowToInsert.put(Chrest._historyTableDescriptionColumnName, description);
+      this._model.addToHistory(historyRowToInsert);
       
-      return addTest (firstItem, time);
+      return this.addTest (firstItem, time);
     }
   }
 
@@ -1163,45 +1182,45 @@ public class Node extends Observable {
    * information from the given pattern.
    */
   Node familiarise (ListPattern pattern, int domainTime) {
-    String operation = Operations.FAMILIARISE.name();
-    ListPattern newInformation = pattern.remove (_image).getFirstItem ();
-    String description = "New information to add to node " + this.getReference() + " with image " + this.getImage().toString() + " from " + pattern.toString() + ": " + newInformation.toString() + ".  ";
+    
+    ListPattern newInformation = pattern.remove(_image).getFirstItem();
     newInformation.setNotFinished ();
+    
+    //Set-up history variables.
+    HashMap<String, Object> historyRowToInsert= new HashMap<>();
+    historyRowToInsert.put(Chrest._historyTableTimeColumnName, domainTime);
+    historyRowToInsert.put(Chrest._historyTableOperationColumnName, Operations.FAMILIARISE.name());
+    historyRowToInsert.put(Chrest._historyTableInputColumnName, pattern.toString() + "(" + pattern.getModalityString() + ")");
+    String description = "New info in input: " + newInformation.toString();
+    
     // EXIT if nothing to learn
     if (newInformation.isEmpty ()) {
-      description += "No new information to be learned, abandoning familiarisation.";
-      try {
-        this._model.addToHistory(domainTime, operation, description);
-      } catch (InterruptedException | ExecutionException | TimeoutException ex) {
-        Logger.getLogger(Node.class.getName()).log(Level.SEVERE, null, ex);
-      }
+      description += ", empty.";
+      historyRowToInsert.put(Chrest._historyTableDescriptionColumnName, description);
+      this._model.addToHistory(historyRowToInsert);
       return this;
     }
-    //
+
     // Note: CHREST 2 had the idea of not familiarising if image size exceeds 
     // the max of 5 and 2*contents-size.  This avoids overly large images.
     // This idea is not implemented here.
     //
     Node retrievedChunk = _model.recognise (newInformation, domainTime);
+    description += ", not empty, node " + retrievedChunk.getReference() + " retrieved";
+
     if (retrievedChunk == _model.getLtmByModality (pattern)) {
+
       // primitive not known, so learn it
-      description += "New information unrecognised so a new test link and node will be added to LTM.";
-      try {
-        this._model.addToHistory(domainTime, operation, description);
-      } catch (InterruptedException | ExecutionException | TimeoutException ex) {
-        Logger.getLogger(Node.class.getName()).log(Level.SEVERE, null, ex);
-      }
+      historyRowToInsert.put(Chrest._historyTableDescriptionColumnName, description);
+      this._model.addToHistory(historyRowToInsert);
       return _model.getLtmByModality(newInformation).learnPrimitive (newInformation, domainTime);
+
     } else {
-      description += "New information recognised so will be used to extend existing image.";
-      try {      
-        this._model.addToHistory(domainTime, operation, description);
-      } catch (InterruptedException | ExecutionException | TimeoutException ex) {
-        Logger.getLogger(Node.class.getName()).log(Level.SEVERE, null, ex);
-      }
-      
+
       // extend image with new item
-      return extendImage (newInformation, domainTime);
+      historyRowToInsert.put(Chrest._historyTableDescriptionColumnName, description);
+      this._model.addToHistory(historyRowToInsert);
+      return this.extendImage (newInformation, domainTime);
     }
   }
 

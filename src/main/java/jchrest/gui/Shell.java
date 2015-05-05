@@ -20,6 +20,7 @@ import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 import java.text.DecimalFormat;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Observable;
@@ -708,15 +709,13 @@ public class Shell extends JFrame implements Observer {
   private JPanel getHistoryPane() {
     this._history.clear();
     JPanel historyPanel = new JPanel();
+    
     try {
       this._model.getHistory(this, Shell.class.getMethod("updateHistory", new Class[]{SQLiteStatement.class}));
-    } catch (InterruptedException | ExecutionException | NoSuchMethodException | SecurityException ex) {
+    } catch (NoSuchMethodException | SecurityException ex) {
       Logger.getLogger(Shell.class.getName()).log(Level.SEVERE, null, ex);
-    } catch (TimeoutException ex) {
-      Logger.getLogger(Shell.class.getName()).log(Level.SEVERE, null, ex);
-      this.displayHistoryRetrievalErrorDialog("Execution history has timed out");
     }
-
+   
     if(_history.isEmpty()){
       String emptyMessage = "No execution history recorded yet.<br><hr><br>";
 
@@ -815,11 +814,15 @@ public class Shell extends JFrame implements Observer {
 
         @Override
         public int getColumnCount(){
-          return 4; 
+          return _history.get(0).size(); 
         }
 
         @Override
         public Object getValueAt(int rowIndex, int columnIndex) {
+          //TODO: If the _history variable does not contain any second dimension
+          //(col) elements, a null pointer is thrown.  This is OK if you aren't
+          //running the GUI through a terminal but some kind of message 
+          //indicating that no history has been retrieved should be displayed.
           return _history.get(rowIndex).get(columnIndex);
         }
 
@@ -841,7 +844,13 @@ public class Shell extends JFrame implements Observer {
               columnName = "Operation";
               break;
             case 3:
+              columnName = "Input";
+              break;
+            case 4:
               columnName = "Description";
+              break;
+            case 5:
+              columnName = "Output";
               break;
           }
           
@@ -912,14 +921,11 @@ public class Shell extends JFrame implements Observer {
           _model.getHistory(
             (Integer)_timeFrom.getValue(), 
             (Integer)_timeTo.getValue(),
-            this,
+            Shell.this,
             Shell.class.getDeclaredMethod("updateHistory", new Class[]{SQLiteStatement.class})
           );
-        } catch (InterruptedException | ExecutionException | NoSuchMethodException | SecurityException ex) {
+        } catch (NoSuchMethodException | SecurityException ex) {
           Logger.getLogger(Shell.class.getName()).log(Level.SEVERE, null, ex);
-        } catch (TimeoutException ex) {
-          Logger.getLogger(Shell.class.getName()).log(Level.SEVERE, null, ex);
-          Shell.this.displayHistoryRetrievalErrorDialog("Execution history has timed out");
         }
       }
       else{
@@ -928,14 +934,11 @@ public class Shell extends JFrame implements Observer {
             (String) _operations.getValue(),
             (Integer)_timeFrom.getValue(), 
             (Integer)_timeTo.getValue(),
-            this,
+            Shell.this,
             Shell.class.getDeclaredMethod("updateHistory", new Class[]{SQLiteStatement.class})
           );
-        } catch (InterruptedException | ExecutionException | NoSuchMethodException | SecurityException ex) {
+        } catch (NoSuchMethodException | SecurityException ex) {
           Logger.getLogger(Shell.class.getName()).log(Level.SEVERE, null, ex);
-        } catch (TimeoutException ex) {
-          Logger.getLogger(Shell.class.getName()).log(Level.SEVERE, null, ex);
-          Shell.this.displayHistoryRetrievalErrorDialog("Execution history has timed out");
         }
       }
 

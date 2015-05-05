@@ -10,8 +10,10 @@ package jchrest.lib;
  * @author Martyn Lloyd-Kelly <martynlk@liverpool.ac.uk>
  */
 public enum Operations {
+  ADD_TEST,
   DISCRIMINATE,
   FAMILIARISE,
+  GET_DOMAIN_SPECIFICS,
   LEARN_AND_LINK_PATTERNS,
   PRODUCTION_MANAGEMENT,
   TEMPLATE_MANAGEMENT
