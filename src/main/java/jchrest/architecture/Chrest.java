@@ -100,9 +100,9 @@ public class Chrest extends Observable {
   //inserting data into the table.
   private final HashMap<Integer, Object[]> _historyTableColumnIndexNameAndType = new HashMap<>();
   
-  //Set-up a convenient data structure to hold the values set for the columns in 
-  //the last history row inserted.  The keys are column names, the values are 
-  //the column values for the last row.
+  //Set-up a data structure to hold the values set for the columns in the last 
+  //history row inserted.  The keys are column names, the values are the column 
+  //values for the last row.
   private final HashMap<String, Object> _lastHistoryRowInserted = new HashMap<>();
   
   /************************************/
@@ -269,11 +269,48 @@ public class Chrest extends Observable {
     }
   }
   
-  private void executeSqlQuery(String sqlString, ArrayList sqlBindings, Object object, Method method){
+  /**
+   * Main function through which all SQLite queries should be routed.  This 
+   * function performs the following operations:
+   * 
+   * <ol>
+   *  <li>
+   *    Checks whether this model can record execution history, if so, the 
+   *    function will continue.
+   *  </li>
+   *  <li>
+   *    Creates and starts a new thread that executes SQLite operations, if one 
+   *    is not already active.
+   *  </li>
+   *  <li>
+   *    Creates and opens a new connection to an in-memory SQLite database if 
+   *    one is not already active.
+   *  </li>
+   *  <li>
+   *    Builds and executes the SQLite statement specified, binding parameters, 
+   *    if specified.
+   *  </li>
+   *  <li>
+   *    Delete any duplicate rows created using an INSERT statement.
+   *  </li>
+   *  <li>
+   *    Passes the results of the SQLite query to a callback function, if 
+   *    specified.
+   *  </li>
+   * </ol>
+   * 
+   * @param sqliteString The raw SQLite statement that should be executed.  If 
+   * the statement is parameterised, ensure that bindings are also passed.
+   * @param bindings The parameters that should be substituted into the 
+   * statement, in order i.e. the first element will be substituted for the 
+   * first "?" in the statement.
+   * @param object The object that contains the callback function to be invoked.
+   * @param method The callback function to be invoked after the SQL query 
+   * specified has been executed.  The results of the SQL query can be passed to
+   * the method specified.
+   */
+  private void executeSqlQuery(String sqliteString, ArrayList bindings, Object object, Method method){
     if(this.canRecordHistory()){
-      
-      //System.out.println("Executing statement: " + sqlString);
-      //System.out.println("Number parameters specified: " + (sqlBindings == null ? "0": sqlBindings.size()));
       
       //Create and start a new history thread, if one doesn't already exist.  
       //This is impreative to allow for multi-threading which, given that CHREST 
@@ -311,16 +348,14 @@ public class Chrest extends Observable {
             SQLiteStatement sql = null;
             
             try {
+              sql = Chrest.this._historyConnection.prepare(sqliteString);
 
-              //Prepare the statement.
-              sql = Chrest.this._historyConnection.prepare(sqlString);
-
-              //Set-up any bindings.
-              if(sqlBindings != null){
-                for(int binding = 0; binding < sqlBindings.size(); binding++){
+              //Set-up bindings.
+              if(bindings != null){
+                for(int binding = 0; binding < bindings.size(); binding++){
                   sql.bind( 
                     (binding + 1), //Add 1 to the binding number since bindings are not zero-indexed
-                    sqlBindings.get(binding).toString()
+                    bindings.get(binding).toString()
                   );  
                 }
               }
@@ -330,9 +365,9 @@ public class Chrest extends Observable {
               /*********************************/
               sql.stepThrough();
               
-              /************************************/
-              /***** Check for duplicate rows *****/
-              /************************************/
+              /***********************************************/
+              /***** Check for and delete duplicate rows *****/
+              /***********************************************/
               
               //Due to how threads operate, it can sometimes be the case that 
               //SQL insert statements are executed more than once producing 
@@ -340,6 +375,8 @@ public class Chrest extends Observable {
               //confusing for users who are using the GUI to debug or trace 
               //CHREST's execution so, dispose of any duplicate inserts.
               
+              //SQLite4java has no constants for statement types so a string
+              //search is required.
               if(sql.getSqlParts().toString().startsWith("INSERT")){
                 SQLiteStatement lastRow = Chrest.this._historyConnection.prepare("SELECT * FROM " + Chrest._historyTableName + " WHERE " + Chrest._historyTableRowIdColumnName + " = (SELECT last_insert_rowid())");
                 SQLiteStatement lastRowButOne = Chrest.this._historyConnection.prepare("SELECT * FROM " + Chrest._historyTableName + " WHERE " + Chrest._historyTableRowIdColumnName + " = (SELECT (last_insert_rowid() - 1))");
@@ -349,11 +386,15 @@ public class Chrest extends Observable {
                   
                   boolean allColumnValuesEqual = true;
                   
-                  //Check from column 1 i.e. the one after the ID since this 
-                  //will always be different due to the auto increment 
-                  //functionality of the primary key column.
+                  //Check from column 1 in the last row and the last row but one 
+                  //since the primary key column value will always be different
+                  //due to the auto increment functionality of the primary key 
+                  //column.
                   for(int col = 1; col < lastRow.columnCount(); col++){
                     
+                    //Get the column values as strings so that any inequality is
+                    //purely due to differing information in the column rather
+                    //than data type.
                     String lastRowColString = lastRow.columnString(col);
                     String lastRowButOneColString = lastRowButOne.columnString(col);
 
@@ -362,6 +403,8 @@ public class Chrest extends Observable {
                     }
                   }
                   
+                  //Delete the oldest duplicate value.  No reason why, the 
+                  //younger could be deleted.
                   if(allColumnValuesEqual){
                     Chrest.this._historyConnection.prepare("DELETE FROM " + Chrest._historyTableName + " WHERE " + Chrest._historyTableRowIdColumnName + " = (SELECT last_insert_rowid() - 1)").stepThrough();
                   }
@@ -374,12 +417,15 @@ public class Chrest extends Observable {
             /***************************************/
             /***** Return SQL statement result *****/
             /***************************************/
-            
             return sql;
           }
 
           @Override
           protected void jobFinished(SQLiteStatement sql){
+            
+            /************************************/
+            /***** Invoke callback function *****/
+            /************************************/
             
             try {
               if(object != null && method != null){
@@ -398,9 +444,8 @@ public class Chrest extends Observable {
   }
   
   /**
-   * Instantiates a history database for this model if the model can record
-   * history and the history database connection has not already been 
-   * instantiated.
+   * Instantiates a history database for this model if one does not already 
+   * exist.
    */
   private void instantiateHistoryDatabase(){
             
@@ -413,6 +458,7 @@ public class Chrest extends Observable {
       Object[] colNameAndType = Chrest.this._historyTableColumnIndexNameAndType.get(col);
       createTableSqlStatement += (String)colNameAndType[0] + " ";
 
+      //If this is the first column being created, declare it as a primary key.
       if(col == 0){
         createTableSqlStatement += "INTEGER PRIMARY KEY, ";
       }
@@ -425,21 +471,34 @@ public class Chrest extends Observable {
   }
   
   /**
-   * This function adds an episode to the "history" DB table in memory if there 
-   * is an active history database connection.
+   * Adds an episode to the execution history of this model.  This function 
+   * performs the following operations:
+   * 
+   * <ol>
+   *  <li>
+   *    Sets the "time" column value for this row to the last row's time column 
+   *    value if one has not been specified.
+   *  </li>
+   *  <li>
+   *    Creates and executes the SQLite statement that performs the insert. 
+   *  </li>
+   *  <li>
+   *    Updates the last inserted row structure for this model instance.
+   *  </li>
+   * </ol>
    * 
    * @param columnNamesAndValues The column names and values that should be 
-   * inserted into the history table.  If the value for the column named 
-   * Chrest._historyTableTimeColumnName is specified as null or if this column
-   * name is absent, the time of the last row inserted is used.  If there is no
-   * "last inserted" row, the time is set to 0 for this row.
+   * added to this model's execution history.  Any columns whose values have not 
+   * been specified will have blank values inserted automatically.  To ensure 
+   * consistency of operation, specify column names (keys) using this class' 
+   * relevant class members (static variables whose names start with 
+   * "_historyTable" and end with "ColumnName").
    */
   public void addToHistory(HashMap<String, Object> columnNamesAndValues) {
 
     /*********************************/
     /***** Set time column value *****/
     /*********************************/
-    
     if(columnNamesAndValues.get(Chrest._historyTableTimeColumnName) == null){
       Integer time = 0;
       if(!Chrest.this._lastHistoryRowInserted.isEmpty()){
@@ -451,7 +510,6 @@ public class Chrest extends Observable {
     /*************************************/
     /***** Create insert new row SQL *****/
     /*************************************/
-    
     String insertSqlStatementString = "INSERT INTO " + Chrest._historyTableName + " (";
 
     //Primary key column will be auto-incremented so specify columns
@@ -497,50 +555,7 @@ public class Chrest extends Observable {
       if(bindings.get(colIndex) == null){
         bindings.set(colIndex, "");
       }
-    }
-        
-//        String columnToInsertInto = columnNameAndValueToInsert.getKey();
-//        Object valueToInsert = columnNameAndValueToInsert.getValue();
-//
-//        //Get the data type of the column specified.
-//        for(Entry<Integer, Object[]> columnIndexNameAndDatatype : Chrest.this._historyTableColumnIndexNameAndType.entrySet()){
-//          Object[] columnNameAndDatatype = columnIndexNameAndDatatype.getValue();
-//          String columnName = (String)columnNameAndDatatype[0];
-//          if( columnToInsertInto.equals(columnName) ){
-//
-//            Integer columnIndex = columnIndexNameAndDatatype.getKey();
-//            Integer columnDatatype = (Integer)columnNameAndDatatype[1];
-//            String dataTypeExpected = "";
-//
-//            //TODO: Add support for other sqlite datatypes.
-//            switch(columnDatatype){
-//
-//              case SQLiteConstants.SQLITE_INTEGER:
-//                if(valueToInsert instanceof Integer){
-//                  bindings.add((Integer)valueToInsert);
-//                } else {
-//                  dataTypeExpected = "Integer";
-//                }
-//                break;
-//              case SQLiteConstants.SQLITE_TEXT:
-//                if(valueToInsert instanceof String){
-//                  bindings.add((String)valueToInsert);
-//                } else {
-//                  dataTypeExpected = "String";
-//                }
-//              break;
-//            }
-//
-//            if(!dataTypeExpected.isEmpty()){
-//              throw new SQLiteException(
-//                SQLiteConstants.SQLITE_MISMATCH,
-//                "Value to be added to '" + columnName + "' column (" + valueToInsert.toString() + ")"
-//                  + " is not an instance of " + dataTypeExpected + "(" + valueToInsert.getClass().getSimpleName() + ")" 
-//              );
-//            }
-//          }
-//        }
-      
+    } 
 
     /**************************/
     /***** Execute insert *****/
@@ -604,9 +619,8 @@ public class Chrest extends Observable {
   }
   
   /**
-   * Asynchronous retrieval of history: retrieves entire execution history if 
-   * there is an active history database thread and then passes this execution 
-   * history to the specified method of the specified object.
+   * Asynchronous retrieval of history: retrieves entire execution history and 
+   * passes the result to the callback function specified.
    * 
    * @param object The object to invoke the specified method on when the history
    * database thread completes retrieval of execution history.
@@ -620,9 +634,8 @@ public class Chrest extends Observable {
   
   /**
    * Asynchronous retrieval of history: retrieves the model's execution history 
-   * from the time specified to the time specified if there is an active history 
-   * database thread and then passes this execution history to the specified 
-   * method of the specified object.
+   * from the time specified to the time specified and passes the result to the 
+   * callback function specified.
    * 
    * @param from Domain-time to return model's execution history from.
    * @param to Domain-time to return model's execution history to.
@@ -640,8 +653,8 @@ public class Chrest extends Observable {
   }
   
   /**
-   * Returns the model's execution history filtered by the operation specified 
-   * if there is an active history database connection.
+   * Returns the model's execution history filtered by the operation and time 
+   * specified and passes the result to the callback function specified.
    * 
    * @param operation The operation to filter execution history by.
    * @param from Domain-time to return model's execution history from.
@@ -661,8 +674,7 @@ public class Chrest extends Observable {
   }
   
   /**
-   * Clears the model's current execution history if there is an active history 
-   * database connection.
+   * Clears the model's current execution history.
    */
   public void clearHistory() {
     String sql = "DROP TABLE " + Chrest._historyTableName;
