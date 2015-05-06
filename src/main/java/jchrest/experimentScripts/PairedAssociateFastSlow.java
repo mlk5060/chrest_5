@@ -10,6 +10,7 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.InputStream;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
@@ -862,20 +863,15 @@ public class PairedAssociateFastSlow {
         if(col == 0){
           value = String.valueOf(experimentCondition);
         } else if(col == 1){
-          if(experimentCondition < PairedAssociateFastSlow.this._numberExperimentConditions/2){
+          if(experimentCondition <= PairedAssociateFastSlow.this._numberExperimentConditions/2){
             value = "Fast";
           } else {
             value = "Slow";
           }
         } else if(col == 2){
-          int auditoryLoopSize = experimentCondition / PairedAssociateFastSlow.this._stimRespPairs.size();
-          int fraction = experimentCondition % PairedAssociateFastSlow.this._stimRespPairs.size();
-          if(fraction > 0){
-            auditoryLoopSize++;
-          }
-          
-          if(experimentCondition > PairedAssociateFastSlow.this._numberExperimentConditions/2){
-            auditoryLoopSize -= 3;
+          int auditoryLoopSize = experimentCondition % PairedAssociateFastSlow.this._stimRespPairs.size();
+          if(auditoryLoopSize == 0){
+            auditoryLoopSize = PairedAssociateFastSlow.this._stimRespPairs.size();
           }
           
           value = String.valueOf(auditoryLoopSize);
@@ -1362,7 +1358,7 @@ public class PairedAssociateFastSlow {
         //independent variable setting without altering the actual experiment
         //number.
         int exptNum = PairedAssociateFastSlow.this._experimentNumber;
-
+        
         //Pre-learning setting.  To determine what pre-learning should occur, 
         //divide the experiment number by 3 and retrieve the modulus.  Division
         //by 3 occurs because there are three types of pre-learning possible.
@@ -1400,7 +1396,7 @@ public class PairedAssociateFastSlow {
             true
           );
         }
-
+        
         //Speed parameter setting.
         String presentationSpeed = "";
         if(PairedAssociateFastSlow.this._experimentNumber <= PairedAssociateFastSlow.this._numberExperimentConditions/2 ){
@@ -1416,14 +1412,13 @@ public class PairedAssociateFastSlow {
           _experiment.setInterTrialTime((int)_slowInterTrialTime.getModel().getValue());
           presentationSpeed = "slow";
         }
-
+        
         //Auditory loop size setting.  The auditory loop should only ever be as
         //large as the number of stimulus-response pairs in the experiment since
         //being able to hold more confers no benefits.
-        int auditoryLoopSize = exptNum / PairedAssociateFastSlow.this._stimRespPairs.size();
-        fraction = exptNum % PairedAssociateFastSlow.this._stimRespPairs.size();
-        if(fraction > 0){
-          auditoryLoopSize++;
+        int auditoryLoopSize = PairedAssociateFastSlow.this._experimentNumber % PairedAssociateFastSlow.this._stimRespPairs.size();
+        if(auditoryLoopSize == 0){
+          auditoryLoopSize = PairedAssociateFastSlow.this._stimRespPairs.size();
         }
         _experiment.setAuditoryLoopMaxSize(auditoryLoopSize);
         

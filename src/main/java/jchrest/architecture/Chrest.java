@@ -313,7 +313,7 @@ public class Chrest extends Observable {
    * specified has been executed.  The results of the SQL query can be passed to
    * the method specified.
    */
-  private void executeSqlQuery(String sqliteString, ArrayList bindings, Object object, Method method){
+  private void executeSqliteQuery(String sqliteString, ArrayList bindings, Object object, Method method){
     if(this.canRecordHistory()){
       
       //Create and start a new history thread, if one doesn't already exist.  
@@ -471,7 +471,7 @@ public class Chrest extends Observable {
       }
     }
     createTableSqlStatement = createTableSqlStatement.replaceFirst(", $", ");");
-    Chrest.this.executeSqlQuery(createTableSqlStatement, null, null, null);
+    Chrest.this.executeSqliteQuery(createTableSqlStatement, null, null, null);
   }
   
   /**
@@ -564,7 +564,7 @@ public class Chrest extends Observable {
     /**************************/
     /***** Execute insert *****/
     /**************************/
-    Chrest.this.executeSqlQuery(insertSqlStatementString, bindings, null, null);
+    Chrest.this.executeSqliteQuery(insertSqlStatementString, bindings, null, null);
 
     /***************************************************/
     /***** Update last inserted row data structure *****/
@@ -572,7 +572,7 @@ public class Chrest extends Observable {
     String getLastRowInsertedSql = "SELECT * FROM " + Chrest._historyTableName + " WHERE " + Chrest._historyTableRowIdColumnName + " = (SELECT last_insert_rowid())";
 
     try {
-      Chrest.this.executeSqlQuery(
+      Chrest.this.executeSqliteQuery(
         getLastRowInsertedSql,
         null,
         Chrest.this, 
@@ -633,7 +633,7 @@ public class Chrest extends Observable {
    */
   public void getHistory(Object object, Method method){
     String sql = "SELECT * FROM " + Chrest._historyTableName;
-    this.executeSqlQuery(sql, null, object, method);
+    this.executeSqliteQuery(sql, null, object, method);
   }
   
   /**
@@ -653,7 +653,7 @@ public class Chrest extends Observable {
     ArrayList bindings = new ArrayList();
     bindings.add(from);
     bindings.add(to);
-    this.executeSqlQuery(sql, bindings, object, method);
+    this.executeSqliteQuery(sql, bindings, object, method);
   }
   
   /**
@@ -674,18 +674,16 @@ public class Chrest extends Observable {
     bindings.add(operation);
     bindings.add(from);
     bindings.add(to);
-    this.executeSqlQuery(sql, bindings, object, method);
+    this.executeSqliteQuery(sql, bindings, object, method);
   }
   
   /**
    * Clears the model's current execution history.
    */
   public void clearHistory() {
-    String sql = "DROP TABLE " + Chrest._historyTableName;
-    this.executeSqlQuery(sql, null, null, null);
+    String sql = "DELETE FROM " + Chrest._historyTableName;
+    this.executeSqliteQuery(sql, null, null, null);
     this._historyConnection.dispose();
-    this._historyThread.stop(true);
-    this._historyThread = null;
   }
   
   /**
@@ -2042,7 +2040,6 @@ public class Chrest extends Observable {
    */
   public void clear () {
     this.clearHistory(); 
-    this.instantiateHistoryDatabase();
     _attentionClock = 0;
     _learningClock = 0;
     _visualLtm.clear ();
