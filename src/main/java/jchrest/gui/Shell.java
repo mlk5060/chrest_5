@@ -13,6 +13,7 @@ import jchrest.lib.Scenes;
 
 import java.awt.BorderLayout;
 import java.awt.Component;
+import java.awt.EventQueue;
 import java.awt.GridLayout;
 import java.awt.event.*;
 import java.io.*;
@@ -665,7 +666,8 @@ public class Shell extends JFrame implements Observer {
         while(sqlResults.step()){
           _history.add(new ArrayList<>());
           for(int col = 0; col < sqlResults.columnCount(); col++){
-            _history.get(row).add(sqlResults.columnString(col));
+            String sqlColumnStringValue = sqlResults.columnString(col);
+            _history.get(row).add(sqlColumnStringValue);
           }
           row += 1;
         }
@@ -673,37 +675,6 @@ public class Shell extends JFrame implements Observer {
         Logger.getLogger(Shell.class.getName()).log(Level.SEVERE, null, ex);
       }
     }
-  }
-  
-  private void configureHistoryTable(){
-    TableColumnModel historyTableColumnModel = _historyTable.getColumnModel();
-      
-    //Remove primary key column from table GUI.
-    _historyTable.removeColumn(historyTableColumnModel.getColumn(0)); 
-
-    if(!_history.isEmpty()){
-      //Set each column's width in the table to the size of the longest string
-      //contained in a row for that column.
-      for (int col = 0; col < _historyTable.getColumnCount(); col++) {
-        int maxColWidth = 0;
-
-        for(int row = 0; row < _historyTable.getRowCount(); row++){
-          TableCellRenderer renderer = _historyTable.getCellRenderer(row, col);
-          Component comp = _historyTable.prepareRenderer(renderer, row, col);
-          maxColWidth = Math.max (comp.getPreferredSize().width, maxColWidth);
-        }
-
-        historyTableColumnModel.getColumn(col).setPreferredWidth(maxColWidth);
-      }
-    }
-  }
-  
-  private void displayHistoryRetrievalErrorDialog(String message){
-    JOptionPane.showMessageDialog (this, 
-      message, 
-      "History Retrieval Error",
-      JOptionPane.ERROR_MESSAGE
-    );
   }
   
   private JPanel getHistoryPane() {
@@ -809,21 +780,29 @@ public class Shell extends JFrame implements Observer {
         
         @Override
         public int getRowCount() {
-          return _history.size();
+          if(_history.size() > 0){
+            return _history.size();
+          } else {
+            return 0;
+          }
         }
 
         @Override
         public int getColumnCount(){
-          return _history.get(0).size(); 
+          if(_history.size() > 0){
+            return _history.get(0).size();
+          } else {
+            return Shell.this._model.getNumberHistoryTableColumns();
+          }
         }
 
         @Override
         public Object getValueAt(int rowIndex, int columnIndex) {
-          //TODO: If the _history variable does not contain any second dimension
-          //(col) elements, a null pointer is thrown.  This is OK if you aren't
-          //running the GUI through a terminal but some kind of message 
-          //indicating that no history has been retrieved should be displayed.
-          return _history.get(rowIndex).get(columnIndex);
+          if(_history.size() > rowIndex && _history.get(rowIndex).size() > columnIndex){
+            return _history.get(rowIndex).get(columnIndex);
+          } else {
+            return null;
+          }
         }
 
         @Override
@@ -860,15 +839,16 @@ public class Shell extends JFrame implements Observer {
         @Override
         public void fireTableStructureChanged() {
           super.fireTableStructureChanged ();
-          configureHistoryTable();
+          JTableCustomOperations.resizeColumnsToFitWidestCellContentInColumn(Shell.this._historyTable);
+          Shell.this._historyTable.removeColumn(Shell.this._historyTable.getColumnModel().getColumn(0));
         }
       };
       
       //Construct new JTable using "historyTableModel" data and return the
       //table's column model.
       _historyTable = new JTable (historyTableModel);
-      configureHistoryTable();
-      _historyTable.setAutoResizeMode (JTable.AUTO_RESIZE_OFF);
+      JTableCustomOperations.resizeColumnsToFitWidestCellContentInColumn(this._historyTable);
+      Shell.this._historyTable.removeColumn(Shell.this._historyTable.getColumnModel().getColumn(0));
       JScrollPane historyScrollPane = new JScrollPane(_historyTable);
       
       JPanel executionHistory = new JPanel();
@@ -941,7 +921,7 @@ public class Shell extends JFrame implements Observer {
           Logger.getLogger(Shell.class.getName()).log(Level.SEVERE, null, ex);
         }
       }
-
+      
       ((AbstractTableModel)_historyTable.getModel()).fireTableStructureChanged();
     }
   }

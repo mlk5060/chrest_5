@@ -269,6 +269,10 @@ public class Chrest extends Observable {
     }
   }
   
+  public int getNumberHistoryTableColumns(){
+    return this._historyTableColumnIndexNameAndType.size();
+  }
+  
   /**
    * Main function through which all SQLite queries should be routed.  This 
    * function performs the following operations:

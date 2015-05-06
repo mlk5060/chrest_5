@@ -7,7 +7,9 @@ package jchrest.gui;
 
 import java.awt.Component;
 import javax.swing.JTable;
+import javax.swing.table.DefaultTableColumnModel;
 import javax.swing.table.TableCellRenderer;
+import javax.swing.table.TableColumn;
 import javax.swing.table.TableColumnModel;
 
 /**
@@ -24,16 +26,34 @@ public class JTableCustomOperations {
    * @param table 
    */
   public static void resizeColumnsToFitWidestCellContentInColumn(JTable table){
-    TableColumnModel columnModel = table.getColumnModel();
-    for (int column = 0; column < table.getColumnCount(); column++) {
-      //int width = 0; // Min width
-      int width = table.getTableHeader().getHeaderRect(column).width; //Min width
-      for (int row = 0; row < table.getRowCount(); row++) {
-        TableCellRenderer renderer = table.getCellRenderer(row, column);
-        Component comp = table.prepareRenderer(renderer, row, column);
-        width = Math.max(comp.getPreferredSize().width, width);
+    table.setAutoResizeMode(JTable.AUTO_RESIZE_OFF);
+    DefaultTableColumnModel colModel = (DefaultTableColumnModel)table.getColumnModel();
+    
+    for (int column = 0; column < table.getColumnCount() && table.getColumnCount() > 0; column++) {
+      TableColumn col = colModel.getColumn(column);
+      int width = 0;
+
+      // Get width of column header
+      TableCellRenderer renderer = col.getHeaderRenderer();
+      if (renderer == null) {
+        renderer = table.getTableHeader().getDefaultRenderer();
       }
-      columnModel.getColumn(column).setPreferredWidth(width);
+      java.awt.Component comp = renderer.getTableCellRendererComponent(
+        table, col.getHeaderValue(), false, false, 0, 0);
+      width = comp.getPreferredSize().width;
+
+      // Get maximum width of column data
+      for (int row = 0; row < table.getRowCount(); row++) {
+        comp = renderer.getTableCellRendererComponent(
+            table, table.getValueAt(row, column), false, false, row, column);
+        width = Math.max(width, comp.getPreferredSize().width);
+      }
+
+      // Add margin
+      width += 2*5;
+
+      // Set the width
+      col.setPreferredWidth(width);
     }
   }
 }
