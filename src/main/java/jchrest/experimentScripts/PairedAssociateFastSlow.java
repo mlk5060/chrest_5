@@ -347,9 +347,9 @@ public class PairedAssociateFastSlow {
         } else if (column == 1) {
           return "Presentation Speed";
         } else if (column == 2){
-          return "Auditory Loop Size";
-        } else if (column == 3){
           return "Pre-Learning Type";
+        } else if (column == 3){
+          return "Auditory Loop Size";
         } else if (column == 4) {
           return "Trial #";
         } else {
@@ -456,9 +456,9 @@ public class PairedAssociateFastSlow {
         } else if (column == 1) {
           return "Presentation Speed";
         } else if (column == 2){
-          return "Auditory Loop Size";
-        } else if (column == 3){
           return "Pre-Learning Type";
+        } else if (column == 3){
+          return "Auditory Loop Size";
         } else if (column == 4) {
           return "Stimulus";
         } else {
@@ -530,9 +530,9 @@ public class PairedAssociateFastSlow {
         } else if (column == 1) {
           return "Presentation Speed";
         } else if (column == 2){
-          return "Auditory Loop Size";
-        } else if (column == 3){
           return "Pre-Learning Type";
+        } else if (column == 3){
+          return "Auditory Loop Size";
         } else if(column == 4){
           return "<html>R<sup>2</sup></html>";
         } else {
@@ -603,9 +603,9 @@ public class PairedAssociateFastSlow {
         } else if (column == 1) {
           return "Presentation Speed";
         } else if (column == 2){
-          return "Auditory Loop Size";
-        } else if (column == 3){
           return "Pre-Learning Type";
+        } else if (column == 3){
+          return "Auditory Loop Size";
         } else if(column == 4){
           return "<html>R<sup>2</sup></html>";
         } else {
@@ -871,21 +871,29 @@ public class PairedAssociateFastSlow {
             value = "Slow";
           }
         } else if(col == 2){
+          int baseConditions = PairedAssociateFastSlow.this._numberExperimentConditions/2;
+          if(experimentCondition > baseConditions){
+            experimentCondition -= baseConditions;
+          }
+          
+          int numberConditionsPerPrelearningType = (baseConditions / 3);
+          int integer = experimentCondition / numberConditionsPerPrelearningType;
+          int fraction = experimentCondition % numberConditionsPerPrelearningType;
+          
+          if( integer == 0 || (integer == 1 && fraction == 0) ){
+            value = "Dictionary";
+          } else if( integer == 1 || (integer == 2 && fraction == 0)){
+            value = "Letters";
+          } else{
+            value = "None";
+          }
+        } else{
           int auditoryLoopSize = experimentCondition % PairedAssociateFastSlow.this._stimRespPairs.size();
           if(auditoryLoopSize == 0){
             auditoryLoopSize = PairedAssociateFastSlow.this._stimRespPairs.size();
           }
           
           value = String.valueOf(auditoryLoopSize);
-        } else{
-          int fraction = experimentCondition % 3;
-          if(fraction == 1){
-            value = "Dictionary";
-          } else if(fraction == 2){
-            value = "Letters";
-          } else{
-            value = "None";
-          }
         }
         
         return value;
@@ -898,9 +906,10 @@ public class PairedAssociateFastSlow {
         } else if (column == 1) {
           return "Presentation Speed";
         } else if (column == 2){
-          return "Auditory Loop Size";
-        } else {
           return "Pre-Learning Type";
+          
+        } else {
+          return "Auditory Loop Size";
         }
       }
       
@@ -1386,28 +1395,25 @@ public class PairedAssociateFastSlow {
         PairedAssociateFastSlow.this._experimentNumber++
       ){
         
-        //Copy the experiment number so the copy can be used to determine 
-        //independent variable setting without altering the actual experiment
-        //number.
-        int exptNum = PairedAssociateFastSlow.this._experimentNumber;
-        
         //Pre-learning setting.  To determine what pre-learning should occur, 
         //divide the experiment number by 3 and retrieve the modulus.  Division
         //by 3 occurs because there are three types of pre-learning possible.
-        int fraction = PairedAssociateFastSlow.this._experimentNumber % 3;
-        switch(fraction){
-          case 1:
+        String preLearning = PairedAssociateFastSlow.this._experimentConditionsTable.getValueAt(_experimentNumber - 1, 2).toString();
+        switch(preLearning){
+          case "Dictionary":
             for(ListPattern word : PairedAssociateFastSlow.this.getDictionary()){
               _model.recogniseAndLearn(word);
             }
             break;
-          case 2:
+          case "Letters":
             for(ListPattern letter : PairedAssociateFastSlow.this.getLetters()){
               Node recognisedNode = _model.recogniseAndLearn(letter);
               while(!recognisedNode.getImage().equals(letter)){
                 recognisedNode = _model.recogniseAndLearn(letter);
               }
             }
+            break;
+          default:
             break;
         }
         
@@ -1438,7 +1444,6 @@ public class PairedAssociateFastSlow {
           presentationSpeed = "fast";
         }
         else{
-          exptNum = PairedAssociateFastSlow.this._experimentNumber - (PairedAssociateFastSlow.this._numberExperimentConditions/2);
           _experiment.setPresentationTime((int)_slowPresentationTime.getModel().getValue());
           _experiment.setInterItemTime((int)_slowInterItemTime.getModel().getValue());
           _experiment.setInterTrialTime((int)_slowInterTrialTime.getModel().getValue());
@@ -1542,7 +1547,10 @@ public class PairedAssociateFastSlow {
     @Override
     public void done() {
       
-      if(PairedAssociateFastSlow.this._experimentNumber == PairedAssociateFastSlow.this._numberExperimentConditions ){
+      //The experiment number will be 1 greater than the number of experiment
+      //conditions due to the operation of the for loop that controls whether
+      //experiments are run.
+      if(PairedAssociateFastSlow.this._experimentNumber > PairedAssociateFastSlow.this._numberExperimentConditions ){
         _model.unfreeze();
         _model.setRecordHistory(this._originalRecordKeepingSetting);
         PairedAssociateFastSlow.this.getExportDataButton().setEnabled(true);

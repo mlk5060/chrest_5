@@ -14,20 +14,32 @@
         <pair>H A J : P O B</pair>
     </stimulus-response-pair>
 	<stimulus-response-pair>
-        <auditory-loop-priority>5</auditory-loop-priority>
+        <auditory-loop-priority>4</auditory-loop-priority>
         <pair>N A F : K E J</pair>
     </stimulus-response-pair><stimulus-response-pair>
-        <auditory-loop-priority>7</auditory-loop-priority>
+        <auditory-loop-priority>6</auditory-loop-priority>
         <pair>M I V : T U J</pair>
     </stimulus-response-pair><stimulus-response-pair>
         <auditory-loop-priority>8</auditory-loop-priority>
         <pair>T E V : V A B</pair>
     </stimulus-response-pair><stimulus-response-pair>
-        <auditory-loop-priority>6</auditory-loop-priority>
+        <auditory-loop-priority>12</auditory-loop-priority>
         <pair>K E F : V U K</pair>
     </stimulus-response-pair><stimulus-response-pair>
-        <auditory-loop-priority>4</auditory-loop-priority>
+        <auditory-loop-priority>11</auditory-loop-priority>
         <pair>P I J : Z I B</pair>
+		</stimulus-response-pair><stimulus-response-pair>
+        <auditory-loop-priority>10</auditory-loop-priority>
+        <pair>M E V : F U P</pair>
+		</stimulus-response-pair><stimulus-response-pair>
+        <auditory-loop-priority>9</auditory-loop-priority>
+        <pair>Z U D : J I D</pair>
+		</stimulus-response-pair><stimulus-response-pair>
+        <auditory-loop-priority>7</auditory-loop-priority>
+        <pair>P E J : V A W</pair>
+		</stimulus-response-pair><stimulus-response-pair>
+        <auditory-loop-priority>5</auditory-loop-priority>
+        <pair>W A F : Y O J</pair>
     </stimulus-response-pair>
     <fast-presentation>
         <percentage-correct>
@@ -49,15 +61,15 @@
             </cumulative-errors-data>
             <cumulative-errors-data>
                 <pair>F E P : Y U F</pair>
-                <cumulative-error>5</cumulative-error>
+                <cumulative-error>3</cumulative-error>
             </cumulative-errors-data>
             <cumulative-errors-data>
                 <pair>H A J : P O B</pair>
-                <cumulative-error>10</cumulative-error>
+                <cumulative-error>7</cumulative-error>
             </cumulative-errors-data>
 			<cumulative-errors-data>
                 <pair>N A F : K E J</pair>
-                <cumulative-error>15</cumulative-error>
+                <cumulative-error>13</cumulative-error>
             </cumulative-errors-data>
 			<cumulative-errors-data>
                 <pair>M I V : T U J</pair>
@@ -65,15 +77,31 @@
             </cumulative-errors-data>
 			<cumulative-errors-data>
                 <pair>T E V : V A B</pair>
-                <cumulative-error>26</cumulative-error>
+                <cumulative-error>28</cumulative-error>
             </cumulative-errors-data>
 			<cumulative-errors-data>
                 <pair>K E F : V U K</pair>
-                <cumulative-error>30</cumulative-error>
+                <cumulative-error>38</cumulative-error>
             </cumulative-errors-data>
 			<cumulative-errors-data>
                 <pair>P I J : Z I B</pair>
-                <cumulative-error>32</cumulative-error>
+                <cumulative-error>48</cumulative-error>
+            </cumulative-errors-data>
+			<cumulative-errors-data>
+                <pair>M E V : F U P</pair>
+                <cumulative-error>56</cumulative-error>
+            </cumulative-errors-data>
+			<cumulative-errors-data>
+                <pair>Z U D : J I D</pair>
+                <cumulative-error>62</cumulative-error>
+            </cumulative-errors-data>
+			<cumulative-errors-data>
+                <pair>P E J : V A W</pair>
+                <cumulative-error>67</cumulative-error>
+            </cumulative-errors-data>
+			<cumulative-errors-data>
+                <pair>W A F : Y O J</pair>
+                <cumulative-error>71</cumulative-error>
             </cumulative-errors-data>
         </cumulative-errors>
     </fast-presentation>
@@ -101,27 +129,43 @@
             </cumulative-errors-data>
             <cumulative-errors-data>
                 <pair>H A J : P O B</pair>
-                <cumulative-error>6</cumulative-error>
+                <cumulative-error>3</cumulative-error>
             </cumulative-errors-data>
 			<cumulative-errors-data>
                 <pair>N A F : K E J</pair>
-                <cumulative-error>11</cumulative-error>
+                <cumulative-error>5</cumulative-error>
             </cumulative-errors-data>
 			<cumulative-errors-data>
                 <pair>M I V : T U J</pair>
-                <cumulative-error>15</cumulative-error>
+                <cumulative-error>8</cumulative-error>
             </cumulative-errors-data>
 			<cumulative-errors-data>
                 <pair>T E V : V A B</pair>
-                <cumulative-error>19</cumulative-error>
+                <cumulative-error>12</cumulative-error>
             </cumulative-errors-data>
 			<cumulative-errors-data>
                 <pair>K E F : V U K</pair>
-                <cumulative-error>22</cumulative-error>
+                <cumulative-error>16</cumulative-error>
             </cumulative-errors-data>
 			<cumulative-errors-data>
                 <pair>P I J : Z I B</pair>
-                <cumulative-error>23</cumulative-error>
+                <cumulative-error>19</cumulative-error>				
+            </cumulative-errors-data>
+			<cumulative-errors-data>
+                <pair>M E V : F U P</pair>
+                <cumulative-error>22</cumulative-error>
+            </cumulative-errors-data>
+			<cumulative-errors-data>
+                <pair>Z U D : J I D</pair>
+                <cumulative-error>25</cumulative-error>
+            </cumulative-errors-data>
+			<cumulative-errors-data>
+                <pair>P E J : V A W</pair>
+                <cumulative-error>28</cumulative-error>
+            </cumulative-errors-data>
+			<cumulative-errors-data>
+                <pair>W A F : Y O J</pair>
+                <cumulative-error>30</cumulative-error>
             </cumulative-errors-data>
         </cumulative-errors>
     </slow-presentation>
