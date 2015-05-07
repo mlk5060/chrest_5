@@ -10,7 +10,6 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.InputStream;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
@@ -36,10 +35,8 @@ import javax.swing.table.AbstractTableModel;
 import javax.swing.table.DefaultTableModel;
 import javax.swing.table.TableModel;
 import javax.swing.text.html.HTMLEditorKit;
-import javax.xml.namespace.QName;
 import javax.xml.stream.XMLEventReader;
 import javax.xml.stream.XMLInputFactory;
-import javax.xml.stream.events.Attribute;
 import javax.xml.stream.events.StartElement;
 import javax.xml.stream.events.XMLEvent;
 import jchrest.architecture.Chrest;
@@ -105,18 +102,23 @@ public class PairedAssociateFastSlow {
   
   private Map<String, List<Double>> _humanPercentageCorrectData;
   private JTable _humanPercentageCorrectDataTable;
+  
   private Map<String, Map<ListPattern, Double>> _humanSerialPositionData;
   private JTable _humanSerialPositionDataTable;
+  
   private List<Double> _modelPercentageCorrectData;
   private JTable _modelPercentageCorrectDataTable;  
-  private List<Map<ListPattern, Double>> _modelSerialPositionData;
-  private JTable _modelSerialPositionDataTable;
+  
+  private List<Map<ListPattern, Double>> _modelCumulativeErrorsData;
+  private JTable _modelCumulativeErrorsDataTable;
+  
   private List<Double> _percentageCorrectRSquares;
   private List<Double> _percentageCorrectRootMeanSquaredErrors;
-  private JTable _percentageCorrectRSquareDataTable;
-  private List<Double> _serialPositionRSquares;
+  private JTable _percentageCorrectModelFitDataTable;
+  
+  private List<Double> _cumulativeErrorsRSquares;
   private List<Double> _cumulativeErrorRootMeanSquaredErrors;
-  private JTable _serialPositionRSquareDataTable;
+  private JTable _cumulativeErrorsModelFitDataTable;
     
   public PairedAssociateFastSlow(Shell shell){
     this._shell = shell;
@@ -438,9 +440,9 @@ public class PairedAssociateFastSlow {
           //Now, check to see if the experiment condition calculated has a value
           //in the data used to populate the table model.  If so, get the value
           //for the stimulus in the experiment condition.
-          if(experimentCondition < PairedAssociateFastSlow.this._modelSerialPositionData.size()){
+          if(experimentCondition < PairedAssociateFastSlow.this._modelCumulativeErrorsData.size()){
             ListPattern stimulus = PairedAssociateFastSlow.this._stimRespPairs.get(PairedAssociateFastSlow.this.getStimulusResponsePairIndexForExperimentNumber(row + 1)).getFirst();
-            value = String.valueOf(PairedAssociateFastSlow.this._modelSerialPositionData.get(experimentCondition).get(stimulus));
+            value = String.valueOf(PairedAssociateFastSlow.this._modelCumulativeErrorsData.get(experimentCondition).get(stimulus));
           }
           
           return value;
@@ -467,13 +469,13 @@ public class PairedAssociateFastSlow {
       @Override
       public void fireTableStructureChanged() {
         super.fireTableStructureChanged ();
-        JTableCustomOperations.resizeColumnsToFitWidestCellContentInColumn(PairedAssociateFastSlow.this._modelSerialPositionDataTable);
+        JTableCustomOperations.resizeColumnsToFitWidestCellContentInColumn(PairedAssociateFastSlow.this._modelCumulativeErrorsDataTable);
       }
     };
     
-    PairedAssociateFastSlow.this._modelSerialPositionDataTable = new JTable (tm);
-    PairedAssociateFastSlow.this._modelSerialPositionDataTable.setAutoResizeMode (JTable.AUTO_RESIZE_OFF);
-    JTableCustomOperations.resizeColumnsToFitWidestCellContentInColumn(PairedAssociateFastSlow.this._modelSerialPositionDataTable);
+    PairedAssociateFastSlow.this._modelCumulativeErrorsDataTable = new JTable (tm);
+    PairedAssociateFastSlow.this._modelCumulativeErrorsDataTable.setAutoResizeMode (JTable.AUTO_RESIZE_OFF);
+    JTableCustomOperations.resizeColumnsToFitWidestCellContentInColumn(PairedAssociateFastSlow.this._modelCumulativeErrorsDataTable);
   }
   
   private void createRSquarePercentageCorrectDataTable(){
@@ -541,13 +543,13 @@ public class PairedAssociateFastSlow {
       @Override
       public void fireTableStructureChanged() {
         super.fireTableStructureChanged ();
-        JTableCustomOperations.resizeColumnsToFitWidestCellContentInColumn(PairedAssociateFastSlow.this._percentageCorrectRSquareDataTable);
+        JTableCustomOperations.resizeColumnsToFitWidestCellContentInColumn(PairedAssociateFastSlow.this._percentageCorrectModelFitDataTable);
       }
     };
     
-    PairedAssociateFastSlow.this._percentageCorrectRSquareDataTable = new JTable (tm);
-    PairedAssociateFastSlow.this._percentageCorrectRSquareDataTable.setAutoResizeMode (JTable.AUTO_RESIZE_OFF);
-    JTableCustomOperations.resizeColumnsToFitWidestCellContentInColumn(PairedAssociateFastSlow.this._percentageCorrectRSquareDataTable);
+    PairedAssociateFastSlow.this._percentageCorrectModelFitDataTable = new JTable (tm);
+    PairedAssociateFastSlow.this._percentageCorrectModelFitDataTable.setAutoResizeMode (JTable.AUTO_RESIZE_OFF);
+    JTableCustomOperations.resizeColumnsToFitWidestCellContentInColumn(PairedAssociateFastSlow.this._percentageCorrectModelFitDataTable);
   }
   
   private void createRSquareSerialPositionDataTable(){
@@ -577,8 +579,8 @@ public class PairedAssociateFastSlow {
         } else if(column == 4){
           String value = "";
           
-          if(row < PairedAssociateFastSlow.this._serialPositionRSquares.size()){
-            value = String.format("%.2f", PairedAssociateFastSlow.this._serialPositionRSquares.get(row));
+          if(row < PairedAssociateFastSlow.this._cumulativeErrorsRSquares.size()){
+            value = String.format("%.2f", PairedAssociateFastSlow.this._cumulativeErrorsRSquares.get(row));
           }
           
           return value;
@@ -614,13 +616,13 @@ public class PairedAssociateFastSlow {
       @Override
       public void fireTableStructureChanged() {
         super.fireTableStructureChanged ();
-        JTableCustomOperations.resizeColumnsToFitWidestCellContentInColumn(PairedAssociateFastSlow.this._serialPositionRSquareDataTable);
+        JTableCustomOperations.resizeColumnsToFitWidestCellContentInColumn(PairedAssociateFastSlow.this._cumulativeErrorsModelFitDataTable);
       }
     };
     
-    PairedAssociateFastSlow.this._serialPositionRSquareDataTable = new JTable (tm);
-    PairedAssociateFastSlow.this._serialPositionRSquareDataTable.setAutoResizeMode (JTable.AUTO_RESIZE_OFF);
-    JTableCustomOperations.resizeColumnsToFitWidestCellContentInColumn(PairedAssociateFastSlow.this._serialPositionRSquareDataTable);
+    PairedAssociateFastSlow.this._cumulativeErrorsModelFitDataTable = new JTable (tm);
+    PairedAssociateFastSlow.this._cumulativeErrorsModelFitDataTable.setAutoResizeMode (JTable.AUTO_RESIZE_OFF);
+    JTableCustomOperations.resizeColumnsToFitWidestCellContentInColumn(PairedAssociateFastSlow.this._cumulativeErrorsModelFitDataTable);
   }
   
   /**
@@ -691,13 +693,13 @@ public class PairedAssociateFastSlow {
     JScrollPane modelPercentageCorrectDataTableScrollPane = new JScrollPane (this._modelPercentageCorrectDataTable);
     modelPercentageCorrectDataTableScrollPane.setBorder(new TitledBorder("Model % Correct"));
     
-    JScrollPane modelSerialPositionDataTableScrollPane = new JScrollPane (this._modelSerialPositionDataTable);
+    JScrollPane modelSerialPositionDataTableScrollPane = new JScrollPane (this._modelCumulativeErrorsDataTable);
     modelSerialPositionDataTableScrollPane.setBorder(new TitledBorder("Model Cumulative Errors"));
     
-    JScrollPane percentageCorrectRSquareDataTableScrollPane = new JScrollPane (this._percentageCorrectRSquareDataTable);
+    JScrollPane percentageCorrectRSquareDataTableScrollPane = new JScrollPane (this._percentageCorrectModelFitDataTable);
     percentageCorrectRSquareDataTableScrollPane.setBorder(new TitledBorder("<html>% Correct Human/Model Fit</html>"));
     
-    JScrollPane serialPositionRSquareDataTableScrollPane = new JScrollPane (this._serialPositionRSquareDataTable);
+    JScrollPane serialPositionRSquareDataTableScrollPane = new JScrollPane (this._cumulativeErrorsModelFitDataTable);
     serialPositionRSquareDataTableScrollPane.setBorder(new TitledBorder("<html>Cumulative Error Human/Model Fit</html>"));
     
     JPanel dataPanel = new JPanel();
@@ -1069,9 +1071,9 @@ public class PairedAssociateFastSlow {
    */
   public void instantiateResultsStorage(){
     PairedAssociateFastSlow.this._modelPercentageCorrectData = new ArrayList();
-    PairedAssociateFastSlow.this._modelSerialPositionData = new ArrayList();
+    PairedAssociateFastSlow.this._modelCumulativeErrorsData = new ArrayList();
     PairedAssociateFastSlow.this._percentageCorrectRSquares = new ArrayList();
-    PairedAssociateFastSlow.this._serialPositionRSquares = new ArrayList();
+    PairedAssociateFastSlow.this._cumulativeErrorsRSquares = new ArrayList();
     PairedAssociateFastSlow.this._percentageCorrectRootMeanSquaredErrors = new ArrayList();
     PairedAssociateFastSlow.this._cumulativeErrorRootMeanSquaredErrors = new ArrayList();
   }
@@ -1108,9 +1110,9 @@ public class PairedAssociateFastSlow {
   
   private void updateDataTables(){
     ((AbstractTableModel)PairedAssociateFastSlow.this._modelPercentageCorrectDataTable.getModel()).fireTableStructureChanged();
-    ((AbstractTableModel)PairedAssociateFastSlow.this._modelSerialPositionDataTable.getModel()).fireTableStructureChanged();
-    ((AbstractTableModel)PairedAssociateFastSlow.this._percentageCorrectRSquareDataTable.getModel()).fireTableStructureChanged();
-    ((AbstractTableModel)PairedAssociateFastSlow.this._serialPositionRSquareDataTable.getModel()).fireTableStructureChanged();
+    ((AbstractTableModel)PairedAssociateFastSlow.this._modelCumulativeErrorsDataTable.getModel()).fireTableStructureChanged();
+    ((AbstractTableModel)PairedAssociateFastSlow.this._percentageCorrectModelFitDataTable.getModel()).fireTableStructureChanged();
+    ((AbstractTableModel)PairedAssociateFastSlow.this._cumulativeErrorsModelFitDataTable.getModel()).fireTableStructureChanged();
   }
   
   private void updateExperimentsProcessedLabel(){
@@ -1219,15 +1221,15 @@ public class PairedAssociateFastSlow {
       percentageCorrectModel.add("percentageCorrectModelData");
       percentageCorrectModel.add("csv");
       
-      cumulativeErrorModel.add(ExportData.extractJTableDataAsCsv(PairedAssociateFastSlow.this._modelSerialPositionDataTable));
+      cumulativeErrorModel.add(ExportData.extractJTableDataAsCsv(PairedAssociateFastSlow.this._modelCumulativeErrorsDataTable));
       cumulativeErrorModel.add("cumulativeErrorModelData");
       cumulativeErrorModel.add("csv");
       
-      percentageCorrectRSquare.add(ExportData.extractJTableDataAsCsv(PairedAssociateFastSlow.this._percentageCorrectRSquareDataTable));
+      percentageCorrectRSquare.add(ExportData.extractJTableDataAsCsv(PairedAssociateFastSlow.this._percentageCorrectModelFitDataTable));
       percentageCorrectRSquare.add("percentageCorrectRSquareData");
       percentageCorrectRSquare.add("csv");
       
-      cumulativeErrorRSquare.add(ExportData.extractJTableDataAsCsv(PairedAssociateFastSlow.this._serialPositionRSquareDataTable));
+      cumulativeErrorRSquare.add(ExportData.extractJTableDataAsCsv(PairedAssociateFastSlow.this._cumulativeErrorsModelFitDataTable));
       cumulativeErrorRSquare.add("cumulativeErrorRSquareData");
       cumulativeErrorRSquare.add("csv");
       
@@ -1251,10 +1253,20 @@ public class PairedAssociateFastSlow {
     public void actionPerformed(ActionEvent e) {
       PairedAssociateFastSlow.this._model.unfreeze();
       PairedAssociateFastSlow.this._model.clear();
-      PairedAssociateFastSlow.this._experimentNumber = 0;
-      PairedAssociateFastSlow.this._runExperiments = true;
+      
       PairedAssociateFastSlow.this.instantiateResultsStorage();
       PairedAssociateFastSlow.this.updateDataTables();
+      
+      PairedAssociateFastSlow.this._experimentNumber = 0;
+      PairedAssociateFastSlow.this._runExperiments = true;
+      
+      PairedAssociateFastSlow.this.getFastInterItemTime().setEnabled(true);
+      PairedAssociateFastSlow.this.getFastInterTrialTime().setEnabled(true);
+      PairedAssociateFastSlow.this.getFastPresentationTime().setEnabled(true);
+      PairedAssociateFastSlow.this.getSlowInterItemTime().setEnabled(true);
+      PairedAssociateFastSlow.this.getSlowInterTrialTime().setEnabled(true);
+      PairedAssociateFastSlow.this.getSlowPresentationTime().setEnabled(true);
+      
       PairedAssociateFastSlow.this.getExportDataButton().setEnabled(false);
       PairedAssociateFastSlow.this.getRestartButton().setEnabled(false);
       PairedAssociateFastSlow.this.getRunButton().setEnabled(true);
@@ -1270,6 +1282,18 @@ public class PairedAssociateFastSlow {
 
     @Override
     public void actionPerformed(ActionEvent e) {
+      
+      PairedAssociateFastSlow.this._runExperiments = true; //Will need to be reset if experiment is stopped.
+      PairedAssociateFastSlow.this.getRestartButton().setEnabled(false);
+      PairedAssociateFastSlow.this.getStopButton().setEnabled(true);
+      PairedAssociateFastSlow.this.getExportDataButton().setEnabled(false);
+      PairedAssociateFastSlow.this.getFastInterItemTime().setEnabled(false);
+      PairedAssociateFastSlow.this.getFastInterTrialTime().setEnabled(false);
+      PairedAssociateFastSlow.this.getFastPresentationTime().setEnabled(false);
+      PairedAssociateFastSlow.this.getSlowInterItemTime().setEnabled(false);
+      PairedAssociateFastSlow.this.getSlowInterTrialTime().setEnabled(false);
+      PairedAssociateFastSlow.this.getSlowPresentationTime().setEnabled(false);
+      PairedAssociateFastSlow.this.getRunButton().setEnabled(false);
       
       //Schedule these threads so one executes after another has completed.
       if(PairedAssociateFastSlow.this._experimentNumber == 0){
@@ -1294,6 +1318,17 @@ public class PairedAssociateFastSlow {
           task.execute();
         });
       }
+      else{
+        PairedAssociateFastSlow.this.getRestartButton().setEnabled(false);
+        PairedAssociateFastSlow.this.getStopButton().setEnabled(false);
+        PairedAssociateFastSlow.this.getFastInterItemTime().setEnabled(true);
+        PairedAssociateFastSlow.this.getFastInterTrialTime().setEnabled(true);
+        PairedAssociateFastSlow.this.getFastPresentationTime().setEnabled(true);
+        PairedAssociateFastSlow.this.getSlowInterItemTime().setEnabled(true);
+        PairedAssociateFastSlow.this.getSlowInterTrialTime().setEnabled(true);
+        PairedAssociateFastSlow.this.getSlowPresentationTime().setEnabled(true);
+        PairedAssociateFastSlow.this.getRunButton().setEnabled(true);
+      }
     }
   }
   
@@ -1305,10 +1340,12 @@ public class PairedAssociateFastSlow {
 
     @Override
     public void actionPerformed(ActionEvent e) {
+      PairedAssociateFastSlow.this.getShell().setCursor(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));
       PairedAssociateFastSlow.this._runExperiments = false;
       PairedAssociateFastSlow.this.getRestartButton().setEnabled(true);
-      PairedAssociateFastSlow.this.getRunButton().setEnabled(true);
       PairedAssociateFastSlow.this.getStopButton().setEnabled(false);
+      PairedAssociateFastSlow.this.getExportDataButton().setEnabled(true);
+      PairedAssociateFastSlow.this.getRunButton().setEnabled(true);
     }
   }
   
@@ -1325,17 +1362,6 @@ public class PairedAssociateFastSlow {
     @Override
     protected Void doInBackground() throws Exception {
 
-      //En/Disable experiment interaction devices.
-      PairedAssociateFastSlow.this.getRestartButton().setEnabled(false);
-      PairedAssociateFastSlow.this.getStopButton().setEnabled(true);
-      PairedAssociateFastSlow.this.getFastInterItemTime().setEnabled(false);
-      PairedAssociateFastSlow.this.getFastInterTrialTime().setEnabled(false);
-      PairedAssociateFastSlow.this.getFastPresentationTime().setEnabled(false);
-      PairedAssociateFastSlow.this.getSlowInterItemTime().setEnabled(false);
-      PairedAssociateFastSlow.this.getSlowInterTrialTime().setEnabled(false);
-      PairedAssociateFastSlow.this.getSlowPresentationTime().setEnabled(false);
-      PairedAssociateFastSlow.this.getRunButton().setEnabled(false);
-
       //Set cursor to "busy" so the user knows that the script is busy.
       PairedAssociateFastSlow.this.getShell().setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
       
@@ -1347,9 +1373,15 @@ public class PairedAssociateFastSlow {
       //recording.
       this._originalRecordKeepingSetting = _model.canRecordHistory();
       _model.setRecordHistory(false);
+      
+      //If the experiment is not "resuming" after being stopped, set the 
+      //experiment number to 1 otherwise, do not change it.
+      if(PairedAssociateFastSlow.this._experimentNumber == 0){
+        PairedAssociateFastSlow.this._experimentNumber = 1;
+      }
 
       for(
-        PairedAssociateFastSlow.this._experimentNumber = 1; 
+        ; //Don't set any counters initially, this is done above and will cause incorrect experiment progression if the experiment is stopped after starting.
         PairedAssociateFastSlow.this._experimentNumber <= PairedAssociateFastSlow.this._numberExperimentConditions && PairedAssociateFastSlow.this._runExperiments; 
         PairedAssociateFastSlow.this._experimentNumber++
       ){
@@ -1479,7 +1511,7 @@ public class PairedAssociateFastSlow {
         }
         
         //Add cumulative error data.
-        PairedAssociateFastSlow.this._modelSerialPositionData.add(serialPositionsForModelOverExperiment);
+        PairedAssociateFastSlow.this._modelCumulativeErrorsData.add(serialPositionsForModelOverExperiment);
         for(Entry<ListPattern, Double> modelStimulusAndCumulativeError : serialPositionsForModelOverExperiment.entrySet()){
           for(Entry<ListPattern, Double> humanStimulusAndCumulativeError : PairedAssociateFastSlow.this._humanSerialPositionData.get(presentationSpeed).entrySet()){
             
@@ -1497,7 +1529,7 @@ public class PairedAssociateFastSlow {
         //position for this experiment.
         PairedAssociateFastSlow.this._percentageCorrectRSquares.add(percentageCorrectRegression.getRSquare());
         PairedAssociateFastSlow.this._percentageCorrectRootMeanSquaredErrors.add(Math.sqrt(percentageCorrectRegression.getMeanSquareError()));
-        PairedAssociateFastSlow.this._serialPositionRSquares.add(serialPositionRegression.getRSquare());
+        PairedAssociateFastSlow.this._cumulativeErrorsRSquares.add(serialPositionRegression.getRSquare());
         PairedAssociateFastSlow.this._cumulativeErrorRootMeanSquaredErrors.add(Math.sqrt(serialPositionRegression.getMeanSquareError()));
         
         _model.clear();
@@ -1509,30 +1541,25 @@ public class PairedAssociateFastSlow {
   
     @Override
     public void done() {
-      _model.unfreeze();
-      _model.setRecordHistory(this._originalRecordKeepingSetting);
-      PairedAssociateFastSlow.this.getExportDataButton().setEnabled(true);
-      PairedAssociateFastSlow.this.getRestartButton().setEnabled(true);
-      PairedAssociateFastSlow.this.getStopButton().setEnabled(false);
       
-      PairedAssociateFastSlow.this.getFastInterItemTime().setEnabled(true);
-      PairedAssociateFastSlow.this.getFastInterTrialTime().setEnabled(true);
-      PairedAssociateFastSlow.this.getFastPresentationTime().setEnabled(true);
-      PairedAssociateFastSlow.this.getSlowInterItemTime().setEnabled(true);
-      PairedAssociateFastSlow.this.getSlowInterTrialTime().setEnabled(true);
-      PairedAssociateFastSlow.this.getSlowPresentationTime().setEnabled(true);
-      PairedAssociateFastSlow.this.getShell().setCursor(null);
-      
-      PairedAssociateFastSlow.this.updateDataTables();
+      if(PairedAssociateFastSlow.this._experimentNumber == PairedAssociateFastSlow.this._numberExperimentConditions ){
+        _model.unfreeze();
+        _model.setRecordHistory(this._originalRecordKeepingSetting);
+        PairedAssociateFastSlow.this.getExportDataButton().setEnabled(true);
+        PairedAssociateFastSlow.this.getRestartButton().setEnabled(true);
+        PairedAssociateFastSlow.this.getStopButton().setEnabled(false);
+
+        PairedAssociateFastSlow.this.getFastInterItemTime().setEnabled(true);
+        PairedAssociateFastSlow.this.getFastInterTrialTime().setEnabled(true);
+        PairedAssociateFastSlow.this.getFastPresentationTime().setEnabled(true);
+        PairedAssociateFastSlow.this.getSlowInterItemTime().setEnabled(true);
+        PairedAssociateFastSlow.this.getSlowInterTrialTime().setEnabled(true);
+        PairedAssociateFastSlow.this.getSlowPresentationTime().setEnabled(true);
+        PairedAssociateFastSlow.this.getShell().setCursor(null);
+
+        PairedAssociateFastSlow.this.updateDataTables();
+      }
     }
-      
-    //USED TO UPDATE GUI - SHOULD UPDATE RESULTS TABLE.  NEED TO DETERMINE WHAT
-    //PARAMETER TYPE IS TO BE PASSED IN AND THEN CHANGE PARAMETER FOR THREAD
-    //CLASS DECLARATION ACCORDINGLY.
-//    @Override
-//    protected void process (PairedPattern value) {
-//      
-//    }
   }
   
   class ReadExperimentData extends SwingWorker<Void, Void>{

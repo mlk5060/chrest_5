@@ -1,0 +1,128 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<experiment xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+ xsi:noNamespaceSchemaLocation="schema.xsd">
+    <stimulus-response-pair>
+        <auditory-loop-priority>1</auditory-loop-priority>
+        <pair>B I W : Z U X</pair>
+    </stimulus-response-pair>
+    <stimulus-response-pair>
+        <auditory-loop-priority>2</auditory-loop-priority>
+        <pair>F E P : Y U F</pair>
+    </stimulus-response-pair>
+    <stimulus-response-pair>
+        <auditory-loop-priority>3</auditory-loop-priority>
+        <pair>H A J : P O B</pair>
+    </stimulus-response-pair>
+	<stimulus-response-pair>
+        <auditory-loop-priority>5</auditory-loop-priority>
+        <pair>N A F : K E J</pair>
+    </stimulus-response-pair><stimulus-response-pair>
+        <auditory-loop-priority>7</auditory-loop-priority>
+        <pair>M I V : T U J</pair>
+    </stimulus-response-pair><stimulus-response-pair>
+        <auditory-loop-priority>8</auditory-loop-priority>
+        <pair>T E V : V A B</pair>
+    </stimulus-response-pair><stimulus-response-pair>
+        <auditory-loop-priority>6</auditory-loop-priority>
+        <pair>K E F : V U K</pair>
+    </stimulus-response-pair><stimulus-response-pair>
+        <auditory-loop-priority>4</auditory-loop-priority>
+        <pair>P I J : Z I B</pair>
+    </stimulus-response-pair>
+    <fast-presentation>
+        <percentage-correct>
+            <percentage-correct-data>0.5</percentage-correct-data>
+            <percentage-correct-data>1.0</percentage-correct-data>
+            <percentage-correct-data>1.5</percentage-correct-data>
+            <percentage-correct-data>2.8</percentage-correct-data>
+            <percentage-correct-data>3.3</percentage-correct-data>
+            <percentage-correct-data>3.7</percentage-correct-data>
+            <percentage-correct-data>3.75</percentage-correct-data>
+            <percentage-correct-data>4.3</percentage-correct-data>
+            <percentage-correct-data>5.0</percentage-correct-data>
+            <percentage-correct-data>5.5</percentage-correct-data>
+        </percentage-correct>
+        <cumulative-errors>
+            <cumulative-errors-data>
+                <pair>B I W : Z U X</pair>
+                <cumulative-error>1</cumulative-error>
+            </cumulative-errors-data>
+            <cumulative-errors-data>
+                <pair>F E P : Y U F</pair>
+                <cumulative-error>5</cumulative-error>
+            </cumulative-errors-data>
+            <cumulative-errors-data>
+                <pair>H A J : P O B</pair>
+                <cumulative-error>10</cumulative-error>
+            </cumulative-errors-data>
+			<cumulative-errors-data>
+                <pair>N A F : K E J</pair>
+                <cumulative-error>15</cumulative-error>
+            </cumulative-errors-data>
+			<cumulative-errors-data>
+                <pair>M I V : T U J</pair>
+                <cumulative-error>20</cumulative-error>
+            </cumulative-errors-data>
+			<cumulative-errors-data>
+                <pair>T E V : V A B</pair>
+                <cumulative-error>26</cumulative-error>
+            </cumulative-errors-data>
+			<cumulative-errors-data>
+                <pair>K E F : V U K</pair>
+                <cumulative-error>30</cumulative-error>
+            </cumulative-errors-data>
+			<cumulative-errors-data>
+                <pair>P I J : Z I B</pair>
+                <cumulative-error>32</cumulative-error>
+            </cumulative-errors-data>
+        </cumulative-errors>
+    </fast-presentation>
+    <slow-presentation>
+        <percentage-correct>
+            <percentage-correct-data>0.6</percentage-correct-data>
+            <percentage-correct-data>1.4</percentage-correct-data>
+            <percentage-correct-data>2.8</percentage-correct-data>
+            <percentage-correct-data>3.7</percentage-correct-data>
+            <percentage-correct-data>4.5</percentage-correct-data>
+            <percentage-correct-data>5.0</percentage-correct-data>
+            <percentage-correct-data>5.6</percentage-correct-data>
+            <percentage-correct-data>6.6</percentage-correct-data>
+            <percentage-correct-data>6.65</percentage-correct-data>
+            <percentage-correct-data>7.4</percentage-correct-data>
+        </percentage-correct>
+        <cumulative-errors>
+            <cumulative-errors-data>
+                <pair>B I W : Z U X</pair>
+                <cumulative-error>1</cumulative-error>
+            </cumulative-errors-data>
+            <cumulative-errors-data>
+                <pair>F E P : Y U F</pair>
+                <cumulative-error>2</cumulative-error>
+            </cumulative-errors-data>
+            <cumulative-errors-data>
+                <pair>H A J : P O B</pair>
+                <cumulative-error>6</cumulative-error>
+            </cumulative-errors-data>
+			<cumulative-errors-data>
+                <pair>N A F : K E J</pair>
+                <cumulative-error>11</cumulative-error>
+            </cumulative-errors-data>
+			<cumulative-errors-data>
+                <pair>M I V : T U J</pair>
+                <cumulative-error>15</cumulative-error>
+            </cumulative-errors-data>
+			<cumulative-errors-data>
+                <pair>T E V : V A B</pair>
+                <cumulative-error>19</cumulative-error>
+            </cumulative-errors-data>
+			<cumulative-errors-data>
+                <pair>K E F : V U K</pair>
+                <cumulative-error>22</cumulative-error>
+            </cumulative-errors-data>
+			<cumulative-errors-data>
+                <pair>P I J : Z I B</pair>
+                <cumulative-error>23</cumulative-error>
+            </cumulative-errors-data>
+        </cumulative-errors>
+    </slow-presentation>
+</experiment>
