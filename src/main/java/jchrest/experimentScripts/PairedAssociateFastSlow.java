@@ -61,35 +61,73 @@ public class PairedAssociateFastSlow {
   
   private final Shell _shell;
   private final Chrest _model;
-  private final JPanel _experimentInterface;
   private PairedAssociateExperiment _experiment;
   
-  private int _experimentNumber = 0;
-  private int _numberExperimentConditions = 0;
+  /*******************************/
+  /***** Experiment Controls *****/
+  /*******************************/
   
-  //Used to control whether experiments should continue or stop.  Switched to
-  //false by the "stop" button.
+  //The current experiment condition being processed.
+  private int _experimentCondition = 0;
+  
+  //The total number of experiment conditions that should be run.
+  private int _experimentConditionsTotal = 0;
+  
+  //Used to control whether experiments should continue or stop irrespective of
+  //the number of experiment conditions processed vs. the total number of 
+  //experiment conditions to process.  Manipulated by the "Start Experiment" and 
+  //"Stop" experiment buttons.
   private boolean _runExperiments = true;
   
-  private final JLabel _experimentsProcessedLabel = new JLabel("");
+  /************************/
+  /***** GUI Elements *****/
+  /************************/
+  
+  //Main experiment interface panel.
+  private final JPanel _experimentInterface;
+  
+  //Tables
+  private JTable _humanPercentageCorrectDataTable;
+  private JTable _humanSerialPositionDataTable;
+  private JTable _modelPercentageCorrectDataTable;
+  private JTable _modelCumulativeErrorsDataTable;
+  private JTable _percentageCorrectModelFitDataTable;
+  private JTable _cumulativeErrorsModelFitDataTable;
     
+  //"Fast" presentation speed condition elements.
   private final JSpinner _fastPresentationTime;
   private final JSpinner _fastInterItemTime;
   private final JSpinner _fastInterTrialTime;
   
+  //"Slow" presentation speed condition elements.
   private final JSpinner _slowPresentationTime;
   private final JSpinner _slowInterItemTime;
   private final JSpinner _slowInterTrialTime;
   
-  private DefaultTableModel _stimulusResponsePriorityTableModel;
-  
+  //Action buttons
   private JButton _exportDataButton;
   private JButton _restartButton;
   private JButton _stopButton;
   private JButton _runButton;
   
+  //Textual information.
+  private final JLabel _experimentsProcessedLabel = new JLabel("");
+  
+  /**************************************/
+  /***** Experiment data structures *****/
+  /**************************************/
+  
+  //Holds the dictionary used by CHREST when the experiment condition prescribes
+  //that the model should undertaking pre-learning using a dictionary.
   private List<ListPattern> _dictionary = new ArrayList<>();
+  
+  //Holds the letters used by CHREST when the experiment condition prescribes
+  //that the model should undertaking pre-learning using some letters.
   private List<ListPattern> _letters = new ArrayList<>();
+  
+  //Holds stimulus-response pairs as keys and their declared priorities as 
+  //integers.  These declarations may be performed via an input file or in the
+  //experiment GUI before any 
   private Map<PairedPattern, Integer> _stimRespPairsAndPriorities = new HashMap<>(); 
   
   //Whilst this may look like duplication (since stimulus-response pairs are 
@@ -100,25 +138,27 @@ public class PairedAssociateFastSlow {
   
   private JTable _experimentConditionsTable;
   
+  private DefaultTableModel _stimulusResponsePriorityTableModel;
+  
   private Map<String, List<Double>> _humanPercentageCorrectData;
-  private JTable _humanPercentageCorrectDataTable;
+  
   
   private Map<String, Map<ListPattern, Double>> _humanSerialPositionData;
-  private JTable _humanSerialPositionDataTable;
+  
   
   private List<Double> _modelPercentageCorrectData;
-  private JTable _modelPercentageCorrectDataTable;  
+  
   
   private List<Map<ListPattern, Double>> _modelCumulativeErrorsData;
-  private JTable _modelCumulativeErrorsDataTable;
+  
   
   private List<Double> _percentageCorrectRSquares;
   private List<Double> _percentageCorrectRootMeanSquaredErrors;
-  private JTable _percentageCorrectModelFitDataTable;
+  
   
   private List<Double> _cumulativeErrorsRSquares;
   private List<Double> _cumulativeErrorRootMeanSquaredErrors;
-  private JTable _cumulativeErrorsModelFitDataTable;
+  
     
   public PairedAssociateFastSlow(Shell shell){
     this._shell = shell;
@@ -297,7 +337,7 @@ public class PairedAssociateFastSlow {
         
         //Total number of experiment conditions for the model multipled by the
         //maximum number of trails it needs to perform.
-        return PairedAssociateFastSlow.this._numberExperimentConditions * 
+        return PairedAssociateFastSlow.this._experimentConditionsTotal * 
           Math.max(
             PairedAssociateFastSlow.this._humanPercentageCorrectData.get("fast").size(), 
             PairedAssociateFastSlow.this._humanPercentageCorrectData.get("slow").size()
@@ -393,7 +433,7 @@ public class PairedAssociateFastSlow {
         
         //Total number of experiment conditions for the model multipled by the
         //number of stimulus-response pairs in the experiment.
-        return PairedAssociateFastSlow.this._numberExperimentConditions * 
+        return PairedAssociateFastSlow.this._experimentConditionsTotal * 
           PairedAssociateFastSlow.this._stimRespPairs.size();
       }
       
@@ -489,7 +529,7 @@ public class PairedAssociateFastSlow {
       public int getRowCount () {
         
         //Total number of experiment conditions.
-        return PairedAssociateFastSlow.this._numberExperimentConditions;
+        return PairedAssociateFastSlow.this._experimentConditionsTotal;
       }
       
       @Override
@@ -557,7 +597,7 @@ public class PairedAssociateFastSlow {
       
       @Override
       public int getRowCount () {
-        return PairedAssociateFastSlow.this._numberExperimentConditions;
+        return PairedAssociateFastSlow.this._experimentConditionsTotal;
       }
       
       @Override
@@ -849,7 +889,7 @@ public class PairedAssociateFastSlow {
 
       @Override
       public int getRowCount() {
-        return PairedAssociateFastSlow.this._numberExperimentConditions;
+        return PairedAssociateFastSlow.this._experimentConditionsTotal;
       }
 
       @Override
@@ -865,13 +905,13 @@ public class PairedAssociateFastSlow {
         if(col == 0){
           value = String.valueOf(experimentCondition);
         } else if(col == 1){
-          if(experimentCondition <= PairedAssociateFastSlow.this._numberExperimentConditions/2){
+          if(experimentCondition <= PairedAssociateFastSlow.this._experimentConditionsTotal/2){
             value = "Fast";
           } else {
             value = "Slow";
           }
         } else if(col == 2){
-          int baseConditions = PairedAssociateFastSlow.this._numberExperimentConditions/2;
+          int baseConditions = PairedAssociateFastSlow.this._experimentConditionsTotal/2;
           if(experimentCondition > baseConditions){
             experimentCondition -= baseConditions;
           }
@@ -935,8 +975,10 @@ public class PairedAssociateFastSlow {
       
       @Override
       public boolean isCellEditable(int row, int column) {
-        //Only the "Priority" column is editable.
-        return column == 2;
+        
+        //Only the "Priority" column is editable before any experiment 
+        //conditions have been processed.
+        return column == 2 && PairedAssociateFastSlow.this._experimentCondition == 0;
       }
     };
     
@@ -1126,8 +1168,8 @@ public class PairedAssociateFastSlow {
   
   private void updateExperimentsProcessedLabel(){
     String text = "";
-    if(this._numberExperimentConditions > 0){
-      text = this._experimentNumber + "/" + this._numberExperimentConditions;
+    if(this._experimentConditionsTotal > 0){
+      text = this._experimentCondition + "/" + this._experimentConditionsTotal;
     }
     this._experimentsProcessedLabel.setText(text);
   }
@@ -1266,7 +1308,7 @@ public class PairedAssociateFastSlow {
       PairedAssociateFastSlow.this.instantiateResultsStorage();
       PairedAssociateFastSlow.this.updateDataTables();
       
-      PairedAssociateFastSlow.this._experimentNumber = 0;
+      PairedAssociateFastSlow.this._experimentCondition = 0;
       PairedAssociateFastSlow.this._runExperiments = true;
       
       PairedAssociateFastSlow.this.getFastInterItemTime().setEnabled(true);
@@ -1305,7 +1347,7 @@ public class PairedAssociateFastSlow {
       PairedAssociateFastSlow.this.getRunButton().setEnabled(false);
       
       //Schedule these threads so one executes after another has completed.
-      if(PairedAssociateFastSlow.this._experimentNumber == 0){
+      if(PairedAssociateFastSlow.this._experimentCondition == 0){
         LoadDataThread dictionaryRead = _shell.new LoadDataThread (_shell, "Location of Dictionary Data", false);
         dictionaryRead.doInBackground();
 
@@ -1385,20 +1427,20 @@ public class PairedAssociateFastSlow {
       
       //If the experiment is not "resuming" after being stopped, set the 
       //experiment number to 1 otherwise, do not change it.
-      if(PairedAssociateFastSlow.this._experimentNumber == 0){
-        PairedAssociateFastSlow.this._experimentNumber = 1;
+      if(PairedAssociateFastSlow.this._experimentCondition == 0){
+        PairedAssociateFastSlow.this._experimentCondition = 1;
       }
 
       for(
         ; //Don't set any counters initially, this is done above and will cause incorrect experiment progression if the experiment is stopped after starting.
-        PairedAssociateFastSlow.this._experimentNumber <= PairedAssociateFastSlow.this._numberExperimentConditions && PairedAssociateFastSlow.this._runExperiments; 
-        PairedAssociateFastSlow.this._experimentNumber++
+        PairedAssociateFastSlow.this._experimentCondition <= PairedAssociateFastSlow.this._experimentConditionsTotal && PairedAssociateFastSlow.this._runExperiments; 
+        PairedAssociateFastSlow.this._experimentCondition++
       ){
         
         //Pre-learning setting.  To determine what pre-learning should occur, 
         //divide the experiment number by 3 and retrieve the modulus.  Division
         //by 3 occurs because there are three types of pre-learning possible.
-        String preLearning = PairedAssociateFastSlow.this._experimentConditionsTable.getValueAt(_experimentNumber - 1, 2).toString();
+        String preLearning = PairedAssociateFastSlow.this._experimentConditionsTable.getValueAt(_experimentCondition - 1, 2).toString();
         switch(preLearning){
           case "Dictionary":
             for(ListPattern word : PairedAssociateFastSlow.this.getDictionary()){
@@ -1437,7 +1479,7 @@ public class PairedAssociateFastSlow {
         
         //Speed parameter setting.
         String presentationSpeed = "";
-        if(PairedAssociateFastSlow.this._experimentNumber <= PairedAssociateFastSlow.this._numberExperimentConditions/2 ){
+        if(PairedAssociateFastSlow.this._experimentCondition <= PairedAssociateFastSlow.this._experimentConditionsTotal/2 ){
           _experiment.setPresentationTime((int)_fastPresentationTime.getModel().getValue());
           _experiment.setInterItemTime((int)_fastInterItemTime.getModel().getValue());
           _experiment.setInterTrialTime((int)_fastInterTrialTime.getModel().getValue());
@@ -1453,7 +1495,7 @@ public class PairedAssociateFastSlow {
         //Auditory loop size setting.  The auditory loop should only ever be as
         //large as the number of stimulus-response pairs in the experiment since
         //being able to hold more confers no benefits.
-        int auditoryLoopSize = PairedAssociateFastSlow.this._experimentNumber % PairedAssociateFastSlow.this._stimRespPairs.size();
+        int auditoryLoopSize = PairedAssociateFastSlow.this._experimentCondition % PairedAssociateFastSlow.this._stimRespPairs.size();
         if(auditoryLoopSize == 0){
           auditoryLoopSize = PairedAssociateFastSlow.this._stimRespPairs.size();
         }
@@ -1550,7 +1592,7 @@ public class PairedAssociateFastSlow {
       //The experiment number will be 1 greater than the number of experiment
       //conditions due to the operation of the for loop that controls whether
       //experiments are run.
-      if(PairedAssociateFastSlow.this._experimentNumber > PairedAssociateFastSlow.this._numberExperimentConditions ){
+      if(PairedAssociateFastSlow.this._experimentCondition > PairedAssociateFastSlow.this._experimentConditionsTotal ){
         _model.unfreeze();
         _model.setRecordHistory(this._originalRecordKeepingSetting);
         PairedAssociateFastSlow.this.getExportDataButton().setEnabled(true);
@@ -1748,7 +1790,7 @@ public class PairedAssociateFastSlow {
       //The maximum size of the auditory loop is the number of stimulus-response 
       //pairs to be used in the experiment (there is no reason for the auditory
       //loop to hold more stimulus-response pairs than what has been defined).
-      PairedAssociateFastSlow.this._numberExperimentConditions = 3 * 2 * PairedAssociateFastSlow.this._stimRespPairs.size();
+      PairedAssociateFastSlow.this._experimentConditionsTotal = 3 * 2 * PairedAssociateFastSlow.this._stimRespPairs.size();
       PairedAssociateFastSlow.this.updateExperimentsProcessedLabel();
       
       PairedAssociateFastSlow.this.instantiateResultsStorage();
