@@ -4,16 +4,23 @@
 package jchrest.gui;
 
 import java.awt.Component;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
+import java.beans.PropertyChangeEvent;
+import java.beans.PropertyChangeListener;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import javax.swing.JFileChooser;
 import javax.swing.JOptionPane;
 import javax.swing.JTable;
+import javax.swing.plaf.FileChooserUI;
 import javax.swing.table.AbstractTableModel;
 import org.jsoup.Jsoup;
 
@@ -25,22 +32,44 @@ import org.jsoup.Jsoup;
 public class ExportData {
   
   /**
+   * Appends the directory name specified to the current file chooser path.
+   * 
+   * @param fileChooser The file chooser whose file name selector will have the 
+   * default directory appended.
+   * @param defaultDirectoryName The name of the default directory to append.
+   */
+  private static void appendDefaultDirectoryToFileChooserPath(JFileChooser fileChooser, String defaultDirectoryName){
+    FileChooserUI fcUi = fileChooser.getUI();
+    Class<? extends FileChooserUI> fcClass = fcUi.getClass();
+
+    try {
+      Method setFileName = fcClass.getMethod("setFileName", String.class);
+      setFileName.invoke(fcUi, fileChooser.getCurrentDirectory() + File.separator + defaultDirectoryName);
+    } catch (NoSuchMethodException | SecurityException | IllegalAccessException | IllegalArgumentException | InvocationTargetException ex) {
+      Logger.getLogger(ExportData.class.getName()).log(Level.SEVERE, null, ex);
+    }
+  }
+  
+  /**
    * Allows the user to save data in the directory specified.
    * 
    * @param anchorPoint The {@link java.awt.Component} that the save dialog will
    * be anchored to and inherit its look and feel from (can be null).
-   * @param directoryName The name of the directory that the data will be saved
-   * in.
+   * @param defaultDirectoryName The name of the directory that the data will be 
+   * saved in by default.  This will be appended to the full path to the 
+   * currently specified directory.
    * @param dataToSave Should contain three pieces of information in the 
    * following order:
    * <ol>
    *  <li>The data to save</li>
    *  <li>The filename for this data</li>
-   *  <li>The file's extension type (txt, csv etc. Don't include the preceeding
-   *  dot)</li>
-   * <ol>
+   *  <li>
+   *    The file's extension type (don't include the preceeding dot i.e. 
+   *    specify "txt" rather than ".txt")
+   *  </li>
+   * </ol>
    */
-  public static void saveFile(Component anchorPoint, String directoryName, ArrayList<ArrayList<String>> dataToSave){
+  public static void saveFile(Component anchorPoint, String defaultDirectoryName, ArrayList<ArrayList<String>> dataToSave){
     
     //Check that each piece of data to be saved has the necessary three parts, 
     //if not, display a warning to the user and abort execution of the method.
@@ -55,37 +84,51 @@ public class ExportData {
     }
     
     //Create a "Save File" dialog that can only list directories since the 
-    //user should select an existing directory to save data in not a file.
+    //user should select an existing directory to save data in not a file.  
+    //The filepath text in the chooser window should have the default directory 
+    //name appended to it when it is first loaded and whenever a new directory 
+    //is selected.
     final JFileChooser fc = new JFileChooser();
+    fc.addPropertyChangeListener((PropertyChangeEvent evt) -> {
+      if (JFileChooser.DIRECTORY_CHANGED_PROPERTY.equals(evt.getPropertyName())) {
+        JFileChooser chooser = (JFileChooser) evt.getSource();
+        
+        //May need these in future
+        //File oldDir = (File) evt.getOldValue();
+        //File newDir = (File) evt.getNewValue();
+        //File curDir = chooser.getCurrentDirectory();
+        
+        appendDefaultDirectoryToFileChooserPath(chooser, defaultDirectoryName);
+      }
+    });
     fc.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
+    appendDefaultDirectoryToFileChooserPath(fc, defaultDirectoryName);
     int resultOfFileSelect = fc.showSaveDialog(anchorPoint);
 
-    //If the user selected a directory, store this directory as an object
-    //and extract its absolute path as a string.  Otherwise, do nothing.
     if (resultOfFileSelect == JFileChooser.APPROVE_OPTION) {
-      File directoryToCreateResultDirectoryIn = fc.getSelectedFile();
-      String directoryToCreateResultDirectoryInAbsPath = directoryToCreateResultDirectoryIn.getAbsolutePath();
-
+      File directoryToCreateResultsDirectoryIn = fc.getSelectedFile().getParentFile();
+      String directoryToCreateResultDirectoryInAbsPath = directoryToCreateResultsDirectoryIn.getAbsolutePath();
+      
       //Check that the directory specified by the user can be written and
       //executed, if not, display an error informing the user that the 
       //directory specified has incorrect permissions set that prevent this
       //function from executing further.
-      if (directoryToCreateResultDirectoryIn.canWrite() && directoryToCreateResultDirectoryIn.canExecute()) {
+      if (directoryToCreateResultsDirectoryIn.canWrite() && directoryToCreateResultsDirectoryIn.canExecute()) {
 
         //Create a new file object for the directory that is to be created 
         //inside the directory that the user has specified.  Creation of a 
         //file to store data prevents related data from becoming disjoint in the 
         //file system (inconvenient for the user).
-        File directoryToStoreData = new File(directoryToCreateResultDirectoryInAbsPath + File.separator + directoryName);
+        File directoryToStoreData = new File(fc.getSelectedFile().getAbsolutePath());
 
-        //Check that the default directory name doesn't already exist.  If it
-        //does, append a number to the end of the directory name and check
-        //again.  If the directory name doesn't exist, create the directory
-        //and set permissions to allow data to be written to files within it.
+        //Check that the directory doesn't already exist.  If it does, append a 
+        //number to the end of the directory name and check again.  If the 
+        //directory name doesn't exist, create the directory and set permissions 
+        //to allow data to be written to it.
         int i = 0;
         while (directoryToStoreData.exists()) {
           i++;
-          directoryToStoreData = new File(directoryToCreateResultDirectoryInAbsPath + File.separator + directoryName + i);
+          directoryToStoreData = new File(fc.getSelectedFile().getAbsolutePath() + i);
         }
         directoryToStoreData.mkdir();
         directoryToStoreData.setExecutable(true, true);
@@ -111,7 +154,6 @@ public class ExportData {
           file.setWritable(true, true);
           file.setReadable(true, true);
           file.setExecutable(true, true);
-
 
           //Write data to data file.
           try (PrintWriter filePrintWriter = new PrintWriter(file)) {
