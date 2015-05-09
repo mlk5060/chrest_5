@@ -3,24 +3,28 @@ package jchrest.experimentScripts;
 import java.awt.Color;
 import java.awt.Cursor;
 import java.awt.Dimension;
+import java.awt.EventQueue;
 import java.awt.GridLayout;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.InputStream;
+import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Objects;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import javax.swing.AbstractAction;
 import javax.swing.Action;
 import javax.swing.JButton;
 import javax.swing.JEditorPane;
+import javax.swing.JFileChooser;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
@@ -100,9 +104,17 @@ public class PairedAssociateFastSlow {
   //The total number of experiment conditions that should be run.
   private int _experimentConditionsTotal = 0;
   
+  //Indicates whether independent variables have been setup correctly after 
+  //reading input files.
+  private boolean _independentVariablesSetup = false;
+  
   //The maximum number of trials that need to be performed (number of trials for
   //"fast" and "slow" presentation cinditions may differ.
   private int _maximumNumberOfTrials;
+  
+  //Used to determine if input data has been correctly read in, if so, 
+  //experiments will be processed.
+  private boolean _readInSuccessful = false;
   
   //Used to control whether experiments should continue or stop irrespective of
   //the number of experiment conditions processed vs. the total number of 
@@ -115,12 +127,12 @@ public class PairedAssociateFastSlow {
   /************************/
   
   //Main experiment interface panel.
-  private final JPanel _experimentInterface;
+  private JPanel _experimentInterface;
   
   //Tables.
   private JTable _experimentConditionsTable;
   private JTable _humanPercentageCorrectDataTable;
-  private JTable _humanSerialPositionDataTable;
+  private JTable _humanCumulativeErrorsDataTable;
   private JTable _modelPercentageCorrectDataTable;
   private JTable _modelCumulativeErrorsDataTable;
   private JTable _percentageCorrectModelFitDataTable;
@@ -217,9 +229,6 @@ public class PairedAssociateFastSlow {
   public PairedAssociateFastSlow(Shell shell){
     this._shell = shell;
     this._model = this._shell.getModel();
-      
-    this._experimentInterface = new JPanel();
-    this._experimentInterface.setLayout(new GridLayout(1, 1));
     
     this._fastPresentationTime = new JSpinner(new SpinnerNumberModel (2000, 0, Integer.MAX_VALUE, 1));
     this._fastInterItemTime = new JSpinner(new SpinnerNumberModel (3000, 0, Integer.MAX_VALUE, 1));
@@ -229,8 +238,7 @@ public class PairedAssociateFastSlow {
     this._slowInterItemTime = new JSpinner(new SpinnerNumberModel (3500, 0, Integer.MAX_VALUE, 1));
     this._slowInterTrialTime = new JSpinner(new SpinnerNumberModel (15000, 0, Integer.MAX_VALUE, 1));
     
-    ReadExperimentData readExperimentDataThread = new ReadExperimentData();
-    readExperimentDataThread.execute();
+    this.renderInterface();
   }
   
   /****************************************************************************/
@@ -242,6 +250,22 @@ public class PairedAssociateFastSlow {
   //Code that follows is organised from the GUI element's positions with respect 
   //to the screen i.e., left to right and then from high to low-level, i.e. from 
   //the most abstract GUI elements to the most concrete GUI elements. 
+  
+  private void renderInterface(){
+    JSplitPane jsp = new JSplitPane (
+      JSplitPane.HORIZONTAL_SPLIT, 
+      this.renderInputView (), 
+      this.renderDataView ()
+    );
+    jsp.setResizeWeight(0.5); //Sets split equally.
+    
+    this._experimentInterface = new JPanel();
+    this._experimentInterface.setLayout(new GridLayout(1, 1));
+    this._experimentInterface.add(jsp);
+    
+    this._shell.setContentPane(this._experimentInterface);
+    this._shell.revalidate();
+  }
   
   /****************************/
   /***** Experiment Input *****/
@@ -382,7 +406,6 @@ public class PairedAssociateFastSlow {
     JScrollPane jsp = new JScrollPane(
       experimentInfo
     );
-    jsp.setMinimumSize(new Dimension((int)(this._shell.getWidth() * 0.5), this._shell.getHeight()));
     jsp.setBorder(new TitledBorder("Experiment Description"));
     
     //Scroll the vertical sidebar position to the top.  Its at the bottom by 
@@ -475,7 +498,7 @@ public class PairedAssociateFastSlow {
       @Override
       public void fireTableStructureChanged() {
         super.fireTableStructureChanged ();
-        JTableCustomOperations.resizeColumnsToFitWidestCellContentInColumn(PairedAssociateFastSlow.this._humanSerialPositionDataTable);
+        JTableCustomOperations.resizeColumnsToFitWidestCellContentInColumn(PairedAssociateFastSlow.this._humanCumulativeErrorsDataTable);
       }
     };
     
@@ -664,7 +687,7 @@ public class PairedAssociateFastSlow {
     JScrollPane humanPercentageCorrectDataTableScrollPane = new JScrollPane (this._humanPercentageCorrectDataTable);
     humanPercentageCorrectDataTableScrollPane.setBorder(new TitledBorder("Human % Correct"));
     
-    JScrollPane humanCumulativeErrorsDataTableScrollPane = new JScrollPane (this._humanSerialPositionDataTable);
+    JScrollPane humanCumulativeErrorsDataTableScrollPane = new JScrollPane (this._humanCumulativeErrorsDataTable);
     humanCumulativeErrorsDataTableScrollPane.setBorder(new TitledBorder("Human Cumulative Errors"));
     
     JScrollPane modelPercentageCorrectDataTableScrollPane = new JScrollPane (this._modelPercentageCorrectDataTable);
@@ -817,13 +840,13 @@ public class PairedAssociateFastSlow {
       @Override
       public void fireTableStructureChanged() {
         super.fireTableStructureChanged ();
-        JTableCustomOperations.resizeColumnsToFitWidestCellContentInColumn(PairedAssociateFastSlow.this._humanSerialPositionDataTable);
+        JTableCustomOperations.resizeColumnsToFitWidestCellContentInColumn(PairedAssociateFastSlow.this._humanCumulativeErrorsDataTable);
       }
     };
     
-    PairedAssociateFastSlow.this._humanSerialPositionDataTable = new JTable (tm);
-    PairedAssociateFastSlow.this._humanSerialPositionDataTable.setAutoResizeMode (JTable.AUTO_RESIZE_OFF);
-    JTableCustomOperations.resizeColumnsToFitWidestCellContentInColumn(PairedAssociateFastSlow.this._humanSerialPositionDataTable);
+    PairedAssociateFastSlow.this._humanCumulativeErrorsDataTable = new JTable (tm);
+    PairedAssociateFastSlow.this._humanCumulativeErrorsDataTable.setAutoResizeMode (JTable.AUTO_RESIZE_OFF);
+    JTableCustomOperations.resizeColumnsToFitWidestCellContentInColumn(PairedAssociateFastSlow.this._humanCumulativeErrorsDataTable);
   }
   
   /**
@@ -832,6 +855,51 @@ public class PairedAssociateFastSlow {
    */
   private void createModelPercentageCorrectDataTable(){
     TableModel tm = new AbstractTableModel () {
+      
+      /**
+       * Converts a row number to the correct experiment condition.  The 
+       * following procedure is implemented:
+       * 
+       * <ol>
+       *  <li>
+       *    Increment the row number by 1 since they are zero-indexed to return
+       *    a number, n, indicative of an experiment condition and a trial 
+       *    number within that condition.  For example, if there are 3 trials 
+       *    per experiment condition and row 7 is passed, the row indicates that 
+       *    its data pertains to the second trial of the third experiment 
+       *    condition so n = 8.
+       *  </li>
+       *  <li>
+       *    Divide n by the maximum number of trials possible given the human
+       *    data that has been read-in and retrieve both the integer, i, and the
+       *    fraction, f, yielded by this division: i denotes what experiment 
+       *    condition n represents, f determines whether i is returned 
+       *    unmodified or not.
+       *  </li>
+       *  <li>
+       *   If f is greater than 0 then i should be incremented by 1 before it
+       *   is returned.  For example, if there are 3 trials per experiment 
+       *   condition and row 0 is passed, n = 1 and 1/3 gives i = 0 and f = 33..
+       *   Therefore, i should be incremented by 1.  However, if row 2 is 
+       *   passed, n = 3 and 3/3 gives i = 1 and f = 0 so i should not be 
+       *   modified before being returned.
+       *  </li>
+       * <ol>
+       * @param row
+       * @return 
+       */
+      private int convertRowNumberToExperimentCondition(int row){        
+        row++;
+
+        int integer = row / PairedAssociateFastSlow.this._maximumNumberOfTrials;
+        int fraction = row % PairedAssociateFastSlow.this._maximumNumberOfTrials;
+
+        if(fraction > 0){
+          integer ++;
+        }
+
+        return integer;
+      }
       
       @Override
       public int getRowCount () {
@@ -846,13 +914,13 @@ public class PairedAssociateFastSlow {
       @Override
       public Object getValueAt (int row, int column) {
         if(column == 0){
-          return PairedAssociateFastSlow.this.convertRowToExperimentCondition(row);
+          return this.convertRowNumberToExperimentCondition(row);
         } else if(column == 1){
-          return PairedAssociateFastSlow.this._experimentConditionsTable.getValueAt(PairedAssociateFastSlow.this.convertRowToExperimentCondition(row) - 1, column);
+          return PairedAssociateFastSlow.this._experimentConditionsTable.getValueAt(this.convertRowNumberToExperimentCondition(row) - 1, column);
         } else if(column == 2){
-          return PairedAssociateFastSlow.this._experimentConditionsTable.getValueAt(PairedAssociateFastSlow.this.convertRowToExperimentCondition(row) - 1, column);
+          return PairedAssociateFastSlow.this._experimentConditionsTable.getValueAt(this.convertRowNumberToExperimentCondition(row) - 1, column);
         } else if(column == 3){
-          return PairedAssociateFastSlow.this._experimentConditionsTable.getValueAt(PairedAssociateFastSlow.this.convertRowToExperimentCondition(row) - 1, column);
+          return PairedAssociateFastSlow.this._experimentConditionsTable.getValueAt(this.convertRowNumberToExperimentCondition(row) - 1, column);
         } else if (column == 4) {
           
           //The trial number should be the smallest unit of the integer yielded
@@ -911,6 +979,52 @@ public class PairedAssociateFastSlow {
   private void createModelCumulativeErrorsDataTable(){
     TableModel tm = new AbstractTableModel () {
       
+      /**
+       * Converts a row number to the correct experiment condition.  The 
+       * following procedure is implemented:
+       * 
+       * <ol>
+       *  <li>
+       *    Increment the row number by 1 since they are zero-indexed to return
+       *    a number, n, indicative of an experiment condition and a 
+       *    stimulus-response pair within that condition.  For example, if there 
+       *    are 3 stimulus-response pairs per experiment condition and row 7 is 
+       *    passed, the row indicates that its data pertains to the second 
+       *    stimulus-response pair trial of the third experiment condition so n 
+       *    = 8.
+       *  </li>
+       *  <li>
+       *    Divide n by the total number of stimulus-response pairs given the 
+       *    human data that has been read-in and retrieve both the integer, i, 
+       *    and the fraction, f, yielded by this division: i denotes what 
+       *    experiment condition n represents, f determines whether i is 
+       *    returned unmodified or not.
+       *  </li>
+       *  <li>
+       *   If f is greater than 0 then i should be incremented by 1 before it
+       *   is returned.  For example, if there are 3 stimulus-response pairs per 
+       *   experiment condition and row 0 is passed, n = 1 and 1/3 gives i = 0 
+       *   and f = 33.. Therefore, i should be incremented by 1.  However, if 
+       *   row 2 is passed, n = 3 and 3/3 gives i = 1 and f = 0 so i should not 
+       *   be modified before being returned.
+       *  </li>
+       * <ol>
+       * @param row
+       * @return 
+       */
+      private int convertRowNumberToExperimentCondition(int row){
+        row++;
+
+        int integer = row / PairedAssociateFastSlow.this._stimRespPairs.size();
+        int fraction = row % PairedAssociateFastSlow.this._stimRespPairs.size();
+
+        if(fraction > 0){
+          integer ++;
+        }
+
+        return integer;
+      }
+      
       @Override
       public int getRowCount () {
         return PairedAssociateFastSlow.this._experimentConditionsTotal * PairedAssociateFastSlow.this._stimRespPairs.size();
@@ -924,13 +1038,13 @@ public class PairedAssociateFastSlow {
       @Override
       public Object getValueAt (int row, int column) {
         if(column == 0){
-          return PairedAssociateFastSlow.this.convertRowToExperimentCondition(row);
+          return this.convertRowNumberToExperimentCondition(row);
         } else if(column == 1){
-          return PairedAssociateFastSlow.this._experimentConditionsTable.getValueAt(PairedAssociateFastSlow.this.convertRowToExperimentCondition(row) - 1, column);
+          return PairedAssociateFastSlow.this._experimentConditionsTable.getValueAt(this.convertRowNumberToExperimentCondition(row) - 1, column);
         } else if(column == 2){
-          return PairedAssociateFastSlow.this._experimentConditionsTable.getValueAt(PairedAssociateFastSlow.this.convertRowToExperimentCondition(row) - 1, column);
+          return PairedAssociateFastSlow.this._experimentConditionsTable.getValueAt(this.convertRowNumberToExperimentCondition(row) - 1, column);
         } else if(column == 3){
-          return PairedAssociateFastSlow.this._experimentConditionsTable.getValueAt(PairedAssociateFastSlow.this.convertRowToExperimentCondition(row) - 1, column);
+          return PairedAssociateFastSlow.this._experimentConditionsTable.getValueAt(this.convertRowNumberToExperimentCondition(row) - 1, column);
         } else if (column == 4) {
           return PairedAssociateFastSlow.this._stimRespPairs.get(PairedAssociateFastSlow.this.getStimulusResponsePairIndexForExperimentNumber(row + 1)).getFirst().toString();
         } 
@@ -1149,51 +1263,6 @@ public class PairedAssociateFastSlow {
   }
   
   /**
-   * Converts a row number to the correct experiment condition.  The 
-   * following procedure is implemented:
-   * 
-   * <ol>
-   *  <li>
-   *    Increment the row number by 1 since they are zero-indexed to return
-   *    a number, n, indicative of an experiment condition and a trial 
-   *    number within that condition.  For example, if there are 3 trials 
-   *    per experiment condition and row 7 is passed, the row indicates that 
-   *    its data pertains to the second trial of the third experiment 
-   *    condition so n = 8.
-   *  </li>
-   *  <li>
-   *    Divide n by the maximum number of trials possible given the human
-   *    data that has been read-in and retrieve both the integer, i, and the
-   *    fraction, f, yielded by this division: i denotes what experiment 
-   *    condition n represents, f determines whether i is returned 
-   *    unmodified or not.
-   *  </li>
-   *  <li>
-   *   If f is greater than 0 then i should be incremented by 1 before it
-   *   is returned.  For example, if there are 3 trials per experiment 
-   *   condition and row 0 is passed, n = 1 and 1/3 gives i = 0 and f = 33..
-   *   Therefore, i should be incremented by 1.  However, if row 2 is 
-   *   passed, n = 3 and 3/3 gives i = 1 and f = 0 so i should not be 
-   *   modified before being returned.
-   *  </li>
-   * <ol>
-   * @param row
-   * @return 
-   */
-  private int convertRowToExperimentCondition(int row){        
-    row++;
-
-    int integer = row / PairedAssociateFastSlow.this._maximumNumberOfTrials;
-    int fraction = row % PairedAssociateFastSlow.this._maximumNumberOfTrials;
-
-    if(fraction > 0){
-      integer ++;
-    }
-
-    return integer;
-  }
-  
-  /**
    * Calculates the stimulus-response pair index to use for a given experiment
    * number.
    * 
@@ -1267,6 +1336,50 @@ public class PairedAssociateFastSlow {
     }
   }
   
+  /**
+   * Instantiates the data structures used to record model results from the 
+   * experiment.
+   */
+  public void instantiateResultsStorage(){
+    PairedAssociateFastSlow.this._modelPercentageCorrectData = new ArrayList();
+    PairedAssociateFastSlow.this._modelCumulativeErrorsData = new ArrayList();
+    PairedAssociateFastSlow.this._percentageCorrectRSquares = new ArrayList();
+    PairedAssociateFastSlow.this._cumulativeErrorsRSquares = new ArrayList();
+    PairedAssociateFastSlow.this._percentageCorrectRootMeanSquaredErrors = new ArrayList();
+    PairedAssociateFastSlow.this._cumulativeErrorRootMeanSquaredErrors = new ArrayList();
+  }
+  
+  /**
+   * Updates display of all non-model output data tables.
+   */
+  private void updateExperimentInformationTables(){
+    ((AbstractTableModel)PairedAssociateFastSlow.this._experimentConditionsTable.getModel()).fireTableStructureChanged();
+    this.updateStimulusResponsePriorityTableModel();
+    ((AbstractTableModel)PairedAssociateFastSlow.this._humanPercentageCorrectDataTable.getModel()).fireTableStructureChanged();
+    ((AbstractTableModel)PairedAssociateFastSlow.this._humanCumulativeErrorsDataTable.getModel()).fireTableStructureChanged();
+  }
+  
+  /**
+   * Updates display of all model output data tables.
+   */
+  private void updateModelOutputTables(){
+    ((AbstractTableModel)PairedAssociateFastSlow.this._modelPercentageCorrectDataTable.getModel()).fireTableStructureChanged();
+    ((AbstractTableModel)PairedAssociateFastSlow.this._modelCumulativeErrorsDataTable.getModel()).fireTableStructureChanged();
+    ((AbstractTableModel)PairedAssociateFastSlow.this._percentageCorrectModelFitDataTable.getModel()).fireTableStructureChanged();
+    ((AbstractTableModel)PairedAssociateFastSlow.this._cumulativeErrorsModelFitDataTable.getModel()).fireTableStructureChanged();
+  }
+  
+  /**
+   * Updates experiments processed label.
+   */
+  private void updateExperimentsProcessedLabel(){
+    String text = "";
+    if(this._experimentConditionsTotal > 0){
+      text = this._experimentCondition + "/" + this._experimentConditionsTotal;
+    }
+    this._experimentsProcessedLabel.setText(text);
+  }
+  
   /****************************************************************************/
   /****************************************************************************/
   /********************************** ACTIONS *********************************/
@@ -1316,6 +1429,25 @@ public class PairedAssociateFastSlow {
     }
   }
   
+  /**
+   * Restarts the experiment.  The following procedures are performed:
+   * 
+   * <ol>
+   *  <li>
+   *    CHREST model being used in the experiment is unfrozen and cleared.
+   *  </li>
+   *  <li>
+   *    Model output data storage is re-instantiated and model data tables are
+   *    updated (clearing them).
+   *  </li>
+   *  <li>
+   *    Experiment progress variables are reset to their original values.
+   *  </li>
+   *  <li>
+   *    GUI elements are reset.
+   *  </li>
+   * </ol>
+   */
   class RestartExperimentAction extends AbstractAction implements ActionListener {
     
     RestartExperimentAction(){
@@ -1327,11 +1459,25 @@ public class PairedAssociateFastSlow {
       PairedAssociateFastSlow.this._model.unfreeze();
       PairedAssociateFastSlow.this._model.clear();
       
-      PairedAssociateFastSlow.this.instantiateResultsStorage();
-      PairedAssociateFastSlow.this.updateDataTables();
-      
+      PairedAssociateFastSlow.this._dictionary.clear();
+      PairedAssociateFastSlow.this._experiment = null;
       PairedAssociateFastSlow.this._experimentCondition = 0;
-      PairedAssociateFastSlow.this._runExperiments = true;
+      PairedAssociateFastSlow.this._experimentConditionsTotal = 0;
+      PairedAssociateFastSlow.this.updateExperimentsProcessedLabel();
+      PairedAssociateFastSlow.this._humanCumulativeErrorsData.clear();
+      PairedAssociateFastSlow.this._humanPercentageCorrectData.clear();
+      PairedAssociateFastSlow.this._independentVariablesSetup = false;
+      PairedAssociateFastSlow.this._letters.clear();
+      PairedAssociateFastSlow.this._maximumNumberOfTrials = 0;
+      PairedAssociateFastSlow.this._modelCumulativeErrorsData.clear();
+      PairedAssociateFastSlow.this._modelPercentageCorrectData.clear();
+      PairedAssociateFastSlow.this._percentageCorrectRSquares.clear();
+      PairedAssociateFastSlow.this._percentageCorrectRootMeanSquaredErrors.clear();
+      PairedAssociateFastSlow.this._readInSuccessful = false;
+      PairedAssociateFastSlow.this._runExperiments = false;
+      PairedAssociateFastSlow.this._stimRespPairs.clear();
+      PairedAssociateFastSlow.this._stimRespPairsAndPriorities.clear();
+      PairedAssociateFastSlow.this.instantiateResultsStorage();
       
       PairedAssociateFastSlow.this._fastInterItemTime.setEnabled(true);
       PairedAssociateFastSlow.this._fastInterTrialTime.setEnabled(true);
@@ -1343,10 +1489,15 @@ public class PairedAssociateFastSlow {
       PairedAssociateFastSlow.this._exportDataButton.setEnabled(false);
       PairedAssociateFastSlow.this._restartButton.setEnabled(false);
       PairedAssociateFastSlow.this._runButton.setEnabled(true);
-      PairedAssociateFastSlow.this.updateExperimentsProcessedLabel();
+      
+      PairedAssociateFastSlow.this.renderInterface();
     }
   }
   
+  /**
+   * Triggers running of experiments from the current experiment condition that
+   * is to be processed.
+   */
   class RunExperimentAction extends AbstractAction implements ActionListener {
     
     RunExperimentAction(){
@@ -1355,56 +1506,17 @@ public class PairedAssociateFastSlow {
 
     @Override
     public void actionPerformed(ActionEvent e) {
-      
-      PairedAssociateFastSlow.this._runExperiments = true; //Will need to be reset if experiment is stopped.
-      PairedAssociateFastSlow.this._restartButton.setEnabled(false);
-      PairedAssociateFastSlow.this._stopButton.setEnabled(true);
-      PairedAssociateFastSlow.this._exportDataButton.setEnabled(false);
-      PairedAssociateFastSlow.this._fastInterItemTime.setEnabled(false);
-      PairedAssociateFastSlow.this._fastInterTrialTime.setEnabled(false);
-      PairedAssociateFastSlow.this._fastPresentationTime.setEnabled(false);
-      PairedAssociateFastSlow.this._slowInterItemTime.setEnabled(false);
-      PairedAssociateFastSlow.this._slowInterTrialTime.setEnabled(false);
-      PairedAssociateFastSlow.this._slowPresentationTime.setEnabled(false);
-      PairedAssociateFastSlow.this._runButton.setEnabled(false);
-      
-      //Schedule these threads so one executes after another has completed.
-      if(PairedAssociateFastSlow.this._experimentCondition == 0){
-        LoadDataThread dictionaryRead = _shell.new LoadDataThread (_shell, "Location of Dictionary Data", false);
-        dictionaryRead.doInBackground();
-
-        LoadDataThread lettersRead = _shell.new LoadDataThread (_shell, "Location of Letters Data", false);
-        lettersRead.doInBackground();
-
-        PairedAssociateFastSlow.this._dictionary = dictionaryRead.getItems();
-        PairedAssociateFastSlow.this._letters = lettersRead.getItems();
-      }
-      
-      if(
-        PairedAssociateFastSlow.this._dictionary != null && 
-        !PairedAssociateFastSlow.this._dictionary.isEmpty() &&
-        PairedAssociateFastSlow.this._letters != null && 
-        !PairedAssociateFastSlow.this._letters.isEmpty() 
-      ){
-        javax.swing.SwingUtilities.invokeLater(() -> {
-          Task task = new Task();
-          task.execute();
-        });
-      }
-      else{
-        PairedAssociateFastSlow.this._restartButton.setEnabled(false);
-        PairedAssociateFastSlow.this._stopButton.setEnabled(false);
-        PairedAssociateFastSlow.this._fastInterItemTime.setEnabled(true);
-        PairedAssociateFastSlow.this._fastInterTrialTime.setEnabled(true);
-        PairedAssociateFastSlow.this._fastPresentationTime.setEnabled(true);
-        PairedAssociateFastSlow.this._slowInterItemTime.setEnabled(true);
-        PairedAssociateFastSlow.this._slowInterTrialTime.setEnabled(true);
-        PairedAssociateFastSlow.this._slowPresentationTime.setEnabled(true);
-        PairedAssociateFastSlow.this._runButton.setEnabled(true);
-      }
+      javax.swing.SwingUtilities.invokeLater(() -> {
+        ReadExperimentData readExperimentDataThread = new ReadExperimentData();
+        readExperimentDataThread.execute();
+      });
     }
   }
   
+  /**
+   * Stops experiment processing after the current experiment condition has
+   * completed.
+   */
   class StopExperimentAction extends AbstractAction implements ActionListener {
     
     StopExperimentAction(){
@@ -1422,6 +1534,10 @@ public class PairedAssociateFastSlow {
     }
   }
   
+  /**
+   * Conducts the experiments using the experiment conditions specified and the
+   * CHREST model loaded into the experiment.
+   */
   class Task extends SwingWorker<Void, Void> {
     
     //Allows the model's record keeping setting to be set back to what it was
@@ -1434,24 +1550,32 @@ public class PairedAssociateFastSlow {
 
     @Override
     protected Void doInBackground() throws Exception {
+      
+      /*****************/
+      /***** Setup *****/
+      /*****************/
 
       //Set cursor to "busy" so the user knows that the script is busy.
       PairedAssociateFastSlow.this._shell.setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
       
       //Don't update model visuals since this will slow the script to some 
       //degree and is superflous any way.
-      _model.freeze();
+      PairedAssociateFastSlow.this._model.freeze();
       
       //Get the model's current history recording setting and turn off history
       //recording.
       this._originalRecordKeepingSetting = _model.canRecordHistory();
-      _model.setRecordHistory(false);
+      PairedAssociateFastSlow.this._model.setRecordHistory(false);
       
       //If the experiment is not "resuming" after being stopped, set the 
       //experiment number to 1 otherwise, do not change it.
       if(PairedAssociateFastSlow.this._experimentCondition == 0){
         PairedAssociateFastSlow.this._experimentCondition = 1;
       }
+      
+      /******************************************************/
+      /***** Start Experiment Condition Processing Loop *****/
+      /******************************************************/
 
       for(
         ; //Don't set any counters initially, this is done above and will cause incorrect experiment progression if the experiment is stopped after starting.
@@ -1459,27 +1583,36 @@ public class PairedAssociateFastSlow {
         PairedAssociateFastSlow.this._experimentCondition++
       ){
         
-        //Pre-learning setting.  To determine what pre-learning should occur, 
-        //divide the experiment number by 3 and retrieve the modulus.  Division
-        //by 3 occurs because there are three types of pre-learning possible.
+        /************************/
+        /***** Pre-learning *****/
+        /************************/
+        
         String preLearning = PairedAssociateFastSlow.this._experimentConditionsTable.getValueAt(_experimentCondition - 1, 2).toString();
         switch(preLearning){
-          case "Dictionary":
+          
+          //If pre-learning prescribes use of the dictionary the model should 
+          //"skim" the dictionary once.
+          case PairedAssociateFastSlow.DICTIONARY_CONDITION:
             for(ListPattern word : PairedAssociateFastSlow.this._dictionary){
-              _model.recogniseAndLearn(word);
+              PairedAssociateFastSlow.this._model.recogniseAndLearn(word);
             }
             break;
-          case "Letters":
+            
+          //If pre-learning prescribes the use of letters the model should learn
+          //the letters completely.
+          case PairedAssociateFastSlow.LETTERS_CONDITION:
             for(ListPattern letter : PairedAssociateFastSlow.this._letters){
-              Node recognisedNode = _model.recogniseAndLearn(letter);
+              Node recognisedNode = PairedAssociateFastSlow.this._model.recogniseAndLearn(letter);
               while(!recognisedNode.getImage().equals(letter)){
-                recognisedNode = _model.recogniseAndLearn(letter);
+                recognisedNode = PairedAssociateFastSlow.this._model.recogniseAndLearn(letter);
               }
             }
             break;
-          default:
-            break;
         }
+        
+        /*****************************/
+        /***** Create Experiment *****/
+        /*****************************/
         
         //Set-up the experiment after pre-learning since the experiment 
         //constructor resets the model's learning clock.  This clock will be 
@@ -1487,106 +1620,124 @@ public class PairedAssociateFastSlow {
         //conducted properly (experiment time will need to be greater than the 
         //learning clock value before any learning of experiment stimuli-response
         //pairs occurs) and may cause out-of-memory errors.
-        _experiment = new PairedAssociateExperiment(_model, PairedAssociateFastSlow.this._stimRespPairs);
+        PairedAssociateFastSlow.this._experiment = new PairedAssociateExperiment(_model, PairedAssociateFastSlow.this._stimRespPairs);
+        
+        /******************************************/
+        /***** Setup Auditory Loop Priorities *****/
+        /******************************************/
         
         //Set the auditory loop priorities in the experiment according to what 
         //has been specified in the interface.
         for(Entry<PairedPattern, Integer> stimulusResponseAndPriority : PairedAssociateFastSlow.this._stimRespPairsAndPriorities.entrySet()){
-          _experiment.setStimulusResponsePriority(
+          PairedAssociateFastSlow.this._experiment.setStimulusResponsePriority(
             stimulusResponseAndPriority.getKey(),
             stimulusResponseAndPriority.getValue(), 
             true
           );
         }
         
-        //Speed parameter setting.
-        String presentationSpeed;
-        if(PairedAssociateFastSlow.this._experimentCondition <= PairedAssociateFastSlow.this._experimentConditionsTotal/2 ){
-          _experiment.setPresentationTime((int)_fastPresentationTime.getModel().getValue());
-          _experiment.setInterItemTime((int)_fastInterItemTime.getModel().getValue());
-          _experiment.setInterTrialTime((int)_fastInterTrialTime.getModel().getValue());
-          presentationSpeed = PairedAssociateFastSlow.FAST_PRESENTATION_CONDITION;
-        }
-        else{
-          _experiment.setPresentationTime((int)_slowPresentationTime.getModel().getValue());
-          _experiment.setInterItemTime((int)_slowInterItemTime.getModel().getValue());
-          _experiment.setInterTrialTime((int)_slowInterTrialTime.getModel().getValue());
-          presentationSpeed = PairedAssociateFastSlow.SLOW_PRESENTATION_CONDITION;
+        /**********************************************/
+        /***** Setup Presentation Speed Variables *****/
+        /**********************************************/
+        
+        String presentationSpeed = PairedAssociateFastSlow.this._experimentConditionsTable.getValueAt(_experimentCondition - 1, 1).toString();
+        switch(presentationSpeed){
+          case PairedAssociateFastSlow.FAST_PRESENTATION_CONDITION:
+            PairedAssociateFastSlow.this._experiment.setPresentationTime((Integer)PairedAssociateFastSlow.this._fastPresentationTime.getValue());
+            PairedAssociateFastSlow.this._experiment.setInterItemTime((Integer)PairedAssociateFastSlow.this._fastInterItemTime.getValue());
+            PairedAssociateFastSlow.this._experiment.setInterTrialTime((Integer)PairedAssociateFastSlow.this._fastInterTrialTime.getValue());
+            break;
+          case PairedAssociateFastSlow.SLOW_PRESENTATION_CONDITION:
+            PairedAssociateFastSlow.this._experiment.setPresentationTime((Integer)PairedAssociateFastSlow.this._slowPresentationTime.getValue());
+            PairedAssociateFastSlow.this._experiment.setInterItemTime((Integer)PairedAssociateFastSlow.this._slowInterItemTime.getValue());
+            PairedAssociateFastSlow.this._experiment.setInterTrialTime((Integer)PairedAssociateFastSlow.this._slowInterTrialTime.getValue());
+            break;
         }
         
-        //Auditory loop size setting.  The auditory loop should only ever be as
-        //large as the number of stimulus-response pairs in the experiment since
-        //being able to hold more confers no benefits.
-        int auditoryLoopSize = PairedAssociateFastSlow.this._experimentCondition % PairedAssociateFastSlow.this._stimRespPairs.size();
-        if(auditoryLoopSize == 0){
-          auditoryLoopSize = PairedAssociateFastSlow.this._stimRespPairs.size();
-        }
-        _experiment.setAuditoryLoopMaxSize(auditoryLoopSize);
+        /**********************************/
+        /***** Set Auditory Loop Size *****/
+        /**********************************/
         
-        /**********************************************************************/
-        /**********************************************************************/
-        /***************************** RUN TRIALS *****************************/
-        /**********************************************************************/
-        /**********************************************************************/
+        PairedAssociateFastSlow.this._experiment.setAuditoryLoopMaxSize( Integer.valueOf(PairedAssociateFastSlow.this._experimentConditionsTable.getValueAt(_experimentCondition - 1, 3).toString()) );
         
-        //Create a new regression object so that human and model observations 
-        //can be added after each trial and the R^2 value can be calculated for
-        //the entire experiment.
+        /***********************************/
+        /***** Setup Model Fit Objects *****/
+        /***********************************/
+        
+        //Create regression objects for the percentage correct and cumulative 
+        //errors model fit can be calculated for the experiment condition.
         SimpleRegression percentageCorrectRegression = new SimpleRegression();
-        SimpleRegression serialPositionRegression = new SimpleRegression();
+        SimpleRegression cumulativeErrorsRegression = new SimpleRegression();
         
-        Map<ListPattern, Double> serialPositionsForModelOverExperiment = new HashMap<>();
+        //Create a data structure to store the cumulative errors for each 
+        //stimulus-response pair over the trials in the experiment condition.
+        //This is not required for percentage correct data since this data is 
+        //added on a per-trial basis.
+        Map<ListPattern, Double> cumulativeErrorsData = new HashMap<>();
+        
+        /**********************************/
+        /***** Experiment Trials Loop *****/
+        /**********************************/
         
         for(int trialNumber = 1; trialNumber <= PairedAssociateFastSlow.this._humanPercentageCorrectData.get(presentationSpeed).size(); trialNumber++){
-          _experiment.runTrial(false);
           
-          int totalErrors = 0;
-          for(Entry<ListPattern, Integer> stimuliAndError : _experiment.getErrors().get(trialNumber-1).entrySet()){
-            totalErrors += stimuliAndError.getValue();
+          //Run the trial.
+          PairedAssociateFastSlow.this._experiment.runTrial(false);
+          
+          /***************************************/
+          /***** Calculate Cumulative Errors *****/
+          /***************************************/
+          
+          int cumulativeErrors = 0;
+          for(Entry<ListPattern, Integer> stimuliAndError : PairedAssociateFastSlow.this._experiment.getErrors().get(trialNumber-1).entrySet()){
+            cumulativeErrors += stimuliAndError.getValue();
             
             //If this isn't the first trial, the stimulus will already exist in
-            //the serialPositionsForModelOverExperiment data structure so get
+            //the cumulativeErrorsData data structure so get
             //the current value for this stimulus (the cumulative total of 
             //errors for this stimulus) and add its value in this trial to it).
-            if(serialPositionsForModelOverExperiment.containsKey(stimuliAndError.getKey())){
-              serialPositionsForModelOverExperiment.put(
-                stimuliAndError.getKey(),
-                serialPositionsForModelOverExperiment.get(stimuliAndError.getKey()) + stimuliAndError.getValue().doubleValue()
+            if(cumulativeErrorsData.containsKey(stimuliAndError.getKey())){
+              cumulativeErrorsData.put(stimuliAndError.getKey(),
+                cumulativeErrorsData.get(stimuliAndError.getKey()) + stimuliAndError.getValue().doubleValue()
               );
             }
             //Otherwise, this is the first trial so add a new key (the stimulus)
             //and set its initial value to the current error value.
             else{
-              serialPositionsForModelOverExperiment.put(stimuliAndError.getKey(), stimuliAndError.getValue().doubleValue());
+              cumulativeErrorsData.put(stimuliAndError.getKey(), stimuliAndError.getValue().doubleValue());
             }
           }
           
-          //Casting "totalErrors" to double will promote denominator to 
+          /****************************************/
+          /***** Calculate Percentage Correct *****/
+          /****************************************/
+          
+          //Casting "cumulativeErrors" to double will promote denominator to 
           //double too.
           double modelPercentageCorrect = 100 - (
-            ( ((double)totalErrors) / PairedAssociateFastSlow.this._stimRespPairs.size() ) 
+            ( ((double)cumulativeErrors) / PairedAssociateFastSlow.this._stimRespPairs.size() ) 
             * 100 
           ); 
           
           PairedAssociateFastSlow.this._modelPercentageCorrectData.add(modelPercentageCorrect);
           
-          //Get the percentage of correct responses given by the human in this
-          //trial.
-          Double humanPercentageCorrect = PairedAssociateFastSlow.this._humanPercentageCorrectData.get(presentationSpeed).get(trialNumber - 1);
+          /*************************************************/
+          /***** Add Percentage Correct Model Fit Data *****/
+          /*************************************************/
           
-          //Add the percentage correct observations to the percentage correct 
-          //regression object.
+          Double humanPercentageCorrect = PairedAssociateFastSlow.this._humanPercentageCorrectData.get(presentationSpeed).get(trialNumber - 1);
           percentageCorrectRegression.addData(humanPercentageCorrect, modelPercentageCorrect);
         }
         
-        //Add cumulative error data.
-        PairedAssociateFastSlow.this._modelCumulativeErrorsData.add(serialPositionsForModelOverExperiment);
-        for(Entry<ListPattern, Double> modelStimulusAndCumulativeError : serialPositionsForModelOverExperiment.entrySet()){
+        /***********************************************/
+        /***** Add Cumulative Error Model Fit Data *****/
+        /***********************************************/
+        
+        PairedAssociateFastSlow.this._modelCumulativeErrorsData.add(cumulativeErrorsData);
+        for(Entry<ListPattern, Double> modelStimulusAndCumulativeError : cumulativeErrorsData.entrySet()){
           for(Entry<ListPattern, Double> humanStimulusAndCumulativeError : PairedAssociateFastSlow.this._humanCumulativeErrorsData.get(presentationSpeed).entrySet()){
-            
             if(humanStimulusAndCumulativeError.getKey().toString().equals(modelStimulusAndCumulativeError.getKey().toString())){
-
-              serialPositionRegression.addData(
+              cumulativeErrorsRegression.addData(
                 humanStimulusAndCumulativeError.getValue(), 
                 modelStimulusAndCumulativeError.getValue()
               );
@@ -1594,12 +1745,18 @@ public class PairedAssociateFastSlow {
           }
         }
           
-        //Now compute R^2 and RSME mean for percentage correct and serial 
-        //position for this experiment.
+        /***************************************************/
+        /***** Calculate and Publish Model Fit Results *****/
+        /***************************************************/
+        
         PairedAssociateFastSlow.this._percentageCorrectRSquares.add(percentageCorrectRegression.getRSquare());
         PairedAssociateFastSlow.this._percentageCorrectRootMeanSquaredErrors.add(Math.sqrt(percentageCorrectRegression.getMeanSquareError()));
-        PairedAssociateFastSlow.this._cumulativeErrorsRSquares.add(serialPositionRegression.getRSquare());
-        PairedAssociateFastSlow.this._cumulativeErrorRootMeanSquaredErrors.add(Math.sqrt(serialPositionRegression.getMeanSquareError()));
+        PairedAssociateFastSlow.this._cumulativeErrorsRSquares.add(cumulativeErrorsRegression.getRSquare());
+        PairedAssociateFastSlow.this._cumulativeErrorRootMeanSquaredErrors.add(Math.sqrt(cumulativeErrorsRegression.getMeanSquareError()));
+        
+        /********************/
+        /***** Clean Up *****/
+        /********************/
         
         _model.clear();
         PairedAssociateFastSlow.this.updateExperimentsProcessedLabel();
@@ -1611,9 +1768,10 @@ public class PairedAssociateFastSlow {
     @Override
     public void done() {
       
-      //The experiment number will be 1 greater than the number of experiment
-      //conditions due to the operation of the for loop that controls whether
-      //experiments are run.
+      //Since this method will be called if the "StopExperimentAction" is 
+      //invoked, the following code should only be run once, when all experiment 
+      //conditions have been processed.  Otherwise, the code in the 
+      //"StopExperimentAction" should be run.
       if(PairedAssociateFastSlow.this._experimentCondition > PairedAssociateFastSlow.this._experimentConditionsTotal ){
         _model.unfreeze();
         _model.setRecordHistory(this._originalRecordKeepingSetting);
@@ -1629,11 +1787,14 @@ public class PairedAssociateFastSlow {
         PairedAssociateFastSlow.this._slowPresentationTime.setEnabled(true);
         PairedAssociateFastSlow.this._shell.setCursor(null);
 
-        PairedAssociateFastSlow.this.updateDataTables();
+        PairedAssociateFastSlow.this.updateModelOutputTables();
       }
     }
   }
   
+  /**
+   * Reads in experiment data specified by the user.
+   */
   class ReadExperimentData extends SwingWorker<Void, Void>{
     private final Map<String, List<Double>> _percentageCorrectData = new HashMap();
     private final Map<String, Map<ListPattern, Double>> _cumulativeErrorData = new HashMap();
@@ -1642,151 +1803,184 @@ public class PairedAssociateFastSlow {
     @Override
     protected Void doInBackground() throws Exception {
       
-      //Validate the input data to be used using the corresponding schema.
-      String experimentInputDirectory = ".." + File.separator + "scripted-experiment-inputs" + File.separator + "PairedAssociateFastSlow";
-      String experimentInputDataFile = experimentInputDirectory + File.separator + "input.xml";
-      String experimentInputDataSchema = experimentInputDirectory + File.separator + "schema.xsd";
-      if(InputOutput.validateXmlInputData(PairedAssociateFastSlow.this._shell,experimentInputDataFile, experimentInputDataSchema)){
+      if(!PairedAssociateFastSlow.this._readInSuccessful){
       
-        XMLInputFactory inputFactory = XMLInputFactory.newInstance();
-        InputStream in = new FileInputStream(experimentInputDataFile);
-        XMLEventReader eventReader = inputFactory.createXMLEventReader(in);
+        //Validate the input data to be used using the corresponding schema.
+        String experimentSchemaDirectory = ".." + File.separator + "scripted-experiment-inputs" + File.separator + "PairedAssociateFastSlow";
+        JFileChooser fileChooser = new JFileChooser(experimentSchemaDirectory);
+        fileChooser.setDialogTitle("Select Input Data");
+        int resultOfFileSelect = fileChooser.showOpenDialog(PairedAssociateFastSlow.this._experimentInterface);
+        if(resultOfFileSelect == JFileChooser.APPROVE_OPTION){
+          File inputFile = fileChooser.getSelectedFile();
 
-        while(eventReader.hasNext()){
-          XMLEvent event = eventReader.nextEvent();
+          String experimentInputDataSchema = experimentSchemaDirectory + File.separator + "schema.xsd";
+          if(InputOutput.validateXmlInputData(PairedAssociateFastSlow.this._shell, inputFile.getAbsolutePath(), experimentInputDataSchema)){
 
-          if (event.isStartElement()) {
-            StartElement startElement = event.asStartElement();
-            String elementName = startElement.getName().getLocalPart();
+            XMLInputFactory inputFactory = XMLInputFactory.newInstance();
+            InputStream in = new FileInputStream(inputFile);
+            XMLEventReader eventReader = inputFactory.createXMLEventReader(in);
 
-            if(elementName.equalsIgnoreCase("stimulus-response-pair")){
-              
-              boolean stimulusResponsePairEndTagEncountered = false;
-              PairedPattern pair = null;
-              Integer auditoryLoopPriority = null;
-              
-              while(!stimulusResponsePairEndTagEncountered){
-                
-                event = eventReader.nextEvent();
-                if(event.isStartElement()){
-                  
-                  String startElementName = event.asStartElement().getName().getLocalPart();
-                  if(startElementName.equals("auditory-loop-priority")){
+            while(eventReader.hasNext()){
+              XMLEvent event = eventReader.nextEvent();
+
+              if (event.isStartElement()) {
+                StartElement startElement = event.asStartElement();
+                String elementName = startElement.getName().getLocalPart();
+
+                if(elementName.equalsIgnoreCase("stimulus-response-pair")){
+
+                  boolean stimulusResponsePairEndTagEncountered = false;
+                  PairedPattern pair = null;
+                  Integer auditoryLoopPriority = null;
+
+                  while(!stimulusResponsePairEndTagEncountered){
+
                     event = eventReader.nextEvent();
-                    auditoryLoopPriority = Integer.valueOf(event.asCharacters().getData());
-                  }
-                  else if(startElementName.equals("pair")){
-                    event = eventReader.nextEvent();
-                    pair = InputOutput.generatePairedPattern(event.asCharacters().getData(), false);
-                  }
-                  
-                  if(pair != null && auditoryLoopPriority != null){
-                    this._stimulusResponsePairsAndPriorities.put(pair, auditoryLoopPriority);
-                  }
-                }
-                else if(event.isEndElement()){
-                  if(event.asEndElement().getName().getLocalPart().equalsIgnoreCase("stimulus-response-pair")){
-                    stimulusResponsePairEndTagEncountered = true;
-                  }
-                }
-              }
-              
-            }
+                    if(event.isStartElement()){
 
-            if(elementName.equalsIgnoreCase("fast-presentation") || elementName.equalsIgnoreCase("slow-presentation")){
-
-              String presentationSpeed = PairedAssociateFastSlow.FAST_PRESENTATION_CONDITION;
-              if(elementName.equalsIgnoreCase("slow-presentation")){
-                presentationSpeed = PairedAssociateFastSlow.SLOW_PRESENTATION_CONDITION;
-              }
-
-              boolean presentationEndTagEncountered = false;
-              while(!presentationEndTagEncountered){
-
-                event = eventReader.nextEvent();
-                if(event.isStartElement()){
-
-                  String startElementName = event.asStartElement().getName().getLocalPart();
-                  if(startElementName.equalsIgnoreCase("percentage-correct")){
-
-                    this._percentageCorrectData.put(presentationSpeed, new ArrayList<>());
-
-                    boolean percentageCorrectEndTagEncountered = false;
-                    while(!percentageCorrectEndTagEncountered){
-
-                      event = eventReader.nextEvent();
-                      if(event.isStartElement()){
-                        if(event.asStartElement().getName().getLocalPart().equalsIgnoreCase("percentage-correct-data")){
-                          event = eventReader.nextEvent();
-                          this._percentageCorrectData.get(presentationSpeed).add(Double.valueOf(event.asCharacters().getData()));
-                        }
+                      String startElementName = event.asStartElement().getName().getLocalPart();
+                      if(startElementName.equals("auditory-loop-priority")){
+                        event = eventReader.nextEvent();
+                        auditoryLoopPriority = Integer.valueOf(event.asCharacters().getData());
                       }
-                      else if(event.isEndElement()){
-                        if(event.asEndElement().getName().getLocalPart().equalsIgnoreCase("percentage-correct")){
-                          percentageCorrectEndTagEncountered = true;
-                        }
+                      else if(startElementName.equals("pair")){
+                        event = eventReader.nextEvent();
+                        pair = InputOutput.generatePairedPattern(event.asCharacters().getData(), false);
                       }
 
+                      if(pair != null && auditoryLoopPriority != null){
+                        this._stimulusResponsePairsAndPriorities.put(pair, auditoryLoopPriority);
+                      }
+                    }
+                    else if(event.isEndElement()){
+                      if(event.asEndElement().getName().getLocalPart().equalsIgnoreCase("stimulus-response-pair")){
+                        stimulusResponsePairEndTagEncountered = true;
+                      }
                     }
                   }
 
-                  if(startElementName.equals("cumulative-errors")){
-                    this._cumulativeErrorData.put(presentationSpeed, new HashMap<>());
+                }
 
-                    boolean cumulativeErrorsEndTagEncountered = false;
-                    while(!cumulativeErrorsEndTagEncountered){
+                if(elementName.equalsIgnoreCase("fast-presentation") || elementName.equalsIgnoreCase("slow-presentation")){
 
-                      event = eventReader.nextEvent();
-                      if(event.isStartElement()){
-                        if(event.asStartElement().getName().getLocalPart().equalsIgnoreCase("cumulative-errors-data")){
-                          
-                          boolean cumulativeErrorsDataEndTagEncountered = false;
-                          ListPattern stimulus = null;
-                          Double cumulativeError = null;
-                          
-                          while(!cumulativeErrorsDataEndTagEncountered){
-                          
-                            event = eventReader.nextEvent();
-                            if(event.isStartElement()){
-                              if(event.asStartElement().getName().getLocalPart().equalsIgnoreCase("pair")){
-                                event = eventReader.nextEvent();
-                                stimulus = InputOutput.generatePairedPattern(event.asCharacters().getData(), false).getFirst();
-                              }
-                              else if(event.asStartElement().getName().getLocalPart().equalsIgnoreCase("cumulative-error")){
-                                event = eventReader.nextEvent();
-                                cumulativeError = Double.valueOf(event.asCharacters().getData());
-                              }
-                              
-                              if(stimulus != null && cumulativeError != null){
-                                this._cumulativeErrorData.get(presentationSpeed).put(stimulus, cumulativeError);
-                              }
+                  String presentationSpeed = PairedAssociateFastSlow.FAST_PRESENTATION_CONDITION;
+                  if(elementName.equalsIgnoreCase("slow-presentation")){
+                    presentationSpeed = PairedAssociateFastSlow.SLOW_PRESENTATION_CONDITION;
+                  }
+
+                  boolean presentationEndTagEncountered = false;
+                  while(!presentationEndTagEncountered){
+
+                    event = eventReader.nextEvent();
+                    if(event.isStartElement()){
+
+                      String startElementName = event.asStartElement().getName().getLocalPart();
+                      if(startElementName.equalsIgnoreCase("percentage-correct")){
+
+                        this._percentageCorrectData.put(presentationSpeed, new ArrayList<>());
+
+                        boolean percentageCorrectEndTagEncountered = false;
+                        while(!percentageCorrectEndTagEncountered){
+
+                          event = eventReader.nextEvent();
+                          if(event.isStartElement()){
+                            if(event.asStartElement().getName().getLocalPart().equalsIgnoreCase("percentage-correct-data")){
+                              event = eventReader.nextEvent();
+                              this._percentageCorrectData.get(presentationSpeed).add(Double.valueOf(event.asCharacters().getData()));
                             }
-                            else if(event.isEndElement()){
-                              if(event.asEndElement().getName().getLocalPart().equalsIgnoreCase("cumulative-errors-data")){
-                                cumulativeErrorsDataEndTagEncountered = true;
+                          }
+                          else if(event.isEndElement()){
+                            if(event.asEndElement().getName().getLocalPart().equalsIgnoreCase("percentage-correct")){
+                              percentageCorrectEndTagEncountered = true;
+                            }
+                          }
+
+                        }
+                      }
+
+                      if(startElementName.equals("cumulative-errors")){
+                        this._cumulativeErrorData.put(presentationSpeed, new HashMap<>());
+
+                        boolean cumulativeErrorsEndTagEncountered = false;
+                        while(!cumulativeErrorsEndTagEncountered){
+
+                          event = eventReader.nextEvent();
+                          if(event.isStartElement()){
+                            if(event.asStartElement().getName().getLocalPart().equalsIgnoreCase("cumulative-errors-data")){
+
+                              boolean cumulativeErrorsDataEndTagEncountered = false;
+                              ListPattern stimulus = null;
+                              Double cumulativeError = null;
+
+                              while(!cumulativeErrorsDataEndTagEncountered){
+
+                                event = eventReader.nextEvent();
+                                if(event.isStartElement()){
+                                  if(event.asStartElement().getName().getLocalPart().equalsIgnoreCase("pair")){
+                                    event = eventReader.nextEvent();
+                                    stimulus = InputOutput.generatePairedPattern(event.asCharacters().getData(), false).getFirst();
+                                  }
+                                  else if(event.asStartElement().getName().getLocalPart().equalsIgnoreCase("cumulative-error")){
+                                    event = eventReader.nextEvent();
+                                    cumulativeError = Double.valueOf(event.asCharacters().getData());
+                                  }
+
+                                  if(stimulus != null && cumulativeError != null){
+                                    this._cumulativeErrorData.get(presentationSpeed).put(stimulus, cumulativeError);
+                                  }
+                                }
+                                else if(event.isEndElement()){
+                                  if(event.asEndElement().getName().getLocalPart().equalsIgnoreCase("cumulative-errors-data")){
+                                    cumulativeErrorsDataEndTagEncountered = true;
+                                  }
+                                }
                               }
                             }
                           }
-                        }
-                      }
-                      else if(event.isEndElement()){
-                        if(event.asEndElement().getName().getLocalPart().equalsIgnoreCase("cumulative-errors")){
-                          cumulativeErrorsEndTagEncountered = true;
-                        }
-                      }
+                          else if(event.isEndElement()){
+                            if(event.asEndElement().getName().getLocalPart().equalsIgnoreCase("cumulative-errors")){
+                              cumulativeErrorsEndTagEncountered = true;
+                            }
+                          }
 
+                        }
+                      }
+                    }
+                    if(event.isEndElement()){
+                      if(event.asEndElement().getName().getLocalPart().equalsIgnoreCase(presentationSpeed + "-presentation")){
+                        presentationEndTagEncountered = true;
+                      }
                     }
                   }
-                }
-                if(event.isEndElement()){
-                  if(event.asEndElement().getName().getLocalPart().equalsIgnoreCase(presentationSpeed + "-presentation")){
-                    presentationEndTagEncountered = true;
-                  }
-                }
+                } //End fast presentation check
+              } //End start element check
+            }//End read loop
+            
+            /***********************************************/
+            /***** Read In Dictionary and Letters Data *****/
+            /***********************************************/
+
+            LoadDataThread dictionaryRead = _shell.new LoadDataThread (_shell, "Location of Dictionary Data", false);
+            dictionaryRead.doInBackground();
+
+            LoadDataThread lettersRead = _shell.new LoadDataThread (_shell, "Location of Letters Data", false);
+            lettersRead.doInBackground();
+
+            EventQueue.invokeLater(()->{
+              PairedAssociateFastSlow.this._dictionary = dictionaryRead.getItems();
+              PairedAssociateFastSlow.this._letters = lettersRead.getItems();
+
+              if(
+                PairedAssociateFastSlow.this._dictionary != null && 
+                !PairedAssociateFastSlow.this._dictionary.isEmpty() &&
+                PairedAssociateFastSlow.this._letters != null && 
+                !PairedAssociateFastSlow.this._letters.isEmpty() 
+              ){
+                PairedAssociateFastSlow.this._readInSuccessful = true;
               }
-            } //End fast presentation check
-          } //End start element check
-        }//End read loop
+            });
+          }
+        }
       }
       
       return null;
@@ -1794,73 +1988,68 @@ public class PairedAssociateFastSlow {
     
     @Override
     protected void done(){
-      PairedAssociateFastSlow.this._stimRespPairsAndPriorities = this._stimulusResponsePairsAndPriorities;
-      PairedAssociateFastSlow.this._humanPercentageCorrectData = this._percentageCorrectData;
-      PairedAssociateFastSlow.this._humanCumulativeErrorsData = this._cumulativeErrorData;
-      
-      PairedAssociateFastSlow.this._maximumNumberOfTrials = Math.max(
-        PairedAssociateFastSlow.this._humanPercentageCorrectData.get(PairedAssociateFastSlow.FAST_PRESENTATION_CONDITION).size(), 
-        PairedAssociateFastSlow.this._humanPercentageCorrectData.get(PairedAssociateFastSlow.SLOW_PRESENTATION_CONDITION).size()
-      );
-      
-      ArrayList<PairedPattern> stimulusResponsePairs = new ArrayList<>();
-      for(PairedPattern stimulusResponsePair : this._stimulusResponsePairsAndPriorities.keySet()){
-        stimulusResponsePairs.add(stimulusResponsePair);
-      }
-      PairedAssociateFastSlow.this._stimRespPairs = stimulusResponsePairs;
-      
-      //3 represents the 3 types of pre-learning (dictionary, letters or none).
-      //2 represents the 2 speeds of presentation (fast and slow).
-      //The maximum size of the auditory loop is the number of stimulus-response 
-      //pairs to be used in the experiment (there is no reason for the auditory
-      //loop to hold more stimulus-response pairs than what has been defined).
-      PairedAssociateFastSlow.this._experimentConditionsTotal = 3 * 2 * PairedAssociateFastSlow.this._stimRespPairs.size();
-      PairedAssociateFastSlow.this.updateExperimentsProcessedLabel();
-      
-      PairedAssociateFastSlow.this.instantiateResultsStorage();
-      
-      JSplitPane jsp = new JSplitPane (
-        JSplitPane.HORIZONTAL_SPLIT, 
-        PairedAssociateFastSlow.this.renderInputView (), 
-        PairedAssociateFastSlow.this.renderDataView ()
-      );
-      PairedAssociateFastSlow.this._experimentInterface.add(jsp);
+      if(PairedAssociateFastSlow.this._readInSuccessful){
+        if(!PairedAssociateFastSlow.this._independentVariablesSetup){
+          PairedAssociateFastSlow.this._stimRespPairsAndPriorities = this._stimulusResponsePairsAndPriorities;
+          PairedAssociateFastSlow.this._humanPercentageCorrectData = this._percentageCorrectData;
+          PairedAssociateFastSlow.this._humanCumulativeErrorsData = this._cumulativeErrorData;
 
-      PairedAssociateFastSlow.this._shell.setContentPane(PairedAssociateFastSlow.this._experimentInterface);
-      PairedAssociateFastSlow.this._shell.revalidate();
+          PairedAssociateFastSlow.this._maximumNumberOfTrials = Math.max(
+            PairedAssociateFastSlow.this._humanPercentageCorrectData.get(PairedAssociateFastSlow.FAST_PRESENTATION_CONDITION).size(), 
+            PairedAssociateFastSlow.this._humanPercentageCorrectData.get(PairedAssociateFastSlow.SLOW_PRESENTATION_CONDITION).size()
+          );
+
+          ArrayList<PairedPattern> stimulusResponsePairs = new ArrayList<>();
+          for(PairedPattern stimulusResponsePair : this._stimulusResponsePairsAndPriorities.keySet()){
+            stimulusResponsePairs.add(stimulusResponsePair);
+          }
+          PairedAssociateFastSlow.this._stimRespPairs = stimulusResponsePairs;
+
+          //3 represents the 3 types of pre-learning (dictionary, letters or none).
+          //2 represents the 2 speeds of presentation (fast and slow).
+          //The maximum size of the auditory loop is the number of stimulus-response 
+          //pairs to be used in the experiment (there is no reason for the auditory
+          //loop to hold more stimulus-response pairs than what has been defined).
+          PairedAssociateFastSlow.this._experimentConditionsTotal = 3 * 2 * PairedAssociateFastSlow.this._stimRespPairs.size();
+          PairedAssociateFastSlow.this.updateExperimentsProcessedLabel();
+
+          PairedAssociateFastSlow.this.instantiateResultsStorage();
+
+          PairedAssociateFastSlow.this.updateExperimentInformationTables();
+          PairedAssociateFastSlow.this.updateModelOutputTables();
+          PairedAssociateFastSlow.this._shell.revalidate();
+
+          PairedAssociateFastSlow.this._independentVariablesSetup = true;
+        }
+
+        /****************************/
+        /***** Load Experiments *****/
+        /****************************/
+
+        //Disable fast/slow presentation independent variable GUI elements so
+        //they remain consistent throughout experiments.
+        PairedAssociateFastSlow.this._fastInterItemTime.setEnabled(false);
+        PairedAssociateFastSlow.this._fastInterTrialTime.setEnabled(false);
+        PairedAssociateFastSlow.this._fastPresentationTime.setEnabled(false);
+        PairedAssociateFastSlow.this._slowInterItemTime.setEnabled(false);
+        PairedAssociateFastSlow.this._slowInterTrialTime.setEnabled(false);
+        PairedAssociateFastSlow.this._slowPresentationTime.setEnabled(false);
+
+        //Disable all buttons except the "Stop" button.
+        PairedAssociateFastSlow.this._restartButton.setEnabled(false);
+        PairedAssociateFastSlow.this._stopButton.setEnabled(true);
+        PairedAssociateFastSlow.this._exportDataButton.setEnabled(false);
+        PairedAssociateFastSlow.this._runButton.setEnabled(false);
+
+        //Set this variable to true since it will have been set to false if 
+        //the "StopExperimentAction" has been invoked.  Consequently, without 
+        //this reset, remaining experiments will not run even though all 
+        //experiment conditions have not yet been processed.
+        PairedAssociateFastSlow.this._runExperiments = true;
+        
+        Task experiment = new Task();
+        experiment.execute();
+      }
     }
-    
-  }
-  
-  /*****  *****/
-  
-  /**
-   * Instantiates the data structures used to record model results from the 
-   * experiment.
-   */
-  public void instantiateResultsStorage(){
-    PairedAssociateFastSlow.this._modelPercentageCorrectData = new ArrayList();
-    PairedAssociateFastSlow.this._modelCumulativeErrorsData = new ArrayList();
-    PairedAssociateFastSlow.this._percentageCorrectRSquares = new ArrayList();
-    PairedAssociateFastSlow.this._cumulativeErrorsRSquares = new ArrayList();
-    PairedAssociateFastSlow.this._percentageCorrectRootMeanSquaredErrors = new ArrayList();
-    PairedAssociateFastSlow.this._cumulativeErrorRootMeanSquaredErrors = new ArrayList();
-  }
-  
-  
-  
-  private void updateDataTables(){
-    ((AbstractTableModel)PairedAssociateFastSlow.this._modelPercentageCorrectDataTable.getModel()).fireTableStructureChanged();
-    ((AbstractTableModel)PairedAssociateFastSlow.this._modelCumulativeErrorsDataTable.getModel()).fireTableStructureChanged();
-    ((AbstractTableModel)PairedAssociateFastSlow.this._percentageCorrectModelFitDataTable.getModel()).fireTableStructureChanged();
-    ((AbstractTableModel)PairedAssociateFastSlow.this._cumulativeErrorsModelFitDataTable.getModel()).fireTableStructureChanged();
-  }
-  
-  private void updateExperimentsProcessedLabel(){
-    String text = "";
-    if(this._experimentConditionsTotal > 0){
-      text = this._experimentCondition + "/" + this._experimentConditionsTotal;
-    }
-    this._experimentsProcessedLabel.setText(text);
   }
 }

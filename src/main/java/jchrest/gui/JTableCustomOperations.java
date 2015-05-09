@@ -5,12 +5,10 @@
  */
 package jchrest.gui;
 
-import java.awt.Component;
 import javax.swing.JTable;
 import javax.swing.table.DefaultTableColumnModel;
 import javax.swing.table.TableCellRenderer;
 import javax.swing.table.TableColumn;
-import javax.swing.table.TableColumnModel;
 
 /**
  * Class containing useful non-native Java functionality for JTables.
