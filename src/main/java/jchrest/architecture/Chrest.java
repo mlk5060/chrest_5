@@ -13,6 +13,7 @@ import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -33,13 +34,7 @@ import jchrest.lib.ReinforcementLearning.ReinforcementLearningTheories;
  */
 public class Chrest extends Observable {
   
-  /****************************/
-  /***** Domain specifics *****/
-  /****************************/
-  
-  //By default, a CHREST model should be located in a generic-domain.  If it 
-  //should be located in a different domain, this must be set explicitly.
-  private DomainSpecifics _domainSpecifics = new GenericDomain();
+  private DomainSpecifics _domainSpecifics;
   
   //Indicates whether CHREST is currently engaged in an experiment.  Has 
   //implications in execution history recording, Node history updates and 
@@ -174,6 +169,8 @@ public class Chrest extends Observable {
   //parameter passed is null, don't alter the CHREST model's _domainSpecifics
   //variable (its set to GenericDomain by default).
   public Chrest () {
+    
+    this._domainSpecifics = new GenericDomain(this);
     
     /************************************/
     /***** Execution history set-up *****/
@@ -330,10 +327,17 @@ public class Chrest extends Observable {
           @Override
           protected SQLiteStatement job(SQLiteConnection connection) throws SQLiteException {
             
+            //Initialise the SQL Statement so that a value can be returned, even
+            //if the SQL statement isn't run (see below for details of why this
+            //might occur).
+            SQLiteStatement sql = null;
+            
             /*****************************************/
             /***** Create new history connection *****/
             /*****************************************/
             
+            //This should only occur if there isn't currently an active database 
+            //connection.
             if(Chrest.this._historyConnection == null){
               _historyConnection = new SQLiteConnection(); //No argument: creates new DB in memory not on disk.
 
@@ -344,14 +348,47 @@ public class Chrest extends Observable {
               }
             }
             
-            /*******************************/
-            /***** Build SQL statement *****/
-            /*******************************/
+            /**************************************/
+            /***** Check for INSERT Statement *****/
+            /**************************************/
             
-            //Initialise the SQL Statement so it can be returned.
-            SQLiteStatement sql = null;
+            //Since the CHREST GUI is multi-threaded it can, at times, request
+            //duplicate SQL queries to be executed.  If these queries are INSERT 
+            //statements then the execution history of the model can become 
+            //confusing.  To guard against this, a check is performed to prevent 
+            //exact duplicates being added to the execution history of the model.  
+            //This check probes the value for each column of every current row 
+            //in the table except for the "id" column (since this is always 
+            //unique due to auto-increment functionality).
             
-            try {
+            //Set-up a flag to determine if the SQL statement should be executed
+            boolean executeSql = true;
+            
+            if(sqliteString.startsWith("INSERT")){
+              String getDuplicatesSqlString = "SELECT " + Chrest._historyTableRowIdColumnName + " FROM " + Chrest._historyTableName + " WHERE ";
+              for(int index = 1; index < Chrest.this._historyTableColumnIndexNameAndType.size(); index++){
+                Object[] columnNameAndType = Chrest.this._historyTableColumnIndexNameAndType.get(index);
+                getDuplicatesSqlString += (String)columnNameAndType[0] + " = ? AND ";
+              }
+              
+              SQLiteStatement getDuplicatesSql = Chrest.this._historyConnection.prepare(getDuplicatesSqlString.replaceFirst(" AND $", ""));
+              
+              for(int binding = 0; binding < bindings.size(); binding++){
+                getDuplicatesSql.bind(binding + 1, bindings.get(binding).toString());
+              }
+              
+              while(getDuplicatesSql.step()){
+                executeSql = false;
+                break;
+              }
+            }
+            
+            if(executeSql){
+            
+              /*******************************/
+              /***** Build SQL statement *****/
+              /*******************************/
+
               sql = Chrest.this._historyConnection.prepare(sqliteString);
 
               //Set-up bindings.
@@ -368,54 +405,6 @@ public class Chrest extends Observable {
               /***** Execute SQL statement *****/
               /*********************************/
               sql.stepThrough();
-              
-              /***********************************************/
-              /***** Check for and delete duplicate rows *****/
-              /***********************************************/
-              
-              //Due to how threads operate, it can sometimes be the case that 
-              //SQL insert statements are executed more than once producing 
-              //duplicate rows in the execution history table.  This may be 
-              //confusing for users who are using the GUI to debug or trace 
-              //CHREST's execution so, dispose of any duplicate inserts.
-              
-              //SQLite4java has no constants for statement types so a string
-              //search is required.
-              if(sql.getSqlParts().toString().startsWith("INSERT")){
-                SQLiteStatement lastRow = Chrest.this._historyConnection.prepare("SELECT * FROM " + Chrest._historyTableName + " WHERE " + Chrest._historyTableRowIdColumnName + " = (SELECT last_insert_rowid())");
-                SQLiteStatement lastRowButOne = Chrest.this._historyConnection.prepare("SELECT * FROM " + Chrest._historyTableName + " WHERE " + Chrest._historyTableRowIdColumnName + " = (SELECT (last_insert_rowid() - 1))");
-                
-                //This will fail if there has only been one row inserted so far.
-                while(lastRow.step() && lastRowButOne.step()){
-                  
-                  boolean allColumnValuesEqual = true;
-                  
-                  //Check from column 1 in the last row and the last row but one 
-                  //since the primary key column value will always be different
-                  //due to the auto increment functionality of the primary key 
-                  //column.
-                  for(int col = 1; col < lastRow.columnCount(); col++){
-                    
-                    //Get the column values as strings so that any inequality is
-                    //purely due to differing information in the column rather
-                    //than data type.
-                    String lastRowColString = lastRow.columnString(col);
-                    String lastRowButOneColString = lastRowButOne.columnString(col);
-
-                    if(!lastRowColString.equals(lastRowButOneColString)){
-                      allColumnValuesEqual = false;
-                    }
-                  }
-                  
-                  //Delete the oldest duplicate value.  No reason why, the 
-                  //younger could be deleted.
-                  if(allColumnValuesEqual){
-                    Chrest.this._historyConnection.prepare("DELETE FROM " + Chrest._historyTableName + " WHERE " + Chrest._historyTableRowIdColumnName + " = (SELECT last_insert_rowid() - 1)").stepThrough();
-                  }
-                }
-              }
-            } catch (SQLiteException ex) {
-              Logger.getLogger(Chrest.class.getName()).log(Level.SEVERE, null, ex);
             }
             
             /***************************************/

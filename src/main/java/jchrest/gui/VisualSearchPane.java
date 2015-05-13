@@ -55,9 +55,9 @@ public class VisualSearchPane extends JPanel {
       public void actionPerformed (ActionEvent e){
         int index = _domainSelector.getSelectedIndex ();
         if (index == 0) {
-          _model.setDomain (new GenericDomain ());
+          _model.setDomain (new GenericDomain (_model));
         } else { // if (index == 1) 
-          _model.setDomain (new ChessDomain ());
+          _model.setDomain (new ChessDomain (_model));
         }
       }
     });

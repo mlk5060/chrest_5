@@ -1,5 +1,6 @@
 package jchrest.lib;
 
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -10,7 +11,11 @@ import jchrest.architecture.Chrest;
  * 
  * @author Martyn Lloyd-Kelly <martynlk@liverpool.ac.uk>
  */
-public class TileworldDomain implements DomainSpecifics{
+public class TileworldDomain extends DomainSpecifics{
+  
+  public TileworldDomain(Chrest model) {
+    super(model);
+  }
 
   @Override
   public ListPattern normalise(ListPattern pattern) {
@@ -24,6 +29,14 @@ public class TileworldDomain implements DomainSpecifics{
       if(!item.getItem().equalsIgnoreCase(Scene.getSelfIdentifier()) && !result.contains(prim)){
         result.add(prim);
       }
+    }
+    
+    if(this._associatedModel != null){
+      HashMap<String, Object> historyRowToInsert = new HashMap<>();
+      historyRowToInsert.put(Chrest._historyTableOperationColumnName, Operations.NORMALISE.name());
+      historyRowToInsert.put(Chrest._historyTableInputColumnName, pattern.toString() + "(" + pattern.getModalityString() + ")");
+      historyRowToInsert.put(Chrest._historyTableOutputColumnName, result.toString() + "(" + result.getModalityString() + ")");
+      this._associatedModel.addToHistory(historyRowToInsert);
     }
     
     return result;
@@ -59,5 +72,4 @@ public class TileworldDomain implements DomainSpecifics{
   public int getCurrentTime() {
     throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
   }
-  
 }

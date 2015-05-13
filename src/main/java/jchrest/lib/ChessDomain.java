@@ -17,7 +17,11 @@ import jchrest.architecture.Chrest;
 /**
   * The ChessDomain is used for chess modelling.
   */
-public class ChessDomain implements DomainSpecifics {
+public class ChessDomain extends DomainSpecifics {
+  
+  public ChessDomain(Chrest model) {
+    super(model);
+  }
 
   // map stores the canonical order of the chess pieces
   private static Map<String, Integer> pieceOrder;
@@ -48,14 +52,16 @@ public class ChessDomain implements DomainSpecifics {
   @Override
   public ListPattern normalise (ListPattern pattern) {
     ListPattern result = new ListPattern (pattern.getModality ());
+    
     // remove any duplicates from 'pattern'
     for (PrimitivePattern prim : pattern) {
       if (!result.contains (prim)) {
         result = result.append (prim);
       }
     }
+    
     // and sort into canonical order before returning
-    return result.sort (new Comparator<PrimitivePattern> () {
+    result = result.sort (new Comparator<PrimitivePattern> () {
       @Override
       public int compare (PrimitivePattern left, PrimitivePattern right) {
         assert (left instanceof ItemSquarePattern);
@@ -75,6 +81,16 @@ public class ChessDomain implements DomainSpecifics {
         return 0;
       }
     });
+    
+    if(this._associatedModel != null){
+      HashMap<String, Object> historyRowToInsert = new HashMap<>();
+      historyRowToInsert.put(Chrest._historyTableOperationColumnName, Operations.NORMALISE.name());
+      historyRowToInsert.put(Chrest._historyTableInputColumnName, pattern.toString() + "(" + pattern.getModalityString() + ")");
+      historyRowToInsert.put(Chrest._historyTableOutputColumnName, result.toString() + "(" + result.getModalityString() + ")");
+      this._associatedModel.addToHistory(historyRowToInsert);
+    }
+    
+    return result;
   }
 
   /**
