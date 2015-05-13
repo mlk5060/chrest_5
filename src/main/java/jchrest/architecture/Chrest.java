@@ -332,6 +332,11 @@ public class Chrest extends Observable {
             //might occur).
             SQLiteStatement sql = null;
             
+            //Set-up a flag to determine if the SQL statement should be executed
+            //(see below for details of why the SQL statement might not be 
+            //executed).
+            boolean executeSql = true;
+            
             /*****************************************/
             /***** Create new history connection *****/
             /*****************************************/
@@ -360,9 +365,6 @@ public class Chrest extends Observable {
             //This check probes the value for each column of every current row 
             //in the table except for the "id" column (since this is always 
             //unique due to auto-increment functionality).
-            
-            //Set-up a flag to determine if the SQL statement should be executed
-            boolean executeSql = true;
             
             if(sqliteString.startsWith("INSERT")){
               String getDuplicatesSqlString = "SELECT " + Chrest._historyTableRowIdColumnName + " FROM " + Chrest._historyTableName + " WHERE ";
