@@ -4,6 +4,7 @@
 package jchrest.lib;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -13,7 +14,11 @@ import jchrest.architecture.Chrest;
 /**
   * The GenericDomain is used when no domain-specific methods have been created.
   */
-public class GenericDomain implements DomainSpecifics {
+public class GenericDomain extends DomainSpecifics {
+  
+  public GenericDomain(Chrest model) {
+    super(model);
+  }
   
   /**
    * Remove self and empty identifiers along with duplicates from pattern passed 
@@ -43,6 +48,15 @@ public class GenericDomain implements DomainSpecifics {
       }
     }
     result.setFinished();
+    
+    if(this._associatedModel != null){
+      HashMap<String, Object> historyRowToInsert = new HashMap<>();
+      historyRowToInsert.put(Chrest._historyTableOperationColumnName, Operations.NORMALISE.name());
+      historyRowToInsert.put(Chrest._historyTableInputColumnName, pattern.toString() + "(" + pattern.getModalityString() + ")");
+      historyRowToInsert.put(Chrest._historyTableOutputColumnName, result.toString() + "(" + result.getModalityString() + ")");
+      this._associatedModel.addToHistory(historyRowToInsert);
+    }
+    
     return result;
   }
 

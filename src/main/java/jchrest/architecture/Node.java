@@ -14,8 +14,6 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Observable;
 import java.util.TreeMap;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.TimeoutException;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -1067,7 +1065,7 @@ public class Node extends Observable {
       }
     }
     
-    historyRowToInsert.put(Chrest._historyTableDescriptionColumnName, "Input not already a test for node " + this.getReference() + ", creating new test & child.");
+    historyRowToInsert.put(Chrest._historyTableDescriptionColumnName, "Using input to create new test & child from node " + this.getReference() + ".");
     this._model.addToHistory(historyRowToInsert);
 
     Node child = new Node (
@@ -1111,26 +1109,28 @@ public class Node extends Observable {
     historyRowToInsert.put(Chrest._historyTableTimeColumnName, time);
     historyRowToInsert.put(Chrest._historyTableOperationColumnName, Operations.DISCRIMINATE.name());
     historyRowToInsert.put(Chrest._historyTableInputColumnName, pattern.toString() + "(" + pattern.getModalityString() + ")");
-    String description = "New info in input: " + newInformation.toString();
+    String description = "New info in input: '" + newInformation.toString() + "'. ";
 
     // cases 1 & 2 if newInformation is empty
     if (newInformation.isEmpty ()) {
-      description += ", empty,";
       
       // change for conformance
       newInformation.setFinished ();
       
-      // 1. is < $ > known?
+      // 1. < $ > known
       if (_model.recognise (newInformation, time).getContents ().equals (newInformation) ) {
         
         // 2. if so, use as test
-        description += ", encoded in LTM, add as test to node " + this._reference + ".";
+        description += "New info encoded in LTM, add as test to node " + this._reference + ".";
         historyRowToInsert.put(Chrest._historyTableDescriptionColumnName, description);
         this._model.addToHistory(historyRowToInsert);
         return this.addTest(newInformation, time);
-          
-      } else {
-        // 3. if not, then learn it
+      
+      }
+      // 2. < $ > not known
+      else {
+        
+        description += "New info not encoded in LTM, add as test to " + newInformation.getModalityString() + " root node.";
         historyRowToInsert.put(Chrest._historyTableDescriptionColumnName, description);
         this._model.addToHistory(historyRowToInsert);
         
@@ -1141,21 +1141,20 @@ public class Node extends Observable {
     }
 
     Node retrievedChunk = _model.recognise (newInformation, time);
-    description += ", not empty, node " + retrievedChunk.getReference() + " retrieved";
+    description += "Recognised '" + retrievedChunk.getImage().toString() + "', node ref: " + retrievedChunk.getReference() + "). ";
 
     if (retrievedChunk == _model.getLtmByModality (pattern)) {
 
-      // 4. if root node is retrieved, then the primitive must be learnt
-      description += ", modality root node, add as test to " + newInformation.getModalityString() + " root node.";
+      // 3. if root node is retrieved, then the primitive must be learnt
+      description += "Modality root node, add first item of new info as test to this root node.";
       historyRowToInsert.put(Chrest._historyTableDescriptionColumnName, description);
       this._model.addToHistory(historyRowToInsert);
-      
       return _model.getLtmByModality(newInformation).learnPrimitive (newInformation.getFirstItem (), time);
 
     } else if (retrievedChunk.getContents().matches (newInformation)) {
 
-      // 5. retrieved chunk can be used as a test
-      description += ", image matches new info so add node retrieved's image as test to node " + this.getReference() + ".";
+      // 4. retrieved chunk can be used as a test
+      description += "Image of rec. node matches new info. Add " + retrievedChunk.getContents().toString() + " as test to node " + this.getReference() + ".";
       historyRowToInsert.put(Chrest._historyTableDescriptionColumnName, description);
       this._model.addToHistory(historyRowToInsert);
       
@@ -1164,12 +1163,12 @@ public class Node extends Observable {
 
     } else {
 
-      // 6. mismatch, so use only the first item for test
+      // 5. mismatch, so use only the first item for test
       // NB: first-item must be in network as retrievedChunk was not the root 
       //     node
       ListPattern firstItem = newInformation.getFirstItem ();
       firstItem.setNotFinished ();
-      description += ", image does not match new info so add " + firstItem.toString() + " as test to node " + this.getReference() + ".";
+      description += "but image does not match new info. Add " + firstItem.toString() + " as test to node " + this.getReference() + ".";
       historyRowToInsert.put(Chrest._historyTableDescriptionColumnName, description);
       this._model.addToHistory(historyRowToInsert);
       
