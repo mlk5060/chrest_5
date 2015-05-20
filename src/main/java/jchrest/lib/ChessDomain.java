@@ -84,7 +84,17 @@ public class ChessDomain extends DomainSpecifics {
     
     if(this._associatedModel != null){
       HashMap<String, Object> historyRowToInsert = new HashMap<>();
-      historyRowToInsert.put(Chrest._historyTableOperationColumnName, Operations.NORMALISE.name());
+      
+      //Generic operation name setter for current method.  Ensures for the row to 
+      //be added that, if this method's name is changed, the entry for the 
+      //"Operation" column in the execution history table will be updated without 
+      //manual intervention and "Filter By Operation" queries run on the execution 
+      //history DB table will still work.
+      class Local{};
+      historyRowToInsert.put(
+        Chrest._historyTableOperationColumnName, 
+        ExecutionHistoryOperations.getOperationString(this.getClass(), Local.class.getEnclosingMethod())
+      );
       historyRowToInsert.put(Chrest._historyTableInputColumnName, pattern.toString() + "(" + pattern.getModalityString() + ")");
       historyRowToInsert.put(Chrest._historyTableOutputColumnName, result.toString() + "(" + result.getModalityString() + ")");
       this._associatedModel.addToHistory(historyRowToInsert);

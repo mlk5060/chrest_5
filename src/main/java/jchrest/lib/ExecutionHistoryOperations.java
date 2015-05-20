@@ -3,20 +3,17 @@
 
 package jchrest.lib;
 
+import java.lang.reflect.Method;
+
 /**
  * Declares generic operations that can be performed by CHREST.  Allows for
  * consistent execution history modification and querying.
  * 
  * @author Martyn Lloyd-Kelly <martynlk@liverpool.ac.uk>
  */
-public enum Operations {
-  ADD_TEST,
-  ADD_TEST_LINK,
-  DISCRIMINATE,
-  FAMILIARISE,
-  GET_DOMAIN_SPECIFICS,
-  LEARN_AND_LINK_PATTERNS,
-  NORMALISE,
-  PRODUCTION_MANAGEMENT,
-  TEMPLATE_MANAGEMENT
+public class ExecutionHistoryOperations {
+  
+  public static String getOperationString(Class clazz, Method method){
+    return clazz.getSimpleName() + "." + method.getName();
+  }
 }

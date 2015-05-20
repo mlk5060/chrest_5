@@ -16,11 +16,11 @@ import java.util.Observable;
 import java.util.TreeMap;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import jchrest.lib.ExecutionHistoryOperations;
 
 import jchrest.lib.ItemSquarePattern;
 import jchrest.lib.ListPattern;
 import jchrest.lib.Modality;
-import jchrest.lib.Operations;
 import jchrest.lib.PrimitivePattern;
 import jchrest.lib.ReinforcementLearning;
 
@@ -1052,7 +1052,17 @@ public class Node extends Observable {
     //Set-up history variables
     HashMap<String, Object> historyRowToInsert = new HashMap<>();
     historyRowToInsert.put(Chrest._historyTableTimeColumnName, domainTime);
-    historyRowToInsert.put(Chrest._historyTableOperationColumnName , Operations.ADD_TEST.name());
+    
+    //Generic operation name setter for current method.  Ensures for the row to 
+    //be added that, if this method's name is changed, the entry for the 
+    //"Operation" column in the execution history table will be updated without 
+    //manual intervention and "Filter By Operation" queries run on the execution 
+    //history DB table will still work.
+    class Local{};
+    historyRowToInsert.put(
+      Chrest._historyTableOperationColumnName, 
+      ExecutionHistoryOperations.getOperationString(this.getClass(), Local.class.getEnclosingMethod())
+    );
     historyRowToInsert.put(Chrest._historyTableInputColumnName, pattern.toString());
     
     // ignore if already a test
@@ -1107,7 +1117,17 @@ public class Node extends Observable {
     //Set-up history variables.
     HashMap<String, Object> historyRowToInsert = new HashMap<>();
     historyRowToInsert.put(Chrest._historyTableTimeColumnName, time);
-    historyRowToInsert.put(Chrest._historyTableOperationColumnName, Operations.DISCRIMINATE.name());
+    
+    //Generic operation name setter for current method.  Ensures for the row to 
+    //be added that, if this method's name is changed, the entry for the 
+    //"Operation" column in the execution history table will be updated without 
+    //manual intervention and "Filter By Operation" queries run on the execution 
+    //history DB table will still work.
+    class Local{};
+    historyRowToInsert.put(
+      Chrest._historyTableOperationColumnName, 
+      ExecutionHistoryOperations.getOperationString(this.getClass(), Local.class.getEnclosingMethod())
+    );
     historyRowToInsert.put(Chrest._historyTableInputColumnName, pattern.toString() + "(" + pattern.getModalityString() + ")");
     String description = "New info in input: '" + newInformation.toString() + "'. ";
 
@@ -1188,7 +1208,17 @@ public class Node extends Observable {
     //Set-up history variables.
     HashMap<String, Object> historyRowToInsert= new HashMap<>();
     historyRowToInsert.put(Chrest._historyTableTimeColumnName, domainTime);
-    historyRowToInsert.put(Chrest._historyTableOperationColumnName, Operations.FAMILIARISE.name());
+    
+    //Generic operation name setter for current method.  Ensures for the row to 
+    //be added that, if this method's name is changed, the entry for the 
+    //"Operation" column in the execution history table will be updated without 
+    //manual intervention and "Filter By Operation" queries run on the execution 
+    //history DB table will still work.
+    class Local{};
+    historyRowToInsert.put(
+      Chrest._historyTableOperationColumnName, 
+      ExecutionHistoryOperations.getOperationString(this.getClass(), Local.class.getEnclosingMethod())
+    );
     historyRowToInsert.put(Chrest._historyTableInputColumnName, pattern.toString() + "(" + pattern.getModalityString() + ")");
     String description = "New info in input: " + newInformation.toString();
     

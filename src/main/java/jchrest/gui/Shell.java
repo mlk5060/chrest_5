@@ -3,8 +3,6 @@
 
 package jchrest.gui;
 
-import com.almworks.sqlite4java.SQLiteException;
-import com.almworks.sqlite4java.SQLiteStatement;
 import jchrest.architecture.Chrest;
 import jchrest.lib.FileUtilities;
 import jchrest.lib.ListPattern;
@@ -13,7 +11,6 @@ import jchrest.lib.Scenes;
 
 import java.awt.BorderLayout;
 import java.awt.Component;
-import java.awt.EventQueue;
 import java.awt.GridLayout;
 import java.awt.event.*;
 import java.io.*;
@@ -22,12 +19,12 @@ import java.lang.reflect.InvocationTargetException;
 import java.text.DecimalFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Observable;
 import java.util.Observer;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.TimeoutException;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.regex.Pattern;
@@ -35,11 +32,7 @@ import javax.swing.*;
 import javax.swing.border.TitledBorder;
 import javax.swing.event.ChangeEvent;
 import javax.swing.event.ChangeListener;
-import javax.swing.filechooser.FileNameExtensionFilter;
-import javax.swing.filechooser.FileView;
 import javax.swing.table.AbstractTableModel;
-import javax.swing.table.TableCellRenderer;
-import javax.swing.table.TableColumnModel;
 import javax.swing.table.TableModel;
 import javax.swing.text.DefaultFormatter;
 import jchrest.lib.InputOutput;
@@ -57,7 +50,10 @@ import org.jfree.data.statistics.*;
 public class Shell extends JFrame implements Observer {
   private Chrest _model;
   private JMenu _dataMenu; //Required so that "Data" menu options can be disabled if the model is engaged in an experiment.
-
+  private final List<List<String>> _executionHistory = new ArrayList<>();
+  private ArrayList<String> _executionHistoryOperations = new ArrayList<>();
+  private JSpinner _executionHistoryOperationsSpinner;
+  
   public Shell () {
     super ("CHREST 4");
 
@@ -92,6 +88,8 @@ public class Shell extends JFrame implements Observer {
     _model.addObserver(this);
     _model.setNotLoadedIntoExperiment();
     _model.setNotEngagedInExperiment();
+    
+    this._executionHistoryOperations.add("");
   }
 
   private void createMenuBar () {
@@ -118,6 +116,75 @@ public class Shell extends JFrame implements Observer {
         this._dataMenu.getItem(menuItem).setEnabled(true);
       }
     }
+  }
+  
+  /**
+   * Updates the data structures of this Shell instance that stores:
+   * <ul>
+   *  <li>
+   *    The current execution history of the model associated with this 
+   *    Shell instance
+   *  </li>
+   *  <li>
+   *    The JSpinner model used to display execution history operations 
+   *    encountered thus far in the execution history of the model associated 
+   *    with this Shell instance.
+   * </ul>
+   * 
+   * @param executionHistory 
+   */
+  private void updateExecutionHistory(ArrayList<HashMap<String,Object>> executionHistory){
+    System.out.println("!!!!!!!! UPDATING EXECUTION HISTORY !!!!!!!!");
+    this._executionHistory.clear();
+    if(!executionHistory.isEmpty()){
+      
+      //Get the data structure that yields column index and names, this is 
+      //needed so that the table columns are placed in the order specified by
+      //the CHREST model.
+      HashMap<Integer, Object[]> executionHistoryColumnIndexesNamesAndTypes = this._model.getExecutionHistoryTableColumns();
+      
+      //Get a row of data from the execution history passed.
+      for(HashMap<String,Object> rowDataToAnalyse : executionHistory){
+        
+        //Create a new row data structure for data structure that will be used 
+        //to populate the visible execution history table in the model 
+        //information panel.
+        ArrayList rowData = new ArrayList();
+        
+        //Get each column in order from the CHREST model.
+        for(int col = 0; col < executionHistoryColumnIndexesNamesAndTypes.size(); col++){
+          
+          //Get the column's name, c. 
+          String columnName = (String)executionHistoryColumnIndexesNamesAndTypes.get(col)[0];
+          
+          //For each column in the row of data to be analysed, check that the 
+          //column's name is equal to c.  If it is, add this column to the row 
+          //data.  The column indicies specified by the model will therefore be 
+          //retained in the execution history table to be displayed.
+          for(Entry<String,Object> columnNameAndValue : rowDataToAnalyse.entrySet()){
+            if(columnNameAndValue.getKey().equals(columnName)){
+              rowData.add(columnNameAndValue.getValue());
+            }
+            
+            //Update execution history operations.
+            if(columnNameAndValue.getKey().equals(Chrest._historyTableOperationColumnName)){
+              String operation = (String)columnNameAndValue.getValue();
+              if(!this._executionHistoryOperations.contains(operation)){
+                this._executionHistoryOperations.add(operation);
+              }
+            }
+          }
+        }
+        
+        //Add the row data to the data structure that will be used to populate 
+        //the visible execution history table in the model information panel.
+        _executionHistory.add(rowData);
+      }
+    }
+    
+    String[] executionHistoryOperationsArray = this._executionHistoryOperations.toArray(new String[this._executionHistoryOperations.size()]);
+    Arrays.sort(executionHistoryOperationsArray);
+    this._executionHistoryOperationsSpinner = new JSpinner(new SpinnerListModel(executionHistoryOperationsArray));
   }
 
   /**
@@ -575,31 +642,70 @@ public class Shell extends JFrame implements Observer {
    * Action to display information about the current model.
    */
   class ModelInformationAction extends AbstractAction implements ActionListener {
-    private Shell _parent;
 
     ModelInformationAction (Shell parent) {
       super ("Information", new ImageIcon (Shell.class.getResource("icons/Information16.gif")));
-
-      _parent = parent;
     }
 
+    /**
+     * The action starts a chain of method calls that first retrieves the 
+     * execution history and operations used thus far in this execution history
+     * for the CHREST model associated with this Shell.  Since these retrievals 
+     * require querying a database table, it may take some time to get the 
+     * information required.  This information is then used to create certain
+     * model information GUI panel elements so, if the information is not 
+     * available, the model information GUI panel will not be rendered 
+     * correctly. Therefore, the method chaining implemented circumvents this
+     * issue by first ensuring that all database information required to render 
+     * the GUI elements is in place before the GUI elements are rendered.
+     * 
+     * @param e 
+     */
     public void actionPerformed (ActionEvent e) {
-      JPanel base = new JPanel ();
-      base.setLayout (new GridLayout(1,1));
-
-      JTabbedPane jtb = new JTabbedPane ();
-      jtb.addTab ("Info", getInfoPane ());
-      jtb.addTab ("Contents", getHistogramPane (_model.getContentCounts(), "contents", "Histogram of Contents Sizes", "Contents size"));
-      jtb.addTab ("Images", getHistogramPane (_model.getImageCounts(), "images", "Histogram of Image Sizes", "Image size"));
-      jtb.addTab ("Semantic links", getHistogramPane (_model.getSemanticLinkCounts(), "semantic", "Histogram of Number of Semantic Links", "Number of semantic links"));
-      jtb.addTab("History", getHistoryPane());
-      base.add (jtb);
-
-      JOptionPane pane = new JOptionPane (base, JOptionPane.INFORMATION_MESSAGE);
-      JDialog dialog = pane.createDialog (_parent, "CHREST: Model information");
-      dialog.setResizable (true);
-      dialog.setVisible (true);
+      Shell.this.getExecutionHistory();
     }
+  }
+  
+  /**
+   * Retrieves the execution history of the model associated with this instance
+   * and invokes the {@link jchrest.gui.Shell#setExecutionHistoryAndGetExecutionHistoryOperations(java.util.ArrayList)
+   * method afterwards.
+   */
+  private void getExecutionHistory(){
+    try {
+      this._model.getHistory(this, Shell.class.getMethod("setExecutionHistoryAndGetDistinctExecutionHistoryOperations", new Class[]{ArrayList.class}));
+    } catch (NoSuchMethodException | SecurityException ex) {
+      Logger.getLogger(Shell.class.getName()).log(Level.SEVERE, null, ex);
+    }
+  }
+  
+  /**
+   * Sets the data structure used to populate the execution history table in the
+   * model information view using data returned from the {@link jchrest.gui.Shell#getExecutionHistory()}
+   * operation before getting the history operations
+   * @param executionHistory 
+   */
+  public void setExecutionHistoryAndGetDistinctExecutionHistoryOperations(ArrayList<HashMap<String,Object>> executionHistory){
+    this.updateExecutionHistory(executionHistory);
+    this.renderModelInformationPanel();
+  }
+  
+  public void renderModelInformationPanel(){
+    JPanel base = new JPanel ();
+    base.setLayout (new GridLayout(1,1));
+
+    JTabbedPane jtb = new JTabbedPane ();
+    jtb.addTab ("Info", getInfoPane ());
+    jtb.addTab ("Contents", getHistogramPane (_model.getContentCounts(), "contents", "Histogram of Contents Sizes", "Contents size"));
+    jtb.addTab ("Images", getHistogramPane (_model.getImageCounts(), "images", "Histogram of Image Sizes", "Image size"));
+    jtb.addTab ("Semantic links", getHistogramPane (_model.getSemanticLinkCounts(), "semantic", "Histogram of Number of Semantic Links", "Number of semantic links"));
+    jtb.addTab("Exec. History", getExecutionHistoryPanel());
+    base.add (jtb);
+
+    JOptionPane pane = new JOptionPane (base, JOptionPane.INFORMATION_MESSAGE);
+    JDialog dialog = pane.createDialog (this, "CHREST: Model information");
+    dialog.setResizable (true);
+    dialog.setVisible (true);
   }
 
   private JLabel getInfoPane () {
@@ -653,41 +759,12 @@ public class Shell extends JFrame implements Observer {
   
   private JSpinner _timeFrom;
   private JSpinner _timeTo;
-  private JSpinner _operations;
   private JTable _historyTable;
-  private final List<List<String>> _history = new ArrayList<>();
   
-  public void updateHistory(SQLiteStatement sqlResults){
-    this._history.clear();
+  public JPanel getExecutionHistoryPanel(){
+    JPanel executionHistoryPanel = new JPanel();
     
-    if(sqlResults != null){
-      try {
-        int row = 0;
-        while(sqlResults.step()){
-          _history.add(new ArrayList<>());
-          for(int col = 0; col < sqlResults.columnCount(); col++){
-            String sqlColumnStringValue = sqlResults.columnString(col);
-            _history.get(row).add(sqlColumnStringValue);
-          }
-          row += 1;
-        }
-      } catch (SQLiteException ex) {
-        Logger.getLogger(Shell.class.getName()).log(Level.SEVERE, null, ex);
-      }
-    }
-  }
-  
-  private JPanel getHistoryPane() {
-    this._history.clear();
-    JPanel historyPanel = new JPanel();
-    
-    try {
-      this._model.getHistory(this, Shell.class.getMethod("updateHistory", new Class[]{SQLiteStatement.class}));
-    } catch (NoSuchMethodException | SecurityException ex) {
-      Logger.getLogger(Shell.class.getName()).log(Level.SEVERE, null, ex);
-    }
-   
-    if(_history.isEmpty()){
+    if(_executionHistory.isEmpty()){
       String emptyMessage = "No execution history recorded yet.<br><hr><br>";
 
       if(this._model.canRecordHistory()){
@@ -702,7 +779,7 @@ public class Shell extends JFrame implements Observer {
       
       JLabel emptyMessageJLabel = new JLabel("<html>" + emptyMessage + "</html>");
       JScrollPane historyScrollPane = new JScrollPane(emptyMessageJLabel);
-      historyPanel.add(historyScrollPane);
+      executionHistoryPanel.add(historyScrollPane);
     }
     else{
       
@@ -754,11 +831,6 @@ public class Shell extends JFrame implements Observer {
 
       });
       
-      ArrayList<String> operations = new ArrayList<>();
-      operations.addAll(Chrest.getPossibleOperations());
-      operations.add(0, "");
-      _operations = new JSpinner(new SpinnerListModel(operations));
-      
       JPanel filterOptions = new JPanel();
       filterOptions.setBorder(new TitledBorder ("Filters"));
       filterOptions.setLayout(new GridLayout(4, 2));
@@ -770,7 +842,7 @@ public class Shell extends JFrame implements Observer {
       filterOptions.add(_timeTo);
       
       filterOptions.add(new JLabel("Filter by Operation: "));
-      filterOptions.add(_operations);
+      filterOptions.add(this._executionHistoryOperationsSpinner);
       
       filterOptions.add( new JLabel(""));
       filterOptions.add(new JButton( new FilterExecutionHistoryAction() ));
@@ -780,8 +852,8 @@ public class Shell extends JFrame implements Observer {
         
         @Override
         public int getRowCount() {
-          if(_history.size() > 0){
-            return _history.size();
+          if(_executionHistory.size() > 0){
+            return _executionHistory.size();
           } else {
             return 0;
           }
@@ -789,17 +861,17 @@ public class Shell extends JFrame implements Observer {
 
         @Override
         public int getColumnCount(){
-          if(_history.size() > 0){
-            return _history.get(0).size();
+          if(_executionHistory.size() > 0){
+            return _executionHistory.get(0).size();
           } else {
-            return Shell.this._model.getNumberHistoryTableColumns();
+            return Shell.this._model.getExecutionHistoryTableColumns().size();
           }
         }
 
         @Override
         public Object getValueAt(int rowIndex, int columnIndex) {
-          if(_history.size() > rowIndex && _history.get(rowIndex).size() > columnIndex){
-            return _history.get(rowIndex).get(columnIndex);
+          if(_executionHistory.size() > rowIndex && _executionHistory.get(rowIndex).size() > columnIndex){
+            return _executionHistory.get(rowIndex).get(columnIndex);
           } else {
             return null;
           }
@@ -807,33 +879,8 @@ public class Shell extends JFrame implements Observer {
 
         @Override
         public String getColumnName (int columnIndex) {
-          String columnName = "";
-          
-          switch(columnIndex){
-            case 0:
-              //Even though this isn't displayed in the JTable, it needs to be
-              //specified so that the CSV file is formatted correctly if the
-              //user chooses to export table data.
-              columnName = "Id";
-              break;
-            case 1:
-              columnName = "Time";
-              break;
-            case 2:
-              columnName = "Operation";
-              break;
-            case 3:
-              columnName = "Input";
-              break;
-            case 4:
-              columnName = "Description";
-              break;
-            case 5:
-              columnName = "Output";
-              break;
-          }
-          
-          return columnName;
+          String uncapitalisedColumnName = (String)Shell.this._model.getExecutionHistoryTableColumns().get(columnIndex)[0];
+          return uncapitalisedColumnName.substring(0, 1).toUpperCase() + uncapitalisedColumnName.substring(1);
         }
         
         @Override
@@ -860,12 +907,12 @@ public class Shell extends JFrame implements Observer {
       executionHistory.add(exportButton);
       
       //History panel creation.
-      historyPanel.setLayout(new BoxLayout(historyPanel, BoxLayout.Y_AXIS));
-      historyPanel.add(filterOptions);
-      historyPanel.add(executionHistory);
+      executionHistoryPanel.setLayout(new BoxLayout(executionHistoryPanel, BoxLayout.Y_AXIS));
+      executionHistoryPanel.add(filterOptions);
+      executionHistoryPanel.add(executionHistory);
     }
     
-    return historyPanel;
+    return executionHistoryPanel;
   }
   
   class ExportHistoryAction extends AbstractAction implements ActionListener {
@@ -896,13 +943,22 @@ public class Shell extends JFrame implements Observer {
     @Override
     public void actionPerformed(ActionEvent e) {
       
-      if(_operations.getValue().toString().equals("")){
+      SwingWorker<Void, Void> filterExecutionHistoryThread = new FilterExecutionHistoryThread();
+      filterExecutionHistoryThread.execute();
+    }
+  }
+  
+  private final class FilterExecutionHistoryThread extends SwingWorker<Void, Void> {
+
+    @Override
+    protected Void doInBackground() throws Exception {
+      if(Shell.this._executionHistoryOperationsSpinner.getValue().toString().equals("")){
         try{
           _model.getHistory(
             (Integer)_timeFrom.getValue(), 
             (Integer)_timeTo.getValue(),
             Shell.this,
-            Shell.class.getDeclaredMethod("updateHistory", new Class[]{SQLiteStatement.class})
+            Shell.class.getDeclaredMethod("updateExecutionHistory", new Class[]{ArrayList.class})
           );
         } catch (NoSuchMethodException | SecurityException ex) {
           Logger.getLogger(Shell.class.getName()).log(Level.SEVERE, null, ex);
@@ -911,17 +967,22 @@ public class Shell extends JFrame implements Observer {
       else{
         try{
           _model.getHistory(
-            (String) _operations.getValue(),
+            (String)Shell.this._executionHistoryOperationsSpinner.getValue(),
             (Integer)_timeFrom.getValue(), 
             (Integer)_timeTo.getValue(),
             Shell.this,
-            Shell.class.getDeclaredMethod("updateHistory", new Class[]{SQLiteStatement.class})
+            Shell.class.getDeclaredMethod("updateExecutionHistory", new Class[]{ArrayList.class})
           );
         } catch (NoSuchMethodException | SecurityException ex) {
           Logger.getLogger(Shell.class.getName()).log(Level.SEVERE, null, ex);
         }
       }
       
+      return null;
+    }
+    
+    @Override
+    protected void done(){
       ((AbstractTableModel)_historyTable.getModel()).fireTableStructureChanged();
     }
   }
