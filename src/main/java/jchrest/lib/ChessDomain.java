@@ -103,7 +103,7 @@ public class ChessDomain extends DomainSpecifics {
   }
 
   /**
-   * Use level of expertise to det
+   * Use level of expertise to determine salient square fixations.
    * @param scene
    * @param model
    * @return 
