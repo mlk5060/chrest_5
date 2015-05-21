@@ -91,13 +91,12 @@ public class ChessDomain extends DomainSpecifics {
       //manual intervention and "Filter By Operation" queries run on the execution 
       //history DB table will still work.
       class Local{};
-      historyRowToInsert.put(
-        Chrest._historyTableOperationColumnName, 
+      historyRowToInsert.put(Chrest._executionHistoryTableOperationColumnName, 
         ExecutionHistoryOperations.getOperationString(this.getClass(), Local.class.getEnclosingMethod())
       );
-      historyRowToInsert.put(Chrest._historyTableInputColumnName, pattern.toString() + "(" + pattern.getModalityString() + ")");
-      historyRowToInsert.put(Chrest._historyTableOutputColumnName, result.toString() + "(" + result.getModalityString() + ")");
-      this._associatedModel.addToHistory(historyRowToInsert);
+      historyRowToInsert.put(Chrest._executionHistoryTableInputColumnName, pattern.toString() + "(" + pattern.getModalityString() + ")");
+      historyRowToInsert.put(Chrest._executionHistoryTableOutputColumnName, result.toString() + "(" + result.getModalityString() + ")");
+      this._associatedModel.addEpisodeToExecutionHistory(historyRowToInsert);
     }
     
     return result;

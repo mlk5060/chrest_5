@@ -4,22 +4,22 @@ VERSION = '4.0.0-alpha-2'
 
 repositories.remote << 'http://repo1.maven.org/maven2'
 
+H2DATABASE = 'com.h2database:h2:jar:1.4.187'
 JCOMMON = 'jfree:jcommon:jar:1.0.16'
 JFREECHART = 'jfree:jfreechart:jar:1.0.13'
 JSOUP = 'org.jsoup:jsoup:jar:1.8.2'
 STATISTICS = 'org.apache.commons:commons-math:jar:2.2'
-SQLITE4JAVA = 'com.almworks.sqlite4java:sqlite4java:jar:1.0.392'
 
 define 'chrest' do
   project.version = VERSION
-  compile.with JCOMMON, JFREECHART, JSOUP, STATISTICS, SQLITE4JAVA
+  compile.with H2DATABASE, JCOMMON, JFREECHART, JSOUP, STATISTICS
   package(:jar).with(
     :manifest=>{'Main-Class'=>'jchrest.gui.Shell'}
   ).merge(
     compile.dependencies
   )
 
-  run.with(JCOMMON, JFREECHART, SQLITE4JAVA).using :main => "jchrest.gui.Shell"
+  run.with(H2DATABASE, JCOMMON, JFREECHART).using :main => "jchrest.gui.Shell"
 end
 
 desc 'build the user guide'

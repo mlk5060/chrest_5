@@ -1051,7 +1051,7 @@ public class Node extends Observable {
     
     //Set-up history variables
     HashMap<String, Object> historyRowToInsert = new HashMap<>();
-    historyRowToInsert.put(Chrest._historyTableTimeColumnName, domainTime);
+    historyRowToInsert.put(Chrest._executionHistoryTableTimeColumnName, domainTime);
     
     //Generic operation name setter for current method.  Ensures for the row to 
     //be added that, if this method's name is changed, the entry for the 
@@ -1059,24 +1059,23 @@ public class Node extends Observable {
     //manual intervention and "Filter By Operation" queries run on the execution 
     //history DB table will still work.
     class Local{};
-    historyRowToInsert.put(
-      Chrest._historyTableOperationColumnName, 
+    historyRowToInsert.put(Chrest._executionHistoryTableOperationColumnName, 
       ExecutionHistoryOperations.getOperationString(this.getClass(), Local.class.getEnclosingMethod())
     );
-    historyRowToInsert.put(Chrest._historyTableInputColumnName, pattern.toString());
+    historyRowToInsert.put(Chrest._executionHistoryTableInputColumnName, pattern.toString());
     
     // ignore if already a test
     for (Link child : this._children) {
       if (child.getTest().equals (pattern)) {
-        historyRowToInsert.put(Chrest._historyTableDescriptionColumnName, "Input already a test for node " + this.getReference() + ", exiting.");
-        historyRowToInsert.put(Chrest._historyTableOutputColumnName, "Node (ref: " + this.getReference() + ", image: " + this.getImage().toString() + ")");
-        this._model.addToHistory(historyRowToInsert);
+        historyRowToInsert.put(Chrest._executionHistoryTableDescriptionColumnName, "Input already a test for node " + this.getReference() + ", exiting.");
+        historyRowToInsert.put(Chrest._executionHistoryTableOutputColumnName, "Node (ref: " + this.getReference() + ", image: " + this.getImage().toString() + ")");
+        this._model.addEpisodeToExecutionHistory(historyRowToInsert);
         return this;
       }
     }
     
-    historyRowToInsert.put(Chrest._historyTableDescriptionColumnName, "Using input to create new test & child from node " + this.getReference() + ".");
-    this._model.addToHistory(historyRowToInsert);
+    historyRowToInsert.put(Chrest._executionHistoryTableDescriptionColumnName, "Using input to create new test & child from node " + this.getReference() + ".");
+    this._model.addEpisodeToExecutionHistory(historyRowToInsert);
 
     Node child = new Node (
       _model, 
@@ -1116,7 +1115,7 @@ public class Node extends Observable {
     
     //Set-up history variables.
     HashMap<String, Object> historyRowToInsert = new HashMap<>();
-    historyRowToInsert.put(Chrest._historyTableTimeColumnName, time);
+    historyRowToInsert.put(Chrest._executionHistoryTableTimeColumnName, time);
     
     //Generic operation name setter for current method.  Ensures for the row to 
     //be added that, if this method's name is changed, the entry for the 
@@ -1124,11 +1123,10 @@ public class Node extends Observable {
     //manual intervention and "Filter By Operation" queries run on the execution 
     //history DB table will still work.
     class Local{};
-    historyRowToInsert.put(
-      Chrest._historyTableOperationColumnName, 
+    historyRowToInsert.put(Chrest._executionHistoryTableOperationColumnName, 
       ExecutionHistoryOperations.getOperationString(this.getClass(), Local.class.getEnclosingMethod())
     );
-    historyRowToInsert.put(Chrest._historyTableInputColumnName, pattern.toString() + "(" + pattern.getModalityString() + ")");
+    historyRowToInsert.put(Chrest._executionHistoryTableInputColumnName, pattern.toString() + "(" + pattern.getModalityString() + ")");
     String description = "New info in input: '" + newInformation.toString() + "'. ";
 
     // cases 1 & 2 if newInformation is empty
@@ -1142,8 +1140,8 @@ public class Node extends Observable {
         
         // 2. if so, use as test
         description += "New info encoded in LTM, add as test to node " + this._reference + ".";
-        historyRowToInsert.put(Chrest._historyTableDescriptionColumnName, description);
-        this._model.addToHistory(historyRowToInsert);
+        historyRowToInsert.put(Chrest._executionHistoryTableDescriptionColumnName, description);
+        this._model.addEpisodeToExecutionHistory(historyRowToInsert);
         return this.addTest(newInformation, time);
       
       }
@@ -1151,8 +1149,8 @@ public class Node extends Observable {
       else {
         
         description += "New info not encoded in LTM, add as test to " + newInformation.getModalityString() + " root node.";
-        historyRowToInsert.put(Chrest._historyTableDescriptionColumnName, description);
-        this._model.addToHistory(historyRowToInsert);
+        historyRowToInsert.put(Chrest._executionHistoryTableDescriptionColumnName, description);
+        this._model.addEpisodeToExecutionHistory(historyRowToInsert);
         
         Node child = new Node (_model, newInformation, newInformation, time);
         _model.getLtmByModality(newInformation).addTestLink (newInformation, child, time, _model.getCurrentExperimentName());
@@ -1167,16 +1165,16 @@ public class Node extends Observable {
 
       // 3. if root node is retrieved, then the primitive must be learnt
       description += "Modality root node, add first item of new info as test to this root node.";
-      historyRowToInsert.put(Chrest._historyTableDescriptionColumnName, description);
-      this._model.addToHistory(historyRowToInsert);
+      historyRowToInsert.put(Chrest._executionHistoryTableDescriptionColumnName, description);
+      this._model.addEpisodeToExecutionHistory(historyRowToInsert);
       return _model.getLtmByModality(newInformation).learnPrimitive (newInformation.getFirstItem (), time);
 
     } else if (retrievedChunk.getContents().matches (newInformation)) {
 
       // 4. retrieved chunk can be used as a test
       description += "Image of rec. node matches new info. Add " + retrievedChunk.getContents().toString() + " as test to node " + this.getReference() + ".";
-      historyRowToInsert.put(Chrest._historyTableDescriptionColumnName, description);
-      this._model.addToHistory(historyRowToInsert);
+      historyRowToInsert.put(Chrest._executionHistoryTableDescriptionColumnName, description);
+      this._model.addEpisodeToExecutionHistory(historyRowToInsert);
       
       ListPattern testPattern = retrievedChunk.getContents().clone ();
       return this.addTest (testPattern, time);
@@ -1189,8 +1187,8 @@ public class Node extends Observable {
       ListPattern firstItem = newInformation.getFirstItem ();
       firstItem.setNotFinished ();
       description += "but image does not match new info. Add " + firstItem.toString() + " as test to node " + this.getReference() + ".";
-      historyRowToInsert.put(Chrest._historyTableDescriptionColumnName, description);
-      this._model.addToHistory(historyRowToInsert);
+      historyRowToInsert.put(Chrest._executionHistoryTableDescriptionColumnName, description);
+      this._model.addEpisodeToExecutionHistory(historyRowToInsert);
       
       return this.addTest (firstItem, time);
     }
@@ -1207,7 +1205,7 @@ public class Node extends Observable {
     
     //Set-up history variables.
     HashMap<String, Object> historyRowToInsert= new HashMap<>();
-    historyRowToInsert.put(Chrest._historyTableTimeColumnName, domainTime);
+    historyRowToInsert.put(Chrest._executionHistoryTableTimeColumnName, domainTime);
     
     //Generic operation name setter for current method.  Ensures for the row to 
     //be added that, if this method's name is changed, the entry for the 
@@ -1215,18 +1213,17 @@ public class Node extends Observable {
     //manual intervention and "Filter By Operation" queries run on the execution 
     //history DB table will still work.
     class Local{};
-    historyRowToInsert.put(
-      Chrest._historyTableOperationColumnName, 
+    historyRowToInsert.put(Chrest._executionHistoryTableOperationColumnName, 
       ExecutionHistoryOperations.getOperationString(this.getClass(), Local.class.getEnclosingMethod())
     );
-    historyRowToInsert.put(Chrest._historyTableInputColumnName, pattern.toString() + "(" + pattern.getModalityString() + ")");
+    historyRowToInsert.put(Chrest._executionHistoryTableInputColumnName, pattern.toString() + "(" + pattern.getModalityString() + ")");
     String description = "New info in input: " + newInformation.toString();
     
     // EXIT if nothing to learn
     if (newInformation.isEmpty ()) {
       description += ", empty.";
-      historyRowToInsert.put(Chrest._historyTableDescriptionColumnName, description);
-      this._model.addToHistory(historyRowToInsert);
+      historyRowToInsert.put(Chrest._executionHistoryTableDescriptionColumnName, description);
+      this._model.addEpisodeToExecutionHistory(historyRowToInsert);
       return this;
     }
 
@@ -1240,15 +1237,15 @@ public class Node extends Observable {
     if (retrievedChunk == _model.getLtmByModality (pattern)) {
 
       // primitive not known, so learn it
-      historyRowToInsert.put(Chrest._historyTableDescriptionColumnName, description);
-      this._model.addToHistory(historyRowToInsert);
+      historyRowToInsert.put(Chrest._executionHistoryTableDescriptionColumnName, description);
+      this._model.addEpisodeToExecutionHistory(historyRowToInsert);
       return _model.getLtmByModality(newInformation).learnPrimitive (newInformation, domainTime);
 
     } else {
 
       // extend image with new item
-      historyRowToInsert.put(Chrest._historyTableDescriptionColumnName, description);
-      this._model.addToHistory(historyRowToInsert);
+      historyRowToInsert.put(Chrest._executionHistoryTableDescriptionColumnName, description);
+      this._model.addEpisodeToExecutionHistory(historyRowToInsert);
       return this.extendImage (newInformation, domainTime);
     }
   }
