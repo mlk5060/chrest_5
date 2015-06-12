@@ -21,8 +21,8 @@ public abstract class DomainSpecifics {
   }
   
   /**
-   * Retrieves all declared domains that extend the {@link 
-   * jchrest.lib.DomainSpecifics} class.
+   * Retrieves all classes that extend the {@link 
+   * jchrest.lib.DomainSpecifics} class from the {@link jchrest.lib} package.
    * 
    * @return 
    */
@@ -30,7 +30,7 @@ public abstract class DomainSpecifics {
     ArrayList listOfDeclaredDomains = new ArrayList();
     Reflections reflections = new Reflections("jchrest.lib");
     for(Class<? extends DomainSpecifics> declaredDomain : reflections.getSubTypesOf(DomainSpecifics.class)){
-      listOfDeclaredDomains.add(declaredDomain.getSimpleName());
+      listOfDeclaredDomains.add(declaredDomain);
     }
     return listOfDeclaredDomains;
   }
