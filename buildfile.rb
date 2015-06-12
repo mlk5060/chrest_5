@@ -8,11 +8,12 @@ H2DATABASE = 'com.h2database:h2:jar:1.4.187'
 JCOMMON = 'jfree:jcommon:jar:1.0.16'
 JFREECHART = 'jfree:jfreechart:jar:1.0.13'
 JSOUP = 'org.jsoup:jsoup:jar:1.8.2'
+REFLECTIONS = transitive('org.reflections:reflections:jar:0.9.10')
 STATISTICS = 'org.apache.commons:commons-math:jar:2.2'
 
 define 'chrest' do
   project.version = VERSION
-  compile.with H2DATABASE, JCOMMON, JFREECHART, JSOUP, STATISTICS
+  compile.with(H2DATABASE, JCOMMON, JFREECHART, JSOUP, REFLECTIONS, STATISTICS)
   package(:jar).with(
     :manifest=>{'Main-Class'=>'jchrest.gui.Shell'}
   ).merge(
@@ -47,8 +48,7 @@ end
 desc 'run all Chrest tests'
 task :tests => :compile do
   Dir.chdir('tests') do
-    #Make sure sqlite4java JAR is on classpath or tests won't run due to missing dependencies
-    sh 'jruby -J-cp ../target/classes:../sqlite4java-392/sqlite4java.jar all-chrest-tests.rb'
+    sh 'jruby -J-cp ../target/classes all-chrest-tests.rb'
   end
 end
 
