@@ -21,16 +21,19 @@ public abstract class DomainSpecifics {
   }
   
   /**
-   * Retrieves all classes that extend the {@link 
-   * jchrest.lib.DomainSpecifics} class from the {@link jchrest.lib} package.
+   * Retrieves a list of Strings produced after calling the 
+   * {@link java.lang.Class#getName()} on all classes that extend the 
+   * {@link jchrest.lib.DomainSpecifics} class from the {@link jchrest.lib} 
+   * package.
    * 
    * @return 
    */
   public static ArrayList getDeclaredDomains(){
     ArrayList listOfDeclaredDomains = new ArrayList();
     Reflections reflections = new Reflections("jchrest.lib");
-    for(Class<? extends DomainSpecifics> declaredDomain : reflections.getSubTypesOf(DomainSpecifics.class)){
-      listOfDeclaredDomains.add(declaredDomain);
+    Set<Class<? extends DomainSpecifics>> declaredDomains = reflections.getSubTypesOf(DomainSpecifics.class);
+    for(Class<? extends DomainSpecifics> declaredDomain : declaredDomains){
+      listOfDeclaredDomains.add(declaredDomain.getName());
     }
     return listOfDeclaredDomains;
   }
