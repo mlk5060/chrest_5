@@ -1,7 +1,7 @@
 # Ruby test suite for Chrest: Chess Domain Tests
 
 unit_test "piece types" do 
-  domain = ChessDomain.new 
+  domain = ChessDomain.new(Chrest.new) 
   board = ChessDomain.constructBoard("......../......../....N.../......../.......R/R...k.../....P.../N...R.p.")
 
   big_pieces = domain.getBigPieces(board)
@@ -31,7 +31,7 @@ unit_test "normalisation of item-square-pattern lists" do
   assert_equal("P", lp.getItem(1).getItem)
   assert_equal("q", lp.getItem(2).getItem)
 
-  sorted = ChessDomain.new.normalise(lp)
+  sorted = ChessDomain.new(Chrest.new).normalise(lp)
 
   assert_equal(3, sorted.size)
   assert_equal("P", sorted.getItem(0).getItem)
@@ -47,13 +47,15 @@ unit_test "chess board and moves" do
   board5 = ChessDomain.constructBoard("N...R.p./....P.../R...k.../.......R/......../......../......../........")
 
   assert_false(board1.isSquareEmpty(4, 3))
+  
+  model = Chrest.new
   # check knight moves
-  assert_equal(8, ChessDomain.new.proposeMovementFixations(board1, Square.new(4, 3)).size, "Knight move 1")
-  assert_equal(8, ChessDomain.new.proposeMovementFixations(board2, Square.new(4, 3)).size, "Knight move 2")
-  assert_equal(7, ChessDomain.new.proposeMovementFixations(board3, Square.new(4, 3)).size, "Knight move 3")
-  assert_equal(2, ChessDomain.new.proposeMovementFixations(board4, Square.new(0, 0)).size, "Knight move 4")
+  assert_equal(8, ChessDomain.new(model).proposeMovementFixations(board1, Square.new(4, 3)).size, "Knight move 1")
+  assert_equal(8, ChessDomain.new(model).proposeMovementFixations(board2, Square.new(4, 3)).size, "Knight move 2")
+  assert_equal(7, ChessDomain.new(model).proposeMovementFixations(board3, Square.new(4, 3)).size, "Knight move 3")
+  assert_equal(2, ChessDomain.new(model).proposeMovementFixations(board4, Square.new(0, 0)).size, "Knight move 4")
   # check rook moves
-  assert_equal(5, ChessDomain.new.proposeMovementFixations(board5, Square.new(4, 0)).size, "Rook move 1")
-  assert_equal(10, ChessDomain.new.proposeMovementFixations(board5, Square.new(0, 2)).size, "Rook move 2")
-  assert_equal(14, ChessDomain.new.proposeMovementFixations(board5, Square.new(7, 3)).size, "Rook move 3")
+  assert_equal(5, ChessDomain.new(model).proposeMovementFixations(board5, Square.new(4, 0)).size, "Rook move 1")
+  assert_equal(10, ChessDomain.new(model).proposeMovementFixations(board5, Square.new(0, 2)).size, "Rook move 2")
+  assert_equal(14, ChessDomain.new(model).proposeMovementFixations(board5, Square.new(7, 3)).size, "Rook move 3")
 end

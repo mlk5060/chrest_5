@@ -110,7 +110,7 @@ unit_test "blind_scene" do
   number_fixations = rand(1..100)
   
   model = Chrest.new
-  model.setDomain(GenericDomain.new)
+  model.setDomain(GenericDomain.new(model))
   
   minds_eye = MindsEye.new(
     model,
@@ -233,7 +233,7 @@ process_test "constructor (scene with non-creator-specific coordinates)" do
   # Create a new CHREST instance and set its domain (important to enable correct
   # or expected perceptual mechanisms).
   model = Chrest.new
-  model.setDomain(GenericDomain.new)
+  model.setDomain(GenericDomain.new(model))
   
   #######################
   ##### LEARN SCENE #####
@@ -651,7 +651,7 @@ process_test "constructor (scene with creator-specific coordinates)" do
   # Create a new CHREST instance and set its domain (important to enable correct
   # or expected perceptual mechanisms).
   model = Chrest.new
-  model.setDomain(GenericDomain.new)
+  model.setDomain(GenericDomain.new(model))
   
   #######################
   ##### LEARN SCENE #####
@@ -1003,7 +1003,7 @@ unit_test "get-objects-on-visual-spatial-square" do
   ##################################
 
   model = Chrest.new
-  model.setDomain(GenericDomain.new)
+  model.setDomain(GenericDomain.new(model))
   
   ##################################
   ##### INSTANTIATE MIND'S EYE #####
@@ -1074,7 +1074,7 @@ unit_test "get-recognised-object-lifespan" do
   scene = Scene.new("Test scene", 1, 1)
 
   model = Chrest.new
-  model.setDomain(GenericDomain.new)
+  model.setDomain(GenericDomain.new(model))
   
   for i in 0...50
     recognised_object_lifespan = rand(10000..50000)
@@ -1090,7 +1090,7 @@ unit_test "get-scene-transposed" do
   scene_two = Scene.new("Test scene two", 2, 2)
 
   model = Chrest.new
-  model.setDomain(GenericDomain.new)
+  model.setDomain(GenericDomain.new(model))
 
   model.createNewMindsEye(scene_two, 50, 0, 100, 250, 10000, 5000, 8, 0)
   model.createNewMindsEye(scene_one, 50, 0, 100, 250, 10000, 5000, 8, model.getAttentionClock)
@@ -1106,7 +1106,7 @@ unit_test "get-recognised-object-lifespan" do
   scene = Scene.new("Test scene", 1, 1)
 
   model = Chrest.new
-  model.setDomain(GenericDomain.new)
+  model.setDomain(GenericDomain.new(model))
   
   for i in 0...50
     unrecognised_object_lifespan = rand(500..1000)
@@ -1166,7 +1166,7 @@ unit_test "get-visual-spatial-field-as-scene" do
   number_fixations = rand(1..9)
   
   model = Chrest.new
-  model.setDomain(GenericDomain.new)
+  model.setDomain(GenericDomain.new(model))
   
   ##################################
   ##### INSTANTIATE MIND'S EYE #####
@@ -1330,7 +1330,7 @@ unit_test "move_object" do
   # Create a new CHREST instance and set its domain (important to enable 
   # perceptual mechanisms).
   model = Chrest.new
-  model.setDomain(GenericDomain.new)
+  model.setDomain(GenericDomain.new(model))
   
   # Set independent variables.
   creation_time = 0
@@ -1617,7 +1617,7 @@ unit_test "move_objects_illegally" do
   # Create a new CHREST instance and set its domain (important to enable 
   # perceptual mechanisms).
   model = Chrest.new
-  model.setDomain(GenericDomain.new)
+  model.setDomain(GenericDomain.new(model))
   
   # Set independent variables.
   creation_time = 0

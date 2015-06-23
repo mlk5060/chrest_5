@@ -1,4 +1,5 @@
 unit_test "normalise" do
+  
   #Item square patterns are handled specially by the GenericDomain.normalise() 
   #function hence the verbose variable names.
   empty_item_square_pattern = ItemSquarePattern.new(Scene.getEmptySquareIdentifier, 0, 1)
@@ -6,7 +7,7 @@ unit_test "normalise" do
   non_empty_item_square_pattern = ItemSquarePattern.new("A", 0, 3)
   duplicate_non_empty_item_square_pattern = ItemSquarePattern.new("A", 0, 3)
   
-  generic_domain = GenericDomain.new
+  generic_domain = GenericDomain.new(Chrest.new)
   
   #The normalised ListPattern returned by the GenericDomain.normalise() function
   #should always be equal to the modality of the ListPattern that is to be 
@@ -38,6 +39,18 @@ unit_test "normalise" do
     normalised_number_pattern = generic_domain.normalise(number_list_pattern)
     normalised_item_square_pattern = generic_domain.normalise(item_square_list_pattern)
     
+    #Normalisation returns a "finished" list pattern so all expected results 
+    #should be "finished"
+    string_list_pattern.setFinished()
+    number_list_pattern.setFinished()
+    
+    #The expected result for the list pattern containing item square patterns 
+    #consists only of the "non_empty_item_square_pattern" in a finished list 
+    #pattern. 
+    expected_item_square_list_pattern = ListPattern.new(modality)
+    expected_item_square_list_pattern.add(non_empty_item_square_pattern)
+    expected_item_square_list_pattern.setFinished()
+    
     #Original string ListPattern should remain unaltered.
     assert_equal(2, normalised_string_pattern.size())
     assert_equal(modality, normalised_string_pattern.getModality())
@@ -52,6 +65,6 @@ unit_test "normalise" do
     #PrimitivePattern should be in the returned ListPattern.
     assert_equal(1, normalised_item_square_pattern.size(), "occurred when checking the size of the normalised item-square pattern")
     assert_equal(modality, normalised_item_square_pattern.getModality(), "occurred when checking the modality of the normalised item-square pattern")
-    assert_equal(non_empty_item_square_pattern, normalised_item_square_pattern.getItem(0), "occurred when checking the contents of the normalised item-square pattern")
+    assert_equal(expected_item_square_list_pattern, normalised_item_square_pattern, "occurred when checking the contents of the normalised item-square pattern")
   end
 end

@@ -336,7 +336,7 @@ end
 
 process_test "scan-scene" do
   model = Chrest.new
-  model.setDomain(GenericDomain.new)
+  model.setDomain(GenericDomain.new(model))
   
   scene_one = Scene.new("scene_one", 5, 5)
   scene_one.addItemToSquare(4, 0, "A")
