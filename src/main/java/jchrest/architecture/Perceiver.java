@@ -286,24 +286,28 @@ public class Perceiver {
   public void moveEye (int time) {
     Node node = _model.getVisualLtm ();
     boolean fixationDone = false;
+    
     if (doingInitialFixations ()) {
       fixationDone = doInitialFixation ();
       if (fixationDone) {
         node = _model.recognise (_model.getDomainSpecifics().normalise (_currentScene.getItemsInScope (_fixationX, _fixationY, 2, 2, true)), time);
       }
     }
+    
     if (!fixationDone) {
       fixationDone = ltmHeuristic (time);
       if (fixationDone && _model.getVisualStm().getCount () >= 1) {
         node = _model.getVisualStm().getItem(0);
       }
     }
+    
     if (!fixationDone) {
       moveEyeUsingHeuristics ();
       node = _model.recognise (_model.getDomainSpecifics().normalise (_currentScene.getItemsInScope (_fixationX, _fixationY, 2, 2, true)), time);
     }
     
     _recognisedNodes.add (node);
+    
     // Attempt to fill out the slots on the top-node of visual STM with the currently 
     // fixated items
     if (_model.getVisualStm().getCount () >= 1) {

@@ -14,14 +14,12 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Observable;
-import java.util.Set;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.TreeMap;
 import jchrest.database.DatabaseInterface;
 import jchrest.lib.*;
 import jchrest.lib.ReinforcementLearning.ReinforcementLearningTheories;
-import org.reflections.Reflections;
 
 /**
  * The parent class for an instance of a Chrest model.
@@ -59,9 +57,9 @@ public class Chrest extends Observable {
   
   private final DatabaseInterface _databaseInterface;
   
-  //The model should record its execution history by default (for the purposes 
-  //of debugging).
-  private boolean _executionHistoryRecordingEnabled = true;
+  //The model should not record its execution history by default since it can
+  //slow down its operation significantly.
+  private boolean _executionHistoryRecordingEnabled = false;
   
   //Save names of important database variables so consistency with operations is 
   //ensured.
@@ -1770,7 +1768,14 @@ public class Chrest extends Observable {
    * @param numFixations
    * @param clearStm
    * @param time The current domain time (in milliseconds).
-   * @return 
+   * 
+   * @return A {@link jchrest.lib.Scene} instance composed of objects from the 
+   * {@link jchrest.lib.Scene} instance passed as a parameter that this 
+   * {@link jchrest.architecture.Chrest} instance recognises.  <b>Note:</b> if 
+   * nothing in the {@link jchrest.lib.Scene} instance passed is recognised, the 
+   * {@link jchrest.lib.Scene} instance returned will consist entirely of 
+   * objects whose identifier equals 
+   * {@link jchrest.lib.Scene#BLIND_SQUARE_IDENTIFIER}.
    */
   public Scene scanScene (Scene scene, int numFixations, boolean clearStm, int time) {
     
@@ -1802,7 +1807,7 @@ public class Chrest extends Observable {
       _perceiver.moveEye (time);
     }
     
-    // Build up and return recalled scene
+    // Instantiate recalled scene (will be a "blind" canvas).
     Scene recalledScene = new Scene (
       "Recalled scene of " + scene.getName (), 
       scene.getWidth (), 
@@ -1820,37 +1825,42 @@ public class Chrest extends Observable {
     // -- get items from image in STM, and optionally template slots
     // TODO: use frequency count in recall
     for (Node node : _visualStm) {
-      ListPattern recalledInformation = node.getImage();
       
-      if (_createTemplates) { // check if templates needed
-        recalledInformation = recalledInformation.append(node.getFilledSlots ());
-      }
+      //If the node isn't the visual LTM root node (nothing recognised) then,
+      //continue.
+      if(this.getVisualLtm() != node){
+        ListPattern recalledInformation = node.getImage();
+
+        if (_createTemplates) { // check if templates needed
+          recalledInformation = recalledInformation.append(node.getFilledSlots ());
+        }
       
-      //Add all recognised items to the scene to be returned and flag the 
-      //corresponding mind's eye objects as being recognised.
-      for (PrimitivePattern item : recalledInformation) {
-        if (item instanceof ItemSquarePattern) {
-          ItemSquarePattern ios = (ItemSquarePattern)item;
-          int col = ios.getColumn ();
-          int row = ios.getRow ();
-          
-          //Translate domain-specific coordinates if necessary.
-          if(self != null){
-           col += self.getColumn();
-           row += self.getRow();
-          }
-          
-          //Add the item to the recalled scene.
-          recalledScene.addItemToSquare (col, row, ios.getItem ());
-          
-          //Update the recognised status of the associated mind's eye object, if
-          //applicable.
-          if(associatedMindsEye != null){
-            ArrayList<MindsEyeObject> objects = associatedMindsEye.getObjectsOnVisualSpatialSquare(col, row);
-            for(MindsEyeObject object: objects){
-              if(object.getIdentifier().equals(ios.getItem())){
-                object.setRecognised(time);
-                recognisedObjects.add(object);
+        //Add all recognised items to the scene to be returned and flag the 
+        //corresponding mind's eye objects as being recognised.
+        for (PrimitivePattern item : recalledInformation) {
+          if (item instanceof ItemSquarePattern) {
+            ItemSquarePattern ios = (ItemSquarePattern)item;
+            int col = ios.getColumn ();
+            int row = ios.getRow ();
+            
+            //Translate domain-specific coordinates if necessary.
+            if(self != null){
+              col += self.getColumn();
+              row += self.getRow();
+            }
+
+            //Add the item to the recalled scene.
+            recalledScene.addItemToSquare (col, row, ios.getItem ());
+
+            //Update the recognised status of the associated mind's eye object, if
+            //applicable.
+            if(associatedMindsEye != null){
+              ArrayList<MindsEyeObject> objects = associatedMindsEye.getObjectsOnVisualSpatialSquare(col, row);
+              for(MindsEyeObject object: objects){
+                if(object.getIdentifier().equals(ios.getItem())){
+                  object.setRecognised(time);
+                  recognisedObjects.add(object);
+                }
               }
             }
           }
