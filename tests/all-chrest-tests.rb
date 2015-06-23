@@ -8,6 +8,7 @@ include TestFramework
 
 # Import all required classes
 import "java.util.ArrayList"
+import "java.util.HashMap"
 
 [
   "Chrest", 
