@@ -48,7 +48,8 @@ end
 desc 'run all Chrest tests'
 task :tests => :compile do
   Dir.chdir('tests') do
-    sh 'jruby -J-cp ../target/classes all-chrest-tests.rb'
+    Rake::Task["package"].invoke #Create a new JAR so that the classpath set below uses the most up-to-date version of CHREST
+    sh "jruby -J-cp ../target/chrest-#{VERSION}.jar all-chrest-tests.rb" #Run tests using most up-to-date CHREST code.
   end
 end
 
