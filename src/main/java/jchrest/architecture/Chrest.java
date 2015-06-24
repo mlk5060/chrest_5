@@ -1399,17 +1399,6 @@ public class Chrest extends Observable {
   }
   
   /**
-   * Presents Chrest with a pair of patterns which it should learn and then 
-   * associate together using an action link.  The first pattern can be of any 
-   * modality whilst the second pattern must have an "action" modality.  The 
-   * method assumes that the second pattern has action modality and the time of 
-   * presentation is the current learning clock time.
-   */
-  private void learnPatternAndLinkToActionPattern (ListPattern pattern1, ListPattern actionPattern) {
-    learnPatternAndLinkToActionPattern (pattern1, actionPattern, _learningClock);
-  }
-  
-  /**
    * Learns first pattern (which can be of any modality) and a second pattern 
    * (whose modality must be "action") and learns an action link between the 
    * first pattern and the second pattern pattern
@@ -1866,6 +1855,14 @@ public class Chrest extends Observable {
           }
         }
       }
+    }
+    
+    //If the creator of the scene was identified in the original scene then add
+    //it into the recalled scene.  This enables domain-specific coordinates to
+    //be returned for items in the recalled scene if its contents are to be 
+    //returned.
+    if(self != null){
+      recalledScene.addItemToSquare(self.getColumn(), self.getRow(), Scene.getSelfIdentifier());
     }
     
     //Finally, cycle through the objects in the original scene and flag all 
