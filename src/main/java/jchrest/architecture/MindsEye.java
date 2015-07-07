@@ -467,8 +467,9 @@ public class MindsEye {
    * @param objectMoves A 2D ArrayList whose first dimension elements 
    * should contain ArrayLists of {@link jchrest.lib.ItemSquarePattern} 
    * instances that prescribe a sequence of moves for one object in the domain
-   * using domain-specific coordinates.  For example, if two objects, A and 
-   * B, are to be moved the ArrayList passed should contain: 
+   * using visual-spatial field specific coordinates, i.e. the minimum x and y
+   * coordinate should be 0.  For example, if two objects, A and B, are to be 
+   * moved the ArrayList passed should contain: 
    * [[A sourceX sourceY], [A destinationX desitinationY]], 
    * [[B sourceX sourceY], [B desitinationX destinationY]].
    * 
@@ -625,7 +626,9 @@ public class MindsEye {
                   //since this may indicate an issue with coordinate translation
                   //or experiment code.
                   if(movement == 1){
-                    throw new MindsEyeMoveObjectException("The initial location specified for object " + currentObjectLocation.getItem() + " (" + currentObjectLocation.toString() + ") is incorrect.");                
+                    throw new MindsEyeMoveObjectException(
+                      "The initial location specified for object " + currentObjectLocation.getItem() + " (" + currentObjectLocation.toString() + ") is incorrect.\n"
+                        + "This may be because domain-specific coordinates have been used to specify the location.");                
                   }
                   //Otherwise, the object has decayed since a number of other
                   //moves have been performed or, it has been moved to a blind

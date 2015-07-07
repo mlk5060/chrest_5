@@ -97,10 +97,6 @@ public class Chrest extends Observable {
   //operations.
   private int _attentionClock;
   
-  //Indicates the time at which CHREST will be free to perform LTM/STM 
-  //operations.
-  private int _learningClock; 
-  
   // timing parameters
   private int _addLinkTime;
   private int _discriminationTime;
@@ -203,15 +199,14 @@ public class Chrest extends Observable {
     /***** Set LTM parameters *****/
     /******************************/
     _attentionClock = 0;
-    _learningClock = 0;
     _totalNodes = 0;
     _visualLtm = new Node (this, 0, jchrest.lib.Pattern.makeVisualList (new String[]{"Root"}), 0);
     _verbalLtm = new Node (this, 0, jchrest.lib.Pattern.makeVerbalList (new String[]{"Root"}), 0);
     _actionLtm = new Node (this, 0, jchrest.lib.Pattern.makeActionList (new String[]{"Root"}), 0);
     _totalNodes = 0; // Node constructor will have incremented _totalNodes, so reset to 0
-    _visualStm = new Stm (4, this._learningClock);
-    _verbalStm = new Stm (2, this._learningClock);
-    _actionStm = new Stm (4, this._learningClock);
+    _visualStm = new Stm (4, this._attentionClock);
+    _verbalStm = new Stm (2, this._attentionClock);
+    _actionStm = new Stm (4, this._attentionClock);
     _emotionAssociator = new EmotionAssociator ();
     _reinforcementLearningTheory = null; //Must be set explicitly using Chrest.setReinforcementLearningTheory()
     _perceiver = new Perceiver (this);
@@ -531,7 +526,7 @@ public class Chrest extends Observable {
   
   /**
    * Retrieves the maximum time set for an experiment if one is set or the 
-   * current learning clock value of CHREST if not.
+   * current attention clock value of CHREST if not.
    * 
    * @param experiment
    * @return 
@@ -540,7 +535,7 @@ public class Chrest extends Observable {
     Integer maxTime = this._experimentNamesAndMaximumTimes.get(experiment);
     
     if(maxTime == null){
-      maxTime = this.getLearningClock();
+      maxTime = this.getAttentionClock();
     }
 
     return maxTime;
@@ -950,29 +945,14 @@ public class Chrest extends Observable {
   public int getVerbalStmNodeCount(){
     return _verbalStm.getCount();
   }
-
-  /**
-   * Accessor to retrieve current learning time of model.
-   */
-  public int getLearningClock () {
-    return _learningClock;
-  }
   
   /**
    * Resets this model's learning clock to 0.
    */
-  public void resetLearningClock(){
-    this._learningClock = 0;
+  public void resetAttentionClock(){
+    this._attentionClock = 0;
     this.setChanged();
     this.notifyObservers();
-  }
-
-  /**
-   * Advance the learning clock by given amount.
-   */
-  public void advanceLearningClock (int time) {
-    _learningClock += time;
-    setChanged ();
   }
 
   /**
@@ -1317,9 +1297,9 @@ public class Chrest extends Observable {
    */
   public Node recogniseAndLearn (ListPattern pattern, int time) {
     Node currentNode = recognise (pattern, time);
-    if (_learningClock <= time) { // only try to learn if learning clock is 'behind' the time of the call
+    if (this._attentionClock <= time) { // only try to learn if attention is free at the time of the call
       if (Math.random () < _rho) { // depending on _rho, may refuse to learn some random times
-        _learningClock = time; // bring clock up to date
+        this.setAttentionClock(time); // bring attention clock up to date
         if (!currentNode.getImage().equals (pattern)) { // only try any learning if image differs from pattern
           if (currentNode == getLtmByModality (pattern) || // if is rootnode
             !currentNode.getImage().matches (pattern) || // or mismatch on image
@@ -1340,7 +1320,7 @@ public class Chrest extends Observable {
    * Used to learn about a new pattern.  Returns the node learnt.
    */
   public Node recogniseAndLearn (ListPattern pattern) {
-    return recogniseAndLearn (pattern, _learningClock);
+    return recogniseAndLearn (pattern, this._attentionClock);
   }
 
   /**
@@ -1361,7 +1341,7 @@ public class Chrest extends Observable {
   }
 
   public Node associateAndLearn (ListPattern pattern1, ListPattern pattern2) {
-    return associateAndLearn (pattern1, pattern2, _learningClock);
+    return associateAndLearn (pattern1, pattern2, this._attentionClock);
   }
 
   /**
@@ -1434,7 +1414,7 @@ public class Chrest extends Observable {
           // force it to correct a mistake
           recogniseAndLearn (pattern1, time);
 
-          if (_learningClock <= time) {
+          if (this._attentionClock <= time) {
             Node actionNodeRetrieved = recognise (actionPattern, time);
 
             // 6. if the action node retrieved's image matches action pattern, learn link, else learn action pattern
@@ -1458,7 +1438,7 @@ public class Chrest extends Observable {
           actionNodeRetrieved = recognise (actionPattern, time);
           
           // 6. if the action node retrieved's image matches action pattern, learn link, else learn action pattern
-          if (actionNodeRetrieved.getImage().matches (actionPattern)) {  
+          if (actionNodeRetrieved.getImage().matches (actionPattern)) {
             associatePatterns(pat1Retrieved, actionNodeRetrieved, Modality.ACTION.toString(), time);
           }
         }
@@ -1499,7 +1479,7 @@ public class Chrest extends Observable {
           recogniseAndLearn (pattern2, time);
           recogniseAndLearn (pattern1, time);
           
-          if (_learningClock <= time) {
+          if (this._attentionClock <= time) {
             Node pat2Retrieved = recognise (pattern2, time);
             
             // 6. if pattern2 retrieved node image match for pattern2, learn link, else learn pattern2
@@ -1538,7 +1518,7 @@ public class Chrest extends Observable {
    * Chrest clock time.
    */
   private void learnAndLinkPatterns (ListPattern pattern1, ListPattern pattern2) {
-    learnAndLinkPatterns (pattern1, pattern2, _learningClock);
+    learnAndLinkPatterns (pattern1, pattern2, this._attentionClock);
   }
   
   /**
@@ -1567,10 +1547,10 @@ public class Chrest extends Observable {
   public void learnAndNamePatterns (ListPattern pattern1, ListPattern pattern2, int time) {
     recogniseAndLearn (pattern1, time);
     recogniseAndLearn (pattern2, time);
-    if (_learningClock <= time) {
+    if (this._attentionClock <= time) {
       if (pattern1.isVisual () && pattern2.isVerbal () && _visualStm.getCount () > 0 && _verbalStm.getCount () > 0) {
         _visualStm.getItem(0).setNamedBy (_verbalStm.getItem (0), time);
-        advanceLearningClock (getAddLinkTime ());
+        this.advanceAttentionClock (getAddLinkTime ());
       }
       setChanged ();
       if (!_frozen) notifyObservers ();
@@ -1578,7 +1558,7 @@ public class Chrest extends Observable {
   }
 
   public void learnAndNamePatterns (ListPattern pattern1, ListPattern pattern2) {
-    learnAndNamePatterns (pattern1, pattern2, _learningClock);
+    learnAndNamePatterns (pattern1, pattern2, this._attentionClock);
   }
 
   /**
@@ -1893,7 +1873,6 @@ public class Chrest extends Observable {
   public void clear () {
     this.clearHistory(); 
     _attentionClock = 0;
-    _learningClock = 0;
     _visualLtm.clear ();
     _verbalLtm.clear ();
     _actionLtm.clear ();
@@ -1945,7 +1924,7 @@ public class Chrest extends Observable {
    */
   public void emoteAndPropagateAcrossModalities (Object stmsobject) {
     Stm[] stms = (Stm[]) stmsobject;
-    _emotionAssociator.emoteAndPropagateAcrossModalities (stms, _learningClock);
+    _emotionAssociator.emoteAndPropagateAcrossModalities (stms, _attentionClock);
   }
 
   /**
@@ -2025,6 +2004,7 @@ public class Chrest extends Observable {
    */
   public void advanceAttentionClock(int timeToAdvanceBy){
     this._attentionClock += timeToAdvanceBy;
+    this.setChanged();
   }
   
   /**

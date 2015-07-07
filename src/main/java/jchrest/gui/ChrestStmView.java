@@ -32,7 +32,7 @@ public class ChrestStmView extends JPanel {
 
     //Associated model variable set-up.
     _model = model;
-    _stateAtTimeValue = _model.getLearningClock(); //This must be set before the STM view is constructed since its construction depends on the value being set correctly.
+    _stateAtTimeValue = _model.getAttentionClock(); //This must be set before the STM view is constructed since its construction depends on the value being set correctly.
     
     //Visual STM set-up.
     setLayout (new GridLayout (1, 1));
@@ -90,7 +90,7 @@ public class ChrestStmView extends JPanel {
     jsp.setOneTouchExpandable (true);
     add (jsp);
 
-    update (_model.getLearningClock(), false);
+    update (_model.getAttentionClock(), false);
   }
 
   public void update (int stateAtTime, boolean historicalSearch) {

@@ -125,10 +125,10 @@ public class PairedAssociateExperiment extends Observable{
   
   public PairedAssociateExperiment(Chrest model, List<PairedPattern> patterns){
     
-    //Assign the model instance and reset the model's learning clock so that the 
+    //Assign the model instance and reset the model's attention clock so that the 
     //model's state and execution history can be rendered and updated correctly.
     this._model = model;
-    this._model.resetLearningClock();
+    this._model.resetAttentionClock();
     
     //Set the stimulus-response pair and priority variables as elements of a 
     //LinkedHashMap so that insertion order is retained.  This means that the
