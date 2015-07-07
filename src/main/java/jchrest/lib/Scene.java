@@ -6,7 +6,6 @@ package jchrest.lib;
 // TODO: Clarify order of row/column in methods calls/displays.
 import java.util.Arrays;
 import java.util.LinkedList;
-import jchrest.architecture.MindsEye;
 
 /**
  * The Scene class is intended to represent the external environment that a 
@@ -454,8 +453,11 @@ public class Scene {
   public Square getLocationOfSelf(){
     for(int row = 0; row < this._height; row++){
       for(int col = 0; col < this._width; col++){
-        if(this._scene[col][row].equals(Scene.SELF_IDENTIFIER)){
-          return new Square(col, row);
+        String[] squareContents = this._scene[col][row].split(",");
+        for(int i = 0; i < squareContents.length; i++){
+          if(squareContents[i].equals(Scene.SELF_IDENTIFIER)){
+            return new Square(col, row);
+          }
         }
       }
     }

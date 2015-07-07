@@ -546,7 +546,7 @@ unit_test "get_items_on_square" do
 end
 
 unit_test "get_location_of_self" do
-  scene = Scene.new("test", 5, 5)
+  scene = Scene.new("self-on-square-no-co-habitation", 5, 5)
   scene.addItemToSquare(1, 0, ".");
   scene.addItemToSquare(2, 0, "f");
   scene.addItemToSquare(3, 0, ".");
@@ -566,6 +566,28 @@ unit_test "get_location_of_self" do
   scene.addItemToSquare(3, 4, ".");
   
   assert_equal(Square.new(2, 2).toString(), scene.getLocationOfSelf().toString())
+  
+  scene = Scene.new("self-on-square-co-habitation")
+  scene.addItemToSquare(1, 0, ".");
+  scene.addItemToSquare(2, 0, "f");
+  scene.addItemToSquare(3, 0, ".");
+  scene.addItemToSquare(0, 1, ".");
+  scene.addItemToSquare(2, 1, "a");
+  scene.addItemToSquare(4, 1, ".");
+  scene.addItemToSquare(0, 2, ".");
+  scene.addItemToSquare(1, 2, "b");
+  scene.addItemToSquare(2, 2, Scene.getSelfIdentifier());
+  scene.addItemToSquare(2, 2, "c");
+  scene.addItemToSquare(3, 2, "e");
+  scene.addItemToSquare(4, 2, ".");
+  scene.addItemToSquare(0, 3, ".");
+  scene.addItemToSquare(2, 3, "d");
+  scene.addItemToSquare(4, 3, ".");
+  scene.addItemToSquare(1, 4, ".");
+  scene.addItemToSquare(2, 4, "g");
+  scene.addItemToSquare(3, 4, ".");
+  
+  assert_equal(Square.new(2,2).toString(), scene.getLocationOfSelf().toString())
   
   scene = Scene.new("test", 5, 5)
   scene.addItemToSquare(1, 0, ".");
