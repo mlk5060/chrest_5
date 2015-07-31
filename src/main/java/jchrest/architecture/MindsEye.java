@@ -1,6 +1,7 @@
 package jchrest.architecture;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.Iterator;
 import jchrest.lib.ItemSquarePattern;
 import jchrest.lib.ListPattern;
@@ -150,7 +151,7 @@ public class MindsEye {
       this._visualSpatialField.add(new ArrayList<>());
       for(int row = 0; row < this._sceneTransposed.getHeight(); row++){
         this._visualSpatialField.get(col).add(new ArrayList<>());
-        this._visualSpatialField.get(col).get(row).add(new MindsEyeObject(this, Scene.getBlindSquareIdentifier(), time));
+        this._visualSpatialField.get(col).get(row).add(new MindsEyeObject(this, null, Scene.getBlindSquareIdentifier(), time));
       }
     }
     
@@ -158,7 +159,7 @@ public class MindsEye {
     //at this point otherwise the function will hang when the scene to transpose
     //is scanned below.
     boolean sceneToTransposeIsEntirelyBlind = true;
-    Iterator<PrimitivePattern> sceneItems = sceneToTranspose.getEntireScene(true).iterator();
+    Iterator<PrimitivePattern> sceneItems = sceneToTranspose.getEntireSceneAsListPattern(false, true).iterator();
     while(sceneItems.hasNext()){
       PrimitivePattern sceneItem = sceneItems.next();
       if(sceneItem instanceof ItemSquarePattern){
@@ -193,14 +194,54 @@ public class MindsEye {
 
       //Process visual STM items that aren't empty and aren't root nodes from 
       //oldest to newest (since STM is a FIFO list we need to go from back to 
-      //front and STM is zero-indexed).
+      //front and STM is zero-indexed).  This ensures that, when the lifespan 
+      //of recognised objects are set, objects recognised first will decay 
+      //before objects recognised last (unless an object is present in both the
+      //oldest and youngest STM chunk).
       for(int visualStmItem = (visualStm.getCount() -1); visualStmItem >= 0; visualStmItem--){
         Node stmItem = visualStm.getItem(visualStmItem);
+        ListPattern nodeImage = stmItem.getImage();
 
         if(
-          !stmItem.getImage().isEmpty() && //If the item isn't empty
+          !nodeImage.isEmpty() && //If the item isn't empty
           !stmItem.equals(this._model.getVisualLtm()) //If the item isn't the root node for visual LTM
         ){
+          
+          //Build a data structure that stores how many times each pattern in 
+          //the STM node image occurs.  This is used to handle situations where 
+          //a square contains an unequal number of objects with the same class 
+          //in different STM chunks.  In this case, the terminus values of the 
+          //mind's eye objects on the square should differ accordingly.  For 
+          //example, objects 1 and 2 both are both instances of the object 
+          //class "leaf".  After the external scene is scanned, STM contains
+          //two chunks: the older chunk contains objects 1 and 2 but the younger
+          //chunk only contains object 1.  In this case, object 1's terminus 
+          //should be greater than object 2 but using the information in the
+          //STM chunk, its not possible to distinguish between object 1 and 2 
+          //since the object identifiers returned after scanning a scene are
+          //object classes rather than their unique identifiers due to learning
+          //generalisiability.  Conseuqnetly, the only other option is to 
+          //increment the terminus value for the specified number of objects in
+          //the chunk and no more.  Thus, the count made here is used to 
+          //determine how many objects on each square should have their terminus
+          //values altered.
+          HashMap<String,Integer> numberOfItemsWithSameObjectClassOnSquare = new HashMap<>();
+          ListPattern stmChunkWithDuplicatesRemoved = new ListPattern(nodeImage.getModality());
+          
+          for(PrimitivePattern pattern : nodeImage){
+            if(pattern instanceof ItemSquarePattern){
+              ItemSquarePattern ios = (ItemSquarePattern)pattern;
+              String key = ios.toString();
+
+              if(numberOfItemsWithSameObjectClassOnSquare.containsKey(key)){
+                numberOfItemsWithSameObjectClassOnSquare.put(key, numberOfItemsWithSameObjectClassOnSquare.get(key) + 1);
+              }
+              else{
+                numberOfItemsWithSameObjectClassOnSquare.put(key, 1);
+                stmChunkWithDuplicatesRemoved.add(ios);
+              }
+            }
+          }
 
           //Advance the local "time" variable by the time it takes to place one 
           //object in the mind's eye.  Thus, when terminus values for chunk 
@@ -210,45 +251,51 @@ public class MindsEye {
           //clock were advanced after terminus values are set).
           time += this._objectPlacementTime;
 
-          //Get the contents (patterns) of the next visual STM chunk (may have 
-          //relative coordinates) and process each one.
-          Iterator<PrimitivePattern> chunkPatternsWithPossibleRelativeCoordinates = visualStm.getItem(visualStmItem).getImage().iterator();
-          while(chunkPatternsWithPossibleRelativeCoordinates.hasNext()){          
-            PrimitivePattern patternWithPossibleRelativeCoordinates = chunkPatternsWithPossibleRelativeCoordinates.next();
-            if(patternWithPossibleRelativeCoordinates instanceof ItemSquarePattern){
-              ItemSquarePattern patternToProcess = (ItemSquarePattern)patternWithPossibleRelativeCoordinates;
+          //Process each pattern in the STM chunk.
+          for(PrimitivePattern stmPattern : stmChunkWithDuplicatesRemoved){
+            
+            ItemSquarePattern patternToProcess = (ItemSquarePattern)stmPattern;
+            
+            //Retrieve the number of objects with the same object class on the
+            //current coordinate before translating pattern coordinates to
+            //those relative to a scene creator (this may cause a key mis-match
+            //on the Hashmap structure created earlier, otherwise).
+            Integer numberOfTimesPatternDuplicated = numberOfItemsWithSameObjectClassOnSquare.get(patternToProcess.toString());
 
-              //Translate coordinates if necessary.
-              if(locationOfSelf != null){
-                patternToProcess = new ItemSquarePattern(
-                  patternToProcess.getItem(),
-                  patternToProcess.getColumn() + locationOfSelf.getColumn(),
-                  patternToProcess.getRow() + locationOfSelf.getRow()
-                );
+            //Since the col and row identifiers in the STM pattern may be 
+            //realtive to the creator of the scene, these need to be translated
+            //into their zero-indexed counterparts so that the visual-spatial
+            //field can be constructed correctly.
+            if(locationOfSelf != null){
+              patternToProcess = new ItemSquarePattern(
+                patternToProcess.getItem(),
+                patternToProcess.getColumn() + locationOfSelf.getColumn(),
+                patternToProcess.getRow() + locationOfSelf.getRow()
+              );
+            }
+
+            //Get the current contents of the mind's eye coordinates specified 
+            //by the pattern to process.  If there are objects here already, 
+            //check each one to see if its identifier matches the identifier 
+            //for the pattern being processed.  If this is the case, set the 
+            //terminus for the corresponding minds eye object to be equal to 
+            //the current attention clock plus the lifespan for recognised 
+            //objects (thus implementing refreshment).  If there are other,
+            //non-blind objects here, set their terminus accordingly since
+            //they have been "looked-at" too.
+            ArrayList<MindsEyeObject> mindsEyeObjectsAtPatternLocation = this._visualSpatialField.get(patternToProcess.getColumn()).get(patternToProcess.getRow());
+            boolean objectAlreadyAtCoordinates = false;
+            for(MindsEyeObject mindsEyeObjectAtPatternLocation : mindsEyeObjectsAtPatternLocation){
+              String objectIdentifier = mindsEyeObjectAtPatternLocation.getObjectClass();
+
+              if(objectIdentifier.equals(patternToProcess.getItem() && numberOfTimesPatternDuplicated > 0)){
+                mindsEyeObjectAtPatternLocation.setTerminus(time, false);
+                objectAlreadyAtCoordinates = true;
               }
-
-              //Get the current contents of the mind's eye coordinates specified 
-              //by the pattern to process.  If there are objects here already, 
-              //check each one to see if its identifier matches the identifier 
-              //for the pattern being processed.  If this is the case, set the 
-              //terminus for the corresponding minds eye object to be equal to 
-              //the current attention clock plus the lifespan for recognised 
-              //objects (thus implementing refreshment).  If there are other,
-              //non-blind objects here, set their terminus accordingly since
-              //they have been "looked-at" too.
-              ArrayList<MindsEyeObject> mindsEyeObjectsAtPatternLocation = this._visualSpatialField.get(patternToProcess.getColumn()).get(patternToProcess.getRow());
-              boolean objectAlreadyAtCoordinates = false;
-              for(MindsEyeObject mindsEyeObjectAtPatternLocation : mindsEyeObjectsAtPatternLocation){
-                String objectIdentifier = mindsEyeObjectAtPatternLocation.getIdentifier();
-
-                if(objectIdentifier.equals(patternToProcess.getItem())){
-                  mindsEyeObjectAtPatternLocation.setTerminus(time, false);
-                  objectAlreadyAtCoordinates = true;
-                }
-                else if(!objectIdentifier.equals(Scene.getBlindSquareIdentifier())){
-                  mindsEyeObjectAtPatternLocation.setTerminus(time, false);
-                }
+              else if(!objectIdentifier.equals(Scene.getBlindSquareIdentifier())){
+                mindsEyeObjectAtPatternLocation.setTerminus(time, false);
               }
+            }
 
               //If the pattern isn't already on the coordinates, add it.
               if(!objectAlreadyAtCoordinates){
@@ -273,7 +320,6 @@ public class MindsEye {
               //when unrecognised objects are transposed into the visual-spatial 
               //field below.
               recognisedPatterns.add(patternToProcess.toString());
-            }
           }
         }
       }//Process next STM chunk (if there is one)
@@ -550,7 +596,7 @@ public class MindsEye {
                 //location specified.  If the previous move caused the object to 
                 //be placed on a blind spot or the item is on the square but its
                 //terminus has passed, this check will return false.
-                ListPattern currentObjectCoordinateContents = this.getVisualSpatialFieldAsScene(timeTakenToMoveObjects).getItemsOnSquare(currentObjectLocation.getColumn(), currentObjectLocation.getRow(), false, false);
+                ListPattern currentObjectCoordinateContents = this.getVisualSpatialFieldAsScene(timeTakenToMoveObjects).getItemsOnSquareAsListPattern(currentObjectLocation.getColumn(), currentObjectLocation.getRow(), false, false);
                 if(currentObjectCoordinateContents.contains(currentObjectLocation)){
 
                   //Remove the object from its current coordinates in
@@ -561,9 +607,21 @@ public class MindsEye {
                   //terminus set and the object's terminus hasn't already been 
                   //reached.
                   ArrayList<MindsEyeObject> currentObjectLocationContents = this._visualSpatialField.get(currentObjectLocation.getColumn()).get(currentObjectLocation.getRow());
+                                    
+                  //When removing an object from its current coordinates, it may 
+                  //be the case that there are two objects with the same 
+                  //identifier on the coordinates in question.  Therefore, only 
+                  //one object should be moved so the boolean value below is 
+                  //used to enable such behaviour.
+                  boolean objectMoved = false;
+                  
                   for(MindsEyeObject object : currentObjectLocationContents){
-                    if(object.getIdentifier().equals(currentObjectLocation.getItem())){
+                    if(
+                      object.getIdentifier().equals(currentObjectLocation.getItem()) &&
+                      !objectMoved
+                    ){
                       object.setTerminus(timeTakenToMoveObjects, true);
+                      objectMoved = true;
                     }
                     else if(
                       (

@@ -1776,7 +1776,7 @@ public class Chrest extends Observable {
       _perceiver.moveEye (time);
     }
     
-    // Instantiate recalled scene (will be a "blind" canvas).
+    //Instantiate recalled scene, this will be a "blind" canvas initially.
     Scene recalledScene = new Scene (
       "Recalled scene of " + scene.getName (), 
       scene.getWidth (), 
@@ -1806,7 +1806,9 @@ public class Chrest extends Observable {
       
         //Add all recognised items to the scene to be returned and flag the 
         //corresponding mind's eye objects as being recognised.
-        for (PrimitivePattern item : recalledInformation) {
+        for (int i = 0; i < recalledInformation.size(); i++){
+          PrimitivePattern item = recalledInformation.getItem(i);
+          
           if (item instanceof ItemSquarePattern) {
             ItemSquarePattern ios = (ItemSquarePattern)item;
             int col = ios.getColumn ();
@@ -1818,15 +1820,19 @@ public class Chrest extends Observable {
               row += self.getRow();
             }
 
-            //Add the item to the recalled scene.
-            recalledScene.addItemToSquare (col, row, ios.getItem ());
+            //Add the item to the recalled scene.  Note that the unique 
+            //identifier for the SceneObject that will be created is equal to 
+            //i (the current recognised item being processed).  This is OK since
+            //blind and empty squares will not be learned so a unique identifier
+            //should always be specified.
+            recalledScene.addItemToSquare (col, row, i, ios.getItem ());
 
             //Update the recognised status of the associated mind's eye object, if
             //applicable.
             if(associatedMindsEye != null){
               ArrayList<MindsEyeObject> objects = associatedMindsEye.getObjectsOnVisualSpatialSquare(col, row);
               for(MindsEyeObject object: objects){
-                if(object.getIdentifier().equals(ios.getItem())){
+                if(object.getObjectClass().equals(ios.getItem())){
                   object.setRecognised(time);
                   recognisedObjects.add(object);
                 }
@@ -1842,7 +1848,7 @@ public class Chrest extends Observable {
     //be returned for items in the recalled scene if its contents are to be 
     //returned.
     if(self != null){
-      recalledScene.addItemToSquare(self.getColumn(), self.getRow(), Scene.getSelfIdentifier());
+      recalledScene.addItemToSquare(self.getColumn(), self.getRow(), null, Scene.getSelfIdentifier());
     }
     
     //Finally, cycle through the objects in the original scene and flag all 
@@ -1854,7 +1860,7 @@ public class Chrest extends Observable {
           ArrayList<MindsEyeObject> objects = associatedMindsEye.getObjectsOnVisualSpatialSquare(col, row);
           for(MindsEyeObject object: objects){
             if(
-              !object.getIdentifier().equals(Scene.getBlindSquareIdentifier()) && //Only update termini of actual objects.
+              !object.getObjectClass().equals(Scene.getBlindSquareIdentifier()) && //Only update termini of actual objects.
               !recognisedObjects.contains(object) //Do not process recognised objects!
             ){
               object.setUnrecognised(time);

@@ -1313,19 +1313,34 @@ end
 #    is "alive" when the move occurs.
 # 2) Moving an object from a square that contains another object to a blind 
 #    square.
-# 3) Moving an object from a square to another that contains another object that
+# 3) Moving an object to a square that is occupied by another object with the
+#    same object identifier and then moving one of these objects off the square.
+# 4) Moving an object from a square to another that contains another object that
 #    is "dead" when the move occurs.
+#
+# The scene used in the following test resembles a "cone" of vision i.e. the 
+# further ahead the observer sees, the wider its field of vision.  A diagram of 
+# this scene can be found below ("x" represents a "blind spot", single 
+# upper-case characters represent distinct objects).
+# 
+#   -------------------
+# 1 |  C  |  B  |  B  |
+#   -------------------
+# 0    x  |  A  |  x
+#         -------
+#      0     1     2    MIND'S EYE COORDS
+#          
 unit_test "move_object" do
   
   # Set the objects that will be used.
-  test_objects = ["A", "B", "C", "D"]
+  test_objects = ["A", "B", "C"]
   
   # Create the scene to be transposed into the mind's eye.
   scene = Scene.new("Test scene", 3, 2)
   scene.addItemToSquare(1, 0, test_objects[0])
   scene.addItemToSquare(0, 1, test_objects[2])
   scene.addItemToSquare(1, 1, test_objects[1])
-  scene.addItemToSquare(2, 1, Scene.getEmptySquareIdentifier())
+  scene.addItemToSquare(2, 1, test_objects[1])
   
   # Create a new CHREST instance and set its domain (important to enable 
   # perceptual mechanisms).
@@ -1360,6 +1375,16 @@ unit_test "move_object" do
   ##### FIRST MOVE #####
   ######################
   
+  # This move should transform the original state of the visual-spatial field to
+  # that depicted below since object A will be moved from 1,0 to 1,1:
+  # 
+  #   -------------------
+  # 1 |  C  | B,A |  B  |
+  #   -------------------
+  # 0    x  |     |  x
+  #         -------
+  #      0     1     2    MIND'S EYE COORDS
+  #
   object_a_single_legal_move = ArrayList.new
   object_a_single_legal_move.add(ItemSquarePattern.new(test_objects[0], 1, 0))
   object_a_single_legal_move.add(ItemSquarePattern.new(test_objects[0], 1, 1))
@@ -1419,7 +1444,11 @@ unit_test "move_object" do
           end
         elsif(col == 2 and row == 1)
           if(i == 0)
-            expected_terminus = get_creation_time_for_object_after_minds_eye_creation(creation_time, minds_eye_access_time, time_to_encode_objects, time_to_encode_empty_squares, 3, 1)
+            expected_terminus = get_creation_time_for_object_after_minds_eye_creation(creation_time, minds_eye_access_time, time_to_encode_objects, time_to_encode_empty_squares, 4, 0)
+          elsif(i == 1)
+            expected_identifier = test_objects[1]
+            expected_creation_time = get_creation_time_for_object_after_minds_eye_creation(creation_time, minds_eye_access_time, time_to_encode_objects, time_to_encode_empty_squares, 4, 0)
+            expected_terminus = get_terminus_for_object_after_minds_eye_creation(creation_time, minds_eye_access_time, time_to_encode_objects, time_to_encode_empty_squares, 4, 0, lifespan_for_unrecognised_objects)
           end
         end
         
@@ -1436,13 +1465,25 @@ unit_test "move_object" do
   ##### SECOND MOVE #####
   #######################
   
+  # This move should transform the state of the visual-spatial field at the end
+  # of the first move to that depicted below since object A will be moved from 
+  # 1,1 to 2,0:
+  # 
+  #   -------------------
+  # 1 |  C  |  B  |  B  |
+  #   -------------------
+  # 0    x  |     |  x
+  #         -------
+  #      0     1     2    MIND'S EYE COORDS
+  #
+  #
   object_a_move_to_blind_square = ArrayList.new
   object_a_move_to_blind_square.add(ItemSquarePattern.new(test_objects[0], 1, 1))
   object_a_move_to_blind_square.add(ItemSquarePattern.new(test_objects[0], 2, 0))
   moves = ArrayList.new
   moves.add(object_a_move_to_blind_square)
   time_second_move_requested = model.getAttentionClock()
-  minds_eye.moveObjects(moves, model.getAttentionClock())
+  minds_eye.moveObjects(moves, time_second_move_requested)
   
   for row in 0...minds_eye.getSceneTransposed.getHeight()
     for col in 0...minds_eye.getSceneTransposed.getWidth()
@@ -1493,6 +1534,10 @@ unit_test "move_object" do
         elsif(col == 2 and row == 1)
           if(i == 0)
             expected_terminus = get_creation_time_for_object_after_minds_eye_creation(creation_time, minds_eye_access_time, time_to_encode_objects, time_to_encode_empty_squares, 3, 1)
+          elsif(i == 1)
+            expected_identifier = test_objects[1]
+            expected_creation_time = get_creation_time_for_object_after_minds_eye_creation(creation_time, minds_eye_access_time, time_to_encode_objects, time_to_encode_empty_squares, 4, 0)
+            expected_terminus = get_terminus_for_object_after_minds_eye_creation(creation_time, minds_eye_access_time, time_to_encode_objects, time_to_encode_empty_squares, 4, 0, lifespan_for_unrecognised_objects)
           end
         end
         
@@ -1509,19 +1554,142 @@ unit_test "move_object" do
   ##### THIRD MOVE #####
   ######################
   
-  #Third move allows for checking of no update to terminus when object is moved
-  #onto square occupied by other object that has "died".  In this test, object
-  #B's terminus will have been updated when object A was moved onto its square
-  #in the first move.  Since the move occurred after object C was created, 
-  #object B's terminus will now be greater than that of C's so move B from 1, 1
-  #onto 0, 1 (where C is) at the time of C's terminus.
+  #Third move checks that only one object is moved if two objects exist on a 
+  #square and both objects have the same identifier.  Technically, two moves
+  #are performed here, the first moves object B from 1,1 to 2,1 (where there is
+  #already another object B) and the second moves one of the B objects from
+  #2,1 to 1,1 again.
+  #
+  #Thus, the states of the visual-spatial field should be equal to those 
+  #depicted below:
+  #
+  # AFTER FIRST MOVE
+  # ================
+  #   -------------------
+  # 1 |  C  |     | B,B |
+  #   -------------------
+  # 0    x  |     |  x
+  #         -------
+  #      0     1     2    MIND'S EYE COORDS
+  # 
+  # AFTER SECOND MOVE
+  # =================
+  #   -------------------
+  # 1 |  C  |  B  |  B  |
+  #   -------------------
+  # 0    x  |     |  x
+  #         -------
+  #      0     1     2    MIND'S EYE COORDS
+  #
+  object_b_move_to_square_containing_object_b_and_back_again = ArrayList.new
+  object_b_move_to_square_containing_object_b_and_back_again.add(ItemSquarePattern.new(test_objects[1], 1, 1))
+  object_b_move_to_square_containing_object_b_and_back_again.add(ItemSquarePattern.new(test_objects[1], 2, 1))
+  object_b_move_to_square_containing_object_b_and_back_again.add(ItemSquarePattern.new(test_objects[1], 1, 1))
+  moves = ArrayList.new
+  moves.add(object_b_move_to_square_containing_object_b_and_back_again)
+  time_third_move_requested = model.getAttentionClock()
+  minds_eye.moveObjects(moves, time_third_move_requested)
+  
+  for row in 0...minds_eye.getSceneTransposed.getHeight()
+    for col in 0...minds_eye.getSceneTransposed.getWidth()
+      objects = minds_eye.getObjectsOnVisualSpatialSquare(col, row)
+      for i in 0...objects.size()
+        object = objects[i]
+        
+        expected_identifier = Scene.getBlindSquareIdentifier()
+        expected_creation_time = creation_time + minds_eye_access_time
+        expected_terminus = nil
+        expected_recognised = false
+        
+        # Col 0 and row 0 is blind so no expected values need to be overwritten.
+        if(col == 1 and row == 0)
+          if(i == 0)
+            expected_terminus = get_creation_time_for_object_after_minds_eye_creation(creation_time, minds_eye_access_time, time_to_encode_objects, time_to_encode_empty_squares, 1, 0)
+          elsif(i == 1)
+            expected_identifier = test_objects[0]
+            expected_creation_time = get_creation_time_for_object_after_minds_eye_creation(creation_time, minds_eye_access_time, time_to_encode_objects, time_to_encode_empty_squares, 1, 0)
+            expected_terminus = time_first_move_requested + minds_eye_access_time
+          end
+        # Col 2 and row 0 is blind so no expected values need to be overwritten.
+        # Object A is moved here but again, since the square is blind, nothing
+        # changes.
+        elsif(col == 0 and row == 1)
+          if(i == 0)
+            expected_terminus = get_creation_time_for_object_after_minds_eye_creation(creation_time, minds_eye_access_time, time_to_encode_objects, time_to_encode_empty_squares, 2, 0)
+          elsif(i == 1)
+            expected_identifier = test_objects[2]
+            expected_creation_time = get_creation_time_for_object_after_minds_eye_creation(creation_time, minds_eye_access_time, time_to_encode_objects, time_to_encode_empty_squares, 2, 0)
+            expected_terminus = get_terminus_for_object_after_minds_eye_creation(creation_time, minds_eye_access_time, time_to_encode_objects, time_to_encode_empty_squares, 2, 0, lifespan_for_unrecognised_objects)
+          end
+        elsif(col == 1 and row == 1)
+          if(i == 0)
+            expected_terminus = get_creation_time_for_object_after_minds_eye_creation(creation_time, minds_eye_access_time, time_to_encode_objects, time_to_encode_empty_squares, 3, 0)
+          elsif(i == 1)
+            expected_identifier = test_objects[1]
+            expected_creation_time = get_creation_time_for_object_after_minds_eye_creation(creation_time, minds_eye_access_time, time_to_encode_objects, time_to_encode_empty_squares, 3, 0)
+            expected_terminus = time_second_move_requested + minds_eye_access_time + lifespan_for_unrecognised_objects
+          elsif(i == 2)
+            expected_identifier = test_objects[0]
+            expected_creation_time = time_first_move_requested + minds_eye_access_time + time_to_move_object
+            expected_terminus = time_second_move_requested + minds_eye_access_time
+          elsif(i == 3)
+            #Object B will be moved back to here so the expected termini needs 
+            #to be updated.
+            expected_identifier = test_objects[1]
+            expected_creation_time = time_third_move_requested + minds_eye_access_time + (time_to_move_object * 2)
+            expected_terminus = expected_creation_time + lifespan_for_unrecognised_objects
+          end
+        elsif(col == 2 and row == 1)
+          if(i == 0)
+            expected_terminus = get_creation_time_for_object_after_minds_eye_creation(creation_time, minds_eye_access_time, time_to_encode_objects, time_to_encode_empty_squares, 3, 1)
+          elsif(i == 1)
+            #Object B will be looked at when the other object B is moved onto 
+            #this square so its termini needs to be updated.
+            expected_identifier = test_objects[1]
+            expected_creation_time = get_creation_time_for_object_after_minds_eye_creation(creation_time, minds_eye_access_time, time_to_encode_objects, time_to_encode_empty_squares, 4, 0)
+            expected_terminus = get_terminus_for_object_after_minds_eye_creation(creation_time, minds_eye_access_time, time_to_encode_objects, time_to_encode_empty_squares, 4, 0, lifespan_for_unrecognised_objects)
+          end
+        end
+        
+        assert_equal(expected_identifier, object.getIdentifier, "occurred when checking identifier of object " + (i+1).to_s + " on coordinates " + col.to_s + ", " + row.to_s + " of the mind's eye after second move.")
+        assert_equal(expected_creation_time, object.getTimeCreated, "occurred when checking creation time of object " + (i+1).to_s + " on coordinates " + col.to_s + ", " + row.to_s + " of the mind's eye after second move.")
+        assert_equal(expected_terminus, object.getTerminus, "occurred when checking terminus of object " + (i+1).to_s + " on coordinates " + col.to_s + ", " + row.to_s + " of the mind's eye after second move.")
+        assert_equal(expected_recognised, object.recognised(model.getAttentionClock()), "occurred when checking recognised status of object " + (i+1).to_s + " on coordinates " + col.to_s + ", " + row.to_s + " of the mind's eye after second move.")
+      end
+    end
+  end
+  assert_equal(time_second_move_requested + minds_eye_access_time + time_to_move_object, model.getAttentionClock(), "occurred when checking the time that the CHREST model associated with the mind's eye will be free after second move.")
+  
+  
+  
+  ######################
+  ##### FOURTH MOVE #####
+  ######################
+  
+  #Fourth move checks that an object's terminus isn't updated when another 
+  #object is moved onto its square when the object already on the square has 
+  #"died".  In this test, object B's terminus will have been updated when object 
+  #A was moved onto its square in the first move.  Since the move occurred after 
+  #object C was created, object B's terminus will now be greater than that of 
+  #C's so move B from 1, 1 onto 0, 1 (where C is) at the time of C's terminus.
+  #
+  #This move should transform the state of the visual-spatial field at the end 
+  #of the second move to that depicted below:
+  # 
+  #   -------------------
+  # 1 |  B  |     |     |
+  #   -------------------
+  # 0    x  |     |  x
+  #         -------
+  #      0     1     2    MIND'S EYE COORDS
+  #
   object_b_move = ArrayList.new
   object_b_move.add(ItemSquarePattern.new(test_objects[1], 1, 1))
   object_b_move.add(ItemSquarePattern.new(test_objects[1], 0, 1))
   moves = ArrayList.new
   moves.add(object_b_move)
-  time_third_move_requested = minds_eye.getObjectsOnVisualSpatialSquare(0, 1).get(1).getTerminus
-  minds_eye.moveObjects(moves, time_third_move_requested)
+  time_move_requested = minds_eye.getObjectsOnVisualSpatialSquare(0, 1).get(1).getTerminus
+  minds_eye.moveObjects(moves, time_move_requested)
 
   for row in 0...minds_eye.getSceneTransposed.getHeight()
     for col in 0...minds_eye.getSceneTransposed.getWidth()

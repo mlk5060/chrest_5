@@ -144,7 +144,7 @@ public class Perceiver {
                   ItemSquarePattern testIos = (ItemSquarePattern)link.getTest().getItem (0);
                   // check all details of test are correct
                   if (
-                    _currentScene.getItemsOnSquare(_fixationX, _fixationY, false, false).contains( testIos )
+                    _currentScene.getSquareContentsAsListPattern(_fixationX, _fixationY, true, true).contains( testIos )
                   ){
                     _model.getVisualStm().replaceHypothesis (link.getChildNode (), time);
                   }
@@ -271,8 +271,12 @@ public class Perceiver {
       learnFixatedPattern ();
     }
 
-    // simplified version of learning, learns pattern at current point
-    _model.recogniseAndLearn (_model.getDomainSpecifics().normalise (_currentScene.getItemsInScope (_fixationX, _fixationY, 2, 2, true)));
+    //simplified version of learning, learns pattern at current point.  Note
+    //that information learned should be generalisable so instead of getting
+    //unique identifiers for objects in the scope specified in the scene, 
+    //the identifiers for each object should be the object's class (see 6th
+    //parameter passed to the "getItemsInScopeAsListPattern" method).
+    _model.recogniseAndLearn (_model.getDomainSpecifics().normalise (_currentScene.getItemsInScopeAsListPattern (_fixationX, _fixationY, 2, 2, true, true)));
 
     // NB: template construction is only assumed to occur after training, so 
     // template completion code is not included here
@@ -290,7 +294,7 @@ public class Perceiver {
     if (doingInitialFixations ()) {
       fixationDone = doInitialFixation ();
       if (fixationDone) {
-        node = _model.recognise (_model.getDomainSpecifics().normalise (_currentScene.getItemsInScope (_fixationX, _fixationY, 2, 2, true)), time);
+        node = _model.recognise (_model.getDomainSpecifics().normalise (_currentScene.getItemsInScopeAsListPattern (_fixationX, _fixationY, 2, 2, true, true)), time);
       }
     }
     
@@ -303,7 +307,7 @@ public class Perceiver {
     
     if (!fixationDone) {
       moveEyeUsingHeuristics ();
-      node = _model.recognise (_model.getDomainSpecifics().normalise (_currentScene.getItemsInScope (_fixationX, _fixationY, 2, 2, true)), time);
+      node = _model.recognise (_model.getDomainSpecifics().normalise (_currentScene.getItemsInScopeAsListPattern (_fixationX, _fixationY, 2, 2, true, true)), time);
     }
     
     _recognisedNodes.add (node);
@@ -311,7 +315,7 @@ public class Perceiver {
     // Attempt to fill out the slots on the top-node of visual STM with the currently 
     // fixated items
     if (_model.getVisualStm().getCount () >= 1) {
-      _model.getVisualStm().getItem(0).fillSlots (_currentScene.getItemsInScope (_fixationX, _fixationY, 2, 2, true));
+      _model.getVisualStm().getItem(0).fillSlots (_currentScene.getItemsInScopeAsListPattern (_fixationX, _fixationY, 2, 2, true, true));
     }
   }
 
@@ -392,12 +396,12 @@ public class Perceiver {
         !_currentScene.isSquareEmpty (_fixations.get(i).getX (), _fixations.get(i).getY ()) &&
         !_currentScene.isSquareBlind (_fixations.get(i).getX (), _fixations.get(i).getY ())
       ) {
-        for( PrimitivePattern itemOnSquare : _currentScene.getItemsOnSquare(_fixations.get(i).getY(), _fixations.get(i).getX(), true, false) ){
+        for( PrimitivePattern itemOnSquare : _currentScene.getSquareContentsAsListPattern(_fixations.get(i).getY(), _fixations.get(i).getX(), true, true) ){
           fixatedPattern.add ( (ItemSquarePattern)itemOnSquare );
         }
       }
     }
-    _model.recogniseAndLearn (_model.getDomainSpecifics().normalise (fixatedPattern.append(_currentScene.getItemsInScope(_fixationX, _fixationY, 2, 2, true)))).getImage();
+    _model.recogniseAndLearn (_model.getDomainSpecifics().normalise (fixatedPattern.append(_currentScene.getItemsInScopeAsListPattern(_fixationX, _fixationY, 2, 2, true, true)))).getImage();
     // begin cycle again, from point where we stopped
     _fixationsLearnFrom = _fixations.size () - 1;
   }

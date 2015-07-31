@@ -14,8 +14,30 @@ public class MindsEyeObject {
   //Stores the mind's eye associated with this object.
   private final MindsEye _associatedMindsEye;
   
-  //Stores a human-readable identifier for the object.
-  private final String _identifier;
+  //This allows for the manipulation of specific mind's eye objects.  Consider a
+  //situation where two mind's eye objects exist on the same visual-spatial 
+  //coordinates and these two objects have different creation times (see below).
+  //If one of these mind's eye objects is moved in the visual-spatial field, 
+  //CHREST should only move one of these pieces in particular so that its 
+  //creation time is preserved.  Without this information, it would be 
+  //impossible to move the piece required reliably causing incorrect information
+  //to be returned if a history of the mind's eye objects on a visual-spatial
+  //coordinate is requested.
+  private final Integer _identifier;
+  
+  //Stores a human-readable class for the mind's eye object.  This allows for 
+  //CHREST to create chunks containing generalisable information.  For example,
+  //if a chess player were to learn the position of bishops on a chess board at
+  //a given moment using the contents of its visual-spatial field, the CHREST 
+  //model representing the player could learn where the bishops in the current 
+  //game are positioned and use this information in subsequent games.  This is 
+  //only possible if bishops are represented using a generalisable 
+  //representation, i.e. the string "B".  However, if the only way of 
+  //identifiying a mind's eye object is to use the "_identifier" property, 
+  //information about the bishops in the game would remain anchored to this game
+  //and the same information would need to be learned again since this would
+  //cause mismatches in LTM.
+  private final String _objectClass;
   
   //Maintains a history of the object's "recognised state" so that its 
   //recognised status at any time can be determined.  A TreeMap is used for ease
@@ -37,16 +59,18 @@ public class MindsEyeObject {
    * object is set to null since empty squares do not have terminus values.
    * 
    * @param associatedMindsEye
+   * @param objectClass
    * @param identifier
    * @param timeCreated 
    */
-  public MindsEyeObject(MindsEye associatedMindsEye, String identifier, int timeCreated){
+  public MindsEyeObject(MindsEye associatedMindsEye, Integer identifier, String objectClass, int timeCreated){
     this._associatedMindsEye = associatedMindsEye;
+    this._objectClass = objectClass;
     this._identifier = identifier;
     this._timeCreated = timeCreated;
     this._recognisedHistory.put(timeCreated, Boolean.FALSE);
     
-    if(!this._identifier.equals(Scene.getBlindSquareIdentifier())){
+    if(!this._objectClass.equals(Scene.getBlindSquareIdentifier())){
       this._terminus = timeCreated + this._associatedMindsEye.getUnrecognisedObjectLifespan();
     }
   }
@@ -86,7 +110,7 @@ public class MindsEyeObject {
    * @return 
    */
   public MindsEyeObject createClone(){
-    MindsEyeObject clone = new MindsEyeObject(this._associatedMindsEye, this._identifier, this._timeCreated);
+    MindsEyeObject clone = new MindsEyeObject(this._associatedMindsEye, this._objectClass, this._identifier, this._timeCreated);
     
     //Rebuild the object's "Recognised Status" history.
     for(Entry<Integer, Boolean> history : this._recognisedHistory.entrySet()){
@@ -123,8 +147,17 @@ public class MindsEyeObject {
    * 
    * @return 
    */
-  public String getIdentifier(){
+  public int getIdentifier(){
     return this._identifier;
+  }
+  
+  /**
+   * Returns the object's class.
+   * 
+   * @return 
+   */
+  public String getObjectClass(){
+    return this._objectClass;
   }
   
   /**
@@ -205,7 +238,7 @@ public class MindsEyeObject {
    * with this object to the time specified.
    */
   public void setTerminus(int time, boolean setToTime){
-    if(this.getIdentifier().equals(Scene.getBlindSquareIdentifier()) || setToTime){
+    if(this.getObjectClass().equals(Scene.getBlindSquareIdentifier()) || setToTime){
       this._terminus = time;
     }
     else if(this.alive(time)){

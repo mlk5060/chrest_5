@@ -92,7 +92,7 @@ public class TileworldDomain extends DomainSpecifics{
     for(int col = 0; col < scene.getWidth(); col++){
       for(int row = 0; row < scene.getHeight(); row++){
         
-        ListPattern squareContents = scene.getItemsOnSquare(col, row, false, false);
+        ListPattern squareContents = scene.getItemsOnSquareAsListPattern(col, row, false, false);
         boolean onlyCreatorOnSquare = false;
         
         if(squareContents.size() > 1){
@@ -120,7 +120,7 @@ public class TileworldDomain extends DomainSpecifics{
     int col = square.getColumn();
     int row = square.getRow();
     
-    ListPattern squareContents = scene.getItemsOnSquare(col, row, false, false);
+    ListPattern squareContents = scene.getItemsOnSquareAsListPattern(col, row, false, false);
     if( !squareContents.isEmpty() ){
       for(PrimitivePattern squareContent : squareContents){
         String item = ((ItemSquarePattern)squareContent).getItem();

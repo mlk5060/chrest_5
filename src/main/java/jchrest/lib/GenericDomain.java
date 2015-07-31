@@ -81,7 +81,7 @@ public class GenericDomain extends DomainSpecifics {
     int randomCol = new java.util.Random().nextInt(scene.getWidth ());
     int randomRow = new java.util.Random().nextInt(scene.getHeight ());
     
-    while( scene.getItemsOnSquare(randomCol, randomRow, false, false).isEmpty() ){
+    while( scene.getItemsOnSquareAsListPattern(randomCol, randomRow, false, false).isEmpty() ){
       randomCol = new java.util.Random().nextInt(scene.getWidth ());
       randomRow = new java.util.Random().nextInt(scene.getHeight ());
     }
