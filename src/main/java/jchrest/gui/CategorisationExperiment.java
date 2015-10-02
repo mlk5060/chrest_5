@@ -34,7 +34,7 @@ public class CategorisationExperiment extends JPanel {
     _model = model;
     _patterns = patterns;
     _exptClock = 0;
-    _model.resetAttentionClock();
+    _model.setClocks(0);
 
     setLayout (new GridLayout (1, 1));
     JSplitPane jsp = new JSplitPane (JSplitPane.HORIZONTAL_SPLIT, createRunExperimentView (), createProtocolView ());

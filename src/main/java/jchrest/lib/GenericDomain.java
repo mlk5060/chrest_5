@@ -21,13 +21,26 @@ public class GenericDomain extends DomainSpecifics {
   }
   
   /**
-   * Remove self and empty identifiers along with duplicates from pattern passed 
-   * since: 
-   * 1) The creator will never need to learn its own location given that 
-   *    everything will be relative to it if it exists in the pattern passed
-   * 2) Empty identifiers are useless
-   * 3) Duplicates are useless.
+   * Remove self and empty identifiers along with duplicates from 
+   * {@link jchrest.lib.ListPattern} passed.
+   * 
+   * <ol type="1">
+   *  <li>
+   *    The creator will never need to learn its own location given that 
+   *    everything will be relative to it if it exists in the pattern passed.
+   *  </li>
+   *  <li> 
+   *    Empty and blind square identifiers are useless.
+   *  </li>
+   *  <li> 
+   *    Duplicates are useless.
+   *  </li>
+   * </ul>
+   * 
+   * @param pattern
+   * @return 
    */
+  @Override
   public ListPattern normalise (ListPattern pattern) {
     ListPattern result = new ListPattern(pattern.getModality());
     
@@ -36,8 +49,9 @@ public class GenericDomain extends DomainSpecifics {
         ItemSquarePattern itemSquarePrim = (ItemSquarePattern)prim;
         String identifier = itemSquarePrim.getItem();
         if( 
-          !identifier.equalsIgnoreCase(Scene.getSelfIdentifier()) &&
+          !identifier.equalsIgnoreCase(Scene.getCreatorToken()) &&
           !identifier.equals(Scene.getEmptySquareIdentifier()) && 
+          !identifier.equals(Scene.getBlindSquareIdentifier()) &&
           !result.contains(prim)
         ){
           result.add(prim);
@@ -47,7 +61,6 @@ public class GenericDomain extends DomainSpecifics {
         result.add(prim);
       }
     }
-    result.setFinished();
     
     if(this._associatedModel != null){
       HashMap<String, Object> historyRowToInsert = new HashMap<>();
@@ -75,18 +88,26 @@ public class GenericDomain extends DomainSpecifics {
    * @param model
    * @return 
    */
+  @Override
   public Set<Square> proposeSalientSquareFixations (Scene scene, Chrest model) {
-    Set<Square> result = new HashSet<Square> ();
+    Set<Square> result = new HashSet<> ();
     
-    int randomCol = new java.util.Random().nextInt(scene.getWidth ());
-    int randomRow = new java.util.Random().nextInt(scene.getHeight ());
-    
-    while( scene.getItemsOnSquareAsListPattern(randomCol, randomRow, false, false).isEmpty() ){
-      randomCol = new java.util.Random().nextInt(scene.getWidth ());
-      randomRow = new java.util.Random().nextInt(scene.getHeight ());
+    Square locationOfSceneCreator = scene.getLocationOfCreator();
+    if(locationOfSceneCreator != null){
+      result.add(locationOfSceneCreator);
+    }
+    else{
+      int randomCol = new java.util.Random().nextInt(scene.getWidth ());
+      int randomRow = new java.util.Random().nextInt(scene.getHeight ());
+
+      while( scene.getSquareContentsAsListPattern(randomCol, randomRow, false, true).isEmpty() ){
+        randomCol = new java.util.Random().nextInt(scene.getWidth ());
+        randomRow = new java.util.Random().nextInt(scene.getHeight ());
+      }
+      
+      result.add (new Square(randomCol, randomRow));
     }
     
-    result.add (new Square(randomCol, randomRow));
     return result;
   }
 

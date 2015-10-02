@@ -38,11 +38,11 @@ public class Perceiver {
   private Scene _currentScene;
   private List<Node> _recognisedNodes;
 
-  protected Perceiver (Chrest model) {
+  protected Perceiver (Chrest model, int fieldOfView) {
     _model = model;
     _fixationX = 0;
     _fixationY = 0;
-    _fieldOfView = 2;
+    _fieldOfView = fieldOfView;
     _lastHeuristic = FixationType.none;
     _fixations = new ArrayList<Fixation> ();
     _recognisedNodes = new ArrayList<Node> ();
@@ -70,7 +70,7 @@ public class Perceiver {
   public void start (int targetNumberFixations) {
     _recognisedNodes.clear ();
     _targetNumberFixations = targetNumberFixations;
-    Square locationOfSelf = _currentScene.getLocationOfSelf();
+    Square locationOfSelf = _currentScene.getLocationOfCreator();
     
     if(locationOfSelf == null){
       _fixationX = _currentScene.getWidth () / 2;
@@ -274,9 +274,8 @@ public class Perceiver {
     //simplified version of learning, learns pattern at current point.  Note
     //that information learned should be generalisable so instead of getting
     //unique identifiers for objects in the scope specified in the scene, 
-    //the identifiers for each object should be the object's class (see 6th
-    //parameter passed to the "getItemsInScopeAsListPattern" method).
-    _model.recogniseAndLearn (_model.getDomainSpecifics().normalise (_currentScene.getItemsInScopeAsListPattern (_fixationX, _fixationY, 2, 2, true, true)));
+    //the identifiers for each object should be the object's class.
+    _model.recogniseAndLearn (_model.getDomainSpecifics().normalise (_currentScene.getItemsInScopeAsListPattern (_fixationX, _fixationY, this.getFieldOfView(), true, true)));
 
     // NB: template construction is only assumed to occur after training, so 
     // template completion code is not included here
@@ -294,7 +293,7 @@ public class Perceiver {
     if (doingInitialFixations ()) {
       fixationDone = doInitialFixation ();
       if (fixationDone) {
-        node = _model.recognise (_model.getDomainSpecifics().normalise (_currentScene.getItemsInScopeAsListPattern (_fixationX, _fixationY, 2, 2, true, true)), time);
+        node = _model.recognise (_model.getDomainSpecifics().normalise (_currentScene.getItemsInScopeAsListPattern (_fixationX, _fixationY, this.getFieldOfView(), true, true)), time);
       }
     }
     
@@ -307,7 +306,7 @@ public class Perceiver {
     
     if (!fixationDone) {
       moveEyeUsingHeuristics ();
-      node = _model.recognise (_model.getDomainSpecifics().normalise (_currentScene.getItemsInScopeAsListPattern (_fixationX, _fixationY, 2, 2, true, true)), time);
+      node = _model.recognise (_model.getDomainSpecifics().normalise (_currentScene.getItemsInScopeAsListPattern (_fixationX, _fixationY, this.getFieldOfView(), true, true)), time);
     }
     
     _recognisedNodes.add (node);
@@ -315,7 +314,7 @@ public class Perceiver {
     // Attempt to fill out the slots on the top-node of visual STM with the currently 
     // fixated items
     if (_model.getVisualStm().getCount () >= 1) {
-      _model.getVisualStm().getItem(0).fillSlots (_currentScene.getItemsInScopeAsListPattern (_fixationX, _fixationY, 2, 2, true, true));
+      _model.getVisualStm().getItem(0).fillSlots (_currentScene.getItemsInScopeAsListPattern (_fixationX, _fixationY, this.getFieldOfView(), true, true));
     }
   }
 
@@ -401,7 +400,7 @@ public class Perceiver {
         }
       }
     }
-    _model.recogniseAndLearn (_model.getDomainSpecifics().normalise (fixatedPattern.append(_currentScene.getItemsInScopeAsListPattern(_fixationX, _fixationY, 2, 2, true, true)))).getImage();
+    _model.recogniseAndLearn (_model.getDomainSpecifics().normalise (fixatedPattern.append(_currentScene.getItemsInScopeAsListPattern(_fixationX, _fixationY, this.getFieldOfView(), true, true)))).getImage();
     // begin cycle again, from point where we stopped
     _fixationsLearnFrom = _fixations.size () - 1;
   }

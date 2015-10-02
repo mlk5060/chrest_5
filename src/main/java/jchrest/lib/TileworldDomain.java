@@ -16,22 +16,22 @@ public class TileworldDomain extends DomainSpecifics{
   
   //These variables should not be changed during run-time since problems with 
   //"Scene" instances will ensue.
-  private final String _tileIdentifier;
-  private final String _holeIdentifier; 
-  private final String _opponentIdentifier;
+  private final String _tileToken;
+  private final String _holeToken; 
+  private final String _opponentToken;
   
   public TileworldDomain(Chrest model) {
     super(model);
-    this._tileIdentifier = "T";
-    this._holeIdentifier = "H";
-    this._opponentIdentifier = "O";
+    this._tileToken = "T";
+    this._holeToken = "H";
+    this._opponentToken = "O";
   }
   
-  public TileworldDomain(Chrest model, String holeIdentifier, String opponentIdentifier, String tileIdentifier){
+  public TileworldDomain(Chrest model, String holeToken, String opponentToken, String tileToken){
     super(model);
-    this._holeIdentifier = holeIdentifier;
-    this._opponentIdentifier = opponentIdentifier;
-    this._tileIdentifier = tileIdentifier;
+    this._holeToken = holeToken;
+    this._opponentToken = opponentToken;
+    this._tileToken = tileToken;
   }
 
   /**
@@ -51,7 +51,7 @@ public class TileworldDomain extends DomainSpecifics{
       if(
         !item.equals(Scene.getBlindSquareIdentifier()) &&
         !item.equals(Scene.getEmptySquareIdentifier()) &&
-        !item.equalsIgnoreCase(Scene.getSelfIdentifier()) && 
+        !item.equalsIgnoreCase(Scene.getCreatorToken()) && 
         !result.contains(prim)
       ){
         result.add(itemDetails);
@@ -92,14 +92,14 @@ public class TileworldDomain extends DomainSpecifics{
     for(int col = 0; col < scene.getWidth(); col++){
       for(int row = 0; row < scene.getHeight(); row++){
         
-        ListPattern squareContents = scene.getItemsOnSquareAsListPattern(col, row, false, false);
+        ListPattern squareContents = scene.getSquareContentsAsListPattern(col, row, false, false);
         boolean onlyCreatorOnSquare = false;
         
         if(squareContents.size() > 1){
           for(PrimitivePattern object  : squareContents){
             if(object instanceof ItemSquarePattern){
               ItemSquarePattern obj = (ItemSquarePattern)object;
-              if(obj.getItem().equals(Scene.getSelfIdentifier())){
+              if(obj.getItem().equals(Scene.getCreatorToken())){
                 onlyCreatorOnSquare = true;
               }
             }
@@ -114,21 +114,32 @@ public class TileworldDomain extends DomainSpecifics{
     return salientSquareFixations;
   }
 
+  /**
+   * If the {@link jchrest.lib.Square} passed on the {@link jchrest.lib.Scene} 
+   * passed contains a tile, opponent or the scene creator, then the 
+   * {@link jchrest.lib.Square}s that are 1 square north, east, south and west 
+   * of the passed {@link jchrest.lib.Square} will be added to the 
+   * {@link java.util.List} of {@link jchrest.lib.Square}s returned.
+   * 
+   * @param scene
+   * @param square
+   * @return 
+   */
   @Override
   public List<Square> proposeMovementFixations(Scene scene, Square square) {
     ArrayList<Square> movementFixations = new ArrayList<>();
     int col = square.getColumn();
     int row = square.getRow();
     
-    ListPattern squareContents = scene.getItemsOnSquareAsListPattern(col, row, false, false);
+    ListPattern squareContents = scene.getSquareContentsAsListPattern(col, row, false, true);
     if( !squareContents.isEmpty() ){
       for(PrimitivePattern squareContent : squareContents){
         String item = ((ItemSquarePattern)squareContent).getItem();
         
         if(
-          item.equals(this._tileIdentifier) ||
-          item.equals(Scene.getSelfIdentifier()) ||
-          item.equals(this._opponentIdentifier)
+          item.equals(this._tileToken) ||
+          item.equals(Scene.getCreatorToken()) ||
+          item.equals(this._opponentToken)
         ){
           int squareCol = square.getColumn();
           int squareRow = square.getRow();
@@ -149,14 +160,14 @@ public class TileworldDomain extends DomainSpecifics{
   }
   
   public String getHoleIdentifier(){
-    return this._holeIdentifier;
+    return this._holeToken;
   }
   
   public String getOpponentIdentifier(){
-    return this._opponentIdentifier;
+    return this._opponentToken;
   }
   
   public String getTileIdentifier(){
-    return this._tileIdentifier;
+    return this._tileToken;
   }
 }

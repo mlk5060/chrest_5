@@ -1037,7 +1037,7 @@ public class Node extends Observable {
     contents.setNotFinished ();
     Node child = new Node (_model, contents, new ListPattern (pattern.getModality ()), domainTime);
     addTestLink (contents, child, domainTime, _model.getCurrentExperimentName());
-    _model.advanceAttentionClock (_model.getDiscriminationTime ());
+    _model.advanceLearningClock (_model.getDiscriminationTime ());
 
     return child;
   }
@@ -1085,7 +1085,7 @@ public class Node extends Observable {
     );
 
     this.addTestLink (pattern, child, domainTime, _model.getCurrentExperimentName());
-    _model.advanceAttentionClock (_model.getDiscriminationTime ());
+    _model.advanceLearningClock (_model.getDiscriminationTime ());
     return child;
   }
 
@@ -1096,7 +1096,7 @@ public class Node extends Observable {
   private Node extendImage (ListPattern newInformation, int time) {
     this.setImage (_model.getDomainSpecifics().normalise (_image.append (newInformation)), time);
     this.updateImageHistory(time);
-    _model.advanceAttentionClock (_model.getFamiliarisationTime ());
+    _model.advanceLearningClock (_model.getFamiliarisationTime ());
 
     return this;
   }

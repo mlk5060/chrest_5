@@ -3,14 +3,11 @@
 
 package jchrest.lib;
 
-import java.io.*;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.Iterator;
 import java.util.List;
-
-import jchrest.lib.FileUtilities;
 
 /**
  * The ListPattern is the primary datatype used to represent compound 
@@ -348,6 +345,28 @@ public class ListPattern extends Pattern implements Iterable<PrimitivePattern> {
     if (isFinished ()) {
       result.setFinished ();
     }
+    return result;
+  }
+  
+  /**
+   * Creates a new {@link jchrest.lib.ListPattern} by removing all patterns from 
+   * this {@link #this} where the result of calling 
+   * {@link jchrest.lib.ItemSquarePattern#getItem()} returns 
+   * {@link jchrest.lib.Scene#getBlindSquareIdentifier()} or 
+   * {@link jchrest.lib.Scene#getEmptySquareIdentifier()}.
+   * 
+   * @return 
+   */
+  public ListPattern removeBlindAndEmptyItems(){
+    ListPattern result = new ListPattern(this.getModality());
+    
+    for(PrimitivePattern pattern : this){
+      String item = ((ItemSquarePattern)pattern).getItem();
+      if( !item.equals(Scene.getBlindSquareIdentifier()) && !item.equals(Scene.getEmptySquareIdentifier()) ){
+        result.add(pattern);
+      }
+    }
+    
     return result;
   }
 

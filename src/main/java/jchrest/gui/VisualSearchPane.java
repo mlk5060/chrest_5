@@ -48,7 +48,7 @@ public class VisualSearchPane extends JPanel {
     _model = model;
     _scenes = scenes;
     _model.getPerceiver().setScene (_scenes.get (0));
-    _model.resetAttentionClock();
+    _model.setClocks(0);
     _sceneDisplay = new SceneDisplay (_scenes.get (0));
     _domainSelector = new JComboBox (new String[]{"Generic", "Chess"});
     _domainSelector.addActionListener (new AbstractAction () {
@@ -241,7 +241,7 @@ public class VisualSearchPane extends JPanel {
           }
           cycle += 1;
             }
-        _model.constructTemplates (_model.getAttentionClock());
+        _model.constructTemplates (_model.getMaximumClockValue());
         
         result = new Pair (positionsSeen, _model.getTotalLtmNodes ());
         results.add (result);
@@ -360,7 +360,8 @@ public class VisualSearchPane extends JPanel {
     _recalledSceneDisplay = new SceneDisplay (new Scene (
       "empty",
       _scenes.get(0).getWidth(), 
-      _scenes.get(0).getHeight()
+      _scenes.get(0).getHeight(),
+      null
     ));
     _precision = new JLabel ("");
     _recall = new JLabel ("");
@@ -503,10 +504,10 @@ public class VisualSearchPane extends JPanel {
 
       _recallSceneLabel.setText (recalledScene.getName ());
       _recalledSceneDisplay.updateScene (recalledScene);
-      _precision.setText ("" + scene.computePrecision (recalledScene, false));
-      _recall.setText ("" + scene.computeRecall (recalledScene, false));
-      _omission.setText ("" + scene.computeErrorsOfOmission (recalledScene, false));
-      _commission.setText ("" + scene.computeErrorsOfCommission (recalledScene, false));
+      _precision.setText ("" + scene.computePrecision (recalledScene, true));
+      _recall.setText ("" + scene.computeRecall (recalledScene, true));
+      _omission.setText ("" + scene.computeErrorsOfOmission (recalledScene));
+      _commission.setText ("" + scene.computeErrorsOfCommission (recalledScene));
       _sceneDisplay.setFixations (_model.getPerceiver().getFixations ());
       // log results
       addLog ("\n" + recalledScene.getName ());
@@ -531,10 +532,10 @@ public class VisualSearchPane extends JPanel {
         }
       }
       addLog ("Performance: ");
-      addLog ("   Precision: " + scene.computePrecision (recalledScene, false));
-      addLog ("   Recall: " + scene.computeRecall (recalledScene, false));
-      addLog ("   Errors of Omission: " + scene.computeErrorsOfOmission (recalledScene, false));
-      addLog ("   Errors of Commission: " + scene.computeErrorsOfCommission (recalledScene, false));
+      addLog ("   Precision: " + scene.computePrecision (recalledScene, true));
+      addLog ("   Recall: " + scene.computeRecall (recalledScene, true));
+      addLog ("   Errors of Omission: " + scene.computeErrorsOfOmission (recalledScene));
+      addLog ("   Errors of Commission: " + scene.computeErrorsOfCommission (recalledScene));
     }
   }
 
@@ -785,7 +786,7 @@ class SceneDisplay extends JPanel {
         for (int j = 0; j < _scene.getWidth (); ++j) {
           if (!_scene.isSquareEmpty (j, i) && !_scene.isSquareBlind(j, i)) {
             String items = "";
-            for(PrimitivePattern itemOnSquare : _scene.getItemsOnSquareAsListPattern(j, i, false, false)){
+            for(PrimitivePattern itemOnSquare : _scene.getSquareContentsAsListPattern(j, i, false, true)){
               items += ", " + ( (ItemSquarePattern)itemOnSquare ).getItem();
             }
             

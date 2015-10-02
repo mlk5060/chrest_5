@@ -6,6 +6,7 @@ package jchrest.lib;
 import java.io.*;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 
 /**
  * The Scenes class holds a list of Scene objects.  Each Scene contains 
@@ -50,11 +51,16 @@ public class Scenes {
       if (line == null) break;  // finish calmly if last position followed by blank line
       sceneNumber += 1;
 
-      Scene scene = new Scene ("Scene " + sceneNumber, width, height);
+      Scene scene = new Scene ("Scene " + sceneNumber, width, height, null);
       for (int i = 0; i < height; ++i) {
         if (line == null) throw new IOException ();         // finished in the middle of a position
         if (line.length() != width) throw new IOException (); // incorrect width of row
-        scene.addItemsToRow (i, line.toCharArray ());
+        char[] lineAsCharArray = line.toCharArray ();
+        ArrayList<SceneObject> itemsToAdd = new ArrayList<>();
+        for(char character : lineAsCharArray){
+          itemsToAdd.add(new SceneObject(UUID.randomUUID().toString(), String.valueOf(character)));
+        }
+        scene.addItemsToRow (i, itemsToAdd);
         line = input.readLine (); // on last cycle, this tries to read blank/comment line
       }
       scenes.add (scene);
@@ -99,11 +105,16 @@ public class Scenes {
       if (line == null) break;  // finish calmly if last position followed by blank line
       sceneNumber += 1;
 
-      Scene scene = new Scene ("Scene " + sceneNumber, width, height);
+      Scene scene = new Scene ("Scene " + sceneNumber, width, height, null);
       for (int i = 0; i < height; ++i) {
         if (line == null) throw new IOException ("Finished in middle of position");         // finished in the middle of a position
         if (line.length() != width) throw new IOException ("Row is wrong size"); // incorrect width of row
-        scene.addItemsToRow (i, line.toCharArray ());
+        char[] lineAsCharArray = line.toCharArray ();
+        ArrayList<SceneObject> itemsToAdd = new ArrayList<>();
+        for(char character : lineAsCharArray){
+          itemsToAdd.add(new SceneObject(UUID.randomUUID().toString(), String.valueOf(character)));
+        }
+        scene.addItemsToRow (i, itemsToAdd);
         line = input.readLine ();
       }
       // move will be in last line read

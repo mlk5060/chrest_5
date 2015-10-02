@@ -9,6 +9,7 @@ import java.io.Writer;
 import java.lang.reflect.Field;
 import java.sql.SQLException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -20,6 +21,7 @@ import java.util.TreeMap;
 import jchrest.database.DatabaseInterface;
 import jchrest.lib.*;
 import jchrest.lib.ReinforcementLearning.ReinforcementLearningTheories;
+import org.reflections.Reflections;
 
 /**
  * The parent class for an instance of a Chrest model.
@@ -93,11 +95,26 @@ public class Chrest extends Observable {
   /***** Internal clock variables *****/
   /************************************/
   
-  //Indicates the time at which CHREST will be free to perform mind's eye 
-  //operations.
+  // =====================
+  // ===== IMPORTANT =====
+  // =====================
+  //
+  // When declaraing a new clock, please ensure that its instance variable name 
+  // ends with "Clock".  This will ensure that automated operations using Java 
+  // refelection will work with new variables without having to implement 
+  // specific code for the new variable.
+  
+  //Used to control access to the "attention" resource by comparing the time in 
+  //the environment this model is situated in against the value of this 
+  //variable.
   private int _attentionClock;
   
-  // timing parameters
+  //Used to control access to the "learning" resource by comparing the time in 
+  //the environment this model is situated in against the value of this 
+  //variable.
+  private int _learningClock;
+  
+  //LTM-related time parameters.
   private int _addLinkTime;
   private int _discriminationTime;
   private int _familiarisationTime;
@@ -135,13 +152,12 @@ public class Chrest extends Observable {
   // Perception module
   private final Perceiver _perceiver;
   
-  //Mind's Eye database - stores domain times as keys and mind's eye instances
-  //as values.  Since a mind's eye can only transpose one Scene instance, 
-  //multiple instances may be required throughout the lifespan of one CHREST
-  //model.  To enable correct visualisation of the mind's eye at any point in 
-  //time, a CHREST model needs to be able to store and retrieve mind's eye 
-  //instances.  This variable provides such functionality.
-  private final TreeMap<Integer, MindsEye> _mindsEyes = new TreeMap<>();
+  //Stores domain times as keys and VisualSpatialField instances as values.  
+  //Since a VisualSpatialField can only encode one Scene instance, multiple 
+  //instances may be required throughout the lifespan of one CHREST model.  Also
+  //enables correct visualisation of a VisualSpatialField at any point in 
+  //time.
+  private final TreeMap<Integer, VisualSpatialField> _visualSpatialFields = new TreeMap<>();
   
   // Emotions module
   private EmotionAssociator _emotionAssociator;
@@ -198,18 +214,19 @@ public class Chrest extends Observable {
     /******************************/
     /***** Set LTM parameters *****/
     /******************************/
-    _attentionClock = 0;
+    
+    this.setClocks(0);
     _totalNodes = 0;
     _visualLtm = new Node (this, 0, jchrest.lib.Pattern.makeVisualList (new String[]{"Root"}), 0);
     _verbalLtm = new Node (this, 0, jchrest.lib.Pattern.makeVerbalList (new String[]{"Root"}), 0);
     _actionLtm = new Node (this, 0, jchrest.lib.Pattern.makeActionList (new String[]{"Root"}), 0);
     _totalNodes = 0; // Node constructor will have incremented _totalNodes, so reset to 0
-    _visualStm = new Stm (4, this._attentionClock);
-    _verbalStm = new Stm (2, this._attentionClock);
-    _actionStm = new Stm (4, this._attentionClock);
+    _visualStm = new Stm (4, this.getLearningClock());
+    _verbalStm = new Stm (2, this.getLearningClock());
+    _actionStm = new Stm (4, this.getLearningClock());
     _emotionAssociator = new EmotionAssociator ();
     _reinforcementLearningTheory = null; //Must be set explicitly using Chrest.setReinforcementLearningTheory()
-    _perceiver = new Perceiver (this);
+    _perceiver = new Perceiver (this, 2);
             
     /***************************************/
     /***** Set boolean learning values *****/
@@ -525,17 +542,16 @@ public class Chrest extends Observable {
   }
   
   /**
-   * Retrieves the maximum time set for an experiment if one is set or the 
-   * current attention clock value of CHREST if not.
-   * 
    * @param experiment
-   * @return 
+   * @return The maximum time set for the specified experiment, if one is set.  
+   * If not, this {@link #this} model's clock values are compared and the 
+   * greatest clock value is returned.
    */
   public Integer getMaximumTimeForExperiment(String experiment){
     Integer maxTime = this._experimentNamesAndMaximumTimes.get(experiment);
     
     if(maxTime == null){
-      maxTime = this.getAttentionClock();
+      this.getMaximumClockValue();
     }
 
     return maxTime;
@@ -1297,9 +1313,9 @@ public class Chrest extends Observable {
    */
   public Node recogniseAndLearn (ListPattern pattern, int time) {
     Node currentNode = recognise (pattern, time);
-    if (this._attentionClock <= time) { // only try to learn if attention is free at the time of the call
+    if (this.getLearningClock() <= time) { // only try to learn if the learning resource is free at the time of the call
       if (Math.random () < _rho) { // depending on _rho, may refuse to learn some random times
-        this.setAttentionClock(time); // bring attention clock up to date
+        this.setLearningClock(time); // bring learning clock up to date
         if (!currentNode.getImage().equals (pattern)) { // only try any learning if image differs from pattern
           if (currentNode == getLtmByModality (pattern) || // if is rootnode
             !currentNode.getImage().matches (pattern) || // or mismatch on image
@@ -1320,7 +1336,7 @@ public class Chrest extends Observable {
    * Used to learn about a new pattern.  Returns the node learnt.
    */
   public Node recogniseAndLearn (ListPattern pattern) {
-    return recogniseAndLearn (pattern, this._attentionClock);
+    return recogniseAndLearn (pattern, this._learningClock);
   }
 
   /**
@@ -1341,7 +1357,7 @@ public class Chrest extends Observable {
   }
 
   public Node associateAndLearn (ListPattern pattern1, ListPattern pattern2) {
-    return associateAndLearn (pattern1, pattern2, this._attentionClock);
+    return associateAndLearn (pattern1, pattern2, this.getLearningClock());
   }
 
   /**
@@ -1414,7 +1430,7 @@ public class Chrest extends Observable {
           // force it to correct a mistake
           recogniseAndLearn (pattern1, time);
 
-          if (this._attentionClock <= time) {
+          if (this.getLearningClock() <= time) {
             Node actionNodeRetrieved = recognise (actionPattern, time);
 
             // 6. if the action node retrieved's image matches action pattern, learn link, else learn action pattern
@@ -1479,7 +1495,7 @@ public class Chrest extends Observable {
           recogniseAndLearn (pattern2, time);
           recogniseAndLearn (pattern1, time);
           
-          if (this._attentionClock <= time) {
+          if (this.getLearningClock() <= time) {
             Node pat2Retrieved = recognise (pattern2, time);
             
             // 6. if pattern2 retrieved node image match for pattern2, learn link, else learn pattern2
@@ -1547,10 +1563,10 @@ public class Chrest extends Observable {
   public void learnAndNamePatterns (ListPattern pattern1, ListPattern pattern2, int time) {
     recogniseAndLearn (pattern1, time);
     recogniseAndLearn (pattern2, time);
-    if (this._attentionClock <= time) {
+    if (this.getLearningClock() <= time) {
       if (pattern1.isVisual () && pattern2.isVerbal () && _visualStm.getCount () > 0 && _verbalStm.getCount () > 0) {
         _visualStm.getItem(0).setNamedBy (_verbalStm.getItem (0), time);
-        this.advanceAttentionClock (getAddLinkTime ());
+        this.advanceLearningClock (getAddLinkTime ());
       }
       setChanged ();
       if (!_frozen) notifyObservers ();
@@ -1558,7 +1574,7 @@ public class Chrest extends Observable {
   }
 
   public void learnAndNamePatterns (ListPattern pattern1, ListPattern pattern2) {
-    learnAndNamePatterns (pattern1, pattern2, this._attentionClock);
+    learnAndNamePatterns (pattern1, pattern2, this.getLearningClock());
   }
 
   /**
@@ -1724,14 +1740,12 @@ public class Chrest extends Observable {
    * @return 
    */
   public Scene scanScene (Scene scene, int numFixations, int time) {  
-    return scanScene (scene, numFixations, true, time);
+    return scanScene (scene, numFixations, true, time, false);
   }
   
   /** 
-   * Scan given scene, then return a scene which would be recalled.  The 
-   * recognised status and terminus values for all objects that may be present 
-   * in the visual-spatial field of the mind's eye associated with this scene 
-   * are also updated (if applicable).
+   * Scan given {@link jchrest.lib.Scene} and return a 
+   * {@link jchrest.lib.Scene} that would be recalled.
    * 
    * @param scene
    * @param numFixations
@@ -1740,72 +1754,81 @@ public class Chrest extends Observable {
    * 
    * @return A {@link jchrest.lib.Scene} instance composed of objects from the 
    * {@link jchrest.lib.Scene} instance passed as a parameter that this 
-   * {@link jchrest.architecture.Chrest} instance recognises.  <b>Note:</b> if 
-   * nothing in the {@link jchrest.lib.Scene} instance passed is recognised, the 
-   * {@link jchrest.lib.Scene} instance returned will consist entirely of 
-   * objects whose identifier equals 
-   * {@link jchrest.lib.Scene#BLIND_SQUARE_IDENTIFIER}.
+   * {@link jchrest.architecture.Chrest} instance recognises.
    */
-  public Scene scanScene (Scene scene, int numFixations, boolean clearStm, int time) {
+  public Scene scanScene (Scene scene, int numFixations, boolean clearStm, int time, boolean debug) {
     
-    //Set the mind's eye associated with the scene so that objects in the 
-    //related visual-spatial field can have their terminus values updated since
-    //the scene is being interacted with.
-    MindsEye associatedMindsEye = null;
-    for(Map.Entry<Integer, MindsEye> mindsEyeEntry : this._mindsEyes.entrySet()){
-      if(mindsEyeEntry.getValue().getSceneTransposed().equals(scene)){
-        associatedMindsEye = mindsEyeEntry.getValue();
-        break;
-      }
-    }
-    
-    //Create a data structure to hold a list of all objects in the scene that
-    //have been recognised.  This will be used to set the "recognised" status
-    //of objects in the associated mind's eye after the scene has been scanned.
-    ArrayList<MindsEyeObject> recognisedObjects = new ArrayList<>();
+    if(debug) System.out.println("=== Chrest.scanScene() ===");
+    if(debug) System.out.println("- Requested to scan scene with name '" + scene.getName() + "' at time " + time);
     
     // only clear STM if flag is set
-    if (clearStm) { 
+    if (clearStm) {
+      if(debug) System.out.println("- Clearing STM");
       _visualStm.clear (time);
     }
+        
+    //Get the location of the creator in the scene.  If the creator of the scene 
+    //is present in it then all chunks will have coordinates relative to the 
+    //position of the creator.  Therefore, when visual STM is used to create
+    //the recalled scene below, coordinates will be relative to the creator and
+    //need to be converted into non-relative coordinates so that the scene can
+    //be constructed correctly.
+    Square selfLocation = scene.getLocationOfCreator();
+    if(debug) System.out.println("- Is the Scene creator encoded and, if so, where? " + 
+      (selfLocation  != null ? 
+        " Yes, location: " + selfLocation.toString() :
+        " No"
+      ) 
+    );
+    
+    //Get the VisualSpatialField associated with the Scene to be scanned.  If
+    //there is an associated VisualSpatialField, SceneObjects that are 
+    //recognised when scanning the Scene below will have their corresponding
+    //VisualSpatialFieldObject recognised status updated since the 
+    //VisualSpatialField is essentially being looked at if the Scene to be 
+    //scanned is associated with one.
+    VisualSpatialField associatedVisualSpatialField = scene.getVisualSpatialFieldGeneratedFrom();
+    if(debug) System.out.println("- Does the Scene to be scanned represent a VisualSpatialField? " + (associatedVisualSpatialField  != null));
+    
+    //Create a data structure to the identifiers of objects that are recognised
+    //when scanning the Scene.  This will be used to determine what objects are
+    //unrecognised if the Scene represents a VisualSpatialField.
+    ArrayList<String> recognisedObjectIdentifiers = new ArrayList<>();
+    
+    //Instantiate recalled Scene, this will be a "blind" canvas initially.
+    Scene recalledScene = new Scene (
+      "Recalled scene of " + scene.getName (), 
+      scene.getWidth (), 
+      scene.getHeight (),
+      scene.getVisualSpatialFieldGeneratedFrom()
+    );
     
     //Scan the scene.
+    if(debug) System.out.println("- Scanning scene");
     _perceiver.setScene (scene);
     _perceiver.start (numFixations);
     for (int i = 0; i < numFixations; i++) {
       _perceiver.moveEye (time);
     }
     
-    //Instantiate recalled scene, this will be a "blind" canvas initially.
-    Scene recalledScene = new Scene (
-      "Recalled scene of " + scene.getName (), 
-      scene.getWidth (), 
-      scene.getHeight ()
-    );
-    
-    //Get the location of the creator in the scene.  If the creator of the scene 
-    //is present in it then all learned info will have coordinates relative to 
-    //the position of the creator.  Therefore, when visual STM is used to create
-    //the recalled scene below, coordinates will be relative to the creator and
-    //need to be converted into non-relative coordinates so that the scene can
-    //be constructed correctly.
-    Square self = scene.getLocationOfSelf();
-    
     // -- get items from image in STM, and optionally template slots
     // TODO: use frequency count in recall
+    if(debug) System.out.println("- Processing recognised chunks");
     for (Node node : _visualStm) {
       
       //If the node isn't the visual LTM root node (nothing recognised) then,
       //continue.
-      if(this.getVisualLtm() != node){
+      if(this.getVisualLtm() != node && !node.getImage().isEmpty()){
         ListPattern recalledInformation = node.getImage();
 
         if (_createTemplates) { // check if templates needed
           recalledInformation = recalledInformation.append(node.getFilledSlots ());
         }
+        
+        if(debug) System.out.println("   - Processing chunk with image: '" + node.getImage().toString() + "'");
       
         //Add all recognised items to the scene to be returned and flag the 
-        //corresponding mind's eye objects as being recognised.
+        //corresponding VisualSpatialFieldObjects as being recognised.
         for (int i = 0; i < recalledInformation.size(); i++){
           PrimitivePattern item = recalledInformation.getItem(i);
           
@@ -1815,27 +1838,82 @@ public class Chrest extends Observable {
             int row = ios.getRow ();
             
             //Translate domain-specific coordinates if necessary.
-            if(self != null){
-              col += self.getColumn();
-              row += self.getRow();
+            if(selfLocation != null){
+              col += selfLocation.getColumn();
+              row += selfLocation.getRow();
+            }
+            
+            if(debug) System.out.println("      - Processing object " + ios.toString() );
+            
+            //Get the SceneObject that represents the recalled object
+            SceneObject recognisedObject = scene.getSquareContents(col, row);
+            if(debug){
+              System.out.println("         ~ Equivalent of object in scene scanned");
+              System.out.println("            ID: " + recognisedObject.getIdentifier());
+              System.out.println("            Class: " + recognisedObject.getObjectClass());
             }
 
-            //Add the item to the recalled scene.  Note that the unique 
-            //identifier for the SceneObject that will be created is equal to 
-            //i (the current recognised item being processed).  This is OK since
-            //blind and empty squares will not be learned so a unique identifier
-            //should always be specified.
-            recalledScene.addItemToSquare (col, row, i, ios.getItem ());
-
-            //Update the recognised status of the associated mind's eye object, if
-            //applicable.
-            if(associatedMindsEye != null){
-              ArrayList<MindsEyeObject> objects = associatedMindsEye.getObjectsOnVisualSpatialSquare(col, row);
-              for(MindsEyeObject object: objects){
-                if(object.getObjectClass().equals(ios.getItem())){
-                  object.setRecognised(time);
-                  recognisedObjects.add(object);
+            //Add the item to the recalled scene.
+            recalledScene.addItemToSquare(col, row, recognisedObject.getIdentifier(), recognisedObject.getObjectClass());
+            
+            if(associatedVisualSpatialField != null){
+              if(debug) System.out.println("         ~ Updating object in associated visual-spatial field");
+              for(VisualSpatialFieldObject objectOnVisualSpatialSquare : associatedVisualSpatialField.getSquareContents(col, row)){
+                if(objectOnVisualSpatialSquare.getIdentifier().equals(recognisedObject.getIdentifier())){
+                  objectOnVisualSpatialSquare.setRecognised(time, true);
+                  recognisedObjectIdentifiers.add(objectOnVisualSpatialSquare.getIdentifier());
+                  
+                  if(debug){
+                    System.out.println("            ID: " + objectOnVisualSpatialSquare.getIdentifier());
+                    System.out.println("            Class: " + objectOnVisualSpatialSquare.getObjectClass());
+                    System.out.println("            Created at: " + objectOnVisualSpatialSquare.getTimeCreated());
+                    System.out.println("            Terminus: " + objectOnVisualSpatialSquare.getTerminus());
+                    System.out.println("            Recognised: " + objectOnVisualSpatialSquare.recognised(time));
+                    System.out.println("            Ghost: " + objectOnVisualSpatialSquare.isGhost());
+                  }
                 }
+              }
+            }
+          }
+        }
+      }
+    }
+    
+    //Process unrecognised objects in the associated visual-spatial field.
+    if(associatedVisualSpatialField != null){
+      if(debug) System.out.println("- Processing unrecognised objects in associated visual-spatial field");
+      for(int row = 0; row < associatedVisualSpatialField.getHeight(); row++){
+        for(int col = 0; col < associatedVisualSpatialField.getWidth(); col++){
+          if(debug) System.out.println("   - Processing objects on col " + col + ", row " + row);
+          
+          for(VisualSpatialFieldObject object : associatedVisualSpatialField.getSquareContents(col, row)){  
+            if(!recognisedObjectIdentifiers.contains(object.getIdentifier())){
+              if(debug){
+                System.out.println("      - Object unrecognised.  Current status:");
+                System.out.println("         ID: " + object.getIdentifier());
+                System.out.println("         Class: " + object.getObjectClass());
+                System.out.println("         Created at: " + object.getTimeCreated());
+                System.out.println("         Terminus: " + object.getTerminus());
+                System.out.println("         Recognised: " + object.recognised(time));
+                System.out.println("         Ghost: " + object.isGhost());
+              }
+              
+              //Blind objects and the creator's avatar will have null termini so
+              //do not overwrite these.
+              if(object.getTerminus() == null){
+                object.setUnrecognised(time, false);
+              }else{
+                object.setUnrecognised(time, true);
+              }
+              
+              if(debug){
+                System.out.println("         - After processing:");
+                System.out.println("            ID: " + object.getIdentifier());
+                System.out.println("            Class: " + object.getObjectClass());
+                System.out.println("            Created at: " + object.getTimeCreated());
+                System.out.println("            Terminus: " + object.getTerminus());
+                System.out.println("            Recognised: " + object.recognised(time));
+                System.out.println("            Ghost: " + object.isGhost());
               }
             }
           }
@@ -1847,27 +1925,9 @@ public class Chrest extends Observable {
     //it into the recalled scene.  This enables domain-specific coordinates to
     //be returned for items in the recalled scene if its contents are to be 
     //returned.
-    if(self != null){
-      recalledScene.addItemToSquare(self.getColumn(), self.getRow(), null, Scene.getSelfIdentifier());
-    }
-    
-    //Finally, cycle through the objects in the original scene and flag all 
-    //unrecognised items as being unrecognised in the mind's eye associated with
-    //the scene (if applicable).
-    if(associatedMindsEye != null){
-      for(int col = 0; col < scene.getWidth(); col++){
-        for(int row = 0; row < scene.getHeight(); row++){
-          ArrayList<MindsEyeObject> objects = associatedMindsEye.getObjectsOnVisualSpatialSquare(col, row);
-          for(MindsEyeObject object: objects){
-            if(
-              !object.getObjectClass().equals(Scene.getBlindSquareIdentifier()) && //Only update termini of actual objects.
-              !recognisedObjects.contains(object) //Do not process recognised objects!
-            ){
-              object.setUnrecognised(time);
-            }
-          }
-        }
-      }
+    if(selfLocation != null){
+      SceneObject self = scene.getSquareContents(selfLocation.getColumn(), selfLocation.getRow());
+      recalledScene.addItemToSquare(selfLocation.getColumn(), selfLocation.getRow(), self.getIdentifier(), self.getObjectClass());
     }
 
     return recalledScene;
@@ -1878,7 +1938,7 @@ public class Chrest extends Observable {
    */
   public void clear () {
     this.clearHistory(); 
-    _attentionClock = 0;
+    this.setClocks(0);
     _visualLtm.clear ();
     _verbalLtm.clear ();
     _actionLtm.clear ();
@@ -1928,9 +1988,9 @@ public class Chrest extends Observable {
   /**
    * Propagate emotion across all the given STMs.
    */
-  public void emoteAndPropagateAcrossModalities (Object stmsobject) {
+  public void emoteAndPropagateAcrossModalities (Object stmsobject, int time) {
     Stm[] stms = (Stm[]) stmsobject;
-    _emotionAssociator.emoteAndPropagateAcrossModalities (stms, _attentionClock);
+    _emotionAssociator.emoteAndPropagateAcrossModalities (stms, time);
   }
 
   /**
@@ -2048,19 +2108,99 @@ public class Chrest extends Observable {
     return domainTime >= this.getAttentionClock(); 
   }
   
+  
+  public void advanceLearningClock(int timeToAdvanceBy){
+    this._learningClock += timeToAdvanceBy;
+    this.setChanged();
+  }
+    
+  public int getLearningClock(){
+    return this._learningClock;
+  }
+  
+  public void setLearningClock(int time){
+    this._learningClock = time;
+    setChanged();
+  }
+  
+  /**
+   * Returns all instance variables ending with "Clock" for this {@link #this}
+   * instance.
+   * 
+   * @return 
+   */
+  private ArrayList<Field> getClockInstanceVariables(){
+    ArrayList<Field> clockInstanceVariables = new ArrayList<>();
+  
+    for(Field field : Chrest.class.getDeclaredFields()){
+      
+      //Store the name of the field since it may be used twice.
+      String fieldName = field.getName();
+      
+      //Check for clock instance variable.
+      if(fieldName.endsWith("Clock")){
+        clockInstanceVariables.add(field);
+      }
+    }
+    
+    return clockInstanceVariables;
+  }
+  
+  /**
+   * Returns the value of the clock with the maximum value 
+   * @return 
+   */
+  public int getMaximumClockValue(){
+    ArrayList<Integer> clockValues = new ArrayList<>();
+    for(Field field : this.getClockInstanceVariables()){
+      
+      //This field is a clock instance variable so get its current value and
+      //check to see if the value's type is Node.  If so, continue.
+      try {
+        Object fieldValue = field.get(this);
+        if(fieldValue instanceof Integer){
+          clockValues.add((int)fieldValue);
+        }
+      } catch (IllegalArgumentException | IllegalAccessException ex) {
+        Logger.getLogger(Chrest.class.getName()).log(Level.SEVERE, null, ex);
+      }
+    }
+    
+    return Collections.max(clockValues);
+  }
+  
+  /**
+   * Sets all of this {@link #this} instance's clock variables to the time 
+   * specified.
+   * 
+   * @param time 
+   */
+  public void setClocks(int time){
+    for(Field field : this.getClockInstanceVariables()){
+      try {
+        field.setInt(this, time);
+      } catch (IllegalArgumentException | IllegalAccessException ex) {
+        Logger.getLogger(Chrest.class.getName()).log(Level.SEVERE, null, ex);
+      }
+    }
+  }
+  
   /****************************************************************************/
   /****************************************************************************/
-  /**************************** MINDS EYE METHODS *****************************/
+  /*********************** VISUAL-SPATIAL FIELD METHODS ***********************/
   /****************************************************************************/
   /****************************************************************************/
   
   /**
-   * Creates a new mind's eye and registers it in the database of mind's eyes 
-   * associated with this CHREST instance at the time specified.
+   * Creates a new {@link jchrest.architecture.VisualSpatialField} and registers 
+   * it as a value in the {@link java.util.TreeMap} database of 
+   * {@link jchrest.architecture.VisualSpatialField}s associated with this 
+   * CHREST instance against a key that is the time specified.
    * 
    * Description of parameters are provided here: {@link 
-   * jchrest.architecture.MindsEye#MindsEye(jchrest.architecture.Chrest, 
-   * jchrest.lib.Scene, int, int, int, int, int, int, int, int)}.
+   * jchrest.architecture.VisualSpatialField#VisualSpatialField(
+   * jchrest.architecture.Chrest, jchrest.lib.Scene, int, int, int, int, int, 
+   * int, int, int, boolean, boolean).
    * 
    * @param sceneToTranspose
    * @param objectEncodingTime
@@ -2071,28 +2211,49 @@ public class Chrest extends Observable {
    * @param lifespanForUnrecognisedObjects
    * @param numberFixations
    * @param domainTime
+   * @param encodeGhostObjects
+   * @param debug
    */
-  public void createNewMindsEye(Scene sceneToTranspose, int objectEncodingTime, int emptySquareEncodingTime, int accessTime, int objectMovementTime, int lifespanForRecognisedObjects, int lifespanForUnrecognisedObjects, int numberFixations, int domainTime){
-    this._mindsEyes.put(domainTime, new MindsEye(
-      this,
-      sceneToTranspose,
-      objectEncodingTime,
-      emptySquareEncodingTime,
-      accessTime,
-      objectMovementTime,
-      lifespanForRecognisedObjects,
-      lifespanForUnrecognisedObjects,
-      numberFixations,
-      domainTime
-    ));
+  public void createNewVisualSpatialField(
+    Scene sceneToTranspose, 
+    int objectEncodingTime, 
+    int emptySquareEncodingTime, 
+    int accessTime, 
+    int objectMovementTime, 
+    int lifespanForRecognisedObjects, 
+    int lifespanForUnrecognisedObjects, 
+    int numberFixations, 
+    int domainTime,
+    boolean encodeGhostObjects,
+    boolean debug
+  ){
+    try {
+      this._visualSpatialFields.put(domainTime, new VisualSpatialField(
+        this,
+        sceneToTranspose,
+        objectEncodingTime,
+        emptySquareEncodingTime,
+        accessTime,
+        objectMovementTime,
+        lifespanForRecognisedObjects,
+        lifespanForUnrecognisedObjects,
+        numberFixations,
+        domainTime,
+        encodeGhostObjects,
+        debug
+      ));
+    } catch (VisualSpatialFieldException ex) {
+      Logger.getLogger(Chrest.class.getName()).log(Level.SEVERE, null, ex);
+    }
   }
   
   /**
-   * Returns the history of mind's eye instance creation for this model.
+   * Returns this {@link #this} database of 
+   * {@link jchrest.architecture.VisualSpatialField}s.
    * 
    * @return 
    */
-  public TreeMap<Integer,MindsEye> getMindsEyes(){
-    return this._mindsEyes;
+  public TreeMap<Integer,VisualSpatialField> getVisualSpatialFields(){
+    return this._visualSpatialFields;
   }
 }

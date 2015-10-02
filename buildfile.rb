@@ -1,6 +1,6 @@
 # Buildr file for managing the CHREST project
 
-VERSION = '4.0.0-alpha-2'
+VERSION = '5-beta'
 
 repositories.remote << 'http://repo1.maven.org/maven2'
 

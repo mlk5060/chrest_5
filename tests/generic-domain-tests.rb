@@ -3,7 +3,7 @@ unit_test "normalise" do
   #Item square patterns are handled specially by the GenericDomain.normalise() 
   #function hence the verbose variable names.
   empty_item_square_pattern = ItemSquarePattern.new(Scene.getEmptySquareIdentifier, 0, 1)
-  self_item_square_pattern = ItemSquarePattern.new(Scene.getSelfIdentifier, 0, 2)
+  self_item_square_pattern = ItemSquarePattern.new(Scene.getCreatorToken, 0, 2)
   non_empty_item_square_pattern = ItemSquarePattern.new("A", 0, 3)
   duplicate_non_empty_item_square_pattern = ItemSquarePattern.new("A", 0, 3)
   
@@ -17,7 +17,7 @@ unit_test "normalise" do
     #Empty square and self identifiers should be ignored by the 
     #GenericDomain.normalise method if they are of type StringPattern.
     string_pattern_one = Pattern.makeString(Scene.getEmptySquareIdentifier())
-    string_pattern_two = Pattern.makeString(Scene.getSelfIdentifier())
+    string_pattern_two = Pattern.makeString(Scene.getCreatorToken())
     string_list_pattern = ListPattern.new(modality)
     string_list_pattern.add(string_pattern_one)
     string_list_pattern.add(string_pattern_two)
@@ -39,27 +39,20 @@ unit_test "normalise" do
     normalised_number_pattern = generic_domain.normalise(number_list_pattern)
     normalised_item_square_pattern = generic_domain.normalise(item_square_list_pattern)
     
-    #Normalisation returns a "finished" list pattern so all expected results 
-    #should be "finished"
-    string_list_pattern.setFinished()
-    number_list_pattern.setFinished()
-    
     #The expected result for the list pattern containing item square patterns 
-    #consists only of the "non_empty_item_square_pattern" in a finished list 
-    #pattern. 
+    #consists only of the "non_empty_item_square_pattern" in a list pattern. 
     expected_item_square_list_pattern = ListPattern.new(modality)
     expected_item_square_list_pattern.add(non_empty_item_square_pattern)
-    expected_item_square_list_pattern.setFinished()
     
     #Original string ListPattern should remain unaltered.
-    assert_equal(2, normalised_string_pattern.size())
-    assert_equal(modality, normalised_string_pattern.getModality())
-    assert_equal(string_list_pattern.toString(), normalised_string_pattern.toString())
+    assert_equal(2, normalised_string_pattern.size(), "occurred when checking the size of the normalised string pattern")
+    assert_equal(modality, normalised_string_pattern.getModality(), "occurred when checking the modality of the normalised string pattern")
+    assert_equal(string_list_pattern.toString(), normalised_string_pattern.toString(), "occurred when checking the contents of the normalised string pattern")
     
     #Original number ListPattern should remain unaltered.
-    assert_equal(2, normalised_number_pattern.size())
-    assert_equal(modality, normalised_number_pattern.getModality())
-    assert_equal(number_list_pattern.toString(), normalised_number_pattern.toString())
+    assert_equal(2, normalised_number_pattern.size(), "occurred when checking the size of the normalised number pattern")
+    assert_equal(modality, normalised_number_pattern.getModality(), "occurred when checking the modality of the normalised number pattern")
+    assert_equal(number_list_pattern.toString(), normalised_number_pattern.toString(), "occurred when checking the contents of the normalised number pattern")
     
     #Original item square ListPattern should be altered i.e. only 1 
     #PrimitivePattern should be in the returned ListPattern.

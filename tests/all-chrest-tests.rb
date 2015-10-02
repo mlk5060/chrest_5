@@ -13,7 +13,7 @@ import "java.util.HashMap"
 [
   "Chrest", 
   "Node", 
-  "MindsEye"
+  "VisualSpatialField"
 ].each do |klass|
   import "jchrest.architecture.#{klass}"
 end
@@ -23,12 +23,13 @@ end
   "ItemSquarePattern",
   "ListPattern",
   "Modality",
-  "MindsEyeObject",
-  "MindsEyeMoveObjectException",
+  "VisualSpatialFieldObject",
+  "VisualSpatialFieldMoveObjectException",
   "NumberPattern",
   "Pattern",
   "ReinforcementLearning",
   "Scene",
+  "SceneObject",
   "Square",
   "StringPattern",
   "TileworldDomain"

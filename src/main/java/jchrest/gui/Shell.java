@@ -424,11 +424,11 @@ public class Shell extends JFrame implements Observer {
               JOptionPane.WARNING_MESSAGE);
           break;
         case OK:
-          //Before loading a new experiment, save the current learning clock 
-          //of the model in this experiment so that the most recent state of
+          //Before loading a new experiment, save the maximum value of the 
+          //model's clocks in this experiment so that the most recent state of
           //the model for this experiment can be rendered graphically, if
           //requested.
-          _model.setMaxmimumTimeInExperiment(_model.getAttentionClock());
+          _model.setMaxmimumTimeInExperiment(_model.getMaximumClockValue());
 
           if(this._experiment){
             _model.setLoadedIntoExperiment();
@@ -750,7 +750,7 @@ public class Shell extends JFrame implements Observer {
       /********************************************************/
       
       //Time filters construction
-      int maxChrestTime = Math.max(this._model.getAttentionClock(), this._model.getAttentionClock());
+      int maxChrestTime = this._model.getMaximumClockValue();
       
       _executionHistoryTimeFrom = new JSpinner(new SpinnerNumberModel(0, 0, maxChrestTime, 1));
       _executionHistoryTimeFrom.setToolTipText("Max value is largest value for CHREST's attention/learning clock");
