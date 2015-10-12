@@ -106,7 +106,7 @@ public class TileworldDomain extends DomainSpecifics{
     int randomRow = new java.util.Random().nextInt(scene.getHeight ());
 
     String objectOnSquare = scene.getSquareContents(randomCol, randomRow).getObjectClass();
-    while( !objectOnSquare.equals(Scene.getBlindSquareToken()) ){
+    while( objectOnSquare.equals(Scene.getBlindSquareToken()) ){
       randomCol = new java.util.Random().nextInt(scene.getWidth ());
       randomRow = new java.util.Random().nextInt(scene.getHeight ());
       objectOnSquare = scene.getSquareContents(randomCol, randomRow).getObjectClass();
