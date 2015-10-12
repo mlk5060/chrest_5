@@ -62,31 +62,24 @@ public class Perceiver {
   }
 
   /** 
-   * Initial fixation point: either the location of the Scene creator if 
-   * identified in the scene or the centre of the scene if not.
+   * Initial fixation point is the centre of the scene.
    * 
    * @param targetNumberFixations
    */
   public void start (int targetNumberFixations) {
     _recognisedNodes.clear ();
     _targetNumberFixations = targetNumberFixations;
-    Square locationOfSelf = _currentScene.getLocationOfCreator();
     
-    if(locationOfSelf == null){
-      _fixationX = _currentScene.getWidth () / 2;
-      _fixationY = _currentScene.getHeight () / 2;
-    }
-    else{
-      _fixationX = locationOfSelf.getColumn();
-      _fixationY = locationOfSelf.getRow();
-    }
-    
+    _fixationX = _currentScene.getWidth () / 2;
+    _fixationY = _currentScene.getHeight () / 2;
+
     _lastHeuristic = FixationType.start;
     addFixation (new Fixation (_lastHeuristic, _fixationX, _fixationY));
   }
 
   private boolean doInitialFixation () {
     Set<Square> squares = _model.getDomainSpecifics().proposeSalientSquareFixations (_currentScene, _model);
+    
     if (squares.isEmpty ()) {
       return false;
     } else {
@@ -168,17 +161,24 @@ public class Perceiver {
     for (int i = 0; i < 3; ++i) { // *** Parameter controls how likely 'item' over 'place'
       int xDisplacement = _random.nextInt (_fieldOfView * 2 + 1) - _fieldOfView;
       int yDisplacement = _random.nextInt (_fieldOfView * 2 + 1) - _fieldOfView;
+      
+      int xPeriphery = _fixationX + xDisplacement;
+      int yPeriphery = _fixationY + yDisplacement;
+      
       if (
-        !_currentScene.isSquareEmpty (_fixationX + xDisplacement, _fixationY + yDisplacement) && 
-        !_currentScene.isSquareBlind(_fixationX + xDisplacement, _fixationY + yDisplacement) &&
-        _fixationX < _currentScene.getWidth () && 
-        _fixationY < _currentScene.getHeight ()
-      ) {
-        _fixationX += xDisplacement;
-        _fixationY += yDisplacement;
-        _lastHeuristic = FixationType.randomItem;
+        xPeriphery < _currentScene.getWidth () && xPeriphery >= 0 &&
+        yPeriphery < _currentScene.getHeight () && yPeriphery >= 0
+      ){
+        if(
+          !_currentScene.isSquareEmpty (xPeriphery, yPeriphery) && 
+          !_currentScene.isSquareBlind(xPeriphery, yPeriphery)
+        ) {
+          _fixationX = xPeriphery;
+          _fixationY = yPeriphery;
+          _lastHeuristic = FixationType.randomItem;
 
-        return true;
+          return true;
+        }
       }
     }
     return false;
