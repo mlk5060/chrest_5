@@ -1809,7 +1809,7 @@ public class Chrest extends Observable {
     _perceiver.start (numFixations);
     for (int i = 0; i < numFixations; i++) {
       if(debug) System.out.println("   - Moving eye " + (i+1) + " of " + numFixations + " times");
-      _perceiver.moveEye (time);
+      _perceiver.moveEye (time, debug);
     }
     
     // -- get items from image in STM, and optionally template slots

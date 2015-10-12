@@ -286,11 +286,13 @@ public class Perceiver {
    * heuristics, and simply move the eye to that point.
    * @param time The domain time (in milliseconds) when this method was called.
    */
-  public void moveEye (int time) {
+  public void moveEye (int time, boolean debug) {
+    if(debug) System.out.println("\n=== Perceiver.moveEye() ===");
     Node node = _model.getVisualLtm ();
     boolean fixationDone = false;
     
     if (doingInitialFixations ()) {
+      if(debug) System.out.println("- Doing initial fixations");
       fixationDone = doInitialFixation ();
       if (fixationDone) {
         node = _model.recognise (_model.getDomainSpecifics().normalise (_currentScene.getItemsInScopeAsListPattern (_fixationX, _fixationY, this.getFieldOfView(), true, true)), time);
@@ -298,6 +300,7 @@ public class Perceiver {
     }
     
     if (!fixationDone) {
+      if(debug) System.out.println("- Doing fixations guided by LTM heuristics");
       fixationDone = ltmHeuristic (time);
       if (fixationDone && _model.getVisualStm().getCount () >= 1) {
         node = _model.getVisualStm().getItem(0);
@@ -305,9 +308,12 @@ public class Perceiver {
     }
     
     if (!fixationDone) {
+      if(debug) System.out.println("- Moving eye using heuristics");
       moveEyeUsingHeuristics ();
       node = _model.recognise (_model.getDomainSpecifics().normalise (_currentScene.getItemsInScopeAsListPattern (_fixationX, _fixationY, this.getFieldOfView(), true, true)), time);
     }
+    
+    if(debug) System.out.println("Adding node " + node.getReference() + " (image: " + node.getImage().toString() + ") to nodes recognised");
     
     _recognisedNodes.add (node);
     
