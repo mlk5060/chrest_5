@@ -5,6 +5,8 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import jchrest.architecture.Chrest;
 
 /**
@@ -34,12 +36,22 @@ public class TileworldDomain extends DomainSpecifics{
     this._tileToken = tileToken;
   }
 
-  /**
-   * Removes blind, empty and self objects from the {@link 
-   * jchrest.lib.ListPattern} passed.
-   * 
+  /** 
    * @param pattern
-   * @return
+   * @return A {@link jchrest.lib.ListPattern} stripped of {@link 
+   * jchrest.lib.ItemSquarePattern}s that:
+   * 
+   * <ol type="1">
+   *  <li>
+   *    Represent the CHREST model or the agent equipped with the CHREST model.
+   *  </li>
+   *  <li> 
+   *    Blind, empty and unknown {@link jchrest.lib.ItemSquarePattern}s.
+   *  </li>
+   *  <li> 
+   *    Are duplicated in the {@link jchrest.lib.ListPattern} passed.
+   *  </li>
+   * </ol>
    */
   @Override
   public ListPattern normalise(ListPattern pattern) {
@@ -49,9 +61,10 @@ public class TileworldDomain extends DomainSpecifics{
       ItemSquarePattern itemDetails = (ItemSquarePattern)prim;
       String item = itemDetails.getItem();
       if(
-        !item.equals(Scene.getBlindSquareIdentifier()) &&
-        !item.equals(Scene.getEmptySquareIdentifier()) &&
+        !item.equals(Scene.getBlindSquareToken()) &&
+        !item.equals(Scene.getEmptySquareToken()) &&
         !item.equalsIgnoreCase(Scene.getCreatorToken()) && 
+        !item.equalsIgnoreCase(VisualSpatialFieldObject.getUnknownSquareToken()) &&
         !result.contains(prim)
       ){
         result.add(itemDetails);
@@ -79,39 +92,28 @@ public class TileworldDomain extends DomainSpecifics{
   }
 
   /**
-   * In Tileworld, salient squares are those that aren't occupied solely by the 
-   * scene creator, aren't blind spots and aren't empty.
-   * 
    * @param scene
    * @param model
-   * @return 
+   * @return The location of the creator of the {@link jchrest.lib.Scene} 
+   * specified or, if the creator is not present, a random {@link 
+   * jchrest.lib.Square} that isn't blind, empty or unknown.
    */
   @Override
   public Set<Square> proposeSalientSquareFixations(Scene scene, Chrest model) {
-    Set<Square> salientSquareFixations = new HashSet<>();
-    for(int col = 0; col < scene.getWidth(); col++){
-      for(int row = 0; row < scene.getHeight(); row++){
-        
-        ListPattern squareContents = scene.getSquareContentsAsListPattern(col, row, false, false);
-        boolean onlyCreatorOnSquare = false;
-        
-        if(squareContents.size() > 1){
-          for(PrimitivePattern object  : squareContents){
-            if(object instanceof ItemSquarePattern){
-              ItemSquarePattern obj = (ItemSquarePattern)object;
-              if(obj.getItem().equals(Scene.getCreatorToken())){
-                onlyCreatorOnSquare = true;
-              }
-            }
-          }
-        }
-        
-        if( !squareContents.isEmpty() && !onlyCreatorOnSquare ){
-          salientSquareFixations.add(new Square(col, row));
-        }
-      }
+    Set<Square> result = new HashSet<> ();
+    
+    int randomCol = new java.util.Random().nextInt(scene.getWidth ());
+    int randomRow = new java.util.Random().nextInt(scene.getHeight ());
+
+    String objectOnSquare = scene.getSquareContents(randomCol, randomRow).getObjectClass();
+    while( !objectOnSquare.equals(Scene.getBlindSquareToken()) ){
+      randomCol = new java.util.Random().nextInt(scene.getWidth ());
+      randomRow = new java.util.Random().nextInt(scene.getHeight ());
+      objectOnSquare = scene.getSquareContents(randomCol, randomRow).getObjectClass();
     }
-    return salientSquareFixations;
+
+    result.add (new Square(randomCol, randomRow));
+    return result;
   }
 
   /**
@@ -131,24 +133,16 @@ public class TileworldDomain extends DomainSpecifics{
     int col = square.getColumn();
     int row = square.getRow();
     
-    ListPattern squareContents = scene.getSquareContentsAsListPattern(col, row, false, true);
-    if( !squareContents.isEmpty() ){
-      for(PrimitivePattern squareContent : squareContents){
-        String item = ((ItemSquarePattern)squareContent).getItem();
-        
-        if(
-          item.equals(this._tileToken) ||
-          item.equals(Scene.getCreatorToken()) ||
-          item.equals(this._opponentToken)
-        ){
-          int squareCol = square.getColumn();
-          int squareRow = square.getRow();
-          movementFixations.add(new Square(squareCol, squareRow + 1));//North
-          movementFixations.add(new Square(squareCol + 1, squareRow));//East
-          movementFixations.add(new Square(squareCol, squareRow - 1));//South
-          movementFixations.add(new Square(squareCol - 1, squareRow));//West
-        }
-      }
+    String objectOnSquare = scene.getSquareContents(col, row).getObjectClass();
+    if(
+      objectOnSquare.equals(this._tileToken) ||
+      objectOnSquare.equals(Scene.getCreatorToken()) ||
+      objectOnSquare.equals(this._opponentToken)
+    ){
+      movementFixations.add(new Square(col, row + 1));//North
+      movementFixations.add(new Square(col + 1, row));//East
+      movementFixations.add(new Square(col, row - 1));//South
+      movementFixations.add(new Square(col - 1, row));//West
     }
     
     return movementFixations;

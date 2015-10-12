@@ -36,12 +36,12 @@
 ## Checks that:
 ## 
 ## 1) If a VisualSpatialFieldObject encoding a blind square is created:
-##   a) Its identifier is set to the result of Scene.getBlindSquareIdentifier().
-##   b) Its object class is set to the result of Scene.getBlindSquareIdentifier().
+##   a) Its identifier is set to the result of Scene.getBlindSquareToken().
+##   b) Its object class is set to the result of Scene.getBlindSquareToken().
 ##   c) Its terminus is not set.
 ## 2) If a VisualSpatialFieldObject encoding an empty square is created:
-##   a) Its identifier is set to the result of Scene.getEmptySquareIdentifier().
-##   b) Its object class is set to the result of Scene.getEmptySquareIdentifier().
+##   a) Its identifier is set to the result of Scene.getEmptySquareToken().
+##   b) Its object class is set to the result of Scene.getEmptySquareToken().
 ##   c) Its terminus is set to the current time plus thelifespan for an 
 ##      unrecognised object (will not be recognised since CHREST will not commit
 ##      any info to LTM).
@@ -64,23 +64,23 @@
 #  visual_spatial_field = VisualSpatialField.new(Chrest.new, Scene.new("test", 1, 1), 50, 0, 100, 250, 60000, unrec_obj_life, 2, 0, false)
 #  
 #  #Create the VisualSpatialFieldObject instances that will be tested.
-#  visual_spatial_field_objects.push(VisualSpatialFieldObject.new(visual_spatial_field, "willBeOverwritten", Scene.getBlindSquareIdentifier, time_created, false))
-#  visual_spatial_field_objects.push(VisualSpatialFieldObject.new(visual_spatial_field, "willBeOverwritten", Scene.getEmptySquareIdentifier, time_created, false))
+#  visual_spatial_field_objects.push(VisualSpatialFieldObject.new(visual_spatial_field, "willBeOverwritten", Scene.getBlindSquareToken, time_created, false))
+#  visual_spatial_field_objects.push(VisualSpatialFieldObject.new(visual_spatial_field, "willBeOverwritten", Scene.getEmptySquareToken, time_created, false))
 #  visual_spatial_field_objects.push(VisualSpatialFieldObject.new(visual_spatial_field, object_identifier, object_class, time_created, false))
-#  visual_spatial_field_objects.push(VisualSpatialFieldObject.new(visual_spatial_field, "willBeOverwritten", Scene.getBlindSquareIdentifier, time_created, true))
-#  visual_spatial_field_objects.push(VisualSpatialFieldObject.new(visual_spatial_field, "willBeOverwritten", Scene.getEmptySquareIdentifier, time_created, true))
+#  visual_spatial_field_objects.push(VisualSpatialFieldObject.new(visual_spatial_field, "willBeOverwritten", Scene.getBlindSquareToken, time_created, true))
+#  visual_spatial_field_objects.push(VisualSpatialFieldObject.new(visual_spatial_field, "willBeOverwritten", Scene.getEmptySquareToken, time_created, true))
 #  visual_spatial_field_objects.push(VisualSpatialFieldObject.new(visual_spatial_field, object_identifier, object_class, time_created, true))
 #  
 #  for i in 0...visual_spatial_field_objects.count
 #    visual_spatial_field_object = visual_spatial_field_objects[i]
 #    
-#    expected_identifier = Scene.getBlindSquareIdentifier()
-#    expected_class = Scene.getBlindSquareIdentifier()
+#    expected_identifier = Scene.getBlindSquareToken()
+#    expected_class = Scene.getBlindSquareToken()
 #    expected_terminus = nil
 #    
 #    if i == 1 or i == 4
-#      expected_identifier = Scene.getEmptySquareIdentifier()
-#      expected_class = Scene.getEmptySquareIdentifier()
+#      expected_identifier = Scene.getEmptySquareToken()
+#      expected_class = Scene.getEmptySquareToken()
 #    end
 #    
 #    if i == 2 or i == 5
@@ -106,7 +106,7 @@
 #  visual_spatial_field = VisualSpatialField.new(Chrest.new, Scene.new("test", 1, 1), 50, 0, 100, 250, 60000, unrec_obj_life, 2, 0, false)
 #  
 #  creation_time = 100
-#  blind_object = VisualSpatialFieldObject.new(visual_spatial_field, "", Scene.getBlindSquareIdentifier, creation_time, true)
+#  blind_object = VisualSpatialFieldObject.new(visual_spatial_field, "", Scene.getBlindSquareToken, creation_time, true)
 #  non_blind_object = VisualSpatialFieldObject.new(visual_spatial_field, "0", "O", creation_time, true)
 #  
 #  assert_true(blind_object.alive(creation_time + unrec_obj_life + 1), "occurred when checking if blind object is alive")
@@ -140,7 +140,7 @@ unit_test "create_clone" do
   
   # Blind object is used since its terminus will be equal to null so we can
   # check if the terminus is copied correctly.
-  blind_object = VisualSpatialFieldObject.new(visual_spatial_field, "", Scene.getBlindSquareIdentifier, creation_time, true, false)
+  blind_object = VisualSpatialFieldObject.new(visual_spatial_field, "", Scene.getBlindSquareToken, creation_time, true, false)
   non_blind_object = VisualSpatialFieldObject.new(visual_spatial_field, "0", "G", creation_time, true, false)
   
   time = creation_time + 1
@@ -210,7 +210,7 @@ end
 #  visual_spatial_field = VisualSpatialField.new(Chrest.new, Scene.new("test", 1, 1), 50, 0, 100, 250, 60000, unrec_obj_life, 2, 0, false)
 #  
 #  creation_time = 0
-#  blind_object = VisualSpatialFieldObject.new(visual_spatial_field, "", Scene.getBlindSquareIdentifier(), creation_time, true)
+#  blind_object = VisualSpatialFieldObject.new(visual_spatial_field, "", Scene.getBlindSquareToken(), creation_time, true)
 #  object = VisualSpatialFieldObject.new(visual_spatial_field, "0", "G", creation_time, true)
 #  assert_equal(nil, blind_object.getTerminus(), "occurred when checking terminus for blind object")
 #  assert_equal(creation_time + unrec_obj_life, object.getTerminus(), "occurred when checking terminus for non-blind object")
@@ -260,7 +260,7 @@ end
 #  visual_spatial_field = VisualSpatialField.new(Chrest.new, Scene.new("test", 1, 1), 50, 0, 100, 250, 60000, unrec_obj_life, 2, 0, false)
 #  
 #  creation_time = 7000
-#  blind_object = VisualSpatialFieldObject.new(visual_spatial_field, "", Scene.getBlindSquareIdentifier, creation_time, true)
+#  blind_object = VisualSpatialFieldObject.new(visual_spatial_field, "", Scene.getBlindSquareToken, creation_time, true)
 #  non_blind_object_a = VisualSpatialFieldObject.new(visual_spatial_field, "0", "A", creation_time, true)
 #  non_blind_object_b = VisualSpatialFieldObject.new(visual_spatial_field, "1", "B", creation_time, true)
 #  

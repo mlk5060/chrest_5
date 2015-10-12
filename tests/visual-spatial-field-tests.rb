@@ -310,8 +310,8 @@ unit_test "duplicate items" do
   ######################
   
   scene = Scene.new("Blind and empty", 5, 5, nil)
-  scene.addItemToSquare(0, 0, Scene.getEmptySquareIdentifier(), Scene.getEmptySquareIdentifier())
-  scene.addItemToSquare(0, 1, Scene.getEmptySquareIdentifier(), Scene.getEmptySquareIdentifier())
+  scene.addItemToSquare(0, 0, Scene.getEmptySquareToken(), Scene.getEmptySquareToken())
+  scene.addItemToSquare(0, 1, Scene.getEmptySquareToken(), Scene.getEmptySquareToken())
   begin
     VisualSpatialField.new( 
       Chrest.new,
@@ -337,8 +337,8 @@ unit_test "duplicate items" do
   ######################
   
   scene = Scene.new("Duplicate classes, unique IDs", 5, 5, nil)
-  scene.addItemToSquare(0, 0, Scene.getEmptySquareIdentifier(), Scene.getEmptySquareIdentifier())
-  scene.addItemToSquare(0, 1, Scene.getEmptySquareIdentifier(), Scene.getEmptySquareIdentifier())
+  scene.addItemToSquare(0, 0, Scene.getEmptySquareToken(), Scene.getEmptySquareToken())
+  scene.addItemToSquare(0, 1, Scene.getEmptySquareToken(), Scene.getEmptySquareToken())
   scene.addItemToSquare(0, 2, "0", "A")
   scene.addItemToSquare(0, 3, "1", "A")
   
@@ -367,8 +367,8 @@ unit_test "duplicate items" do
   ######################
   
   scene = Scene.new("Unique classes, duplicate IDs", 5, 5, nil)
-  scene.addItemToSquare(0, 0, Scene.getEmptySquareIdentifier(), Scene.getEmptySquareIdentifier())
-  scene.addItemToSquare(0, 1, Scene.getEmptySquareIdentifier(), Scene.getEmptySquareIdentifier())
+  scene.addItemToSquare(0, 0, Scene.getEmptySquareToken(), Scene.getEmptySquareToken())
+  scene.addItemToSquare(0, 1, Scene.getEmptySquareToken(), Scene.getEmptySquareToken())
   scene.addItemToSquare(0, 2, "0", "A")
   scene.addItemToSquare(0, 3, "0", "B")
   
@@ -395,8 +395,8 @@ end
 
 ################################################################################
 # Checks for correct operation of the "VisualSpatialField.getAsScene()" function
-# when all possible permutations of parameters are supplied.  Four scenarios are 
-# tested:
+# when all possible permutations of parameters are supplied.  Four scenarios 
+# are tested:
 # 
 # 1) The Scene returned is as expected after all objects are encoded but before 
 #    any of their termini are reached.  Ghost objects are to not be present in 
@@ -409,19 +409,6 @@ end
 #    coordinates.
 # 4) The Scene returned is as expected after the termini for all objects have 
 #    been reached.
-#
-#                  --------
-# 4     x      x   |      |   x      x
-#           ----------------------
-# 3     x   | 3(C) |      |      |   x
-#    ------------------------------------
-# 2  |      |      | 1(B) |      |      |
-#    ------------------------------------
-# 1     x   | 0(A) |      |      |   x
-#           ----------------------
-# 0     x     2(b) |SLF(4)|   x      x
-#                  --------
-#       0      1      2       3      4     COORDINATES
 unit_test "get_as_scene" do
   
   # Set the objects that will be used.
@@ -436,41 +423,41 @@ unit_test "get_as_scene" do
   ########################
   ##### CREATE SCENE #####
   ########################
-  
+
   scene = Scene.new("Test scene", 5, 5, nil)
   scene.addItemToSquare(2, 0, test_objects[4][0], test_objects[4][1])
   scene.addItemToSquare(1, 1, test_objects[0][0], test_objects[0][1])
-  scene.addItemToSquare(2, 1, Scene.getEmptySquareIdentifier(), Scene.getEmptySquareIdentifier())
-  scene.addItemToSquare(3, 1, Scene.getEmptySquareIdentifier(), Scene.getEmptySquareIdentifier())
-  scene.addItemToSquare(0, 2, Scene.getEmptySquareIdentifier(), Scene.getEmptySquareIdentifier())
-  scene.addItemToSquare(1, 2, Scene.getEmptySquareIdentifier(), Scene.getEmptySquareIdentifier())
+  scene.addItemToSquare(2, 1, Scene.getEmptySquareToken(), Scene.getEmptySquareToken())
+  scene.addItemToSquare(3, 1, Scene.getEmptySquareToken(), Scene.getEmptySquareToken())
+  scene.addItemToSquare(0, 2, Scene.getEmptySquareToken(), Scene.getEmptySquareToken())
+  scene.addItemToSquare(1, 2, Scene.getEmptySquareToken(), Scene.getEmptySquareToken())
   scene.addItemToSquare(2, 2, test_objects[1][0], test_objects[1][1])
-  scene.addItemToSquare(3, 2, Scene.getEmptySquareIdentifier(), Scene.getEmptySquareIdentifier())
-  scene.addItemToSquare(4, 2, Scene.getEmptySquareIdentifier(), Scene.getEmptySquareIdentifier())
+  scene.addItemToSquare(3, 2, Scene.getEmptySquareToken(), Scene.getEmptySquareToken())
+  scene.addItemToSquare(4, 2, Scene.getEmptySquareToken(), Scene.getEmptySquareToken())
   scene.addItemToSquare(1, 3, test_objects[3][0], test_objects[3][1])
-  scene.addItemToSquare(2, 3, Scene.getEmptySquareIdentifier(), Scene.getEmptySquareIdentifier())
-  scene.addItemToSquare(3, 3, Scene.getEmptySquareIdentifier(), Scene.getEmptySquareIdentifier())
-  scene.addItemToSquare(2, 4, Scene.getEmptySquareIdentifier(), Scene.getEmptySquareIdentifier())
-  
+  scene.addItemToSquare(2, 3, Scene.getEmptySquareToken(), Scene.getEmptySquareToken())
+  scene.addItemToSquare(3, 3, Scene.getEmptySquareToken(), Scene.getEmptySquareToken())
+  scene.addItemToSquare(2, 4, Scene.getEmptySquareToken(), Scene.getEmptySquareToken())
+
   ###################################
   ##### CREATE NEW CHREST MODEL #####
   ###################################
   model = Chrest.new
   model.setDomain(GenericDomain.new(model))
   model.getPerceiver.setFieldOfView(1)
-  
+
   #########################
   ##### SET TEST TIME #####
   #########################
-  
+
   # Set the domain time (the time against which all CHREST operations will be
   # performed in this test).
   domain_time = 0
-  
+
   ###########################
   ##### CHREST LEARNING #####
   ###########################
-  
+
   # Since the scene creator is present, the locations of 0 and the ghost object
   # should be learned as creator-relative since this is how the coordinates will
   # be formatted during recognition when the visual-spatial field is 
@@ -485,17 +472,17 @@ unit_test "get_as_scene" do
     domain_time += 1
     recognised_chunk = model.recogniseAndLearn(list_pattern_to_learn, domain_time).getImage().toString()
   end
-  
+
   # Set the domain time to be the value of CHREST's learning clock since, when
   # the visual-spatial field is constructed, the LTM of the model will contain
   # the completely familiarised learned pattern enabling expected visual-spatial
   # field construction due to chunk recognition retrieving the learned pattern.
   domain_time = model.getLearningClock()
-  
+
   ##########################################
   ##### CONSTRUCT VISUAL-SPATIAL FIELD #####
   ##########################################
-  
+
   # Set visual-spatial field variables.
   creation_time = domain_time
   number_fixations = 20
@@ -505,12 +492,12 @@ unit_test "get_as_scene" do
   time_to_move_object = 250
   recognised_object_lifespan = 60000
   unrecognised_object_lifespan = 30000
-  
+
   visual_stm_contents_as_expected = false
   creation_time = domain_time
   expected_stm_contents = recognised_chunk
   until visual_stm_contents_as_expected do
-    
+
     # Set creation time to the current domain time (this is important in 
     # calculating a lot of test variables below).
     creation_time = domain_time
@@ -556,19 +543,18 @@ unit_test "get_as_scene" do
     # should a new visual-field need to be constructed.
     domain_time = model.getAttentionClock
   end
-  
-  
+
   visual_spatial_field_as_scene_without_ghost_objects = visual_spatial_field.getAsScene(domain_time, false)
   for row in 0...visual_spatial_field.getHeight()
     for col in 0...visual_spatial_field.getWidth()
-      
-      expected_content = SceneObject.new(Scene.getBlindSquareIdentifier(), Scene.getBlindSquareIdentifier())
+
+      expected_content = SceneObject.new(Scene.getBlindSquareToken(), Scene.getBlindSquareToken())
       if 
         ((row == 1 or row == 3) and (col = 2 or col == 3)) or
         (row == 2 and col != 2) or
         (row == 4 and col == 2)
       then
-        expected_content = SceneObject.new(Scene.getEmptySquareIdentifier(), Scene.getEmptySquareIdentifier())
+        expected_content = SceneObject.new(Scene.getEmptySquareToken(), Scene.getEmptySquareToken())
       elsif row == 0 and col == 2
         expected_content = SceneObject.new(test_objects[4][0], test_objects[4][1])
       elsif row == 1 and col == 1
@@ -578,24 +564,24 @@ unit_test "get_as_scene" do
       elsif row == 3 and col == 1
         expected_content = SceneObject.new(test_objects[3][0], test_objects[3][1])
       end
-      
+
       contents = visual_spatial_field_as_scene_without_ghost_objects.getSquareContents(col, row)
       assert_equal(expected_content.getIdentifier(), contents.getIdentifier(), "occurred when checking identifier for object on col " + col.to_s + ", row " + row.to_s + " before object move and when ghost objects should not be returned")
       assert_equal(expected_content.getObjectClass(), contents.getObjectClass(), "occurred when checking object class for object on col " + col.to_s + ", row " + row.to_s + " before object move and when ghost objects should not be returned")
     end
   end
-  
+
   visual_spatial_field_as_scene_with_ghost_objects = visual_spatial_field.getAsScene(domain_time, true)
   for row in 0...visual_spatial_field.getHeight()
     for col in 0...visual_spatial_field.getWidth()
-      
-      expected_content = SceneObject.new(Scene.getBlindSquareIdentifier(), Scene.getBlindSquareIdentifier())
+
+      expected_content = SceneObject.new(Scene.getBlindSquareToken(), Scene.getBlindSquareToken())
       if 
         ((row == 1 or row == 3) and (col = 2 or col == 3)) or
         (row == 2 and col != 2) or
         (row == 4 and col == 2)
       then
-        expected_content = SceneObject.new(Scene.getEmptySquareIdentifier(), Scene.getEmptySquareIdentifier())
+        expected_content = SceneObject.new(Scene.getEmptySquareToken(), Scene.getEmptySquareToken())
       elsif row == 0 and col == 1
         expected_content = SceneObject.new(test_objects[2][0], test_objects[2][1])
       elsif row == 0 and col == 2
@@ -607,13 +593,13 @@ unit_test "get_as_scene" do
       elsif row == 3 and col == 1
         expected_content = SceneObject.new(test_objects[3][0], test_objects[3][1])
       end
-      
+
       contents = visual_spatial_field_as_scene_with_ghost_objects.getSquareContents(col, row)
       assert_equal(expected_content.getIdentifier(), contents.getIdentifier(), "occurred when checking identifier for object on col " + col.to_s + ", row " + row.to_s + " before object move and when ghost objects should be returned")
       assert_equal(expected_content.getObjectClass(), contents.getObjectClass(), "occurred when checking object class for object on col " + col.to_s + ", row " + row.to_s + " before object move and when ghost objects should be returned")
     end
   end
-  
+
   move_object_0 = ArrayList.new
   move_object_0.add(ItemSquarePattern.new(test_objects[0][0], 1, 1))
   move_object_0.add(ItemSquarePattern.new(test_objects[0][0], 2, 2))
@@ -622,18 +608,18 @@ unit_test "get_as_scene" do
   visual_spatial_field.moveObjects(move_sequence, domain_time, false)
   domain_time = model.getAttentionClock
   visual_spatial_field_as_scene = visual_spatial_field.getAsScene(domain_time, true)
-  
+
   for row in 0...visual_spatial_field.getHeight()
     for col in 0...visual_spatial_field.getWidth()
-      
-      expected_content = SceneObject.new(Scene.getBlindSquareIdentifier(), Scene.getBlindSquareIdentifier())
+
+      expected_content = SceneObject.new(Scene.getBlindSquareToken(), Scene.getBlindSquareToken())
       if 
         (row == 1 and (col == 1 or col = 2 or col == 3)) or
         (row == 2 and col != 2) or
         (row == 3 and (col == 2 or col == 3)) or 
         (row == 4 and col == 2)
       then
-        expected_content = SceneObject.new(Scene.getEmptySquareIdentifier(), Scene.getEmptySquareIdentifier())
+        expected_content = SceneObject.new(Scene.getEmptySquareToken(), Scene.getEmptySquareToken())
       elsif row == 0 and col == 1
         expected_content = SceneObject.new(test_objects[2][0], test_objects[2][1])
       elsif row == 0 and col == 2
@@ -643,13 +629,13 @@ unit_test "get_as_scene" do
       elsif row == 3 and col == 1
         expected_content = SceneObject.new(test_objects[3][0], test_objects[3][1])
       end
-      
+
       contents = visual_spatial_field_as_scene.getSquareContents(col, row)
       assert_equal(expected_content.getIdentifier(), contents.getIdentifier(), "occurred when checking identifier for object on col " + col.to_s + ", row " + row.to_s + " after object move")
       assert_equal(expected_content.getObjectClass(), contents.getObjectClass(), "occurred when checking object class for object on col " + col.to_s + ", row " + row.to_s + " after object move")
     end
   end
-  
+
   maximum_terminus = 0;
   for row in 0...visual_spatial_field.getHeight()
     for col in 0...visual_spatial_field.getWidth() 
@@ -661,24 +647,25 @@ unit_test "get_as_scene" do
       end
     end
   end
-  
+
   domain_time = maximum_terminus + 1
   visual_spatial_field_as_scene = visual_spatial_field.getAsScene(domain_time, true)
-  
+
   for row in 0...visual_spatial_field.getHeight()
     for col in 0...visual_spatial_field.getWidth()
-      
-      expected_content = SceneObject.new(Scene.getBlindSquareIdentifier(), Scene.getBlindSquareIdentifier())
+
+      expected_content = SceneObject.new(Scene.getBlindSquareToken(), Scene.getBlindSquareToken())
       if  
+        (row == 0 and col == 1) or 
         ((row == 1 or row == 3) and (col = 1 or col = 2 or col == 3)) or
         row == 2 or
         (row == 4 and col == 2)
       then
-        expected_content = SceneObject.new(Scene.getEmptySquareIdentifier(), Scene.getEmptySquareIdentifier())
+        expected_content = SceneObject.new(VisualSpatialFieldObject.getUnknownSquareToken(), VisualSpatialFieldObject.getUnknownSquareToken())
       elsif row == 0 and col == 2
         expected_content = SceneObject.new(test_objects[4][0], test_objects[4][1])
       end
-      
+
       contents = visual_spatial_field_as_scene.getSquareContents(col, row)
       assert_equal(expected_content.getIdentifier(), contents.getIdentifier(), "occurred when checking identifier for object on col " + col.to_s + ", row " + row.to_s + " after object move and after all object's termini have been reached")
       assert_equal(expected_content.getObjectClass(), contents.getObjectClass(), "occurred when checking object class for object on col " + col.to_s + ", row " + row.to_s + " after object move and after all object's termini have been reached")
@@ -687,100 +674,1324 @@ unit_test "get_as_scene" do
 end
 
 ################################################################################
-# Tests here check for correct operation of the "VisualSpatialField.moveObjects" 
-# function using seven move sequences.  These sequences and what they test for 
-# are detailed below:
+# Tests for correct operation of the "VisualSpatialField.moveObjects()" function
+# when moving a recognised real object in all possible scenarios.
 # 
-# 1) Move an object from visual-spatial coordinates that just contain this 
-#    object to coordinates that contain another object that is "alive" when the 
-#    move occurs. Tests that:
-#    
-#    a) The terminus of the object moved is correctly set on the visual-spatial
-#       coordinates the object is moved from.
-#    b) An empty square is created on the coordinates the object is moved from 
-#       at the time of the move.  This simulates that the coordinates should now 
-#       be empty since the coordinates are not blind in the scene encoded but 
-#       there are now no objects on the coordinates in the visual-spatial field.
-#    c) The object moved is added to the coordinates that the object is to be 
-#       moved to at the time of the move plus the time taken to move an object.
-#    d) The termini of non-empty objects that are "alive" on the visual-spatial 
-#       coordinates the object is moved to are extended based on the time the
-#       object is moved to the coordinates in question.  Essentially, the 
-#       moved object should co-habit the visual-spatial coordinates with any 
-#       non-empty objects that exist there.
-#    e) The termini of objects that are not "alive" on the visual-spatial 
-#       coordinates the object is moved to are not extended.
-#    
-# 2) Move the object from test 1 to visual-spatial coordinates that are 
-#    considered to be blind at a time when the object it co-habits its current 
-#    location with is "alive".  Tests that:
-#    
-#    a) The terminus of the object moved is correctly set on the visual-spatial
-#       coordinates the object is moved from.
-#    b) The terminus of the object left behind is extended since attention has
-#       been focused upon its location in the visual-spatial field.
-#    c) The coordinates the object is moved from should not have an empty square 
-#       object added (as in the previous move) since the object left-behind is
-#       still "alive".
-#    d) The object moved is not added to the coordinates that the object is to 
-#       be moved to since these coordinates are considered blind.
-#    e) The coordinates to be moved to are still considered blind after the 
-#       move.
-#    
-# 3) Move a ghost object from visual-spatial coordinates that are considered 
-#    blind to coordinates that are also considered to be blind.  Tests that:
-#    
-#    a) The terminus of the object moved is correctly set on the visual-spatial
-#       coordinates the object is moved from.
-#    b) A blind square is created on the coordinates the object is moved from 
-#       at the time of the move.  This simulates that the coordinates should now 
-#       be blind since the coordinates are blind in the scene originally encoded 
-#       but there are now no objects on the coordinates in the visual-spatial 
-#       field.
-#    d) The object moved is not added to the coordinates that the object is to 
-#       be moved to since these coordinates are considered blind.
-#    e) The coordinates to be moved to are still considered blind after the 
-#       move.
-#    
-# 4) Move an object to visual-spatial coordinates that are occupied by an object 
-#    that isn't "alive" when the move occurs.  Tests that:
-#    
-#    a) The terminus of the object moved is correctly set on the visual-spatial
-#       coordinates the object is moved from.
-#    b) The object moved is added to the coordinates that the object is to be 
-#       moved to at the time of the move plus the time taken to move an object.
-#    c) The terminus of the "deceased" objects on the visual-spatial coordinates 
-#       that the object is moved to are not modified.
-#    
-# 5) Move the object from move 4 to visual-spatial coordinates that are 
-#    considered empty.  Tests that:
-#    
-#    a) The terminus of the object moved is correctly set on the visual-spatial
-#       coordinates the object is moved from.
-#    b) An empty square is created on the coordinates the object is moved from 
-#       at the time of the move.  This simulates that the coordinates should now 
-#       be empty since the coordinates are not blind in the scene encoded but 
-#       there are now no objects that are "alive" on the coordinates in the
-#       visual-spatial field.
-#    c) The object moved is added to the coordinates that the object is to be 
-#       moved to at the time of the move plus the time taken to move an object.
-#    d) The terminus of the empty square object on the visual-spatial 
-#       coordinates the object is moved to is set to the time the object is 
-#       moved.  Essentially, the coordinates moved to should no longer be 
-#       considered empty.
-#       
-#  6) Move an object to visual-spatial coordinates that are occupied by the
-#     scene creator.  Tests that:
-#     
-#     a) The terminus of the creator's avatar in the visual-spatial field isn't 
-#        modified since it should never decay.
-#        
-#  7) Move an object that co-habits visual-spatial coordinates with the scene
-#     creator to visual-spatial coordinates to somewhere else.  Tests that:
-#     
-#     a) The terminus of the creator's avatar in the visual-spatial field isn't 
-#        modified since it should never decay.
-#
+# The scene used in the following test is illustrated below ("x" represents a 
+# blind square, objects are denoted by their identifiers followed by their 
+# object class in parenthesis).
+# 
+#                  --------
+# 4     x      x   |      |   x      x
+#           ----------------------
+# 3     x   | 2(C) |      |      |   x
+#    ------------------------------------
+# 2  |      |      | 1(B) |      |      |
+#    ------------------------------------
+# 1     x   | 0(A) |      |      |   x
+#           ----------------------
+# 0     x      x   |3(SLF)|   x      x
+#                  --------
+#       0      1      2       3      4     COORDINATES
+#          
+unit_test "move_object (recognised real object)" do
+  
+  move_types = [
+    "to square containing a live blind object",
+    "from/to square containing a live empty object",
+    "to/from square containing the creator",
+    "to/from square containing a live, unrecognised non-empty/blind/creator object",
+    "to/from square containing a live, recognised non-empty/blind/creator object",
+    "to/from a square whose object status is unknown"
+  ]
+  
+  for move_number in 0...move_types.count
+    
+    objects = [
+      ["0", "A"],
+      ["1", "B"],
+      ["2", "C"],
+      ["3", Scene.getCreatorToken()]
+    ]
+
+    scene = Scene.new("Test", 5, 5, nil)
+    scene.addItemToSquare(2, 0, objects[3][0], objects[3][1])
+    scene.addItemToSquare(1, 1, objects[0][0], objects[0][1])
+    scene.addItemToSquare(2, 1, Scene.getEmptySquareToken(), Scene.getEmptySquareToken())
+    scene.addItemToSquare(3, 1, Scene.getEmptySquareToken(), Scene.getEmptySquareToken())
+    scene.addItemToSquare(0, 2, Scene.getEmptySquareToken(), Scene.getEmptySquareToken())
+    scene.addItemToSquare(1, 2, Scene.getEmptySquareToken(), Scene.getEmptySquareToken())
+    scene.addItemToSquare(2, 2, objects[1][0], objects[1][1])
+    scene.addItemToSquare(3, 2, Scene.getEmptySquareToken(), Scene.getEmptySquareToken())
+    scene.addItemToSquare(4, 2, Scene.getEmptySquareToken(), Scene.getEmptySquareToken())
+    scene.addItemToSquare(1, 3, objects[2][0], objects[2][1])
+    scene.addItemToSquare(2, 3, Scene.getEmptySquareToken(), Scene.getEmptySquareToken())
+    scene.addItemToSquare(3, 3, Scene.getEmptySquareToken(), Scene.getEmptySquareToken())
+    scene.addItemToSquare(2, 4, Scene.getEmptySquareToken(), Scene.getEmptySquareToken())
+
+    ###################################
+    ##### CREATE NEW CHREST MODEL #####
+    ###################################
+    model = Chrest.new
+    model.setDomain(GenericDomain.new(model))
+    model.getPerceiver.setFieldOfView(1)
+
+    ###########################
+    ##### CHREST LEARNING #####
+    ###########################
+
+    # Set the domain time (the time against which all CHREST operations will be
+    # performed in this test).
+    domain_time = 0
+
+    # Since the scene creator is present, coordinates of the object to learn must
+    # be set relative to the creator's location.
+    pattern = ItemSquarePattern.new(objects[0][1], -1, 1)
+    list_pattern_to_learn = ListPattern.new()
+    list_pattern_to_learn.add(pattern)
+
+    recognised_chunk = model.recogniseAndLearn(list_pattern_to_learn, domain_time).getImage().toString()
+    until recognised_chunk == list_pattern_to_learn.toString()
+      domain_time += 1
+      recognised_chunk = model.recogniseAndLearn(list_pattern_to_learn, domain_time).getImage().toString()
+    end
+
+    # Set the domain time to be the value of CHREST's learning clock since, 
+    # when the visual-spatial field is constructed, the LTM of the model will 
+    # contain the completely familiarised learned pattern enabling expected 
+    # visual-spatial field construction due to chunk recognition retrieving 
+    # the learned pattern.
+    domain_time = model.getLearningClock()
+
+    ##########################################
+    ##### CONSTRUCT VISUAL-SPATIAL FIELD #####
+    ##########################################
+
+    # Set visual-spatial field variables.
+    creation_time = domain_time
+    number_fixations = 20
+    time_to_encode_objects = 50
+    time_to_encode_empty_squares = 10
+    visual_spatial_field_access_time = 100
+    time_to_move_object = 250
+    recognised_object_lifespan = 60000
+    unrecognised_object_lifespan = 30000
+
+    visual_stm_contents_as_expected = false
+    creation_time = domain_time
+    expected_stm_contents = recognised_chunk
+
+    until visual_stm_contents_as_expected do
+
+      creation_time = domain_time
+
+      # Construct the visual-spatial field.
+      visual_spatial_field = VisualSpatialField.new(
+        model,
+        scene, 
+        time_to_encode_objects,
+        time_to_encode_empty_squares,
+        visual_spatial_field_access_time, 
+        time_to_move_object, 
+        recognised_object_lifespan,
+        unrecognised_object_lifespan,
+        number_fixations,
+        domain_time,
+        true,
+        false
+      )
+
+      # Get contents of STM (will have been populated during object 
+      # recognition during visual-spatial field construction) and remove root 
+      # nodes and nodes with empty images.  This will leave retrieved chunks 
+      # that have non-empty images, i.e. these images should contain the 
+      # list-patterns learned by the model.
+      stm = model.getVisualStm()
+      stm_contents = ""
+      for i in (stm.getCount() - 1).downto(0)
+        chunk = stm.getItem(i)
+        if( !chunk.equals(model.getVisualLtm()) )
+          if(!chunk.getImage().isEmpty())
+            stm_contents += chunk.getImage().toString()
+          end
+        end
+      end
+
+      # Check if STM contents are as expected, if they are, set the flag that
+      # controls when the model is ready for testing to true.
+      expected_stm_contents == stm_contents ? visual_stm_contents_as_expected = true : nil
+
+      # Advance domain time to the time that the visual-spatial field will be 
+      # completely instantiated so that the model's attention will be free 
+      # should a new visual-field need to be constructed.
+      domain_time = model.getAttentionClock
+    end
+
+    ####################################################################
+    ##### SET-UP EXPECTED VISUAL-SPATIAL FIELD COORDINATE CONTENTS #####
+    ####################################################################
+
+    expected_visual_spatial_field_object_properties = Array.new
+    for col in 0...visual_spatial_field.getSceneEncoded().getWidth()
+      expected_visual_spatial_field_object_properties.push([])
+      for row in 0...visual_spatial_field.getSceneEncoded().getHeight()
+        expected_visual_spatial_field_object_properties[col].push([])
+
+        if (col == 2 and row == 0)
+          expected_visual_spatial_field_object_properties[col][row].push([
+            objects[3][0],
+            objects[3][1],
+            creation_time + visual_spatial_field_access_time,
+            nil,
+            false,
+            false
+          ])
+        else
+          expected_visual_spatial_field_object_properties[col][row].push([
+            Scene.getBlindSquareToken(),
+            Scene.getBlindSquareToken(),
+            creation_time + visual_spatial_field_access_time,
+            nil,
+            false,
+            false
+          ])
+        end
+      end
+    end
+
+    number_objects_encoded = 1
+    number_empty_squares_encoded = 0
+
+    # Set expected object values for coordinates containing recognised object.
+    expected_visual_spatial_field_object_properties[1][1][0][3] = get_creation_time_for_object_after_visual_spatial_field_creation(creation_time, visual_spatial_field_access_time, time_to_encode_objects, time_to_encode_empty_squares, number_objects_encoded, number_empty_squares_encoded)
+    expected_visual_spatial_field_object_properties[1][1].push([
+      objects[0][0],
+      objects[0][1],
+      expected_visual_spatial_field_object_properties[1][1][0][3],
+      expected_visual_spatial_field_object_properties[1][1][0][3] + recognised_object_lifespan,
+      true,
+      false
+    ])
+
+    # Set expected object values for coordinates containing unrecognised objects.
+    for row in 0...visual_spatial_field.getHeight()
+      for col in 0...visual_spatial_field.getWidth()
+
+        process_coordinates = false
+        identifier = Scene.getEmptySquareToken()
+        obj_class = Scene.getEmptySquareToken()
+
+        if 
+          ( (row == 1 or row == 3) and (col == 2 or col == 3) ) or
+          (row == 2 and (col != 2)) or
+          (row == 4 and (col == 2))
+        then
+          number_empty_squares_encoded += 1
+          process_coordinates = true
+
+        elsif(row == 2 and col == 2) or (row == 3 and col == 1)
+          number_objects_encoded += 1
+          process_coordinates = true
+
+          if (row == 2 and col == 2)
+            identifier = objects[1][0]
+            obj_class = objects[1][1]
+          else
+            identifier = objects[2][0]
+            obj_class = objects[2][1]
+          end
+        end
+
+        if(process_coordinates)
+          expected_visual_spatial_field_object_properties[col][row][0][3] = get_creation_time_for_object_after_visual_spatial_field_creation(creation_time, visual_spatial_field_access_time, time_to_encode_objects, time_to_encode_empty_squares, number_objects_encoded, number_empty_squares_encoded)
+          expected_visual_spatial_field_object_properties[col][row].push([
+            identifier,
+            obj_class,
+            expected_visual_spatial_field_object_properties[col][row][0][3],
+            expected_visual_spatial_field_object_properties[col][row][0][3] + unrecognised_object_lifespan,
+            false,
+            false,
+          ])
+        end
+      end
+    end
+
+    check_values_of_visual_spatial_objects_against_expected(
+      visual_spatial_field,
+      expected_visual_spatial_field_object_properties,
+      model.getAttentionClock(),
+      "when checking initial state of visual-spatial field"
+    )
+    
+    ############################################################################
+    if (move_number == 0)
+      # ================
+      # MOVE DESCRIPTION
+      # ================
+      # - Move to square that has a live blind object on it.
+      # - Moves performed:
+      #   + Object 0 moved from (1, 1) to (1, 0).
+      # 
+      # ===============
+      # EXPECTED OUTPUT
+      # ===============
+      # - Object 0 on (1, 1) should have terminus modified
+      # - Empty square object should be placed on (1, 1)
+      # - Objects on coordinates (1, 0) should not be altered.
+      # - Attention clock of model should be set to the time that object 0 is
+      #   "put-down" on (1, 0).
+      # - Expected visual-spatial field state:
+      # 
+      #                  --------
+      # 4     x      x   |      |   x      x
+      #           ----------------------
+      # 3     x   | 2(C) |      |      |   x
+      #    ------------------------------------
+      # 2  |      |      | 1(B) |      |      |
+      #    ------------------------------------
+      # 1     x   |      |      |      |   x
+      #           ----------------------
+      # 0     x      x   |3(SLF)|   x      x
+      #                  --------
+      #       0      1      2       3      4     COORDINATES
+      
+      # Construct move
+      move = ArrayList.new
+      move.add(ItemSquarePattern.new(objects[0][0], 1, 1))
+      move.add(ItemSquarePattern.new(objects[0][0], 1, 0))
+      move_sequence = ArrayList.new
+      move_sequence.add(move)
+      
+      # Set relevant timing parameters.
+      time_move_requested = model.getAttentionClock()
+      pickup_time = time_move_requested + visual_spatial_field_access_time
+      putdown_time = pickup_time + time_to_move_object
+      
+      # Set terminus for object 0 on (1, 1)
+      expected_visual_spatial_field_object_properties[1][1][1][3] = pickup_time
+      
+      # New empty square object should be added to (1, 1) when 0 picked up.
+      expected_visual_spatial_field_object_properties[1][1].push([
+        Scene.getEmptySquareToken(),
+        Scene.getEmptySquareToken(),
+        pickup_time,
+        pickup_time + unrecognised_object_lifespan,
+        false,
+        false
+      ])
+      
+      # Objects on (1, 0) should not be modified.
+    
+      visual_spatial_field.moveObjects(move_sequence, time_move_requested, false)
+      check_values_of_visual_spatial_objects_against_expected(
+        visual_spatial_field,
+        expected_visual_spatial_field_object_properties,
+        model.getAttentionClock(),
+        "when checking state of visual-spatial field after moving " + move_types[move_number] + 
+        " (move number: " + move_number.to_s + ")"
+      )
+      assert_equal(
+        putdown_time, 
+        model.getAttentionClock(), 
+        "occurred when checking the time that the CHREST model associated with " +
+        "the visual-spatial field will be free after moving " + move_types[move_number] + 
+        " (move number: " + move_number.to_s + ")"
+      )
+    
+    ############################################################################
+    elsif (move_number == 1)
+      # ================
+      # MOVE DESCRIPTION
+      # ================
+      # - Move to square that has a live empty object on it.
+      # - Move from square that was empty and has no other live objects on it
+      #   after object move.
+      # - Move(s) performed:
+      #   + Object 0 moved from (1, 1) to (1, 2).
+      #   + Object 0 moved from (1, 2) to (3, 2)
+      # - In between moves, object 0's recognised status will be manually set
+      #   to true to ensure that a recognised object is being moved (object 0
+      #   will become unrecognised after first part of move).
+      # 
+      # ===============
+      # EXPECTED OUTPUT
+      # ===============
+      # 
+      # - First move
+      #   + Object 0 on (1, 1) should have terminus set to time when object 0 is
+      #     "picked-up".
+      #   + Empty square object should be placed on (1, 1) when object 0 is 
+      #     "picked-up".
+      #   + Empty square object on (1, 2) should have terminus set to time when
+      #     object 0 is "put-down".
+      #   + Object 0 should be added to (1, 2) at time of put-down but should no
+      #     longer be recognised.
+      #   + Attention clock of model should be set to the time that object 0 is
+      #     "put-down" on (1, 2).
+      #   + Expected visual-spatial field state:
+      #	
+      #                  --------
+      # 4     x      x   |      |   x      x
+      #           ----------------------
+      # 3     x   | 2(C) |      |      |   x
+      #    ------------------------------------
+      # 2  |      | 0(A) | 1(B) |      |      |
+      #    ------------------------------------
+      # 1     x   |      |      |      |   x
+      #           ----------------------
+      # 0     x      x   |3(SLF)|   x      x
+      #                  --------
+      #       0      1      2       3      4     COORDINATES
+      #
+      # - Second move
+      #   + Object 0 on (1, 2) should have terminus set to time when object 0 is
+      #     "picked-up".
+      #   + Empty square object should be placed on (1, 2) when object 0 is 
+      #     "picked-up".
+      #   + Empty square object on (3, 2) should have terminus set to time when
+      #     object 0 is "put-down".
+      #   + Object 0 should be added to (3, 2) at time of put-down but should no
+      #     longer be recognised.
+      #   + Attention clock of model should be set to the time that object 0 is
+      #     "put-down" on (3, 2).
+      #   + Expected visual-spatial field state:
+      #	
+      #                  --------
+      # 4     x      x   |      |   x      x
+      #           ----------------------
+      # 3     x   | 2(C) |      |      |   x
+      #    ------------------------------------
+      # 2  |      |      | 1(B) | 0(A) |      |
+      #    ------------------------------------
+      # 1     x   |      |      |      |   x
+      #           ----------------------
+      # 0     x      x   |3(SLF)|   x      x
+      #                  --------
+      #       0      1      2       3      4     COORDINATES
+      
+      ######################
+      ##### FIRST MOVE #####
+      ######################
+      
+      # Construct move
+      move = ArrayList.new()
+      move.add(ItemSquarePattern.new(objects[0][0], 1, 1))
+      move.add(ItemSquarePattern.new(objects[0][0], 1, 2))
+      move_sequence = ArrayList.new()
+      move_sequence.add(move)
+      
+      # Set relevant timing parameters.
+      time_move_requested = model.getAttentionClock()
+      pickup_time = time_move_requested + visual_spatial_field_access_time
+      putdown_time = pickup_time + time_to_move_object
+      
+      # Set terminus for object 0 on (1, 1)
+      expected_visual_spatial_field_object_properties[1][1][1][3] = pickup_time
+      
+      # New empty square object should be added to (1, 1) when 0 picked up.
+      expected_visual_spatial_field_object_properties[1][1].push([
+        Scene.getEmptySquareToken(),
+        Scene.getEmptySquareToken(),
+        pickup_time,
+        pickup_time + unrecognised_object_lifespan,
+        false,
+        false
+      ])
+    
+      # Set terminus for empty square on (1, 2)
+      expected_visual_spatial_field_object_properties[1][2][1][3] = putdown_time
+      
+      # Object 0 should be added to (1, 2) at putdown time.  Should no longer be
+      # recognised.
+      expected_visual_spatial_field_object_properties[1][2].push([
+        objects[0][0],
+        objects[0][1],
+        putdown_time,
+        putdown_time + unrecognised_object_lifespan,
+        false,
+        false
+      ])
+      
+      visual_spatial_field.moveObjects(move_sequence, time_move_requested, false)
+      check_values_of_visual_spatial_objects_against_expected(
+        visual_spatial_field,
+        expected_visual_spatial_field_object_properties,
+        model.getAttentionClock(),
+        "when checking state of visual-spatial field after first part of moving " + 
+        move_types[move_number] + " (move number: " + move_number.to_s + ")"
+      )
+      assert_equal(
+        putdown_time, 
+        model.getAttentionClock(), 
+        "occurred when checking the time that the CHREST model associated with " +
+        "the visual-spatial field will be free after first part of moving " + 
+        move_types[move_number] + " (move number: " + move_number.to_s + ")"
+      )
+      
+      #######################
+      ##### SECOND MOVE #####
+      #######################
+      
+      # Artificially make object 0 recognised again
+      visual_spatial_field.getSquareContents(1, 2).get(2).setRecognised(putdown_time, true)
+      
+      # Set recognised status and terminus of object 0 on (1, 2)
+      expected_visual_spatial_field_object_properties[1][2][2][3] = putdown_time + recognised_object_lifespan
+      expected_visual_spatial_field_object_properties[1][2][2][4] = true
+      
+      # Construct move
+      move = ArrayList.new
+      move.add(ItemSquarePattern.new(objects[0][0], 1, 2))
+      move.add(ItemSquarePattern.new(objects[0][0], 3, 2))
+      move_sequence = ArrayList.new
+      move_sequence.add(move)
+      
+      # Set relevant timing parameters
+      time_move_requested = model.getAttentionClock()
+      pickup_time = time_move_requested + visual_spatial_field_access_time
+      putdown_time = pickup_time + time_to_move_object
+      
+      # Set terminus for object 0 on (1, 2)
+      expected_visual_spatial_field_object_properties[1][2][2][3] = pickup_time
+      
+      # Add empty square to (1, 2)
+      expected_visual_spatial_field_object_properties[1][2].push([
+        Scene.getEmptySquareToken(),
+        Scene.getEmptySquareToken(),
+        pickup_time,
+        pickup_time + unrecognised_object_lifespan,
+        false,
+        false
+      ])
+    
+      # Set terminus for empty square on (3, 2)
+      expected_visual_spatial_field_object_properties[3][2][1][3] = putdown_time
+      
+      # Add object 0 to (3, 2)
+      expected_visual_spatial_field_object_properties[3][2].push([
+        objects[0][0],
+        objects[0][1],
+        putdown_time,
+        putdown_time + unrecognised_object_lifespan,
+        false,
+        false
+      ])
+    
+      visual_spatial_field.moveObjects(move_sequence, time_move_requested, false)
+      check_values_of_visual_spatial_objects_against_expected(
+        visual_spatial_field,
+        expected_visual_spatial_field_object_properties,
+        model.getAttentionClock(),
+        "when checking state of visual-spatial field after moving " + move_types[move_number] + 
+        " (move number: " + move_number.to_s + ")"
+      )
+      assert_equal(
+        putdown_time, 
+        model.getAttentionClock(), 
+        "occurred when checking the time that the CHREST model associated with " +
+        "the visual-spatial field will be free after moving " + move_types[move_number] + 
+        " (move number: " + move_number.to_s + ")"
+      )
+      
+    ############################################################################
+    elsif (move_number == 2)
+      # ================
+      # MOVE DESCRIPTION
+      # ================
+      # - Move to square that has the creator on it.
+      # - Move from square that has the creator on it.
+      # - Move(s) performed:
+      #   + Object 0 moved from (1, 1) to (2, 0).
+      #   + Object 0 moved from (2, 0) to (3, 2).
+      # - In between moves, object 0's recognised status will be manually set
+      #   to true.
+      # 
+      # ===============
+      # EXPECTED OUTPUT
+      # ===============
+      # - After first move
+      #   + Object 0 on (1, 1) should have terminus set to time when it is
+      #     "picked-up".
+      #   + Empty square object should be placed on (1, 1) when object 0 is 
+      #     "picked-up".
+      #   + Object 0 should be added to (2, 0) at time of "put-down" but should 
+      #     no longer be recognised.
+      #   + The creator object on (2, 0) should not be modified.
+      #   + Attention clock of model should be set to the time that object 0 is
+      #     "put-down" on (2, 0).
+      #   + Expected visual-spatial field state:
+      #     
+      #                  --------
+      # 4     x      x   |      |   x      x
+      #           ----------------------
+      # 3     x   | 2(C) |      |      |   x
+      #    ------------------------------------
+      # 2  |      |      | 1(B) |      |      |
+      #    ------------------------------------
+      # 1     x   |      |      |      |   x
+      #           ----------------------
+      # 0     x      x   | 0(A) |   x      x
+      #                  |3(SLF)|
+      #                  --------
+      #       0      1      2       3      4     COORDINATES
+      #     
+      # - After second move
+      #   + Object 0 on (2, 0) should have terminus set to time when it is 
+      #     "picked-up".
+      #   + The other objects on (2, 0) should not be modified.
+      #   + The empty square on (3, 2) should have its terminus set to the time
+      #     object 0 is "put-down".
+      #   + Object 0 should be added to (3, 2).  Its creation time should be set
+      #     to the time it is "put-down" and it should still be unrecognised.
+      #   + Expected visual-spatial field state:
+      #
+      #                  --------
+      # 4     x      x   |      |   x      x
+      #           ----------------------
+      # 3     x   | 2(C) |      |      |   x
+      #    ------------------------------------
+      # 2  |      |      | 1(B) | 0(A) |      |
+      #    ------------------------------------
+      # 1     x   |      |      |      |   x
+      #           ----------------------
+      # 0     x      x   |3(SLF)|   x      x
+      #                  --------
+      #       0      1      2       3      4     COORDINATES
+            
+      ##############################
+      ##### FIRST PART OF MOVE #####
+      ##############################
+      
+      # Construct move.
+      move = ArrayList.new
+      move.add(ItemSquarePattern.new(objects[0][0], 1, 1))
+      move.add(ItemSquarePattern.new(objects[0][0], 2, 0))
+      move_sequence = ArrayList.new
+      move_sequence.add(move)
+      
+      # Set relevant timing parameters.
+      time_move_requested = model.getAttentionClock()
+      pickup_time = time_move_requested + visual_spatial_field_access_time
+      putdown_time = pickup_time + time_to_move_object
+      
+      # Set terminus for object 0 on (1, 1)
+      expected_visual_spatial_field_object_properties[1][1][1][3] = pickup_time
+      
+      # New empty square object should be added to (1, 1) when 0 picked up.
+      expected_visual_spatial_field_object_properties[1][1].push([
+        Scene.getEmptySquareToken(),
+        Scene.getEmptySquareToken(),
+        pickup_time,
+        pickup_time + unrecognised_object_lifespan,
+        false,
+        false
+      ])
+      
+      # Object 0 should be added to (2, 0) at first putdown time.  Should no 
+      # longer be recognised.
+      expected_visual_spatial_field_object_properties[2][0].push([
+        objects[0][0],
+        objects[0][1],
+        putdown_time,
+        putdown_time + unrecognised_object_lifespan,
+        false,
+        false
+      ])
+    
+      # Do not modify anything about the creator.
+    
+      visual_spatial_field.moveObjects(move_sequence, time_move_requested, false)
+      check_values_of_visual_spatial_objects_against_expected(
+        visual_spatial_field,
+        expected_visual_spatial_field_object_properties,
+        model.getAttentionClock(),
+        "when checking state of visual-spatial field after first part of moving " + 
+        move_types[move_number] + " (move number: " + move_number.to_s + ")"
+      )
+      assert_equal(
+        putdown_time, 
+        model.getAttentionClock(), 
+        "occurred when checking the time that the CHREST model associated with " +
+        "the visual-spatial field will be free after first part of moving " + 
+        move_types[move_number] + " (move number: " + move_number.to_s + ")"
+      )
+      
+      ###############################
+      ##### SECOND PART OF MOVE #####
+      ###############################
+      
+      # Artificially make object 0 recognised again
+      visual_spatial_field.getSquareContents(2, 0).get(1).setRecognised(putdown_time, true)
+      
+      # Set recognised status and terminus of object 0 on (2, 0)
+      expected_visual_spatial_field_object_properties[2][0][1][3] = putdown_time + recognised_object_lifespan
+      expected_visual_spatial_field_object_properties[2][0][1][4] = true
+      
+      # Construct move.
+      move = ArrayList.new
+      move.add(ItemSquarePattern.new(objects[0][0], 2, 0))
+      move.add(ItemSquarePattern.new(objects[0][0], 3, 2))
+      move_sequence = ArrayList.new
+      move_sequence.add(move)
+      
+      # Set relevant time parameters.
+      time_move_requested = model.getAttentionClock()
+      pickup_time = time_move_requested + visual_spatial_field_access_time
+      putdown_time = pickup_time + time_to_move_object
+      
+      # Set terminus for object 0 on (2, 0)
+      expected_visual_spatial_field_object_properties[2][0][1][3] = pickup_time
+      
+      # Do not modify anything about the creator.
+      
+      # Set terminus for empty square object on (3, 2)
+      expected_visual_spatial_field_object_properties[3][2][1][3] = putdown_time
+      
+      # Add object 1 to (3, 2)
+      expected_visual_spatial_field_object_properties[3][2].push([
+        objects[0][0],
+        objects[0][1],
+        putdown_time,
+        putdown_time + unrecognised_object_lifespan,
+        false,
+        false
+      ])
+    
+      visual_spatial_field.moveObjects(move_sequence, time_move_requested, false)
+      check_values_of_visual_spatial_objects_against_expected(
+        visual_spatial_field,
+        expected_visual_spatial_field_object_properties,
+        model.getAttentionClock(),
+        "when checking state of visual-spatial field after second part of moving " + 
+        move_types[move_number] + " (move number: " + move_number.to_s + ")"
+      )
+      assert_equal(
+        putdown_time, 
+        model.getAttentionClock(), 
+        "occurred when checking the time that the CHREST model associated with " +
+        "the visual-spatial field will be free after second part of moving " + 
+        move_types[move_number] + " (move number: " + move_number.to_s + ")"
+      )
+      
+    ############################################################################
+    elsif(move_number == 3)
+      #	================
+      # MOVE DESCRIPTION
+      # ================
+      #	- Move to square that has a live, unrecognised object on it.
+      #	- Move from square that has a live, unrecognised object on it.
+      # - Move(s) performed:
+      #   + Object 0 moved from (1, 1) to (2, 2).
+      #   + Object 0 moved from (2, 2) to (3, 2).
+      # - In between moves, object 0's recognised status will be manually set
+      #   to true.
+      #	
+      #	===============
+      # EXPECTED OUTPUT
+      # ===============
+      # - After first move
+      #   + Object 0 on (1, 1) should have terminus set to time when it is
+      #     "picked-up".
+      #   + Empty square object should be placed on (1, 1) when object 0 is 
+      #     "picked-up".
+      #   + Object 0 should be added to (2, 2) at time of "put-down" but should 
+      #     no longer be recognised.
+      #   + Object 1 on (2, 2) should have its terminus extended to the
+      #     time object 0 is "put-down" plus the lifespan for an unrecognised
+      #     object.
+      #   + Attention clock of model should be set to the time that object 0 is
+      #     "put-down" on (2, 2).
+      #   + Expected visual-spatial field state:
+      #   
+      #                  --------
+      # 4     x      x   |      |   x      x
+      #           ----------------------
+      # 3     x   | 2(C) |      |      |   x
+      #    ------------------------------------
+      # 2  |      |      | 0(A) |      |      |
+      #    |      |      | 1(B) |      |      |
+      #    ------------------------------------
+      # 1     x   |      |      |      |   x
+      #           ----------------------
+      # 0     x      x   |3(SLF)|   x      x
+      #                  --------
+      #       0      1      2       3      4     COORDINATES
+      #       
+      # - After second move
+      #   + Object 0 on (2, 2) should have terminus set to time when it is
+      #     "picked-up".
+      #   + Terminus for object 1 should be extended to the time object 0 is
+      #     "picked-up" plus the lifespan specified for unrecognised objects.
+      #   + The empty square object on (3, 2) should have its terminus set to
+      #     the time that object 0 is "put-down".
+      #   + Object 0 should be added to (3, 2) at time of "put-down" and should 
+      #     not be recognised.
+      #   + Attention clock of model should be set to the time that object 0 is
+      #     "put-down" on (3, 2).
+      #   + Expected visual-spatial field state:
+      #
+      #                  --------
+      # 4     x      x   |      |   x      x
+      #           ----------------------
+      # 3     x   | 2(C) |      |      |   x
+      #    ------------------------------------
+      # 2  |      |      | 1(B) | 0(A) |      |
+      #    ------------------------------------
+      # 1     x   |      |      |      |   x
+      #           ----------------------
+      # 0     x      x   |3(SLF)|   x      x
+      #                  --------
+      #       0      1      2       3      4     COORDINATES
+      
+      ##############################
+      ##### FIRST PART OF MOVE #####
+      ##############################
+      
+      # Construct move
+      move = ArrayList.new
+      move.add(ItemSquarePattern.new(objects[0][0], 1, 1))
+      move.add(ItemSquarePattern.new(objects[0][0], 2, 2))
+      move_sequence = ArrayList.new
+      move_sequence.add(move)
+      
+      # Set relevant time parameters
+      time_move_requested = model.getAttentionClock()
+      pickup_time = time_move_requested + visual_spatial_field_access_time
+      putdown_time = pickup_time + time_to_move_object
+      
+      # Set terminus for object 0 on (1, 1)
+      expected_visual_spatial_field_object_properties[1][1][1][3] = pickup_time
+      
+      # New empty square object should be added to (1, 1) when 0 picked up.
+      expected_visual_spatial_field_object_properties[1][1].push([
+        Scene.getEmptySquareToken(),
+        Scene.getEmptySquareToken(),
+        pickup_time,
+        pickup_time + unrecognised_object_lifespan,
+        false,
+        false
+      ])
+      
+      # Object 0 should be added to (2, 2) at first putdown time.  Should no 
+      # longer be recognised.
+      expected_visual_spatial_field_object_properties[2][2].push([
+        objects[0][0],
+        objects[0][1],
+        putdown_time,
+        putdown_time + unrecognised_object_lifespan,
+        false,
+        false
+      ])
+    
+      # Update terminus for object 1 on (2, 2) since the coordinates have been
+      # looked at and the object is alive when 0 is putdown.
+      expected_visual_spatial_field_object_properties[2][2][1][3] = putdown_time + unrecognised_object_lifespan
+    
+      visual_spatial_field.moveObjects(move_sequence, time_move_requested, false)
+      check_values_of_visual_spatial_objects_against_expected(
+        visual_spatial_field,
+        expected_visual_spatial_field_object_properties,
+        model.getAttentionClock(),
+        "when checking state of visual-spatial field after first part of moving " + 
+        move_types[move_number] + " (move number: " + move_number.to_s + ")"
+      )
+      assert_equal(
+        putdown_time, 
+        model.getAttentionClock(), 
+        "occurred when checking the time that the CHREST model associated with " +
+        "the visual-spatial field will be free after first part of moving " + 
+        move_types[move_number] + " (move number: " + move_number.to_s + ")"
+      )
+      ###############################
+      ##### SECOND PART OF MOVE #####
+      ###############################
+      
+      # Make object 0 recognised again
+      visual_spatial_field.getSquareContents(2, 2).get(2).setRecognised(putdown_time, true)
+      
+      # Set recognised status and terminus of object 0 on (2, 2)
+      expected_visual_spatial_field_object_properties[2][2][2][3] = putdown_time + recognised_object_lifespan
+      expected_visual_spatial_field_object_properties[2][2][2][4] = true
+      
+      # Construct move
+      move = ArrayList.new
+      move.add(ItemSquarePattern.new(objects[0][0], 2, 2))
+      move.add(ItemSquarePattern.new(objects[0][0], 3, 2))
+      move_sequence = ArrayList.new
+      move_sequence.add(move)
+      
+      # Set relevant timing parameters
+      time_move_requested = model.getAttentionClock()
+      pickup_time = time_move_requested + visual_spatial_field_access_time
+      putdown_time = pickup_time + time_to_move_object
+      
+      # Set terminus for object 0 on (2, 2)
+      expected_visual_spatial_field_object_properties[2][2][2][3] = pickup_time
+      
+      # Set terminus for object 1 on (2, 2)
+      expected_visual_spatial_field_object_properties[2][2][1][3] = pickup_time + unrecognised_object_lifespan
+      
+      # Set terminus for empty square object on (3, 2)
+      expected_visual_spatial_field_object_properties[3][2][1][3] = putdown_time
+      
+      # Add object 0 to (3, 2)
+      expected_visual_spatial_field_object_properties[3][2].push([
+        objects[0][0],
+        objects[0][1],
+        putdown_time,
+        putdown_time + unrecognised_object_lifespan,
+        false,
+        false
+      ])
+    
+      visual_spatial_field.moveObjects(move_sequence, time_move_requested, false)
+      check_values_of_visual_spatial_objects_against_expected(
+        visual_spatial_field,
+        expected_visual_spatial_field_object_properties,
+        model.getAttentionClock(),
+        "when checking state of visual-spatial field after second part of moving " + 
+        move_types[move_number] + " (move number: " + move_number.to_s + ")"
+      )
+      assert_equal(
+        putdown_time, 
+        model.getAttentionClock(), 
+        "occurred when checking the time that the CHREST model associated with " +
+        "the visual-spatial field will be free after second part of moving " + 
+        move_types[move_number] + " (move number: " + move_number.to_s + ")"
+      )
+    
+    ############################################################################
+    elsif(move_number == 4)
+      #	================
+      # MOVE DESCRIPTION
+      # ================
+      #	- Move to square that has a live, recognised object on it.
+      #	- Move from square that has a live, recognised object on it.
+      # - Move(s) performed:
+      #   + Object 0 moved from (1, 1) to (1, 3).
+      #   + Object 0 moved from (1, 3) to (3, 2).
+      # - In between moves, object 0's recognised status will be manually set
+      #   to true.
+      # - Object 2's recognised status will be set manually.
+      #	
+      #	===============
+      # EXPECTED OUTPUT
+      # ===============
+      # - After first move
+      #   + Object 0 on (1, 1) should have terminus set to time when it is
+      #     "picked-up".
+      #   + Empty square object should be placed on (1, 1) when object 0 is 
+      #     "picked-up".
+      #   + Object 0 should be added to (1, 3) at time of "put-down" but should 
+      #     no longer be recognised.
+      #   + Object 2 on (2, 2) should have its terminus extended to the
+      #     time object 0 is "put-down" plus the lifespan for a recognised
+      #     object.
+      #   + Attention clock of model should be set to the time that object 0 is
+      #     "put-down" on (2, 2).
+      #   + Expected visual-spatial field state:
+      #   
+      #                  --------
+      # 4     x      x   |      |   x      x
+      #           ----------------------
+      # 3     x   | 0(A) |      |      |   x
+      #           | 2(C) |      |      |
+      #    ------------------------------------
+      # 2  |      |      | 1(B) |      |      |
+      #    ------------------------------------
+      # 1     x   |      |      |      |   x
+      #           ----------------------
+      # 0     x      x   |3(SLF)|   x      x
+      #                  --------
+      #       0      1      2       3      4     COORDINATES
+      #       
+      # - After second move
+      #   + Object 0 on (1, 3) should have terminus set to time when it is
+      #     "picked-up".
+      #   + Terminus for object 2 should be extended to the time object 0 is
+      #     "picked-up" plus the lifespan specified for recognised objects.
+      #   + The empty square object on (3, 2) should have its terminus set to
+      #     the time that object 0 is "put-down".
+      #   + Object 0 should be added to (3, 2) at time of "put-down" and should 
+      #     not be recognised.
+      #   + Attention clock of model should be set to the time that object 0 is
+      #     "put-down" on (3, 2).
+      #   + Expected visual-spatial field state:
+      #
+      #                  --------
+      # 4     x      x   |      |   x      x
+      #           ----------------------
+      # 3     x   | 2(C) |      |      |   x
+      #    ------------------------------------
+      # 2  |      |      | 1(B) | 0(A) |      |
+      #    ------------------------------------
+      # 1     x   |      |      |      |   x
+      #           ----------------------
+      # 0     x      x   |3(SLF)|   x      x
+      #                  --------
+      #       0      1      2       3      4     COORDINATES
+      
+      visual_spatial_field.getSquareContents(1, 3).get(1).setRecognised(model.getAttentionClock(), true)
+      expected_visual_spatial_field_object_properties[1][3][1][3] = model.getAttentionClock() + recognised_object_lifespan
+      expected_visual_spatial_field_object_properties[1][3][1][4] = true
+      
+      ##############################
+      ##### FIRST PART OF MOVE #####
+      ##############################
+      
+      # Construct move
+      move = ArrayList.new
+      move.add(ItemSquarePattern.new(objects[0][0], 1, 1))
+      move.add(ItemSquarePattern.new(objects[0][0], 1, 3))
+      move_sequence = ArrayList.new
+      move_sequence.add(move)
+      
+      # Set relevant time parameters
+      time_move_requested = model.getAttentionClock()
+      pickup_time = time_move_requested + visual_spatial_field_access_time
+      putdown_time = pickup_time + time_to_move_object
+      
+      # Set terminus for object 0 on (1, 1)
+      expected_visual_spatial_field_object_properties[1][1][1][3] = pickup_time
+      
+      # New empty square object should be added to (1, 1) when 0 picked up.
+      expected_visual_spatial_field_object_properties[1][1].push([
+        Scene.getEmptySquareToken(),
+        Scene.getEmptySquareToken(),
+        pickup_time,
+        pickup_time + unrecognised_object_lifespan,
+        false,
+        false
+      ])
+      
+      # Object 0 should be added to (1, 3) at first putdown time.  Should no 
+      # longer be recognised.
+      expected_visual_spatial_field_object_properties[1][3].push([
+        objects[0][0],
+        objects[0][1],
+        putdown_time,
+        putdown_time + unrecognised_object_lifespan,
+        false,
+        false
+      ])
+    
+      # Update terminus for object 2 on (1, 3) since the coordinates have been
+      # looked at and the object is alive when 0 is putdown.
+      expected_visual_spatial_field_object_properties[1][3][1][3] = putdown_time + recognised_object_lifespan
+    
+      visual_spatial_field.moveObjects(move_sequence, time_move_requested, false)
+      check_values_of_visual_spatial_objects_against_expected(
+        visual_spatial_field,
+        expected_visual_spatial_field_object_properties,
+        model.getAttentionClock(),
+        "when checking state of visual-spatial field after first part of moving " + 
+        move_types[move_number] + " (move number: " + move_number.to_s + ")"
+      )
+      assert_equal(
+        putdown_time, 
+        model.getAttentionClock(), 
+        "occurred when checking the time that the CHREST model associated with " +
+        "the visual-spatial field will be free after first part of moving " + 
+        move_types[move_number] + " (move number: " + move_number.to_s + ")"
+      )
+      ###############################
+      ##### SECOND PART OF MOVE #####
+      ###############################
+      
+      # Make object 0 recognised again
+      visual_spatial_field.getSquareContents(1, 3).get(2).setRecognised(putdown_time, true)
+      
+      # Set recognised status and terminus of object 0 on (1, 3)
+      expected_visual_spatial_field_object_properties[1][3][2][3] = putdown_time + recognised_object_lifespan
+      expected_visual_spatial_field_object_properties[1][3][2][4] = true
+      
+      # Construct move
+      move = ArrayList.new
+      move.add(ItemSquarePattern.new(objects[0][0], 1, 3))
+      move.add(ItemSquarePattern.new(objects[0][0], 3, 2))
+      move_sequence = ArrayList.new
+      move_sequence.add(move)
+      
+      # Set relevant timing parameters
+      time_move_requested = model.getAttentionClock()
+      pickup_time = time_move_requested + visual_spatial_field_access_time
+      putdown_time = pickup_time + time_to_move_object
+      
+      # Set terminus for object 0 on (1, 3)
+      expected_visual_spatial_field_object_properties[1][3][2][3] = pickup_time
+      
+      # Set terminus for object 2 on (1, 3)
+      expected_visual_spatial_field_object_properties[1][3][1][3] = pickup_time + recognised_object_lifespan
+      
+      # Set terminus for empty square object on (3, 2)
+      expected_visual_spatial_field_object_properties[3][2][1][3] = putdown_time
+      
+      # Add object 0 to (3, 2)
+      expected_visual_spatial_field_object_properties[3][2].push([
+        objects[0][0],
+        objects[0][1],
+        putdown_time,
+        putdown_time + unrecognised_object_lifespan,
+        false,
+        false
+      ])
+    
+      visual_spatial_field.moveObjects(move_sequence, time_move_requested, false)
+      check_values_of_visual_spatial_objects_against_expected(
+        visual_spatial_field,
+        expected_visual_spatial_field_object_properties,
+        model.getAttentionClock(),
+        "when checking state of visual-spatial field after second part of moving " + 
+        move_types[move_number] + " (move number: " + move_number.to_s + ")"
+      )
+      assert_equal(
+        putdown_time, 
+        model.getAttentionClock(), 
+        "occurred when checking the time that the CHREST model associated with " +
+        "the visual-spatial field will be free after second part of moving " + 
+        move_types[move_number] + " (move number: " + move_number.to_s + ")"
+      )
+      
+    ############################################################################
+    elsif(move_number == 5)
+      #	================
+      # MOVE DESCRIPTION
+      # ================
+      #	- Move to square whose object status is unknown.
+      #	- Move from square whose object status was unknown.
+      #	- Move(s) performed:
+      #   + Object 0 moved from (1, 1) to (2, 3).
+      #   + Object 0 moved from (2, 3) to (3, 2).
+      # - Before the moves are applied, coordinates (2, 3) will be artificially
+      #   set to contain an unknown square object.
+      # - In between moves, object 0's recognised status will be manually set
+      #   to true.
+      #	- Visual-spatial field state before moves performed (unknown square is 
+      #	  denoted by a "?"):
+      #	
+      #                  --------
+      # 4     x      x   |      |   x      x
+      #           ----------------------
+      # 3     x   | 2(C) |  ?   |      |   x
+      #    ------------------------------------
+      # 2  |      |      | 1(B) |      |      |
+      #    ------------------------------------
+      # 1     x   | 0(A) |      |      |   x
+      #           ----------------------
+      # 0     x      x   |3(SLF)|   x      x
+      #                  --------
+      #       0      1      2       3      4     COORDINATES
+      #
+      # ===============
+      # EXPECTED OUTPUT
+      # ===============
+      # - After first move
+      #   + Object 0 on (1, 1) should have terminus set to time when it is
+      #     "picked-up".
+      #   + Empty square object should be placed on (1, 1) when object 0 is 
+      #     "picked-up".
+      #   + Unknown square object on (2, 3) should have its terminus set to the 
+      #     time that object 0 is "put-down".
+      #   + Object 0 should be added to (2, 3) at time of "put-down" but should 
+      #     no longer be recognised.
+      #   + Attention clock of model should be set to the time that object 0 is
+      #     "put-down" on (2, 3).
+      #   + Expected visual-spatial field state:
+      #
+      #                  --------
+      # 4     x      x   |      |   x      x
+      #           ----------------------
+      # 3     x   | 2(C) | 0(A) |      |   x
+      #    ------------------------------------
+      # 2  |      |      | 1(B) |      |      |
+      #    ------------------------------------
+      # 1     x   |      |      |      |   x
+      #           ----------------------
+      # 0     x      x   |3(SLF)|   x      x
+      #                  --------
+      #       0      1      2       3      4     COORDINATES
+      #
+      #- After second move
+      #   + Object 0 on (2, 3) should have terminus set to time when it is
+      #     "picked-up".
+      #   + Empty square object should be placed on (2, 3) when object 0 is 
+      #     "picked-up".
+      #   + Empty square object on (3, 2) should have its terminus set to the 
+      #     time that object 0 is "put-down".
+      #   + Object 0 should be added to (3, 2) at time of "put-down" but should 
+      #     no longer be recognised.
+      #   + Attention clock of model should be set to the time that object 0 is
+      #     "put-down" on (3, 2).
+      #   + Expected visual-spatial field state:
+      #
+      #                  --------
+      # 4     x      x   |      |   x      x
+      #           ----------------------
+      # 3     x   | 2(C) |      |      |   x
+      #    ------------------------------------
+      # 2  |      |      | 1(B) | 0(A) |      |
+      #    ------------------------------------
+      # 1     x   |      |      |      |   x
+      #           ----------------------
+      # 0     x      x   |3(SLF)|   x      x
+      #                  --------
+      #       0      1      2       3      4     COORDINATES
+      
+      # Artificially create the unknown square
+      visual_spatial_field.getSquareContents(2, 3).get(1).setTerminus(model.getAttentionClock(), true)
+      visual_spatial_field.setUnknownSquares(model.getAttentionClock + 1)
+      
+      # Set expected object properties for the coordinates containing the 
+      # unknown square.
+      expected_visual_spatial_field_object_properties[2][3][1][3] = model.getAttentionClock()
+      expected_visual_spatial_field_object_properties[2][3].push([
+        VisualSpatialFieldObject.getUnknownSquareToken(),
+        VisualSpatialFieldObject.getUnknownSquareToken(),
+        model.getAttentionClock() + 1,
+        nil,
+        false,
+        false
+      ])
+    
+      check_values_of_visual_spatial_objects_against_expected(
+        visual_spatial_field,
+        expected_visual_spatial_field_object_properties,
+        model.getAttentionClock() + 1,
+        "when checking state of visual-spatial field before moving " + 
+        move_types[move_number] + " (move number: " + move_number.to_s + ")"
+      )
+      
+      ##############################
+      ##### FIRST PART OF MOVE #####
+      ##############################
+      
+      # Construct move
+      move = ArrayList.new
+      move.add(ItemSquarePattern.new(objects[0][0], 1, 1))
+      move.add(ItemSquarePattern.new(objects[0][0], 2, 3))
+      move_sequence = ArrayList.new
+      move_sequence.add(move)
+      
+      # Set relevant time parameters
+      time_move_requested = model.getAttentionClock() + 1
+      pickup_time = time_move_requested + visual_spatial_field_access_time
+      putdown_time = pickup_time + time_to_move_object
+      
+      # Set terminus for object 0 on (1, 1)
+      expected_visual_spatial_field_object_properties[1][1][1][3] = pickup_time
+      
+      # New empty square object should be added to (1, 1) when 0 picked up.
+      expected_visual_spatial_field_object_properties[1][1].push([
+        Scene.getEmptySquareToken(),
+        Scene.getEmptySquareToken(),
+        pickup_time,
+        pickup_time + unrecognised_object_lifespan,
+        false,
+        false
+      ])
+      
+      # Set terminus for unknown square on (2, 3)
+      expected_visual_spatial_field_object_properties[2][3][2][3] = putdown_time
+      
+      # Add object 0 to (2, 3)
+      expected_visual_spatial_field_object_properties[2][3].push([
+        objects[0][0],
+        objects[0][1],
+        putdown_time,
+        putdown_time + unrecognised_object_lifespan,
+        false,
+        false
+      ])
+    
+      visual_spatial_field.moveObjects(move_sequence, time_move_requested, false)
+      
+      check_values_of_visual_spatial_objects_against_expected(
+        visual_spatial_field,
+        expected_visual_spatial_field_object_properties,
+        model.getAttentionClock(),
+        "when checking state of visual-spatial field after first part of moving " + 
+        move_types[move_number] + " (move number: " + move_number.to_s + ")"
+      )
+      assert_equal(
+        putdown_time, 
+        model.getAttentionClock(), 
+        "occurred when checking the time that the CHREST model associated with " +
+        "the visual-spatial field will be free after first part of moving " + 
+        move_types[move_number] + " (move number: " + move_number.to_s + ")"
+      )
+      
+      ###############################
+      ##### SECOND PART OF MOVE #####
+      ###############################
+      
+      # Make object 0 recognised again
+      visual_spatial_field.getSquareContents(2, 3).get(3).setRecognised(putdown_time, true)
+      
+      # Set recognised status and terminus of object 0 on (2, 3)
+      expected_visual_spatial_field_object_properties[2][3][3][3] = putdown_time + recognised_object_lifespan
+      expected_visual_spatial_field_object_properties[2][3][3][4] = true
+      
+      # Construct move
+      move = ArrayList.new()
+      move.add(ItemSquarePattern.new(objects[0][0], 2, 3))
+      move.add(ItemSquarePattern.new(objects[0][0], 3, 2))
+      move_sequence = ArrayList.new()
+      move_sequence.add(move)
+      
+      # Set relevant timing parameters
+      time_move_requested = model.getAttentionClock()
+      pickup_time = time_move_requested + visual_spatial_field_access_time
+      putdown_time = pickup_time + time_to_move_object
+      
+      # Set terminus for object 0 on (2, 3)
+      expected_visual_spatial_field_object_properties[2][3][3][3] = pickup_time
+      
+      # Add an empty square object to (2, 3)
+      expected_visual_spatial_field_object_properties[2][3].push([
+        Scene.getEmptySquareToken(),
+        Scene.getEmptySquareToken(),
+        pickup_time,
+        pickup_time + unrecognised_object_lifespan,
+        false,
+        false
+      ])
+      
+      # Set terminus for empty square object on (3, 2)
+      expected_visual_spatial_field_object_properties[3][2][1][3] = putdown_time
+      
+      # Add object 0 to (3, 2)
+      expected_visual_spatial_field_object_properties[3][2].push([
+        objects[0][0],
+        objects[0][1],
+        putdown_time,
+        putdown_time + unrecognised_object_lifespan,
+        false,
+        false
+      ])
+    
+      visual_spatial_field.moveObjects(move_sequence, time_move_requested, false)
+      check_values_of_visual_spatial_objects_against_expected(
+        visual_spatial_field,
+        expected_visual_spatial_field_object_properties,
+        model.getAttentionClock(),
+        "when checking state of visual-spatial field after second part of moving " + 
+        move_types[move_number] + " (move number: " + move_number.to_s + ")"
+      )
+      assert_equal(
+        putdown_time, 
+        model.getAttentionClock(), 
+        "occurred when checking the time that the CHREST model associated with " +
+        "the visual-spatial field will be free after second part of moving " + 
+        move_types[move_number] + " (move number: " + move_number.to_s + ")"
+      )
+    end 
+  end 
+end
+
+################################################################################
+# Tests for correct operation of the "VisualSpatialField.moveObjects()" function
+# when moving an unrecognised real object in all possible scenarios.
+# 
 # The scene used in the following test is illustrated below ("x" represents a 
 # blind square, real objects are denoted by their identifiers and their class 
 # are in parenthesis, ghost objects are denoted by lower case letters in 
@@ -789,108 +2000,2591 @@ end
 #                  --------
 # 4     x      x   |      |   x      x
 #           ----------------------
-# 3     x   | 3(C) |      |      |   x
+# 3     x   | 2(C) |      |      |   x
 #    ------------------------------------
 # 2  |      |      | 1(B) |      |      |
 #    ------------------------------------
 # 1     x   | 0(A) |      |      |   x
 #           ----------------------
-# 0     x     2(b) |SLF(4)|   x      x
+# 0     x      x   |3(SLF)|   x      x
 #                  --------
 #       0      1      2       3      4     COORDINATES
 #          
-unit_test "move_object" do
+unit_test "move_object (unrecognised real object)" do
   
-  # Set the objects that will be used.
-  test_objects = [
-    ["0", "A"], 
-    ["1", "B"],
-    [VisualSpatialField.getGhostObjectIdPrefix + "0", "B"],
-    ["3", "C"],
-    ["4", Scene.getCreatorToken()]
+  move_types = [
+    "to square containing a live blind object",
+    "from/to square containing a live empty object",
+    "to/from square containing the creator",
+    "to/from square containing a live unrecognised object",
+    "to/from square containing a live recognised object",
+    "to/from a square whose object status is unknown"
   ]
   
-  ########################
-  ##### CREATE SCENE #####
-  ########################
-  
-  scene = Scene.new("Test scene", 5, 5, nil)
-  scene.addItemToSquare(2, 0, test_objects[4][0], test_objects[4][1])
-  scene.addItemToSquare(1, 1, test_objects[0][0], test_objects[0][1])
-  scene.addItemToSquare(2, 1, Scene.getEmptySquareIdentifier(), Scene.getEmptySquareIdentifier())
-  scene.addItemToSquare(3, 1, Scene.getEmptySquareIdentifier(), Scene.getEmptySquareIdentifier())
-  scene.addItemToSquare(0, 2, Scene.getEmptySquareIdentifier(), Scene.getEmptySquareIdentifier())
-  scene.addItemToSquare(1, 2, Scene.getEmptySquareIdentifier(), Scene.getEmptySquareIdentifier())
-  scene.addItemToSquare(2, 2, test_objects[1][0], test_objects[1][1])
-  scene.addItemToSquare(3, 2, Scene.getEmptySquareIdentifier(), Scene.getEmptySquareIdentifier())
-  scene.addItemToSquare(4, 2, Scene.getEmptySquareIdentifier(), Scene.getEmptySquareIdentifier())
-  scene.addItemToSquare(1, 3, test_objects[3][0], test_objects[3][1])
-  scene.addItemToSquare(2, 3, Scene.getEmptySquareIdentifier(), Scene.getEmptySquareIdentifier())
-  scene.addItemToSquare(3, 3, Scene.getEmptySquareIdentifier(), Scene.getEmptySquareIdentifier())
-  scene.addItemToSquare(2, 4, Scene.getEmptySquareIdentifier(), Scene.getEmptySquareIdentifier())
-  
-  ###################################
-  ##### CREATE NEW CHREST MODEL #####
-  ###################################
-  model = Chrest.new
-  model.setDomain(GenericDomain.new(model))
-  model.getPerceiver.setFieldOfView(1)
-  
-  #########################
-  ##### SET TEST TIME #####
-  #########################
-  
-  # Set the domain time (the time against which all CHREST operations will be
-  # performed in this test).
-  domain_time = 0
-  
-  ###########################
-  ##### CHREST LEARNING #####
-  ###########################
-  
-  # Since the scene creator is present, the locations of 0 and the ghost object
-  # should be learned as creator-relative since this is how the coordinates will
-  # be formatted during recognition when the visual-spatial field is 
-  # constructed.
-  real_object_pattern = ItemSquarePattern.new(test_objects[0][1], -1, 1)
-  ghost_object_pattern = ItemSquarePattern.new(test_objects[2][1], -1, 0)
-  list_pattern_to_learn = ListPattern.new()
-  list_pattern_to_learn.add(real_object_pattern)
-  list_pattern_to_learn.add(ghost_object_pattern)
-  recognised_chunk = model.recogniseAndLearn(list_pattern_to_learn, domain_time).getImage().toString()
-  until recognised_chunk == list_pattern_to_learn.toString()
-    domain_time += 1
-    recognised_chunk = model.recogniseAndLearn(list_pattern_to_learn, domain_time).getImage().toString()
-  end
-  
-  # Set the domain time to be the value of CHREST's learning clock since, when
-  # the visual-spatial field is constructed, the LTM of the model will contain
-  # the completely familiarised learned pattern enabling expected visual-spatial
-  # field construction due to chunk recognition retrieving the learned pattern.
-  domain_time = model.getLearningClock()
-  
-  ##########################################
-  ##### CONSTRUCT VISUAL-SPATIAL FIELD #####
-  ##########################################
-  
-  # Set visual-spatial field variables.
-  creation_time = domain_time
-  number_fixations = 20
-  time_to_encode_objects = 50
-  time_to_encode_empty_squares = 10
-  visual_spatial_field_access_time = 100
-  time_to_move_object = 250
-  recognised_object_lifespan = 60000
-  unrecognised_object_lifespan = 30000
-  
-  visual_stm_contents_as_expected = false
-  creation_time = domain_time
-  expected_stm_contents = recognised_chunk
-  until visual_stm_contents_as_expected do
+  for move_number in 0...move_types.count
     
-    # Set creation time to the current domain time (this is important in 
-    # calculating a lot of test variables below).
+    objects = [
+      ["0", "A"],
+      ["1", "B"],
+      ["2", "C"],
+      ["3", Scene.getCreatorToken()]
+    ]
+
+    scene = Scene.new("Test", 5, 5, nil)
+    scene.addItemToSquare(2, 0, objects[3][0], objects[3][1])
+    scene.addItemToSquare(1, 1, objects[0][0], objects[0][1])
+    scene.addItemToSquare(2, 1, Scene.getEmptySquareToken(), Scene.getEmptySquareToken())
+    scene.addItemToSquare(3, 1, Scene.getEmptySquareToken(), Scene.getEmptySquareToken())
+    scene.addItemToSquare(0, 2, Scene.getEmptySquareToken(), Scene.getEmptySquareToken())
+    scene.addItemToSquare(1, 2, Scene.getEmptySquareToken(), Scene.getEmptySquareToken())
+    scene.addItemToSquare(2, 2, objects[1][0], objects[1][1])
+    scene.addItemToSquare(3, 2, Scene.getEmptySquareToken(), Scene.getEmptySquareToken())
+    scene.addItemToSquare(4, 2, Scene.getEmptySquareToken(), Scene.getEmptySquareToken())
+    scene.addItemToSquare(1, 3, objects[2][0], objects[2][1])
+    scene.addItemToSquare(2, 3, Scene.getEmptySquareToken(), Scene.getEmptySquareToken())
+    scene.addItemToSquare(3, 3, Scene.getEmptySquareToken(), Scene.getEmptySquareToken())
+    scene.addItemToSquare(2, 4, Scene.getEmptySquareToken(), Scene.getEmptySquareToken())
+
+    ###################################
+    ##### CREATE NEW CHREST MODEL #####
+    ###################################
+    model = Chrest.new
+    model.setDomain(GenericDomain.new(model))
+    model.getPerceiver.setFieldOfView(1)
+
+    ##########################################
+    ##### CONSTRUCT VISUAL-SPATIAL FIELD #####
+    ##########################################
+
+    # Set visual-spatial field variables.
+    creation_time = 0
+    number_fixations = 20
+    time_to_encode_objects = 50
+    time_to_encode_empty_squares = 10
+    visual_spatial_field_access_time = 100
+    time_to_move_object = 250
+    recognised_object_lifespan = 60000
+    unrecognised_object_lifespan = 30000
+
+    visual_spatial_field = VisualSpatialField.new(
+      model,
+      scene, 
+      time_to_encode_objects,
+      time_to_encode_empty_squares,
+      visual_spatial_field_access_time, 
+      time_to_move_object, 
+      recognised_object_lifespan,
+      unrecognised_object_lifespan,
+      number_fixations,
+      creation_time,
+      true,
+      false
+    )
+
+    ####################################################################
+    ##### SET-UP EXPECTED VISUAL-SPATIAL FIELD COORDINATE CONTENTS #####
+    ####################################################################
+
+    expected_visual_spatial_field_object_properties = Array.new
+    for col in 0...visual_spatial_field.getSceneEncoded().getWidth()
+      expected_visual_spatial_field_object_properties.push([])
+      for row in 0...visual_spatial_field.getSceneEncoded().getHeight()
+        expected_visual_spatial_field_object_properties[col].push([])
+
+        if (col == 2 and row == 0)
+          expected_visual_spatial_field_object_properties[col][row].push([
+            objects[3][0],
+            objects[3][1],
+            creation_time + visual_spatial_field_access_time,
+            nil,
+            false,
+            false
+          ])
+        else
+          expected_visual_spatial_field_object_properties[col][row].push([
+            Scene.getBlindSquareToken(),
+            Scene.getBlindSquareToken(),
+            creation_time + visual_spatial_field_access_time,
+            nil,
+            false,
+            false
+          ])
+        end
+      end
+    end
+
+    number_objects_encoded = 0
+    number_empty_squares_encoded = 0
+
+    # Set expected object values for coordinates containing unrecognised objects.
+    for row in 0...visual_spatial_field.getHeight()
+      for col in 0...visual_spatial_field.getWidth()
+
+        process_coordinates = false
+        identifier = Scene.getEmptySquareToken()
+        obj_class = Scene.getEmptySquareToken()
+
+        if 
+          ( (row == 1 or row == 3) and (col == 2 or col == 3) ) or
+          (row == 2 and (col != 2)) or
+          (row == 4 and (col == 2))
+        then
+          number_empty_squares_encoded += 1
+          process_coordinates = true
+
+        elsif(row == 2 and col == 2) or (row == 1 and col == 1) or (row == 3 and col == 1)
+          number_objects_encoded += 1
+          process_coordinates = true
+
+          if (row == 2 and col == 2)
+            identifier = objects[1][0]
+            obj_class = objects[1][1]
+          elsif (row == 1 and col == 1)
+            identifier = objects[0][0]
+            obj_class = objects[0][1]
+          else
+            identifier = objects[2][0]
+            obj_class = objects[2][1]
+          end
+        end
+
+        if(process_coordinates)
+          expected_visual_spatial_field_object_properties[col][row][0][3] = get_creation_time_for_object_after_visual_spatial_field_creation(creation_time, visual_spatial_field_access_time, time_to_encode_objects, time_to_encode_empty_squares, number_objects_encoded, number_empty_squares_encoded)
+          expected_visual_spatial_field_object_properties[col][row].push([
+            identifier,
+            obj_class,
+            expected_visual_spatial_field_object_properties[col][row][0][3],
+            expected_visual_spatial_field_object_properties[col][row][0][3] + unrecognised_object_lifespan,
+            false,
+            false,
+          ])
+        end
+      end
+    end
+
+    check_values_of_visual_spatial_objects_against_expected(
+      visual_spatial_field,
+      expected_visual_spatial_field_object_properties,
+      model.getAttentionClock(),
+      "when checking initial state of visual-spatial field"
+    )
+    
+    ############################################################################
+    if (move_number == 0)
+      # ================
+      # MOVE DESCRIPTION
+      # ================
+      # - Move to square that has a live blind object on it.
+      # - Moves performed:
+      #   + Object 0 moved from (1, 1) to (1, 0).
+      # 
+      # ===============
+      # EXPECTED OUTPUT
+      # ===============
+      # - Object 0 on (1, 1) should have terminus modified
+      # - Empty square object should be placed on (1, 1)
+      # - Objects on coordinates (1, 0) should not be altered.
+      # - Attention clock of model should be set to the time that object 0 is
+      #   "put-down" on (1, 0).
+      # - Expected visual-spatial field state:
+      # 
+      #                  --------
+      # 4     x      x   |      |   x      x
+      #           ----------------------
+      # 3     x   | 2(C) |      |      |   x
+      #    ------------------------------------
+      # 2  |      |      | 1(B) |      |      |
+      #    ------------------------------------
+      # 1     x   |      |      |      |   x
+      #           ----------------------
+      # 0     x      x   |3(SLF)|   x      x
+      #                  --------
+      #       0      1      2       3      4     COORDINATES
+      
+      # Construct move
+      move = ArrayList.new
+      move.add(ItemSquarePattern.new(objects[0][0], 1, 1))
+      move.add(ItemSquarePattern.new(objects[0][0], 1, 0))
+      move_sequence = ArrayList.new
+      move_sequence.add(move)
+      
+      # Set relevant timing parameters.
+      time_move_requested = model.getAttentionClock()
+      pickup_time = time_move_requested + visual_spatial_field_access_time
+      putdown_time = pickup_time + time_to_move_object
+      
+      # Set terminus for object 0 on (1, 1)
+      expected_visual_spatial_field_object_properties[1][1][1][3] = pickup_time
+      
+      # New empty square object should be added to (1, 1) when 0 picked up.
+      expected_visual_spatial_field_object_properties[1][1].push([
+        Scene.getEmptySquareToken(),
+        Scene.getEmptySquareToken(),
+        pickup_time,
+        pickup_time + unrecognised_object_lifespan,
+        false,
+        false
+      ])
+      
+      # Objects on (1, 0) should not be modified.
+    
+      visual_spatial_field.moveObjects(move_sequence, time_move_requested, false)
+      check_values_of_visual_spatial_objects_against_expected(
+        visual_spatial_field,
+        expected_visual_spatial_field_object_properties,
+        model.getAttentionClock(),
+        "when checking state of visual-spatial field after moving " + move_types[move_number] + 
+        " (move number: " + move_number.to_s + ")"
+      )
+      assert_equal(
+        putdown_time, 
+        model.getAttentionClock(), 
+        "occurred when checking the time that the CHREST model associated with " +
+        "the visual-spatial field will be free after moving " + move_types[move_number] + 
+        " (move number: " + move_number.to_s + ")"
+      )
+    
+    ############################################################################
+    elsif (move_number == 1)
+      # ================
+      # MOVE DESCRIPTION
+      # ================
+      # - Move to square that has a live empty object on it.
+      # - Move from square that was empty and has no other live objects on it
+      #   after object move.
+      # - Move(s) performed:
+      #   + Object 0 moved from (1, 1) to (1, 2).
+      #   + Object 0 moved from (1, 2) to (3, 2)
+      # 
+      # ===============
+      # EXPECTED OUTPUT
+      # ===============
+      # 
+      # - First move
+      #   + Object 0 on (1, 1) should have terminus set to time when object 0 is
+      #     "picked-up".
+      #   + Empty square object should be placed on (1, 1) when object 0 is 
+      #     "picked-up".
+      #   + Empty square object on (1, 2) should have terminus set to time when
+      #     object 0 is "put-down".
+      #   + Object 0 should be added to (1, 2) at time of put-down.
+      #   + Attention clock of model should be set to the time that object 0 is
+      #     "put-down" on (1, 2).
+      #   + Expected visual-spatial field state:
+      #	
+      #                  --------
+      # 4     x      x   |      |   x      x
+      #           ----------------------
+      # 3     x   | 2(C) |      |      |   x
+      #    ------------------------------------
+      # 2  |      | 0(A) | 1(B) |      |      |
+      #    ------------------------------------
+      # 1     x   |      |      |      |   x
+      #           ----------------------
+      # 0     x      x   |3(SLF)|   x      x
+      #                  --------
+      #       0      1      2       3      4     COORDINATES
+      #
+      # - Second move
+      #   + Object 0 on (1, 2) should have terminus set to time when object 0 is
+      #     "picked-up".
+      #   + Empty square object should be placed on (1, 2) when object 0 is 
+      #     "picked-up".
+      #   + Empty square object on (3, 2) should have terminus set to time when
+      #     object 0 is "put-down".
+      #   + Object 0 should be added to (3, 2) at time of put-down.
+      #   + Attention clock of model should be set to the time that object 0 is
+      #     "put-down" on (3, 2).
+      #   + Expected visual-spatial field state:
+      #	
+      #                  --------
+      # 4     x      x   |      |   x      x
+      #           ----------------------
+      # 3     x   | 2(C) |      |      |   x
+      #    ------------------------------------
+      # 2  |      |      | 1(B) | 0(A) |      |
+      #    ------------------------------------
+      # 1     x   |      |      |      |   x
+      #           ----------------------
+      # 0     x      x   |3(SLF)|   x      x
+      #                  --------
+      #       0      1      2       3      4     COORDINATES
+      
+      ######################
+      ##### FIRST MOVE #####
+      ######################
+      
+      # Construct move
+      move = ArrayList.new()
+      move.add(ItemSquarePattern.new(objects[0][0], 1, 1))
+      move.add(ItemSquarePattern.new(objects[0][0], 1, 2))
+      move_sequence = ArrayList.new()
+      move_sequence.add(move)
+      
+      # Set relevant timing parameters.
+      time_move_requested = model.getAttentionClock()
+      pickup_time = time_move_requested + visual_spatial_field_access_time
+      putdown_time = pickup_time + time_to_move_object
+      
+      # Set terminus for object 0 on (1, 1)
+      expected_visual_spatial_field_object_properties[1][1][1][3] = pickup_time
+      
+      # New empty square object should be added to (1, 1) when 0 picked up.
+      expected_visual_spatial_field_object_properties[1][1].push([
+        Scene.getEmptySquareToken(),
+        Scene.getEmptySquareToken(),
+        pickup_time,
+        pickup_time + unrecognised_object_lifespan,
+        false,
+        false
+      ])
+    
+      # Set terminus for empty square on (1, 2)
+      expected_visual_spatial_field_object_properties[1][2][1][3] = putdown_time
+      
+      # Object 0 should be added to (1, 2) at putdown time.
+      expected_visual_spatial_field_object_properties[1][2].push([
+        objects[0][0],
+        objects[0][1],
+        putdown_time,
+        putdown_time + unrecognised_object_lifespan,
+        false,
+        false
+      ])
+      
+      visual_spatial_field.moveObjects(move_sequence, time_move_requested, false)
+      check_values_of_visual_spatial_objects_against_expected(
+        visual_spatial_field,
+        expected_visual_spatial_field_object_properties,
+        model.getAttentionClock(),
+        "when checking state of visual-spatial field after first part of moving " + 
+        move_types[move_number] + " (move number: " + move_number.to_s + ")"
+      )
+      assert_equal(
+        putdown_time, 
+        model.getAttentionClock(), 
+        "occurred when checking the time that the CHREST model associated with " +
+        "the visual-spatial field will be free after first part of moving " + 
+        move_types[move_number] + " (move number: " + move_number.to_s + ")"
+      )
+      
+      #######################
+      ##### SECOND MOVE #####
+      #######################
+      
+      # Construct move
+      move = ArrayList.new
+      move.add(ItemSquarePattern.new(objects[0][0], 1, 2))
+      move.add(ItemSquarePattern.new(objects[0][0], 3, 2))
+      move_sequence = ArrayList.new
+      move_sequence.add(move)
+      
+      # Set relevant timing parameters
+      time_move_requested = model.getAttentionClock()
+      pickup_time = time_move_requested + visual_spatial_field_access_time
+      putdown_time = pickup_time + time_to_move_object
+      
+      # Set terminus for object 0 on (1, 2)
+      expected_visual_spatial_field_object_properties[1][2][2][3] = pickup_time
+      
+      # Add empty square to (1, 2)
+      expected_visual_spatial_field_object_properties[1][2].push([
+        Scene.getEmptySquareToken(),
+        Scene.getEmptySquareToken(),
+        pickup_time,
+        pickup_time + unrecognised_object_lifespan,
+        false,
+        false
+      ])
+    
+      # Set terminus for empty square on (3, 2)
+      expected_visual_spatial_field_object_properties[3][2][1][3] = putdown_time
+      
+      # Add object 0 to (3, 2)
+      expected_visual_spatial_field_object_properties[3][2].push([
+        objects[0][0],
+        objects[0][1],
+        putdown_time,
+        putdown_time + unrecognised_object_lifespan,
+        false,
+        false
+      ])
+    
+      visual_spatial_field.moveObjects(move_sequence, time_move_requested, false)
+      check_values_of_visual_spatial_objects_against_expected(
+        visual_spatial_field,
+        expected_visual_spatial_field_object_properties,
+        model.getAttentionClock(),
+        "when checking state of visual-spatial field after moving " + move_types[move_number] + 
+        " (move number: " + move_number.to_s + ")"
+      )
+      assert_equal(
+        putdown_time, 
+        model.getAttentionClock(), 
+        "occurred when checking the time that the CHREST model associated with " +
+        "the visual-spatial field will be free after moving " + move_types[move_number] + 
+        " (move number: " + move_number.to_s + ")"
+      )
+      
+    ############################################################################
+    elsif (move_number == 2)
+      # ================
+      # MOVE DESCRIPTION
+      # ================
+      # - Move to square that has the creator on it.
+      # - Move from square that has the creator on it.
+      # - Move(s) performed:
+      #   + Object 0 moved from (1, 1) to (2, 0).
+      #   + Object 0 moved from (2, 0) to (3, 2).
+      # 
+      # ===============
+      # EXPECTED OUTPUT
+      # ===============
+      # - After first move
+      #   + Object 0 on (1, 1) should have terminus set to time when it is
+      #     "picked-up".
+      #   + Empty square object should be placed on (1, 1) when object 0 is 
+      #     "picked-up".
+      #   + Object 0 should be added to (2, 0) at time of "put-down".
+      #   + The creator object on (2, 0) should not be modified.
+      #   + Attention clock of model should be set to the time that object 0 is
+      #     "put-down" on (2, 0).
+      #   + Expected visual-spatial field state:
+      #     
+      #                  --------
+      # 4     x      x   |      |   x      x
+      #           ----------------------
+      # 3     x   | 2(C) |      |      |   x
+      #    ------------------------------------
+      # 2  |      |      | 1(B) |      |      |
+      #    ------------------------------------
+      # 1     x   |      |      |      |   x
+      #           ----------------------
+      # 0     x      x   | 0(A) |   x      x
+      #                  |3(SLF)|
+      #                  --------
+      #       0      1      2       3      4     COORDINATES
+      #     
+      # - After second move
+      #   + Object 0 on (2, 0) should have terminus set to time when it is 
+      #     "picked-up".
+      #   + The other objects on (2, 0) should not be modified.
+      #   + The empty square on (3, 2) should have its terminus set to the time
+      #     object 0 is "put-down".
+      #   + Object 0 should be added to (3, 2).  Its creation time should be set
+      #     to the time it is "put-down".
+      #   + Expected visual-spatial field state:
+      #
+      #                  --------
+      # 4     x      x   |      |   x      x
+      #           ----------------------
+      # 3     x   | 2(C) |      |      |   x
+      #    ------------------------------------
+      # 2  |      |      | 1(B) | 0(A) |      |
+      #    ------------------------------------
+      # 1     x   |      |      |      |   x
+      #           ----------------------
+      # 0     x      x   |3(SLF)|   x      x
+      #                  --------
+      #       0      1      2       3      4     COORDINATES
+            
+      ##############################
+      ##### FIRST PART OF MOVE #####
+      ##############################
+      
+      # Construct move.
+      move = ArrayList.new
+      move.add(ItemSquarePattern.new(objects[0][0], 1, 1))
+      move.add(ItemSquarePattern.new(objects[0][0], 2, 0))
+      move_sequence = ArrayList.new
+      move_sequence.add(move)
+      
+      # Set relevant timing parameters.
+      time_move_requested = model.getAttentionClock()
+      pickup_time = time_move_requested + visual_spatial_field_access_time
+      putdown_time = pickup_time + time_to_move_object
+      
+      # Set terminus for object 0 on (1, 1)
+      expected_visual_spatial_field_object_properties[1][1][1][3] = pickup_time
+      
+      # New empty square object should be added to (1, 1) when 0 picked up.
+      expected_visual_spatial_field_object_properties[1][1].push([
+        Scene.getEmptySquareToken(),
+        Scene.getEmptySquareToken(),
+        pickup_time,
+        pickup_time + unrecognised_object_lifespan,
+        false,
+        false
+      ])
+      
+      # Object 0 should be added to (2, 0) at first putdown time.
+      expected_visual_spatial_field_object_properties[2][0].push([
+        objects[0][0],
+        objects[0][1],
+        putdown_time,
+        putdown_time + unrecognised_object_lifespan,
+        false,
+        false
+      ])
+    
+      # Do not modify anything about the creator.
+    
+      visual_spatial_field.moveObjects(move_sequence, time_move_requested, false)
+      check_values_of_visual_spatial_objects_against_expected(
+        visual_spatial_field,
+        expected_visual_spatial_field_object_properties,
+        model.getAttentionClock(),
+        "when checking state of visual-spatial field after first part of moving " + 
+        move_types[move_number] + " (move number: " + move_number.to_s + ")"
+      )
+      assert_equal(
+        putdown_time, 
+        model.getAttentionClock(), 
+        "occurred when checking the time that the CHREST model associated with " +
+        "the visual-spatial field will be free after first part of moving " + 
+        move_types[move_number] + " (move number: " + move_number.to_s + ")"
+      )
+      
+      ###############################
+      ##### SECOND PART OF MOVE #####
+      ###############################
+      
+      # Construct move.
+      move = ArrayList.new
+      move.add(ItemSquarePattern.new(objects[0][0], 2, 0))
+      move.add(ItemSquarePattern.new(objects[0][0], 3, 2))
+      move_sequence = ArrayList.new
+      move_sequence.add(move)
+      
+      # Set relevant time parameters.
+      time_move_requested = model.getAttentionClock()
+      pickup_time = time_move_requested + visual_spatial_field_access_time
+      putdown_time = pickup_time + time_to_move_object
+      
+      # Set terminus for object 0 on (2, 0)
+      expected_visual_spatial_field_object_properties[2][0][1][3] = pickup_time
+      
+      # Do not modify anything about the creator.
+      
+      # Set terminus for empty square object on (3, 2)
+      expected_visual_spatial_field_object_properties[3][2][1][3] = putdown_time
+      
+      # Add object 1 to (3, 2)
+      expected_visual_spatial_field_object_properties[3][2].push([
+        objects[0][0],
+        objects[0][1],
+        putdown_time,
+        putdown_time + unrecognised_object_lifespan,
+        false,
+        false
+      ])
+    
+      visual_spatial_field.moveObjects(move_sequence, time_move_requested, false)
+      check_values_of_visual_spatial_objects_against_expected(
+        visual_spatial_field,
+        expected_visual_spatial_field_object_properties,
+        model.getAttentionClock(),
+        "when checking state of visual-spatial field after second part of moving " + 
+        move_types[move_number] + " (move number: " + move_number.to_s + ")"
+      )
+      assert_equal(
+        putdown_time, 
+        model.getAttentionClock(), 
+        "occurred when checking the time that the CHREST model associated with " +
+        "the visual-spatial field will be free after second part of moving " + 
+        move_types[move_number] + " (move number: " + move_number.to_s + ")"
+      )
+      
+    ############################################################################
+    elsif(move_number == 3)
+      #	================
+      # MOVE DESCRIPTION
+      # ================
+      #	- Move to square that has alive object on it that is not a blind square,
+      #	  an empty square or the creator.
+      #	- Move from square that has alive object on it that is not a blind 
+      #   square, an empty square or the creator.
+      # - Move(s) performed:
+      #   + Object 0 moved from (1, 1) to (2, 2).
+      #   + Object 0 moved from (2, 2) to (3, 2).
+      #	
+      #	===============
+      # EXPECTED OUTPUT
+      # ===============
+      # - After first move
+      #   + Object 0 on (1, 1) should have terminus set to time when it is
+      #     "picked-up".
+      #   + Empty square object should be placed on (1, 1) when object 0 is 
+      #     "picked-up".
+      #   + Object 0 should be added to (2, 2) at time of "put-down".
+      #   + Object 1 on (2, 2) should have its terminus extended to the
+      #     time object 0 is "put-down" plus the lifespan for an unrecognised
+      #     object.
+      #   + Attention clock of model should be set to the time that object 0 is
+      #     "put-down" on (2, 2).
+      #   + Expected visual-spatial field state:
+      #   
+      #                  --------
+      # 4     x      x   |      |   x      x
+      #           ----------------------
+      # 3     x   | 2(C) |      |      |   x
+      #    ------------------------------------
+      # 2  |      |      | 0(A) |      |      |
+      #    |      |      | 1(B) |      |      |
+      #    ------------------------------------
+      # 1     x   |      |      |      |   x
+      #           ----------------------
+      # 0     x      x   |3(SLF)|   x      x
+      #                  --------
+      #       0      1      2       3      4     COORDINATES
+      #       
+      # - After second move
+      #   + Object 0 on (2, 2) should have terminus set to time when it is
+      #     "picked-up".
+      #   + Terminus for object 1 should be extended to the time object 0 is
+      #     "picked-up" plus the lifespan specified for unrecognised objects.
+      #   + The empty square object on (3, 2) should have its terminus set to
+      #     the time that object 0 is "put-down".
+      #   + Object 0 should be added to (3, 2) at time of "put-down".
+      #   + Attention clock of model should be set to the time that object 0 is
+      #     "put-down" on (3, 2).
+      #   + Expected visual-spatial field state:
+      #
+      #                  --------
+      # 4     x      x   |      |   x      x
+      #           ----------------------
+      # 3     x   | 2(C) |      |      |   x
+      #    ------------------------------------
+      # 2  |      |      | 1(B) | 0(A) |      |
+      #    ------------------------------------
+      # 1     x   |      |      |      |   x
+      #           ----------------------
+      # 0     x      x   |3(SLF)|   x      x
+      #                  --------
+      #       0      1      2       3      4     COORDINATES
+      
+      ##############################
+      ##### FIRST PART OF MOVE #####
+      ##############################
+      
+      # Construct move
+      move = ArrayList.new
+      move.add(ItemSquarePattern.new(objects[0][0], 1, 1))
+      move.add(ItemSquarePattern.new(objects[0][0], 2, 2))
+      move_sequence = ArrayList.new
+      move_sequence.add(move)
+      
+      # Set relevant time parameters
+      time_move_requested = model.getAttentionClock()
+      pickup_time = time_move_requested + visual_spatial_field_access_time
+      putdown_time = pickup_time + time_to_move_object
+      
+      # Set terminus for object 0 on (1, 1)
+      expected_visual_spatial_field_object_properties[1][1][1][3] = pickup_time
+      
+      # New empty square object should be added to (1, 1) when 0 picked up.
+      expected_visual_spatial_field_object_properties[1][1].push([
+        Scene.getEmptySquareToken(),
+        Scene.getEmptySquareToken(),
+        pickup_time,
+        pickup_time + unrecognised_object_lifespan,
+        false,
+        false
+      ])
+      
+      # Object 0 should be added to (2, 2) at first putdown time.  Should no 
+      # longer be recognised.
+      expected_visual_spatial_field_object_properties[2][2].push([
+        objects[0][0],
+        objects[0][1],
+        putdown_time,
+        putdown_time + unrecognised_object_lifespan,
+        false,
+        false
+      ])
+    
+      # Update terminus for object 1 on (2, 2) since the coordinates have been
+      # looked at and the object is alive when 0 is putdown.
+      expected_visual_spatial_field_object_properties[2][2][1][3] = putdown_time + unrecognised_object_lifespan
+    
+      visual_spatial_field.moveObjects(move_sequence, time_move_requested, false)
+      check_values_of_visual_spatial_objects_against_expected(
+        visual_spatial_field,
+        expected_visual_spatial_field_object_properties,
+        model.getAttentionClock(),
+        "when checking state of visual-spatial field after first part of moving " + 
+        move_types[move_number] + " (move number: " + move_number.to_s + ")"
+      )
+      assert_equal(
+        putdown_time, 
+        model.getAttentionClock(), 
+        "occurred when checking the time that the CHREST model associated with " +
+        "the visual-spatial field will be free after first part of moving " + 
+        move_types[move_number] + " (move number: " + move_number.to_s + ")"
+      )
+      ###############################
+      ##### SECOND PART OF MOVE #####
+      ###############################
+      
+      # Construct move
+      move = ArrayList.new
+      move.add(ItemSquarePattern.new(objects[0][0], 2, 2))
+      move.add(ItemSquarePattern.new(objects[0][0], 3, 2))
+      move_sequence = ArrayList.new
+      move_sequence.add(move)
+      
+      # Set relevant timing parameters
+      time_move_requested = model.getAttentionClock()
+      pickup_time = time_move_requested + visual_spatial_field_access_time
+      putdown_time = pickup_time + time_to_move_object
+      
+      # Set terminus for object 0 on (2, 2)
+      expected_visual_spatial_field_object_properties[2][2][2][3] = pickup_time
+      
+      # Set terminus for object 1 on (2, 2)
+      expected_visual_spatial_field_object_properties[2][2][1][3] = pickup_time + unrecognised_object_lifespan
+      
+      # Set terminus for empty square object on (3, 2)
+      expected_visual_spatial_field_object_properties[3][2][1][3] = putdown_time
+      
+      # Add object 0 to (3, 2)
+      expected_visual_spatial_field_object_properties[3][2].push([
+        objects[0][0],
+        objects[0][1],
+        putdown_time,
+        putdown_time + unrecognised_object_lifespan,
+        false,
+        false
+      ])
+    
+      visual_spatial_field.moveObjects(move_sequence, time_move_requested, false)
+      check_values_of_visual_spatial_objects_against_expected(
+        visual_spatial_field,
+        expected_visual_spatial_field_object_properties,
+        model.getAttentionClock(),
+        "when checking state of visual-spatial field after second part of moving " + 
+        move_types[move_number] + " (move number: " + move_number.to_s + ")"
+      )
+      assert_equal(
+        putdown_time, 
+        model.getAttentionClock(), 
+        "occurred when checking the time that the CHREST model associated with " +
+        "the visual-spatial field will be free after second part of moving " + 
+        move_types[move_number] + " (move number: " + move_number.to_s + ")"
+      )
+      
+    ############################################################################
+    elsif(move_number == 4)
+      #	================
+      # MOVE DESCRIPTION
+      # ================
+      #	- Move to square that has a live, recognised object on it.
+      #	- Move from square that has a live, recognised object on it.
+      # - Move(s) performed:
+      #   + Object 0 moved from (1, 1) to (1, 3).
+      #   + Object 0 moved from (1, 3) to (3, 2).
+      # - Object 2's recognised status will be set manually.
+      #	
+      #	===============
+      # EXPECTED OUTPUT
+      # ===============
+      # - After first move
+      #   + Object 0 on (1, 1) should have terminus set to time when it is
+      #     "picked-up".
+      #   + Empty square object should be placed on (1, 1) when object 0 is 
+      #     "picked-up".
+      #   + Object 0 should be added to (1, 3) at time of "put-down".
+      #   + Object 2 on (2, 2) should have its terminus extended to the
+      #     time object 0 is "put-down" plus the lifespan for a recognised
+      #     object.
+      #   + Attention clock of model should be set to the time that object 0 is
+      #     "put-down" on (2, 2).
+      #   + Expected visual-spatial field state:
+      #   
+      #                  --------
+      # 4     x      x   |      |   x      x
+      #           ----------------------
+      # 3     x   | 0(A) |      |      |   x
+      #           | 2(C) |      |      |
+      #    ------------------------------------
+      # 2  |      |      | 1(B) |      |      |
+      #    ------------------------------------
+      # 1     x   |      |      |      |   x
+      #           ----------------------
+      # 0     x      x   |3(SLF)|   x      x
+      #                  --------
+      #       0      1      2       3      4     COORDINATES
+      #       
+      # - After second move
+      #   + Object 0 on (1, 3) should have terminus set to time when it is
+      #     "picked-up".
+      #   + Terminus for object 2 should be extended to the time object 0 is
+      #     "picked-up" plus the lifespan specified for recognised objects.
+      #   + The empty square object on (3, 2) should have its terminus set to
+      #     the time that object 0 is "put-down".
+      #   + Object 0 should be added to (3, 2) at time of "put-down".
+      #   + Attention clock of model should be set to the time that object 0 is
+      #     "put-down" on (3, 2).
+      #   + Expected visual-spatial field state:
+      #
+      #                  --------
+      # 4     x      x   |      |   x      x
+      #           ----------------------
+      # 3     x   | 2(C) |      |      |   x
+      #    ------------------------------------
+      # 2  |      |      | 1(B) | 0(A) |      |
+      #    ------------------------------------
+      # 1     x   |      |      |      |   x
+      #           ----------------------
+      # 0     x      x   |3(SLF)|   x      x
+      #                  --------
+      #       0      1      2       3      4     COORDINATES
+      
+      visual_spatial_field.getSquareContents(1, 3).get(1).setRecognised(model.getAttentionClock(), true)
+      expected_visual_spatial_field_object_properties[1][3][1][3] = model.getAttentionClock() + recognised_object_lifespan
+      expected_visual_spatial_field_object_properties[1][3][1][4] = true
+      
+      ##############################
+      ##### FIRST PART OF MOVE #####
+      ##############################
+      
+      # Construct move
+      move = ArrayList.new
+      move.add(ItemSquarePattern.new(objects[0][0], 1, 1))
+      move.add(ItemSquarePattern.new(objects[0][0], 1, 3))
+      move_sequence = ArrayList.new
+      move_sequence.add(move)
+      
+      # Set relevant time parameters
+      time_move_requested = model.getAttentionClock()
+      pickup_time = time_move_requested + visual_spatial_field_access_time
+      putdown_time = pickup_time + time_to_move_object
+      
+      # Set terminus for object 0 on (1, 1)
+      expected_visual_spatial_field_object_properties[1][1][1][3] = pickup_time
+      
+      # New empty square object should be added to (1, 1) when 0 picked up.
+      expected_visual_spatial_field_object_properties[1][1].push([
+        Scene.getEmptySquareToken(),
+        Scene.getEmptySquareToken(),
+        pickup_time,
+        pickup_time + unrecognised_object_lifespan,
+        false,
+        false
+      ])
+      
+      # Object 0 should be added to (1, 3) at first putdown time.
+      expected_visual_spatial_field_object_properties[1][3].push([
+        objects[0][0],
+        objects[0][1],
+        putdown_time,
+        putdown_time + unrecognised_object_lifespan,
+        false,
+        false
+      ])
+    
+      # Update terminus for object 2 on (1, 3) since the coordinates have been
+      # looked at and the object is alive when 0 is putdown.
+      expected_visual_spatial_field_object_properties[1][3][1][3] = putdown_time + recognised_object_lifespan
+    
+      visual_spatial_field.moveObjects(move_sequence, time_move_requested, false)
+      check_values_of_visual_spatial_objects_against_expected(
+        visual_spatial_field,
+        expected_visual_spatial_field_object_properties,
+        model.getAttentionClock(),
+        "when checking state of visual-spatial field after first part of moving " + 
+        move_types[move_number] + " (move number: " + move_number.to_s + ")"
+      )
+      assert_equal(
+        putdown_time, 
+        model.getAttentionClock(), 
+        "occurred when checking the time that the CHREST model associated with " +
+        "the visual-spatial field will be free after first part of moving " + 
+        move_types[move_number] + " (move number: " + move_number.to_s + ")"
+      )
+      ###############################
+      ##### SECOND PART OF MOVE #####
+      ###############################
+      
+      # Construct move
+      move = ArrayList.new
+      move.add(ItemSquarePattern.new(objects[0][0], 1, 3))
+      move.add(ItemSquarePattern.new(objects[0][0], 3, 2))
+      move_sequence = ArrayList.new
+      move_sequence.add(move)
+      
+      # Set relevant timing parameters
+      time_move_requested = model.getAttentionClock()
+      pickup_time = time_move_requested + visual_spatial_field_access_time
+      putdown_time = pickup_time + time_to_move_object
+      
+      # Set terminus for object 0 on (1, 3)
+      expected_visual_spatial_field_object_properties[1][3][2][3] = pickup_time
+      
+      # Set terminus for object 2 on (1, 3)
+      expected_visual_spatial_field_object_properties[1][3][1][3] = pickup_time + recognised_object_lifespan
+      
+      # Set terminus for empty square object on (3, 2)
+      expected_visual_spatial_field_object_properties[3][2][1][3] = putdown_time
+      
+      # Add object 0 to (3, 2)
+      expected_visual_spatial_field_object_properties[3][2].push([
+        objects[0][0],
+        objects[0][1],
+        putdown_time,
+        putdown_time + unrecognised_object_lifespan,
+        false,
+        false
+      ])
+    
+      visual_spatial_field.moveObjects(move_sequence, time_move_requested, false)
+      check_values_of_visual_spatial_objects_against_expected(
+        visual_spatial_field,
+        expected_visual_spatial_field_object_properties,
+        model.getAttentionClock(),
+        "when checking state of visual-spatial field after second part of moving " + 
+        move_types[move_number] + " (move number: " + move_number.to_s + ")"
+      )
+      assert_equal(
+        putdown_time, 
+        model.getAttentionClock(), 
+        "occurred when checking the time that the CHREST model associated with " +
+        "the visual-spatial field will be free after second part of moving " + 
+        move_types[move_number] + " (move number: " + move_number.to_s + ")"
+      )
+    
+    ############################################################################
+    elsif(move_number == 5)
+      #	================
+      # MOVE DESCRIPTION
+      # ================
+      #	- Move to square whose object status is unknown.
+      #	- Move from square whose object status was unknown.
+      #	- Move(s) performed:
+      #   + Object 0 moved from (1, 1) to (2, 3).
+      #   + Object 0 moved from (2, 3) to (3, 2).
+      # - Before the moves are applied, coordinates (2, 3) will be artificially
+      #   set to contain an unknown square object.
+      #	- Visual-spatial field state before moves performed (unknown square is 
+      #	  denoted by a "?"):
+      #	
+      #                  --------
+      # 4     x      x   |      |   x      x
+      #           ----------------------
+      # 3     x   | 2(C) |  ?   |      |   x
+      #    ------------------------------------
+      # 2  |      |      | 1(B) |      |      |
+      #    ------------------------------------
+      # 1     x   | 0(A) |      |      |   x
+      #           ----------------------
+      # 0     x      x   |3(SLF)|   x      x
+      #                  --------
+      #       0      1      2       3      4     COORDINATES
+      #
+      # ===============
+      # EXPECTED OUTPUT
+      # ===============
+      # - After first move
+      #   + Object 0 on (1, 1) should have terminus set to time when it is
+      #     "picked-up".
+      #   + Empty square object should be placed on (1, 1) when object 0 is 
+      #     "picked-up".
+      #   + Unknown square object on (2, 3) should have its terminus set to the 
+      #     time that object 0 is "put-down".
+      #   + Object 0 should be added to (2, 3) at time of "put-down".
+      #   + Attention clock of model should be set to the time that object 0 is
+      #     "put-down" on (2, 3).
+      #   + Expected visual-spatial field state:
+      #
+      #                  --------
+      # 4     x      x   |      |   x      x
+      #           ----------------------
+      # 3     x   | 2(C) | 0(A) |      |   x
+      #    ------------------------------------
+      # 2  |      |      | 1(B) |      |      |
+      #    ------------------------------------
+      # 1     x   |      |      |      |   x
+      #           ----------------------
+      # 0     x      x   |3(SLF)|   x      x
+      #                  --------
+      #       0      1      2       3      4     COORDINATES
+      #
+      #- After second move
+      #   + Object 0 on (2, 3) should have terminus set to time when it is
+      #     "picked-up".
+      #   + Empty square object should be placed on (2, 3) when object 0 is 
+      #     "picked-up".
+      #   + Empty square object on (3, 2) should have its terminus set to the 
+      #     time that object 0 is "put-down".
+      #   + Object 0 should be added to (3, 2) at time of "put-down".
+      #   + Attention clock of model should be set to the time that object 0 is
+      #     "put-down" on (3, 2).
+      #   + Expected visual-spatial field state:
+      #
+      #                  --------
+      # 4     x      x   |      |   x      x
+      #           ----------------------
+      # 3     x   | 2(C) |      |      |   x
+      #    ------------------------------------
+      # 2  |      |      | 1(B) | 0(A) |      |
+      #    ------------------------------------
+      # 1     x   |      |      |      |   x
+      #           ----------------------
+      # 0     x      x   |3(SLF)|   x      x
+      #                  --------
+      #       0      1      2       3      4     COORDINATES
+      
+      # Artificially create the unknown square
+      visual_spatial_field.getSquareContents(2, 3).get(1).setTerminus(model.getAttentionClock(), true)
+      visual_spatial_field.setUnknownSquares(model.getAttentionClock + 1)
+      
+      # Set expected object properties for the coordinates containing the 
+      # unknown square.
+      expected_visual_spatial_field_object_properties[2][3][1][3] = model.getAttentionClock()
+      expected_visual_spatial_field_object_properties[2][3].push([
+        VisualSpatialFieldObject.getUnknownSquareToken(),
+        VisualSpatialFieldObject.getUnknownSquareToken(),
+        model.getAttentionClock() + 1,
+        nil,
+        false,
+        false
+      ])
+    
+      check_values_of_visual_spatial_objects_against_expected(
+        visual_spatial_field,
+        expected_visual_spatial_field_object_properties,
+        model.getAttentionClock() + 1,
+        "when checking state of visual-spatial field before moving " + 
+        move_types[move_number] + " (move number: " + move_number.to_s + ")"
+      )
+      
+      ##############################
+      ##### FIRST PART OF MOVE #####
+      ##############################
+      
+      # Construct move
+      move = ArrayList.new
+      move.add(ItemSquarePattern.new(objects[0][0], 1, 1))
+      move.add(ItemSquarePattern.new(objects[0][0], 2, 3))
+      move_sequence = ArrayList.new
+      move_sequence.add(move)
+      
+      # Set relevant time parameters
+      time_move_requested = model.getAttentionClock() + 1
+      pickup_time = time_move_requested + visual_spatial_field_access_time
+      putdown_time = pickup_time + time_to_move_object
+      
+      # Set terminus for object 0 on (1, 1)
+      expected_visual_spatial_field_object_properties[1][1][1][3] = pickup_time
+      
+      # New empty square object should be added to (1, 1) when 0 picked up.
+      expected_visual_spatial_field_object_properties[1][1].push([
+        Scene.getEmptySquareToken(),
+        Scene.getEmptySquareToken(),
+        pickup_time,
+        pickup_time + unrecognised_object_lifespan,
+        false,
+        false
+      ])
+      
+      # Set terminus for unknown square on (2, 3)
+      expected_visual_spatial_field_object_properties[2][3][2][3] = putdown_time
+      
+      # Add object 0 to (2, 3)
+      expected_visual_spatial_field_object_properties[2][3].push([
+        objects[0][0],
+        objects[0][1],
+        putdown_time,
+        putdown_time + unrecognised_object_lifespan,
+        false,
+        false
+      ])
+    
+      visual_spatial_field.moveObjects(move_sequence, time_move_requested, false)
+      
+      check_values_of_visual_spatial_objects_against_expected(
+        visual_spatial_field,
+        expected_visual_spatial_field_object_properties,
+        model.getAttentionClock(),
+        "when checking state of visual-spatial field after first part of moving " + 
+        move_types[move_number] + " (move number: " + move_number.to_s + ")"
+      )
+      assert_equal(
+        putdown_time, 
+        model.getAttentionClock(), 
+        "occurred when checking the time that the CHREST model associated with " +
+        "the visual-spatial field will be free after first part of moving " + 
+        move_types[move_number] + " (move number: " + move_number.to_s + ")"
+      )
+      
+      ###############################
+      ##### SECOND PART OF MOVE #####
+      ###############################
+      
+      # Construct move
+      move = ArrayList.new()
+      move.add(ItemSquarePattern.new(objects[0][0], 2, 3))
+      move.add(ItemSquarePattern.new(objects[0][0], 3, 2))
+      move_sequence = ArrayList.new()
+      move_sequence.add(move)
+      
+      # Set relevant timing parameters
+      time_move_requested = model.getAttentionClock()
+      pickup_time = time_move_requested + visual_spatial_field_access_time
+      putdown_time = pickup_time + time_to_move_object
+      
+      # Set terminus for object 0 on (2, 3)
+      expected_visual_spatial_field_object_properties[2][3][3][3] = pickup_time
+      
+      # Add an empty square object to (2, 3)
+      expected_visual_spatial_field_object_properties[2][3].push([
+        Scene.getEmptySquareToken(),
+        Scene.getEmptySquareToken(),
+        pickup_time,
+        pickup_time + unrecognised_object_lifespan,
+        false,
+        false
+      ])
+      
+      # Set terminus for empty square object on (3, 2)
+      expected_visual_spatial_field_object_properties[3][2][1][3] = putdown_time
+      
+      # Add object 0 to (3, 2)
+      expected_visual_spatial_field_object_properties[3][2].push([
+        objects[0][0],
+        objects[0][1],
+        putdown_time,
+        putdown_time + unrecognised_object_lifespan,
+        false,
+        false
+      ])
+    
+      visual_spatial_field.moveObjects(move_sequence, time_move_requested, false)
+      check_values_of_visual_spatial_objects_against_expected(
+        visual_spatial_field,
+        expected_visual_spatial_field_object_properties,
+        model.getAttentionClock(),
+        "when checking state of visual-spatial field after second part of moving " + 
+        move_types[move_number] + " (move number: " + move_number.to_s + ")"
+      )
+      assert_equal(
+        putdown_time, 
+        model.getAttentionClock(), 
+        "occurred when checking the time that the CHREST model associated with " +
+        "the visual-spatial field will be free after second part of moving " + 
+        move_types[move_number] + " (move number: " + move_number.to_s + ")"
+      )
+    end 
+  end 
+end
+  
+################################################################################
+# Tests for correct operation of the "VisualSpatialField.moveObjects()" function
+# when moving a ghost object in every possible situation that may occur.
+# 
+# The scene used in the following test is illustrated below ("x" represents a 
+# blind square, real objects are denoted by their identifiers and their class 
+# are in parenthesis, ghost objects are denoted by lower case letters in 
+# parenthesis).
+# 
+#                  --------
+# 4     x      x   |      |   x      x
+#           ----------------------
+# 3     x   | 2(C) |      |      |   x
+#    ------------------------------------
+# 2  |      |      | 1(B) |      |      |
+#    ------------------------------------
+# 1     x   | 4(D) |      |      |   x
+#           ----------------------
+# 0     x     0(a) |3(SLF)|   x      x
+#                  --------
+#       0      1      2       3      4     COORDINATES
+#          
+unit_test "move_object (ghost object)" do
+  
+  move_types = [
+    "from/to square containing a live blind object",
+    "from/to square containing a live empty object",
+    "to/from square containing the creator",
+    "to/from square containing a live unrecognised object",
+    "to/from square containing a live recognised object",
+    "to/from a square whose object status is unknown"
+  ]
+  
+  for move_number in 0...move_types.count
+    
+    objects = [
+      [VisualSpatialField.getGhostObjectIdPrefix + "0", "A"],
+      ["1", "B"],
+      ["2", "C"],
+      ["3", Scene.getCreatorToken()],
+      ["4", "D"]
+    ]
+
+    scene = Scene.new("Test", 5, 5, nil)
+    scene.addItemToSquare(2, 0, objects[3][0], objects[3][1])
+    scene.addItemToSquare(1, 1, objects[4][0], objects[4][1])
+    scene.addItemToSquare(2, 1, Scene.getEmptySquareToken(), Scene.getEmptySquareToken())
+    scene.addItemToSquare(3, 1, Scene.getEmptySquareToken(), Scene.getEmptySquareToken())
+    scene.addItemToSquare(0, 2, Scene.getEmptySquareToken(), Scene.getEmptySquareToken())
+    scene.addItemToSquare(1, 2, Scene.getEmptySquareToken(), Scene.getEmptySquareToken())
+    scene.addItemToSquare(2, 2, objects[1][0], objects[1][1])
+    scene.addItemToSquare(3, 2, Scene.getEmptySquareToken(), Scene.getEmptySquareToken())
+    scene.addItemToSquare(4, 2, Scene.getEmptySquareToken(), Scene.getEmptySquareToken())
+    scene.addItemToSquare(1, 3, objects[2][0], objects[2][1])
+    scene.addItemToSquare(2, 3, Scene.getEmptySquareToken(), Scene.getEmptySquareToken())
+    scene.addItemToSquare(3, 3, Scene.getEmptySquareToken(), Scene.getEmptySquareToken())
+    scene.addItemToSquare(2, 4, Scene.getEmptySquareToken(), Scene.getEmptySquareToken())
+
+    ###################################
+    ##### CREATE NEW CHREST MODEL #####
+    ###################################
+    model = Chrest.new
+    model.setDomain(GenericDomain.new(model))
+    model.getPerceiver.setFieldOfView(1)
+
+    ###########################
+    ##### CHREST LEARNING #####
+    ###########################
+
+    # Set the domain time (the time against which all CHREST operations will be
+    # performed in this test).
+    domain_time = 0
+
+    # Since the scene creator is present, coordinates of the object to learn must
+    # be set relative to the creator's location.
+    real_object = ItemSquarePattern.new(objects[4][1], -1, 1)
+    ghost_object = ItemSquarePattern.new(objects[0][1], -1, 0)
+    list_pattern_to_learn = ListPattern.new()
+    list_pattern_to_learn.add(real_object)
+    list_pattern_to_learn.add(ghost_object)
+
+    recognised_chunk = model.recogniseAndLearn(list_pattern_to_learn, domain_time).getImage().toString()
+    until recognised_chunk == list_pattern_to_learn.toString()
+      domain_time += 1
+      recognised_chunk = model.recogniseAndLearn(list_pattern_to_learn, domain_time).getImage().toString()
+    end
+
+    # Set the domain time to be the value of CHREST's learning clock since, 
+    # when the visual-spatial field is constructed, the LTM of the model will 
+    # contain the completely familiarised learned pattern enabling expected 
+    # visual-spatial field construction due to chunk recognition retrieving 
+    # the learned pattern.
+    domain_time = model.getLearningClock()
+
+    ##########################################
+    ##### CONSTRUCT VISUAL-SPATIAL FIELD #####
+    ##########################################
+
+    # Set visual-spatial field variables.
     creation_time = domain_time
+    number_fixations = 20
+    time_to_encode_objects = 50
+    time_to_encode_empty_squares = 10
+    visual_spatial_field_access_time = 100
+    time_to_move_object = 250
+    recognised_object_lifespan = 60000
+    unrecognised_object_lifespan = 30000
+
+    visual_stm_contents_as_expected = false
+    creation_time = domain_time
+    expected_stm_contents = recognised_chunk
+
+    until visual_stm_contents_as_expected do
+
+      creation_time = domain_time
+
+      # Construct the visual-spatial field.
+      visual_spatial_field = VisualSpatialField.new(
+        model,
+        scene, 
+        time_to_encode_objects,
+        time_to_encode_empty_squares,
+        visual_spatial_field_access_time, 
+        time_to_move_object, 
+        recognised_object_lifespan,
+        unrecognised_object_lifespan,
+        number_fixations,
+        domain_time,
+        true,
+        false
+      )
+
+      # Get contents of STM (will have been populated during object 
+      # recognition during visual-spatial field construction) and remove root 
+      # nodes and nodes with empty images.  This will leave retrieved chunks 
+      # that have non-empty images, i.e. these images should contain the 
+      # list-patterns learned by the model.
+      stm = model.getVisualStm()
+      stm_contents = ""
+      for i in (stm.getCount() - 1).downto(0)
+        chunk = stm.getItem(i)
+        if( !chunk.equals(model.getVisualLtm()) )
+          if(!chunk.getImage().isEmpty())
+            stm_contents += chunk.getImage().toString()
+          end
+        end
+      end
+
+      # Check if STM contents are as expected, if they are, set the flag that
+      # controls when the model is ready for testing to true.
+      expected_stm_contents == stm_contents ? visual_stm_contents_as_expected = true : nil
+
+      # Advance domain time to the time that the visual-spatial field will be 
+      # completely instantiated so that the model's attention will be free 
+      # should a new visual-field need to be constructed.
+      domain_time = model.getAttentionClock
+    end
+
+    ####################################################################
+    ##### SET-UP EXPECTED VISUAL-SPATIAL FIELD COORDINATE CONTENTS #####
+    ####################################################################
+
+    expected_visual_spatial_field_object_properties = Array.new
+    for col in 0...visual_spatial_field.getSceneEncoded().getWidth()
+      expected_visual_spatial_field_object_properties.push([])
+      for row in 0...visual_spatial_field.getSceneEncoded().getHeight()
+        expected_visual_spatial_field_object_properties[col].push([])
+
+        if (col == 2 and row == 0)
+          expected_visual_spatial_field_object_properties[col][row].push([
+            objects[3][0],
+            objects[3][1],
+            creation_time + visual_spatial_field_access_time,
+            nil,
+            false,
+            false
+          ])
+        else
+          expected_visual_spatial_field_object_properties[col][row].push([
+            Scene.getBlindSquareToken(),
+            Scene.getBlindSquareToken(),
+            creation_time + visual_spatial_field_access_time,
+            nil,
+            false,
+            false
+          ])
+        end
+      end
+    end
+
+    number_objects_encoded = 1
+    number_empty_squares_encoded = 0
+
+    # Set expected object values for coordinates containing recognised objects.
+    expected_visual_spatial_field_object_properties[1][1][0][3] = get_creation_time_for_object_after_visual_spatial_field_creation(creation_time, visual_spatial_field_access_time, time_to_encode_objects, time_to_encode_empty_squares, number_objects_encoded, number_empty_squares_encoded)
+    expected_visual_spatial_field_object_properties[1][1].push([
+      objects[4][0],
+      objects[4][1],
+      expected_visual_spatial_field_object_properties[1][1][0][3],
+      expected_visual_spatial_field_object_properties[1][1][0][3] + recognised_object_lifespan,
+      true,
+      false
+    ])
+  
+    expected_visual_spatial_field_object_properties[1][0][0][3] = get_creation_time_for_object_after_visual_spatial_field_creation(creation_time, visual_spatial_field_access_time, time_to_encode_objects, time_to_encode_empty_squares, number_objects_encoded, number_empty_squares_encoded)
+    expected_visual_spatial_field_object_properties[1][0].push([
+      objects[0][0],
+      objects[0][1],
+      expected_visual_spatial_field_object_properties[1][0][0][3],
+      expected_visual_spatial_field_object_properties[1][0][0][3] + recognised_object_lifespan,
+      true,
+      true
+    ])
+
+    # Set expected object values for coordinates containing unrecognised objects.
+    for row in 0...visual_spatial_field.getHeight()
+      for col in 0...visual_spatial_field.getWidth()
+
+        process_coordinates = false
+        identifier = Scene.getEmptySquareToken()
+        obj_class = Scene.getEmptySquareToken()
+
+        if 
+          ( (row == 1 or row == 3) and (col == 2 or col == 3) ) or
+          (row == 2 and (col != 2)) or
+          (row == 4 and (col == 2))
+        then
+          number_empty_squares_encoded += 1
+          process_coordinates = true
+
+        elsif(row == 2 and col == 2) or (row == 3 and col == 1)
+          number_objects_encoded += 1
+          process_coordinates = true
+
+          if (row == 2 and col == 2)
+            identifier = objects[1][0]
+            obj_class = objects[1][1]
+          else
+            identifier = objects[2][0]
+            obj_class = objects[2][1]
+          end
+        end
+
+        if(process_coordinates)
+          expected_visual_spatial_field_object_properties[col][row][0][3] = get_creation_time_for_object_after_visual_spatial_field_creation(creation_time, visual_spatial_field_access_time, time_to_encode_objects, time_to_encode_empty_squares, number_objects_encoded, number_empty_squares_encoded)
+          expected_visual_spatial_field_object_properties[col][row].push([
+            identifier,
+            obj_class,
+            expected_visual_spatial_field_object_properties[col][row][0][3],
+            expected_visual_spatial_field_object_properties[col][row][0][3] + unrecognised_object_lifespan,
+            false,
+            false,
+          ])
+        end
+      end
+    end
+
+    check_values_of_visual_spatial_objects_against_expected(
+      visual_spatial_field,
+      expected_visual_spatial_field_object_properties,
+      model.getAttentionClock(),
+      "when checking initial state of visual-spatial field"
+    )
+    
+    ############################################################################
+    if (move_number == 0)
+      # ================
+      # MOVE DESCRIPTION
+      # ================
+      # - Move from square that was blind 
+      # - Move to square that has a live blind object on it.
+      # - Moves performed:
+      #   + Object 0 moved from (1, 0) to (0, 0).
+      # 
+      # ===============
+      # EXPECTED OUTPUT
+      # ===============
+      # - Object 0 on (1, 0) should have terminus modified
+      # - Blind square object should be placed on (1, 0)
+      # - Objects on coordinates (0, 0) should not be altered.
+      # - Attention clock of model should be set to the time that object 0 is
+      #   "put-down" on (0, 0).
+      # - Expected visual-spatial field state:
+      # 
+      #                  --------
+      # 4     x      x   |      |   x      x
+      #           ----------------------
+      # 3     x   | 2(C) |      |      |   x
+      #    ------------------------------------
+      # 2  |      |      | 1(B) |      |      |
+      #    ------------------------------------
+      # 1     x   | 4(D) |      |      |   x
+      #           ----------------------
+      # 0     x      x   |3(SLF)|   x      x
+      #                  --------
+      #       0      1      2       3      4     COORDINATES
+      
+      # Construct move
+      move = ArrayList.new
+      move.add(ItemSquarePattern.new(objects[0][0], 1, 0))
+      move.add(ItemSquarePattern.new(objects[0][0], 0, 0))
+      move_sequence = ArrayList.new
+      move_sequence.add(move)
+      
+      # Set relevant timing parameters.
+      time_move_requested = model.getAttentionClock()
+      pickup_time = time_move_requested + visual_spatial_field_access_time
+      putdown_time = pickup_time + time_to_move_object
+      
+      # Set terminus for object 0 on (1, 0)
+      expected_visual_spatial_field_object_properties[1][0][1][3] = pickup_time
+      
+      # New blind square object should be added to (1, 0) when 0 picked up.
+      expected_visual_spatial_field_object_properties[1][0].push([
+        Scene.getBlindSquareToken(),
+        Scene.getBlindSquareToken(),
+        pickup_time,
+        nil,
+        false,
+        false
+      ])
+      
+      # Objects on (0, 0) should not be modified.
+    
+      visual_spatial_field.moveObjects(move_sequence, time_move_requested, false)
+      check_values_of_visual_spatial_objects_against_expected(
+        visual_spatial_field,
+        expected_visual_spatial_field_object_properties,
+        model.getAttentionClock(),
+        "when checking state of visual-spatial field after moving " + move_types[move_number] + 
+        " (move number: " + move_number.to_s + ")"
+      )
+      assert_equal(
+        putdown_time, 
+        model.getAttentionClock(), 
+        "occurred when checking the time that the CHREST model associated with " +
+        "the visual-spatial field will be free after moving " + move_types[move_number] + 
+        " (move number: " + move_number.to_s + ")"
+      )
+    
+    ############################################################################
+    elsif (move_number == 1)
+      # ================
+      # MOVE DESCRIPTION
+      # ================
+      # - Move to square that has a live empty object on it.
+      # - Move from square that was empty and has no other live objects on it
+      #   after objet move.
+      # - Move(s) performed:
+      #   + Object 0 moved from (1, 0) to (1, 2).
+      #   + Object 0 moved from (1, 2) to (3, 2)
+      # - In between moves, object 0's recognised status will be manually set
+      #   to true.
+      # 
+      # ===============
+      # EXPECTED OUTPUT
+      # ===============
+      # 
+      # - First move
+      #   + Object 0 on (1, 0) should have terminus set to time when object 0 is
+      #     "picked-up".
+      #   + Blind square object should be placed on (1, 0) when object 0 is 
+      #     "picked-up".
+      #   + Empty square object on (1, 2) should have terminus set to time when
+      #     object 0 is "put-down".
+      #   + Object 0 should be added to (1, 2) at time of put-down but should no
+      #     longer be recognised.
+      #   + Attention clock of model should be set to the time that object 0 is
+      #     "put-down" on (1, 2).
+      #   + Expected visual-spatial field state:
+      #	
+      #                  --------
+      # 4     x      x   |      |   x      x
+      #           ----------------------
+      # 3     x   | 2(C) |      |      |   x
+      #    ------------------------------------
+      # 2  |      | 0(a) | 1(B) |      |      |
+      #    ------------------------------------
+      # 1     x   | 4(D) |      |      |   x
+      #           ----------------------
+      # 0     x      x   |3(SLF)|   x      x
+      #                  --------
+      #       0      1      2       3      4     COORDINATES
+      #
+      # - Second move
+      #   + Object 0 on (1, 2) should have terminus set to time when object 0 is
+      #     "picked-up".
+      #   + Empty square object should be placed on (1, 2) when object 0 is 
+      #     "picked-up".
+      #   + Empty square object on (3, 2) should have terminus set to time when
+      #     object 0 is "put-down".
+      #   + Object 0 should be added to (3, 2) at time of put-down but should no
+      #     longer be recognised.
+      #   + Attention clock of model should be set to the time that object 0 is
+      #     "put-down" on (3, 2).
+      #   + Expected visual-spatial field state:
+      #	
+      #                  --------
+      # 4     x      x   |      |   x      x
+      #           ----------------------
+      # 3     x   | 2(C) |      |      |   x
+      #    ------------------------------------
+      # 2  |      |      | 1(B) | 0(a) |      |
+      #    ------------------------------------
+      # 1     x   | 4(D) |      |      |   x
+      #           ----------------------
+      # 0     x      x   |3(SLF)|   x      x
+      #                  --------
+      #       0      1      2       3      4     COORDINATES
+      
+      ######################
+      ##### FIRST MOVE #####
+      ######################
+      
+      # Construct move
+      move = ArrayList.new()
+      move.add(ItemSquarePattern.new(objects[0][0], 1, 0))
+      move.add(ItemSquarePattern.new(objects[0][0], 1, 2))
+      move_sequence = ArrayList.new()
+      move_sequence.add(move)
+      
+      # Set relevant timing parameters.
+      time_move_requested = model.getAttentionClock()
+      pickup_time = time_move_requested + visual_spatial_field_access_time
+      putdown_time = pickup_time + time_to_move_object
+      
+      # Set terminus for object 0 on (1, 0)
+      expected_visual_spatial_field_object_properties[1][0][1][3] = pickup_time
+      
+      # New blind square object should be added to (1, 0) when 0 picked up.
+      expected_visual_spatial_field_object_properties[1][0].push([
+        Scene.getBlindSquareToken(),
+        Scene.getBlindSquareToken(),
+        pickup_time,
+        nil,
+        false,
+        false
+      ])
+    
+      # Set terminus for empty square on (1, 2)
+      expected_visual_spatial_field_object_properties[1][2][1][3] = putdown_time
+      
+      # Object 0 should be added to (1, 2) at putdown time.  Should no longer be
+      # recognised.
+      expected_visual_spatial_field_object_properties[1][2].push([
+        objects[0][0],
+        objects[0][1],
+        putdown_time,
+        putdown_time + unrecognised_object_lifespan,
+        false,
+        true
+      ])
+      
+      visual_spatial_field.moveObjects(move_sequence, time_move_requested, false)
+      check_values_of_visual_spatial_objects_against_expected(
+        visual_spatial_field,
+        expected_visual_spatial_field_object_properties,
+        model.getAttentionClock(),
+        "when checking state of visual-spatial field after first part of moving " + 
+        move_types[move_number] + " (move number: " + move_number.to_s + ")"
+      )
+      assert_equal(
+        putdown_time, 
+        model.getAttentionClock(), 
+        "occurred when checking the time that the CHREST model associated with " +
+        "the visual-spatial field will be free after first part of moving " + 
+        move_types[move_number] + " (move number: " + move_number.to_s + ")"
+      )
+      
+      #######################
+      ##### SECOND MOVE #####
+      #######################
+      
+      # Artificially make object 0 recognised again
+      visual_spatial_field.getSquareContents(1, 2).get(2).setRecognised(putdown_time, true)
+      
+      # Set recognised status and terminus of object 0 on (1, 2)
+      expected_visual_spatial_field_object_properties[1][2][2][3] = putdown_time + recognised_object_lifespan
+      expected_visual_spatial_field_object_properties[1][2][2][4] = true
+      
+      # Construct move
+      move = ArrayList.new
+      move.add(ItemSquarePattern.new(objects[0][0], 1, 2))
+      move.add(ItemSquarePattern.new(objects[0][0], 3, 2))
+      move_sequence = ArrayList.new
+      move_sequence.add(move)
+      
+      # Set relevant timing parameters
+      time_move_requested = model.getAttentionClock()
+      pickup_time = time_move_requested + visual_spatial_field_access_time
+      putdown_time = pickup_time + time_to_move_object
+      
+      # Set terminus for object 0 on (1, 2)
+      expected_visual_spatial_field_object_properties[1][2][2][3] = pickup_time
+      
+      # Add empty square to (1, 2)
+      expected_visual_spatial_field_object_properties[1][2].push([
+        Scene.getEmptySquareToken(),
+        Scene.getEmptySquareToken(),
+        pickup_time,
+        pickup_time + unrecognised_object_lifespan,
+        false,
+        false
+      ])
+    
+      # Set terminus for empty square on (3, 2)
+      expected_visual_spatial_field_object_properties[3][2][1][3] = putdown_time
+      
+      # Add object 0 to (3, 2)
+      expected_visual_spatial_field_object_properties[3][2].push([
+        objects[0][0],
+        objects[0][1],
+        putdown_time,
+        putdown_time + unrecognised_object_lifespan,
+        false,
+        true
+      ])
+    
+      visual_spatial_field.moveObjects(move_sequence, time_move_requested, false)
+      check_values_of_visual_spatial_objects_against_expected(
+        visual_spatial_field,
+        expected_visual_spatial_field_object_properties,
+        model.getAttentionClock(),
+        "when checking state of visual-spatial field after moving " + move_types[move_number] + 
+        " (move number: " + move_number.to_s + ")"
+      )
+      assert_equal(
+        putdown_time, 
+        model.getAttentionClock(), 
+        "occurred when checking the time that the CHREST model associated with " +
+        "the visual-spatial field will be free after moving " + move_types[move_number] + 
+        " (move number: " + move_number.to_s + ")"
+      )
+      
+    ############################################################################
+    elsif (move_number == 2)
+      # ================
+      # MOVE DESCRIPTION
+      # ================
+      # - Move to square that has the creator on it.
+      # - Move from square that has the creator on it.
+      # - Move(s) performed:
+      #   + Object 0 moved from (1, 0) to (2, 0).
+      #   + Object 0 moved from (2, 0) to (3, 2).
+      # - In between moves, object 0's recognised status will be manually set
+      #   to true.
+      # 
+      # ===============
+      # EXPECTED OUTPUT
+      # ===============
+      # - After first move
+      #   + Object 0 on (1, 0) should have terminus set to time when it is
+      #     "picked-up".
+      #   + Blind square object should be placed on (1, 0) when object 0 is 
+      #     "picked-up".
+      #   + Object 0 should be added to (2, 0) at time of "put-down" but should 
+      #     no longer be recognised.
+      #   + The creator object on (2, 0) should not be modified.
+      #   + Attention clock of model should be set to the time that object 0 is
+      #     "put-down" on (2, 0).
+      #   + Expected visual-spatial field state:
+      #     
+      #                  --------
+      # 4     x      x   |      |   x      x
+      #           ----------------------
+      # 3     x   | 2(C) |      |      |   x
+      #    ------------------------------------
+      # 2  |      |      | 1(B) |      |      |
+      #    ------------------------------------
+      # 1     x   | 4(D) |      |      |   x
+      #           ----------------------
+      # 0     x      x   | 0(a) |   x      x
+      #                  |3(SLF)|
+      #                  --------
+      #       0      1      2       3      4     COORDINATES
+      #     
+      # - After second move
+      #   + Object 0 on (2, 0) should have terminus set to time when it is 
+      #     "picked-up".
+      #   + The other objects on (2, 0) should not be modified.
+      #   + The empty square on (3, 2) should have its terminus set to the time
+      #     object 0 is "put-down".
+      #   + Object 0 should be added to (3, 2).  Its creation time should be set
+      #     to the time it is "put-down" and it should still be unrecognised.
+      #   + Expected visual-spatial field state:
+      #
+      #                  --------
+      # 4     x      x   |      |   x      x
+      #           ----------------------
+      # 3     x   | 2(C) |      |      |   x
+      #    ------------------------------------
+      # 2  |      |      | 1(B) | 0(a) |      |
+      #    ------------------------------------
+      # 1     x   | 4(D) |      |      |   x
+      #           ----------------------
+      # 0     x      x   |3(SLF)|   x      x
+      #                  --------
+      #       0      1      2       3      4     COORDINATES
+            
+      ##############################
+      ##### FIRST PART OF MOVE #####
+      ##############################
+      
+      # Construct move.
+      move = ArrayList.new
+      move.add(ItemSquarePattern.new(objects[0][0], 1, 0))
+      move.add(ItemSquarePattern.new(objects[0][0], 2, 0))
+      move_sequence = ArrayList.new
+      move_sequence.add(move)
+      
+      # Set relevant timing parameters.
+      time_move_requested = model.getAttentionClock()
+      pickup_time = time_move_requested + visual_spatial_field_access_time
+      putdown_time = pickup_time + time_to_move_object
+      
+      # Set terminus for object 0 on (1, 1)
+      expected_visual_spatial_field_object_properties[1][0][1][3] = pickup_time
+      
+      # New blind square object should be added to (1, 0) when 0 picked up.
+      expected_visual_spatial_field_object_properties[1][0].push([
+        Scene.getBlindSquareToken(),
+        Scene.getBlindSquareToken(),
+        pickup_time,
+        nil,
+        false,
+        false
+      ])
+      
+      # Object 0 should be added to (2, 0) at first putdown time.  Should no 
+      # longer be recognised.
+      expected_visual_spatial_field_object_properties[2][0].push([
+        objects[0][0],
+        objects[0][1],
+        putdown_time,
+        putdown_time + unrecognised_object_lifespan,
+        false,
+        true
+      ])
+    
+      # Do not modify anything about the creator.
+    
+      visual_spatial_field.moveObjects(move_sequence, time_move_requested, false)
+      check_values_of_visual_spatial_objects_against_expected(
+        visual_spatial_field,
+        expected_visual_spatial_field_object_properties,
+        model.getAttentionClock(),
+        "when checking state of visual-spatial field after first part of moving " + 
+        move_types[move_number] + " (move number: " + move_number.to_s + ")"
+      )
+      assert_equal(
+        putdown_time, 
+        model.getAttentionClock(), 
+        "occurred when checking the time that the CHREST model associated with " +
+        "the visual-spatial field will be free after first part of moving " + 
+        move_types[move_number] + " (move number: " + move_number.to_s + ")"
+      )
+      
+      ###############################
+      ##### SECOND PART OF MOVE #####
+      ###############################
+      
+      # Artificially make object 0 recognised again
+      visual_spatial_field.getSquareContents(2, 0).get(1).setRecognised(putdown_time, true)
+      
+      # Set recognised status and terminus of object 0 on (2, 0)
+      expected_visual_spatial_field_object_properties[2][0][1][3] = putdown_time + recognised_object_lifespan
+      expected_visual_spatial_field_object_properties[2][0][1][4] = true
+      
+      # Construct move.
+      move = ArrayList.new
+      move.add(ItemSquarePattern.new(objects[0][0], 2, 0))
+      move.add(ItemSquarePattern.new(objects[0][0], 3, 2))
+      move_sequence = ArrayList.new
+      move_sequence.add(move)
+      
+      # Set relevant time parameters.
+      time_move_requested = model.getAttentionClock()
+      pickup_time = time_move_requested + visual_spatial_field_access_time
+      putdown_time = pickup_time + time_to_move_object
+      
+      # Set terminus for object 0 on (2, 0)
+      expected_visual_spatial_field_object_properties[2][0][1][3] = pickup_time
+      
+      # Do not modify anything about the creator.
+      
+      # Set terminus for empty square object on (3, 2)
+      expected_visual_spatial_field_object_properties[3][2][1][3] = putdown_time
+      
+      # Add object 0 to (3, 2)
+      expected_visual_spatial_field_object_properties[3][2].push([
+        objects[0][0],
+        objects[0][1],
+        putdown_time,
+        putdown_time + unrecognised_object_lifespan,
+        false,
+        true
+      ])
+    
+      visual_spatial_field.moveObjects(move_sequence, time_move_requested, false)
+      check_values_of_visual_spatial_objects_against_expected(
+        visual_spatial_field,
+        expected_visual_spatial_field_object_properties,
+        model.getAttentionClock(),
+        "when checking state of visual-spatial field after second part of moving " + 
+        move_types[move_number] + " (move number: " + move_number.to_s + ")"
+      )
+      assert_equal(
+        putdown_time, 
+        model.getAttentionClock(), 
+        "occurred when checking the time that the CHREST model associated with " +
+        "the visual-spatial field will be free after second part of moving " + 
+        move_types[move_number] + " (move number: " + move_number.to_s + ")"
+      )
+      
+    ############################################################################
+    elsif(move_number == 3)
+      #	================
+      # MOVE DESCRIPTION
+      # ================
+      #	- Move to square that has a live object on it that is not a blind square,
+      #	  an empty square or the creator.
+      #	- Move from square that has a live object on it that is not a blind 
+      #   square, an empty square or the creator.
+      # - Move(s) performed:
+      #   + Object 0 moved from (1, 0) to (2, 2).
+      #   + Object 0 moved from (2, 2) to (3, 2).
+      # - In between moves, object 0's recognised status will be manually set
+      #   to true.
+      #	
+      #	===============
+      # EXPECTED OUTPUT
+      # ===============
+      # - After first move
+      #   + Object 0 on (1, 0) should have terminus set to time when it is
+      #     "picked-up".
+      #   + Blind square object should be placed on (1, 0) when object 0 is 
+      #     "picked-up".
+      #   + Object 0 should be added to (2, 2) at time of "put-down" but should 
+      #     no longer be recognised.
+      #   + Object 1 on (2, 2) should have its terminus extended to the
+      #     time object 0 is "put-down" plus the lifespan for an unrecognised
+      #     object.
+      #   + Attention clock of model should be set to the time that object 0 is
+      #     "put-down" on (2, 2).
+      #   + Expected visual-spatial field state:
+      #   
+      #                  --------
+      # 4     x      x   |      |   x      x
+      #           ----------------------
+      # 3     x   | 2(C) |      |      |   x
+      #    ------------------------------------
+      # 2  |      |      | 0(a) |      |      |
+      #    |      |      | 1(B) |      |      |
+      #    ------------------------------------
+      # 1     x   | 4(D) |      |      |   x
+      #           ----------------------
+      # 0     x      x   |3(SLF)|   x      x
+      #                  --------
+      #       0      1      2       3      4     COORDINATES
+      #       
+      # - After second move
+      #   + Object 0 on (2, 2) should have terminus set to time when it is
+      #     "picked-up".
+      #   + Terminus for object 1 should be extended to the time object 0 is
+      #     "picked-up" plus the lifespan specified for unrecognised objects.
+      #   + The empty square object on (3, 2) should have its terminus set to
+      #     the time that object 0 is "put-down".
+      #   + Object 0 should be added to (3, 2) at time of "put-down" and should 
+      #     not be recognised.
+      #   + Attention clock of model should be set to the time that object 0 is
+      #     "put-down" on (3, 2).
+      #   + Expected visual-spatial field state:
+      #
+      #                  --------
+      # 4     x      x   |      |   x      x
+      #           ----------------------
+      # 3     x   | 2(C) |      |      |   x
+      #    ------------------------------------
+      # 2  |      |      | 1(B) | 0(a) |      |
+      #    ------------------------------------
+      # 1     x   | 4(D) |      |      |   x
+      #           ----------------------
+      # 0     x      x   |3(SLF)|   x      x
+      #                  --------
+      #       0      1      2       3      4     COORDINATES
+      
+      ##############################
+      ##### FIRST PART OF MOVE #####
+      ##############################
+      
+      # Construct move
+      move = ArrayList.new
+      move.add(ItemSquarePattern.new(objects[0][0], 1, 0))
+      move.add(ItemSquarePattern.new(objects[0][0], 2, 2))
+      move_sequence = ArrayList.new
+      move_sequence.add(move)
+      
+      # Set relevant time parameters
+      time_move_requested = model.getAttentionClock()
+      pickup_time = time_move_requested + visual_spatial_field_access_time
+      putdown_time = pickup_time + time_to_move_object
+      
+      # Set terminus for object 0 on (1, 0)
+      expected_visual_spatial_field_object_properties[1][0][1][3] = pickup_time
+      
+      # New blind square object should be added to (1, 0) when 0 picked up.
+      expected_visual_spatial_field_object_properties[1][0].push([
+        Scene.getBlindSquareToken(),
+        Scene.getBlindSquareToken(),
+        pickup_time,
+        nil,
+        false,
+        false
+      ])
+      
+      # Object 0 should be added to (2, 2) at first putdown time.  Should no 
+      # longer be recognised.
+      expected_visual_spatial_field_object_properties[2][2].push([
+        objects[0][0],
+        objects[0][1],
+        putdown_time,
+        putdown_time + unrecognised_object_lifespan,
+        false,
+        true
+      ])
+    
+      # Update terminus for object 1 on (2, 2) since the coordinates have been
+      # looked at and the object is alive when 0 is putdown.
+      expected_visual_spatial_field_object_properties[2][2][1][3] = putdown_time + unrecognised_object_lifespan
+    
+      visual_spatial_field.moveObjects(move_sequence, time_move_requested, false)
+      check_values_of_visual_spatial_objects_against_expected(
+        visual_spatial_field,
+        expected_visual_spatial_field_object_properties,
+        model.getAttentionClock(),
+        "when checking state of visual-spatial field after first part of moving " + 
+        move_types[move_number] + " (move number: " + move_number.to_s + ")"
+      )
+      assert_equal(
+        putdown_time, 
+        model.getAttentionClock(), 
+        "occurred when checking the time that the CHREST model associated with " +
+        "the visual-spatial field will be free after first part of moving " + 
+        move_types[move_number] + " (move number: " + move_number.to_s + ")"
+      )
+      ###############################
+      ##### SECOND PART OF MOVE #####
+      ###############################
+      
+      # Make object 0 recognised again
+      visual_spatial_field.getSquareContents(2, 2).get(2).setRecognised(putdown_time, true)
+      
+      # Set recognised status and terminus of object 0 on (2, 2)
+      expected_visual_spatial_field_object_properties[2][2][2][3] = putdown_time + recognised_object_lifespan
+      expected_visual_spatial_field_object_properties[2][2][2][4] = true
+      
+      # Construct move
+      move = ArrayList.new
+      move.add(ItemSquarePattern.new(objects[0][0], 2, 2))
+      move.add(ItemSquarePattern.new(objects[0][0], 3, 2))
+      move_sequence = ArrayList.new
+      move_sequence.add(move)
+      
+      # Set relevant timing parameters
+      time_move_requested = model.getAttentionClock()
+      pickup_time = time_move_requested + visual_spatial_field_access_time
+      putdown_time = pickup_time + time_to_move_object
+      
+      # Set terminus for object 0 on (2, 2)
+      expected_visual_spatial_field_object_properties[2][2][2][3] = pickup_time
+      
+      # Set terminus for object 1 on (2, 2)
+      expected_visual_spatial_field_object_properties[2][2][1][3] = pickup_time + unrecognised_object_lifespan
+      
+      # Set terminus for empty square object on (3, 2)
+      expected_visual_spatial_field_object_properties[3][2][1][3] = putdown_time
+      
+      # Add object 0 to (3, 2)
+      expected_visual_spatial_field_object_properties[3][2].push([
+        objects[0][0],
+        objects[0][1],
+        putdown_time,
+        putdown_time + unrecognised_object_lifespan,
+        false,
+        true
+      ])
+    
+      visual_spatial_field.moveObjects(move_sequence, time_move_requested, false)
+      check_values_of_visual_spatial_objects_against_expected(
+        visual_spatial_field,
+        expected_visual_spatial_field_object_properties,
+        model.getAttentionClock(),
+        "when checking state of visual-spatial field after second part of moving " + 
+        move_types[move_number] + " (move number: " + move_number.to_s + ")"
+      )
+      assert_equal(
+        putdown_time, 
+        model.getAttentionClock(), 
+        "occurred when checking the time that the CHREST model associated with " +
+        "the visual-spatial field will be free after second part of moving " + 
+        move_types[move_number] + " (move number: " + move_number.to_s + ")"
+      )
+      
+    ############################################################################
+    elsif(move_number == 4)
+      #	================
+      # MOVE DESCRIPTION
+      # ================
+      #	- Move to square that has a live, recognised object on it.
+      #	- Move from square that has a live, recognised object on it.
+      # - Move(s) performed:
+      #   + Object 0 moved from (1, 0) to (1, 3).
+      #   + Object 0 moved from (1, 3) to (3, 2).
+      # - In between moves, object 0's recognised status will be manually set
+      #   to true.
+      # - Object 2's recognised status will be set manually.
+      #	
+      #	===============
+      # EXPECTED OUTPUT
+      # ===============
+      # - After first move
+      #   + Object 0 on (1, 0) should have terminus set to time when it is
+      #     "picked-up".
+      #   + Blind square object should be placed on (1, 0) when object 0 is 
+      #     "picked-up".
+      #   + Object 0 should be added to (1, 3) at time of "put-down" but should 
+      #     no longer be recognised.
+      #   + Object 2 on (2, 2) should have its terminus extended to the
+      #     time object 0 is "put-down" plus the lifespan for a recognised
+      #     object.
+      #   + Attention clock of model should be set to the time that object 0 is
+      #     "put-down" on (2, 2).
+      #   + Expected visual-spatial field state:
+      #   
+      #                  --------
+      # 4     x      x   |      |   x      x
+      #           ----------------------
+      # 3     x   | 0(a) |      |      |   x
+      #           | 2(C) |      |      |
+      #    ------------------------------------
+      # 2  |      |      | 1(B) |      |      |
+      #    ------------------------------------
+      # 1     x   | 4(D) |      |      |   x
+      #           ----------------------
+      # 0     x      x   |3(SLF)|   x      x
+      #                  --------
+      #       0      1      2       3      4     COORDINATES
+      #       
+      # - After second move
+      #   + Object 0 on (1, 3) should have terminus set to time when it is
+      #     "picked-up".
+      #   + Terminus for object 2 should be extended to the time object 0 is
+      #     "picked-up" plus the lifespan specified for recognised objects.
+      #   + The empty square object on (3, 2) should have its terminus set to
+      #     the time that object 0 is "put-down".
+      #   + Object 0 should be added to (3, 2) at time of "put-down" and should 
+      #     not be recognised.
+      #   + Attention clock of model should be set to the time that object 0 is
+      #     "put-down" on (3, 2).
+      #   + Expected visual-spatial field state:
+      #
+      #                  --------
+      # 4     x      x   |      |   x      x
+      #           ----------------------
+      # 3     x   | 2(C) |      |      |   x
+      #    ------------------------------------
+      # 2  |      |      | 1(B) | 0(a) |      |
+      #    ------------------------------------
+      # 1     x   | 4(D) |      |      |   x
+      #           ----------------------
+      # 0     x      x   |3(SLF)|   x      x
+      #                  --------
+      #       0      1      2       3      4     COORDINATES
+      
+      visual_spatial_field.getSquareContents(1, 3).get(1).setRecognised(model.getAttentionClock(), true)
+      expected_visual_spatial_field_object_properties[1][3][1][3] = model.getAttentionClock() + recognised_object_lifespan
+      expected_visual_spatial_field_object_properties[1][3][1][4] = true
+      
+      ##############################
+      ##### FIRST PART OF MOVE #####
+      ##############################
+      
+      # Construct move
+      move = ArrayList.new
+      move.add(ItemSquarePattern.new(objects[0][0], 1, 0))
+      move.add(ItemSquarePattern.new(objects[0][0], 1, 3))
+      move_sequence = ArrayList.new
+      move_sequence.add(move)
+      
+      # Set relevant time parameters
+      time_move_requested = model.getAttentionClock()
+      pickup_time = time_move_requested + visual_spatial_field_access_time
+      putdown_time = pickup_time + time_to_move_object
+      
+      # Set terminus for object 0 on (1, 1)
+      expected_visual_spatial_field_object_properties[1][0][1][3] = pickup_time
+      
+      # New blind square object should be added to (1, 0) when 0 picked up.
+      expected_visual_spatial_field_object_properties[1][0].push([
+        Scene.getBlindSquareToken(),
+        Scene.getBlindSquareToken(),
+        pickup_time,
+        nil,
+        false,
+        false
+      ])
+      
+      # Object 0 should be added to (1, 3) at first putdown time.  Should no 
+      # longer be recognised.
+      expected_visual_spatial_field_object_properties[1][3].push([
+        objects[0][0],
+        objects[0][1],
+        putdown_time,
+        putdown_time + unrecognised_object_lifespan,
+        false,
+        true
+      ])
+    
+      # Update terminus for object 2 on (1, 3) since the coordinates have been
+      # looked at and the object is alive when 0 is putdown.
+      expected_visual_spatial_field_object_properties[1][3][1][3] = putdown_time + recognised_object_lifespan
+    
+      visual_spatial_field.moveObjects(move_sequence, time_move_requested, false)
+      check_values_of_visual_spatial_objects_against_expected(
+        visual_spatial_field,
+        expected_visual_spatial_field_object_properties,
+        model.getAttentionClock(),
+        "when checking state of visual-spatial field after first part of moving " + 
+        move_types[move_number] + " (move number: " + move_number.to_s + ")"
+      )
+      assert_equal(
+        putdown_time, 
+        model.getAttentionClock(), 
+        "occurred when checking the time that the CHREST model associated with " +
+        "the visual-spatial field will be free after first part of moving " + 
+        move_types[move_number] + " (move number: " + move_number.to_s + ")"
+      )
+      
+      ###############################
+      ##### SECOND PART OF MOVE #####
+      ###############################
+      
+      # Make object 0 recognised again
+      visual_spatial_field.getSquareContents(1, 3).get(2).setRecognised(putdown_time, true)
+      
+      # Set recognised status and terminus of object 0 on (1, 3)
+      expected_visual_spatial_field_object_properties[1][3][2][3] = putdown_time + recognised_object_lifespan
+      expected_visual_spatial_field_object_properties[1][3][2][4] = true
+      
+      # Construct move
+      move = ArrayList.new
+      move.add(ItemSquarePattern.new(objects[0][0], 1, 3))
+      move.add(ItemSquarePattern.new(objects[0][0], 3, 2))
+      move_sequence = ArrayList.new
+      move_sequence.add(move)
+      
+      # Set relevant timing parameters
+      time_move_requested = model.getAttentionClock()
+      pickup_time = time_move_requested + visual_spatial_field_access_time
+      putdown_time = pickup_time + time_to_move_object
+      
+      # Set terminus for object 0 on (1, 3)
+      expected_visual_spatial_field_object_properties[1][3][2][3] = pickup_time
+      
+      # Set terminus for object 2 on (1, 3)
+      expected_visual_spatial_field_object_properties[1][3][1][3] = pickup_time + recognised_object_lifespan
+      
+      # Set terminus for empty square object on (3, 2)
+      expected_visual_spatial_field_object_properties[3][2][1][3] = putdown_time
+      
+      # Add object 0 to (3, 2)
+      expected_visual_spatial_field_object_properties[3][2].push([
+        objects[0][0],
+        objects[0][1],
+        putdown_time,
+        putdown_time + unrecognised_object_lifespan,
+        false,
+        true
+      ])
+    
+      visual_spatial_field.moveObjects(move_sequence, time_move_requested, false)
+      check_values_of_visual_spatial_objects_against_expected(
+        visual_spatial_field,
+        expected_visual_spatial_field_object_properties,
+        model.getAttentionClock(),
+        "when checking state of visual-spatial field after second part of moving " + 
+        move_types[move_number] + " (move number: " + move_number.to_s + ")"
+      )
+      assert_equal(
+        putdown_time, 
+        model.getAttentionClock(), 
+        "occurred when checking the time that the CHREST model associated with " +
+        "the visual-spatial field will be free after second part of moving " + 
+        move_types[move_number] + " (move number: " + move_number.to_s + ")"
+      )
+    
+    ############################################################################
+    elsif(move_number == 5)
+      #	================
+      # MOVE DESCRIPTION
+      # ================
+      #	- Move to square whose object status is unknown.
+      #	- Move from square whose object status was unknown.
+      #	- Move(s) performed:
+      #   + Object 0 moved from (1, 0) to (2, 3).
+      #   + Object 0 moved from (2, 3) to (3, 2).
+      # - Before the moves are applied, coordinates (2, 3) will be artificially
+      #   set to contain an unknown square object.
+      # - In between moves, object 0's recognised status will be manually set
+      #   to true.
+      #	- Visual-spatial field state before moves performed (unknown square 
+      #	  denoted by "?"):
+      #	
+      #                  --------
+      # 4     x      x   |      |   x      x
+      #           ----------------------
+      # 3     x   | 2(C) |  ?   |      |   x
+      #    ------------------------------------
+      # 2  |      |      | 1(B) |      |      |
+      #    ------------------------------------
+      # 1     x   | 4(D) |      |      |   x
+      #           ----------------------
+      # 0     x     0(a) |3(SLF)|   x      x
+      #                  --------
+      #       0      1      2       3      4     COORDINATES
+      #
+      # ===============
+      # EXPECTED OUTPUT
+      # ===============
+      # - After first move
+      #   + Object 0 on (1, 0) should have terminus set to time when it is
+      #     "picked-up".
+      #   + Blind square object should be placed on (1, 0) when object 0 is 
+      #     "picked-up".
+      #   + Unknown square object on (2, 3) should have its terminus set to the 
+      #     time that object 0 is "put-down".
+      #   + Object 0 should be added to (2, 3) at time of "put-down" but should 
+      #     no longer be recognised.
+      #   + Attention clock of model should be set to the time that object 0 is
+      #     "put-down" on (2, 3).
+      #   + Expected visual-spatial field state:
+      #
+      #                  --------
+      # 4     x      x   |      |   x      x
+      #           ----------------------
+      # 3     x   | 2(C) | 0(a) |      |   x
+      #    ------------------------------------
+      # 2  |      |      | 1(B) |      |      |
+      #    ------------------------------------
+      # 1     x   | 4(D) |      |      |   x
+      #           ----------------------
+      # 0     x      x   |3(SLF)|   x      x
+      #                  --------
+      #       0      1      2       3      4     COORDINATES
+      #
+      #- After second move
+      #   + Object 0 on (2, 3) should have terminus set to time when it is
+      #     "picked-up".
+      #   + Empty square object should be placed on (2, 3) when object 0 is 
+      #     "picked-up".
+      #   + Empty square object on (3, 2) should have its terminus set to the 
+      #     time that object 0 is "put-down".
+      #   + Object 0 should be added to (3, 2) at time of "put-down" but should 
+      #     no longer be recognised.
+      #   + Attention clock of model should be set to the time that object 0 is
+      #     "put-down" on (3, 2).
+      #   + Expected visual-spatial field state:
+      #
+      #                  --------
+      # 4     x      x   |      |   x      x
+      #           ----------------------
+      # 3     x   | 2(C) |      |      |   x
+      #    ------------------------------------
+      # 2  |      |      | 1(B) | 0(a) |      |
+      #    ------------------------------------
+      # 1     x   | 4(D) |      |      |   x
+      #           ----------------------
+      # 0     x      x   |3(SLF)|   x      x
+      #                  --------
+      #       0      1      2       3      4     COORDINATES
+      
+      # Artificially create the unknown square
+      visual_spatial_field.getSquareContents(2, 3).get(1).setTerminus(model.getAttentionClock(), true)
+      visual_spatial_field.setUnknownSquares(model.getAttentionClock + 1)
+      
+      # Set expected object properties for the coordinates containing the 
+      # unknown square.
+      expected_visual_spatial_field_object_properties[2][3][1][3] = model.getAttentionClock()
+      expected_visual_spatial_field_object_properties[2][3].push([
+        VisualSpatialFieldObject.getUnknownSquareToken(),
+        VisualSpatialFieldObject.getUnknownSquareToken(),
+        model.getAttentionClock() + 1,
+        nil,
+        false,
+        false
+      ])
+    
+      check_values_of_visual_spatial_objects_against_expected(
+        visual_spatial_field,
+        expected_visual_spatial_field_object_properties,
+        model.getAttentionClock() + 1,
+        "when checking state of visual-spatial field before moving " + 
+        move_types[move_number] + " (move number: " + move_number.to_s + ")"
+      )
+      
+      ##############################
+      ##### FIRST PART OF MOVE #####
+      ##############################
+      
+      # Construct move
+      move = ArrayList.new
+      move.add(ItemSquarePattern.new(objects[0][0], 1, 0))
+      move.add(ItemSquarePattern.new(objects[0][0], 2, 3))
+      move_sequence = ArrayList.new
+      move_sequence.add(move)
+      
+      # Set relevant time parameters
+      time_move_requested = model.getAttentionClock() + 1
+      pickup_time = time_move_requested + visual_spatial_field_access_time
+      putdown_time = pickup_time + time_to_move_object
+      
+      # Set terminus for object 0 on (1, 0)
+      expected_visual_spatial_field_object_properties[1][0][1][3] = pickup_time
+      
+      # New blind square object should be added to (1, 0) when 0 picked up.
+      expected_visual_spatial_field_object_properties[1][0].push([
+        Scene.getBlindSquareToken(),
+        Scene.getBlindSquareToken(),
+        pickup_time,
+        nil,
+        false,
+        false
+      ])
+      
+      # Set terminus for unknown square on (2, 3)
+      expected_visual_spatial_field_object_properties[2][3][2][3] = putdown_time
+      
+      # Add object 0 to (2, 3)
+      expected_visual_spatial_field_object_properties[2][3].push([
+        objects[0][0],
+        objects[0][1],
+        putdown_time,
+        putdown_time + unrecognised_object_lifespan,
+        false,
+        true
+      ])
+    
+      visual_spatial_field.moveObjects(move_sequence, time_move_requested, false)
+      
+      check_values_of_visual_spatial_objects_against_expected(
+        visual_spatial_field,
+        expected_visual_spatial_field_object_properties,
+        model.getAttentionClock(),
+        "when checking state of visual-spatial field after first part of moving " + 
+        move_types[move_number] + " (move number: " + move_number.to_s + ")"
+      )
+      assert_equal(
+        putdown_time, 
+        model.getAttentionClock(), 
+        "occurred when checking the time that the CHREST model associated with " +
+        "the visual-spatial field will be free after first part of moving " + 
+        move_types[move_number] + " (move number: " + move_number.to_s + ")"
+      )
+      
+      ###############################
+      ##### SECOND PART OF MOVE #####
+      ###############################
+      
+      # Make object 0 recognised again
+      visual_spatial_field.getSquareContents(2, 3).get(3).setRecognised(putdown_time, true)
+      
+      # Set recognised status and terminus of object 0 on (2, 3)
+      expected_visual_spatial_field_object_properties[2][3][3][3] = putdown_time + recognised_object_lifespan
+      expected_visual_spatial_field_object_properties[2][3][3][4] = true
+      
+      # Construct move
+      move = ArrayList.new()
+      move.add(ItemSquarePattern.new(objects[0][0], 2, 3))
+      move.add(ItemSquarePattern.new(objects[0][0], 3, 2))
+      move_sequence = ArrayList.new()
+      move_sequence.add(move)
+      
+      # Set relevant timing parameters
+      time_move_requested = model.getAttentionClock()
+      pickup_time = time_move_requested + visual_spatial_field_access_time
+      putdown_time = pickup_time + time_to_move_object
+      
+      # Set terminus for object 0 on (2, 3)
+      expected_visual_spatial_field_object_properties[2][3][3][3] = pickup_time
+      
+      # Add an empty square object to (2, 3)
+      expected_visual_spatial_field_object_properties[2][3].push([
+        Scene.getEmptySquareToken(),
+        Scene.getEmptySquareToken(),
+        pickup_time,
+        pickup_time + unrecognised_object_lifespan,
+        false,
+        false
+      ])
+      
+      # Set terminus for empty square object on (3, 2)
+      expected_visual_spatial_field_object_properties[3][2][1][3] = putdown_time
+      
+      # Add object 0 to (3, 2)
+      expected_visual_spatial_field_object_properties[3][2].push([
+        objects[0][0],
+        objects[0][1],
+        putdown_time,
+        putdown_time + unrecognised_object_lifespan,
+        false,
+        true
+      ])
+    
+      visual_spatial_field.moveObjects(move_sequence, time_move_requested, false)
+      check_values_of_visual_spatial_objects_against_expected(
+        visual_spatial_field,
+        expected_visual_spatial_field_object_properties,
+        model.getAttentionClock(),
+        "when checking state of visual-spatial field after second part of moving " + 
+        move_types[move_number] + " (move number: " + move_number.to_s + ")"
+      )
+      assert_equal(
+        putdown_time, 
+        model.getAttentionClock(), 
+        "occurred when checking the time that the CHREST model associated with " +
+        "the visual-spatial field will be free after second part of moving " + 
+        move_types[move_number] + " (move number: " + move_number.to_s + ")"
+      )
+    end 
+  end 
+end
+
+################################################################################
+# Tests for correct operation of the "VisualSpatialField.moveObjects()" function
+# when moving the creator in all possible scenarios.
+# 
+# The scene used in the following test is illustrated below ("x" represents a 
+# blind square, real objects are denoted by their identifiers and their class 
+# are in parenthesis, ghost objects are denoted by lower case letters in 
+# parenthesis).
+# 
+#                  --------
+# 4     x      x   |      |   x      x
+#           ----------------------
+# 3     x   | 2(B) |      |      |   x
+#    ------------------------------------
+# 2  |      |      | 1(A) |      |      |
+#    ------------------------------------
+# 1     x   |      |      |      |   x
+#           ----------------------
+# 0     x      x   |SLF(0)|   x      x
+#                  --------
+#       0      1      2       3      4     COORDINATES
+#          
+unit_test "move_object (creator)" do
+  
+  move_types = [
+    "to square containing a live blind object",
+    "from/to square containing a live empty object",
+    "to/from square containing a live unrecognised object",
+    "to/from square containing a live recognised object",
+    "to/from a square whose object status is unknown"
+  ]
+  
+  for move_number in 0...move_types.count
+    
+    objects = [
+      ["0", Scene.getCreatorToken()],
+      ["1", "A"],
+      ["2", "B"]
+    ]
+
+    scene = Scene.new("Test", 5, 5, nil)
+    scene.addItemToSquare(2, 0, objects[0][0], objects[0][1])
+    scene.addItemToSquare(1, 1, Scene.getEmptySquareToken(), Scene.getEmptySquareToken())
+    scene.addItemToSquare(2, 1, Scene.getEmptySquareToken(), Scene.getEmptySquareToken())
+    scene.addItemToSquare(3, 1, Scene.getEmptySquareToken(), Scene.getEmptySquareToken())
+    scene.addItemToSquare(0, 2, Scene.getEmptySquareToken(), Scene.getEmptySquareToken())
+    scene.addItemToSquare(1, 2, Scene.getEmptySquareToken(), Scene.getEmptySquareToken())
+    scene.addItemToSquare(2, 2, objects[1][0], objects[1][1])
+    scene.addItemToSquare(3, 2, Scene.getEmptySquareToken(), Scene.getEmptySquareToken())
+    scene.addItemToSquare(4, 2, Scene.getEmptySquareToken(), Scene.getEmptySquareToken())
+    scene.addItemToSquare(1, 3, objects[2][0], objects[2][1])
+    scene.addItemToSquare(2, 3, Scene.getEmptySquareToken(), Scene.getEmptySquareToken())
+    scene.addItemToSquare(3, 3, Scene.getEmptySquareToken(), Scene.getEmptySquareToken())
+    scene.addItemToSquare(2, 4, Scene.getEmptySquareToken(), Scene.getEmptySquareToken())
+
+    ###################################
+    ##### CREATE NEW CHREST MODEL #####
+    ###################################
+    model = Chrest.new
+    model.setDomain(GenericDomain.new(model))
+    model.getPerceiver.setFieldOfView(1)
+
+    ##########################################
+    ##### CONSTRUCT VISUAL-SPATIAL FIELD #####
+    ##########################################
+
+    # Set visual-spatial field variables.
+    creation_time = 0
+    number_fixations = 20
+    time_to_encode_objects = 50
+    time_to_encode_empty_squares = 10
+    visual_spatial_field_access_time = 100
+    time_to_move_object = 250
+    recognised_object_lifespan = 60000
+    unrecognised_object_lifespan = 30000
 
     # Construct the visual-spatial field.
     visual_spatial_field = VisualSpatialField.new(
@@ -903,671 +4597,942 @@ unit_test "move_object" do
       recognised_object_lifespan,
       unrecognised_object_lifespan,
       number_fixations,
-      domain_time,
+      creation_time,
       true,
       false
     )
 
-    # Get contents of STM (will have been populated during object 
-    # recognition during visual-spatial field construction) and remove root 
-    # nodes and nodes with empty images.  This will leave retrieved chunks 
-    # that have non-empty images, i.e. these images should contain the 
-    # list-patterns learned by the model.
-    stm = model.getVisualStm()
-    stm_contents = ""
-    for i in (stm.getCount() - 1).downto(0)
-      chunk = stm.getItem(i)
-      if( !chunk.equals(model.getVisualLtm()) )
-        if(!chunk.getImage().isEmpty())
-          stm_contents += chunk.getImage().toString()
+    ####################################################################
+    ##### SET-UP EXPECTED VISUAL-SPATIAL FIELD COORDINATE CONTENTS #####
+    ####################################################################
+
+    expected_visual_spatial_field_object_properties = Array.new
+    for col in 0...visual_spatial_field.getSceneEncoded().getWidth()
+      expected_visual_spatial_field_object_properties.push([])
+      for row in 0...visual_spatial_field.getSceneEncoded().getHeight()
+        expected_visual_spatial_field_object_properties[col].push([])
+
+        if (col == 2 and row == 0)
+          expected_visual_spatial_field_object_properties[col][row].push([
+            objects[0][0],
+            objects[0][1],
+            creation_time + visual_spatial_field_access_time,
+            nil,
+            false,
+            false
+          ])
+        else
+          expected_visual_spatial_field_object_properties[col][row].push([
+            Scene.getBlindSquareToken(),
+            Scene.getBlindSquareToken(),
+            creation_time + visual_spatial_field_access_time,
+            nil,
+            false,
+            false
+          ])
         end
       end
     end
 
-    # Check if STM contents are as expected, if they are, set the flag that
-    # controls when the model is ready for testing to true.
-    expected_stm_contents == stm_contents ? visual_stm_contents_as_expected = true : nil
+    number_objects_encoded = 0
+    number_empty_squares_encoded = 0
 
-    # Advance domain time to the time that the visual-spatial field will be 
-    # completely instantiated so that the model's attention will be free 
-    # should a new visual-field need to be constructed.
-    domain_time = model.getAttentionClock
-  end
-  
-  ####################################################################
-  ##### SET-UP EXPECTED VISUAL-SPATIAL FIELD COORDINATE CONTENTS #####
-  ####################################################################
-  
-  expected_visual_spatial_field_object_properties = Array.new
-  for col in 0...visual_spatial_field.getSceneEncoded().getWidth()
-    expected_visual_spatial_field_object_properties.push([])
-    for row in 0...visual_spatial_field.getSceneEncoded().getHeight()
-      expected_visual_spatial_field_object_properties[col].push([])
-      
-      if col == 2 and row == 0
-        expected_visual_spatial_field_object_properties[col][row].push([
-        test_objects[4][0],
-        test_objects[4][1],
-        creation_time + visual_spatial_field_access_time,
-        nil,
-        false,
-        false
-      ])
-      else
-        expected_visual_spatial_field_object_properties[col][row].push([
-        Scene.getBlindSquareIdentifier(),
-        Scene.getBlindSquareIdentifier(),
-        creation_time + visual_spatial_field_access_time,
-        nil,
-        false,
-        false
-      ])
+    # Set expected object values for coordinates containing unrecognised objects.
+    for row in 0...visual_spatial_field.getHeight()
+      for col in 0...visual_spatial_field.getWidth()
+
+        process_coordinates = false
+        identifier = Scene.getEmptySquareToken()
+        obj_class = Scene.getEmptySquareToken()
+
+        if 
+          ( (row == 1) and (col != 0 and col != 4) ) or
+          (row == 2 and (col != 2)) or
+          (row == 3 and (col == 2 or col == 3)) or
+          (row == 4 and (col == 2))
+        then
+          number_empty_squares_encoded += 1
+          process_coordinates = true
+
+        elsif(
+            (row == 2 and col == 2) or
+            (row == 3 and col == 1)
+          )
+          number_objects_encoded += 1
+          process_coordinates = true
+
+          if (row == 2 and col == 2)
+            identifier = objects[1][0]
+            obj_class = objects[1][1]
+          else
+            identifier = objects[2][0]
+            obj_class = objects[2][1]
+          end
+        end
+
+        if(process_coordinates)
+          expected_visual_spatial_field_object_properties[col][row][0][3] = get_creation_time_for_object_after_visual_spatial_field_creation(creation_time, visual_spatial_field_access_time, time_to_encode_objects, time_to_encode_empty_squares, number_objects_encoded, number_empty_squares_encoded)
+          expected_visual_spatial_field_object_properties[col][row].push([
+            identifier,
+            obj_class,
+            expected_visual_spatial_field_object_properties[col][row][0][3],
+            expected_visual_spatial_field_object_properties[col][row][0][3] + unrecognised_object_lifespan,
+            false,
+            false,
+          ])
+        end
       end
     end
-  end
-  
-  # Set expected values for squares containing recognised chunks first.
-  expected_visual_spatial_field_object_properties[1][0][0][3] = get_creation_time_for_object_after_visual_spatial_field_creation(creation_time, visual_spatial_field_access_time, time_to_encode_objects, time_to_encode_empty_squares, 1, 0)
-  expected_visual_spatial_field_object_properties[1][0].push([
-    test_objects[2][0],
-    test_objects[2][1],
-    get_creation_time_for_object_after_visual_spatial_field_creation(creation_time, visual_spatial_field_access_time, time_to_encode_objects, time_to_encode_empty_squares, 1, 0),
-    get_terminus_for_object_after_visual_spatial_field_creation(creation_time, visual_spatial_field_access_time, time_to_encode_objects, time_to_encode_empty_squares, 1, 0, recognised_object_lifespan),
-    true,
-    true,
-  ])
 
-  expected_visual_spatial_field_object_properties[1][1][0][3] = get_creation_time_for_object_after_visual_spatial_field_creation(creation_time, visual_spatial_field_access_time, time_to_encode_objects, time_to_encode_empty_squares, 1, 0)
-  expected_visual_spatial_field_object_properties[1][1].push([
-    test_objects[0][0],
-    test_objects[0][1],
-    get_creation_time_for_object_after_visual_spatial_field_creation(creation_time, visual_spatial_field_access_time, time_to_encode_objects, time_to_encode_empty_squares, 1, 0),
-    get_terminus_for_object_after_visual_spatial_field_creation(creation_time, visual_spatial_field_access_time, time_to_encode_objects, time_to_encode_empty_squares, 1, 0, unrecognised_object_lifespan),
-    true,
-    false,
-  ])
-
-  # Set expected values for squares containing unrecognised chunks in order of
-  # encoding next.
-  expected_visual_spatial_field_object_properties[2][1][0][3] = get_creation_time_for_object_after_visual_spatial_field_creation(creation_time, visual_spatial_field_access_time, time_to_encode_objects, time_to_encode_empty_squares, 1, 1)
-  expected_visual_spatial_field_object_properties[2][1].push([
-    Scene.getEmptySquareIdentifier(),
-    Scene.getEmptySquareIdentifier(),
-    get_creation_time_for_object_after_visual_spatial_field_creation(creation_time, visual_spatial_field_access_time, time_to_encode_objects, time_to_encode_empty_squares, 1, 1),
-    get_terminus_for_object_after_visual_spatial_field_creation(creation_time, visual_spatial_field_access_time, time_to_encode_objects, time_to_encode_empty_squares, 1, 1, unrecognised_object_lifespan),
-    false,
-    false,
-  ])
-
-  expected_visual_spatial_field_object_properties[3][1][0][3] = get_creation_time_for_object_after_visual_spatial_field_creation(creation_time, visual_spatial_field_access_time, time_to_encode_objects, time_to_encode_empty_squares, 1, 2)
-  expected_visual_spatial_field_object_properties[3][1].push([
-    Scene.getEmptySquareIdentifier(),
-    Scene.getEmptySquareIdentifier(),
-    get_creation_time_for_object_after_visual_spatial_field_creation(creation_time, visual_spatial_field_access_time, time_to_encode_objects, time_to_encode_empty_squares, 1, 2),
-    get_terminus_for_object_after_visual_spatial_field_creation(creation_time, visual_spatial_field_access_time, time_to_encode_objects, time_to_encode_empty_squares, 1, 2, unrecognised_object_lifespan),
-    false,
-    false,
-  ])
-
-  expected_visual_spatial_field_object_properties[0][2][0][3] = get_creation_time_for_object_after_visual_spatial_field_creation(creation_time, visual_spatial_field_access_time, time_to_encode_objects, time_to_encode_empty_squares, 1, 3)
-  expected_visual_spatial_field_object_properties[0][2].push([
-    Scene.getEmptySquareIdentifier(),
-    Scene.getEmptySquareIdentifier(),
-    get_creation_time_for_object_after_visual_spatial_field_creation(creation_time, visual_spatial_field_access_time, time_to_encode_objects, time_to_encode_empty_squares, 1, 3),
-    get_terminus_for_object_after_visual_spatial_field_creation(creation_time, visual_spatial_field_access_time, time_to_encode_objects, time_to_encode_empty_squares, 1, 3, unrecognised_object_lifespan),
-    false,
-    false,
-  ])
-
-  expected_visual_spatial_field_object_properties[1][2][0][3] = get_creation_time_for_object_after_visual_spatial_field_creation(creation_time, visual_spatial_field_access_time, time_to_encode_objects, time_to_encode_empty_squares, 1, 4)
-  expected_visual_spatial_field_object_properties[1][2].push([
-    Scene.getEmptySquareIdentifier(),
-    Scene.getEmptySquareIdentifier(),
-    get_creation_time_for_object_after_visual_spatial_field_creation(creation_time, visual_spatial_field_access_time, time_to_encode_objects, time_to_encode_empty_squares, 1, 4),
-    get_terminus_for_object_after_visual_spatial_field_creation(creation_time, visual_spatial_field_access_time, time_to_encode_objects, time_to_encode_empty_squares, 1, 4, unrecognised_object_lifespan),
-    false,
-    false,
-  ])
-
-  expected_visual_spatial_field_object_properties[2][2][0][3] = get_creation_time_for_object_after_visual_spatial_field_creation(creation_time, visual_spatial_field_access_time, time_to_encode_objects, time_to_encode_empty_squares, 2, 4)
-  expected_visual_spatial_field_object_properties[2][2].push([
-    test_objects[1][0],
-    test_objects[1][1],
-    get_creation_time_for_object_after_visual_spatial_field_creation(creation_time, visual_spatial_field_access_time, time_to_encode_objects, time_to_encode_empty_squares, 2, 4),
-    get_terminus_for_object_after_visual_spatial_field_creation(creation_time, visual_spatial_field_access_time, time_to_encode_objects, time_to_encode_empty_squares, 2, 4, unrecognised_object_lifespan),
-    false,
-    false,
-  ])
-
-  expected_visual_spatial_field_object_properties[3][2][0][3] = get_creation_time_for_object_after_visual_spatial_field_creation(creation_time, visual_spatial_field_access_time, time_to_encode_objects, time_to_encode_empty_squares, 2, 5)
-  expected_visual_spatial_field_object_properties[3][2].push([
-    Scene.getEmptySquareIdentifier(),
-    Scene.getEmptySquareIdentifier(),
-    get_creation_time_for_object_after_visual_spatial_field_creation(creation_time, visual_spatial_field_access_time, time_to_encode_objects, time_to_encode_empty_squares, 2, 5),
-    get_terminus_for_object_after_visual_spatial_field_creation(creation_time, visual_spatial_field_access_time, time_to_encode_objects, time_to_encode_empty_squares, 2, 5, unrecognised_object_lifespan),
-    false,
-    false,
-  ])
-
-  expected_visual_spatial_field_object_properties[4][2][0][3] = get_creation_time_for_object_after_visual_spatial_field_creation(creation_time, visual_spatial_field_access_time, time_to_encode_objects, time_to_encode_empty_squares, 2, 6)
-  expected_visual_spatial_field_object_properties[4][2].push([
-    Scene.getEmptySquareIdentifier(),
-    Scene.getEmptySquareIdentifier(),
-    get_creation_time_for_object_after_visual_spatial_field_creation(creation_time, visual_spatial_field_access_time, time_to_encode_objects, time_to_encode_empty_squares, 2, 6),
-    get_terminus_for_object_after_visual_spatial_field_creation(creation_time, visual_spatial_field_access_time, time_to_encode_objects, time_to_encode_empty_squares, 2, 6, unrecognised_object_lifespan),
-    false,
-    false,
-  ])
-
-  expected_visual_spatial_field_object_properties[1][3][0][3] = get_creation_time_for_object_after_visual_spatial_field_creation(creation_time, visual_spatial_field_access_time, time_to_encode_objects, time_to_encode_empty_squares, 3, 6)
-  expected_visual_spatial_field_object_properties[1][3].push([
-    test_objects[3][0],
-    test_objects[3][1],
-    get_creation_time_for_object_after_visual_spatial_field_creation(creation_time, visual_spatial_field_access_time, time_to_encode_objects, time_to_encode_empty_squares, 3, 6),
-    get_terminus_for_object_after_visual_spatial_field_creation(creation_time, visual_spatial_field_access_time, time_to_encode_objects, time_to_encode_empty_squares, 3, 6, unrecognised_object_lifespan),
-    false,
-    false,
-  ])
-
-  expected_visual_spatial_field_object_properties[2][3][0][3] = get_creation_time_for_object_after_visual_spatial_field_creation(creation_time, visual_spatial_field_access_time, time_to_encode_objects, time_to_encode_empty_squares, 3, 7)
-  expected_visual_spatial_field_object_properties[2][3].push([
-    Scene.getEmptySquareIdentifier(),
-    Scene.getEmptySquareIdentifier(),
-    get_creation_time_for_object_after_visual_spatial_field_creation(creation_time, visual_spatial_field_access_time, time_to_encode_objects, time_to_encode_empty_squares, 3, 7),
-    get_terminus_for_object_after_visual_spatial_field_creation(creation_time, visual_spatial_field_access_time, time_to_encode_objects, time_to_encode_empty_squares, 3, 7, unrecognised_object_lifespan),
-    false,
-    false,
-  ])
-
-  expected_visual_spatial_field_object_properties[3][3][0][3] = get_creation_time_for_object_after_visual_spatial_field_creation(creation_time, visual_spatial_field_access_time, time_to_encode_objects, time_to_encode_empty_squares, 3, 8)
-  expected_visual_spatial_field_object_properties[3][3].push([
-    Scene.getEmptySquareIdentifier(),
-    Scene.getEmptySquareIdentifier(),
-    get_creation_time_for_object_after_visual_spatial_field_creation(creation_time, visual_spatial_field_access_time, time_to_encode_objects, time_to_encode_empty_squares, 3, 8),
-    get_terminus_for_object_after_visual_spatial_field_creation(creation_time, visual_spatial_field_access_time, time_to_encode_objects, time_to_encode_empty_squares, 3, 8, unrecognised_object_lifespan),
-    false,
-    false,
-  ])
-
-  expected_visual_spatial_field_object_properties[2][4][0][3] = get_creation_time_for_object_after_visual_spatial_field_creation(creation_time, visual_spatial_field_access_time, time_to_encode_objects, time_to_encode_empty_squares, 3, 9)
-  expected_visual_spatial_field_object_properties[2][4].push([
-    Scene.getEmptySquareIdentifier(),
-    Scene.getEmptySquareIdentifier(),
-    get_creation_time_for_object_after_visual_spatial_field_creation(creation_time, visual_spatial_field_access_time, time_to_encode_objects, time_to_encode_empty_squares, 3, 9),
-    get_terminus_for_object_after_visual_spatial_field_creation(creation_time, visual_spatial_field_access_time, time_to_encode_objects, time_to_encode_empty_squares, 3, 9, unrecognised_object_lifespan),
-    false,
-    false,
-  ])
-  
-  ######################
-  ##### FIRST MOVE #####
-  ######################
-  
-  # This move should transform the original state of the visual-spatial field to
-  # that depicted below since object 0 will be moved from (1, 1) to (2, 2):
-  # 
-  #                  --------
-  # 4     x      x   |      |   x      x
-  #           ----------------------
-  # 3     x   | 3(C) |      |      |   x
-  #    ------------------------------------
-  # 2  |      |      | 1(B) |      |      |
-  #    |      |      | 0(A) |      |      |
-  #    ------------------------------------
-  # 1     x   |      |      |      |   x
-  #           ----------------------
-  # 0     x     2(b) |SLF(4)|   x      x
-  #                  --------
-  #       0      1      2       3      4     COORDINATES
-  #
-  # This will check that:
-  #
-  # 1) The terminus for object 0 on coordinates (1, 1) should be set to the 
-  #    time the move was requested plus the time specified for visual-spatial 
-  #    field access.  This is because it is being moved from (1, 1) so should no 
-  #    longer exist here.
-  # 2) Coordinates (1, 1) should be re-encoded as an empty square.
-  # 3) Object 0 should be present on coordinates (2, 2) since that is its
-  #    specified destination.
-  # 4) Object 1's terminus should be updated since it has been "looked-at" when
-  #    object 0 is moved onto (2, 2).
-  object_a_single_legal_move = ArrayList.new
-  object_a_single_legal_move.add(ItemSquarePattern.new(test_objects[0][0], 1, 1))
-  object_a_single_legal_move.add(ItemSquarePattern.new(test_objects[0][0], 2, 2))
-  legal_single_object_move = ArrayList.new
-  legal_single_object_move.add(object_a_single_legal_move)
-  time_first_move_requested = model.getAttentionClock()
-  visual_spatial_field.moveObjects(legal_single_object_move, time_first_move_requested, false)
-  
-  # Set terminus for object 0 on coordinates (1, 1).
-  expected_visual_spatial_field_object_properties[1][1][1][3] = time_first_move_requested + visual_spatial_field_access_time
-  
-  # Coordinates (1, 1) should now be considered to be empty.
-  expected_visual_spatial_field_object_properties[1][1].push([
-    Scene.getEmptySquareIdentifier(),
-    Scene.getEmptySquareIdentifier(),
-    time_first_move_requested + visual_spatial_field_access_time,
-    time_first_move_requested + visual_spatial_field_access_time + unrecognised_object_lifespan,
-    false,
-    false
-  ])
-
-  # Object 0 should now be on the same coordinates as object 1.
-  expected_visual_spatial_field_object_properties[2][2].push([
-    test_objects[0][0],
-    test_objects[0][1],
-    time_first_move_requested + visual_spatial_field_access_time + time_to_move_object,
-    time_first_move_requested + visual_spatial_field_access_time + time_to_move_object + unrecognised_object_lifespan,
-    false,
-    false,
-  ])
-  
-  # Extend object 1's terminus.
-  expected_visual_spatial_field_object_properties[2][2][1][3] = time_first_move_requested + visual_spatial_field_access_time + time_to_move_object + unrecognised_object_lifespan
-
-  check_values_of_visual_spatial_objects_against_expected(
-    visual_spatial_field,
-    expected_visual_spatial_field_object_properties,
-    model.getAttentionClock(),
-    "after performing the first move"
-  )
-  assert_equal(time_first_move_requested + visual_spatial_field_access_time + time_to_move_object, model.getAttentionClock(), "occurred when checking the time that the CHREST model associated with the visual-spatial field will be free after first move.")
-  
-  #######################
-  ##### SECOND MOVE #####
-  #######################
-  
-  # This move should transform the state of the visual-spatial field at the end
-  # of the first move to that depicted below since object 0 will be moved from 
-  # (2, 2) to (3, 0):
-  # 
-  #                  --------
-  # 4     x      x   |      |   x      x
-  #           ----------------------
-  # 3     x   | 3(C) |      |      |   x
-  #    ------------------------------------
-  # 2  |      |      | 1(B) |      |      |
-  #    ------------------------------------
-  # 1     x   |      |      |      |   x
-  #           ----------------------
-  # 0     x     2(b) |SLF(4)|   x      x
-  #                  --------
-  #       0      1      2       3      4     COORDINATES
-  #
-  # This will check that:
-  # 
-  # 1) The terminus for object 0 on coordinates (2, 2) should be set to the 
-  #    time the move was requested plus the time specified for visual-spatial 
-  #    field access.  This is because it is being moved from (2, 2) so should no 
-  #    longer exist here.
-  # 2) Coordinates (2, 2) should not be considered as an empty square since 
-  #    object 1 still exists on it (no empty square object data added to 
-  #    expected visual-spatial field object values data structure).
-  # 3) Object 0 shouldn't be present on coordinates (3, 0) since it is a blind
-  #    square (no object 0 object data added to expected visual-spatial field 
-  #    object values data structure).
-  # 4) Object 1's terminus should be updated since it has been "looked-at" when
-  #    object 0 is moved.
-  object_a_move_to_blind_square = ArrayList.new
-  object_a_move_to_blind_square.add(ItemSquarePattern.new(test_objects[0][0], 2, 2))
-  object_a_move_to_blind_square.add(ItemSquarePattern.new(test_objects[0][0], 3, 0))
-  moves = ArrayList.new
-  moves.add(object_a_move_to_blind_square)
-  time_second_move_requested = model.getAttentionClock()
-  visual_spatial_field.moveObjects(moves, time_second_move_requested, false)
-  
-  # Set terminus for object 0 on coordinates (2, 2).
-  expected_visual_spatial_field_object_properties[2][2][2][3] = time_second_move_requested + visual_spatial_field_access_time
-  
-  # Extend object 1's terminus.
-  expected_visual_spatial_field_object_properties[2][2][1][3] = time_second_move_requested + visual_spatial_field_access_time + unrecognised_object_lifespan
-  
-  check_values_of_visual_spatial_objects_against_expected(
-    visual_spatial_field,
-    expected_visual_spatial_field_object_properties,
-    model.getAttentionClock(),
-    "after performing the second move"
-  )
-  assert_equal(time_second_move_requested + visual_spatial_field_access_time + time_to_move_object, model.getAttentionClock(), "occurred when checking the time that the CHREST model associated with the visual-spatial field will be free after second move.")
-
-  ######################
-  ##### THIRD MOVE #####
-  ######################
-  
-  # This move should transform the state of the visual-spatial field at the end
-  # of the first move to that depicted below since object 2 will be moved from 
-  # (1, 0) to (3, 0):
-  # 
-  #                  --------
-  # 4     x      x   |      |   x      x
-  #           ----------------------
-  # 3     x   | 3(C) |      |      |   x
-  #    ------------------------------------
-  # 2  |      |      | 1(B) |      |      |
-  #    ------------------------------------
-  # 1     x   |      |      |      |   x
-  #           ----------------------
-  # 0     x     x    |SLF(4)|   x      x
-  #                  --------
-  #       0      1      2       3      4     COORDINATES
-  #
-  # This will check that:
-  # 
-  # 1) The terminus for object 2 on coordinates (1, 0) should be set to the 
-  #    time the move was requested plus the time specified for visual-spatial 
-  #    field access.  This is because it is being moved from (1, 0) so should no 
-  #    longer exist here.
-  # 2) Coordinates (1, 0) should now be considered as a blind square since there
-  #    are no objects left on these coordinates after 1 has moved.
-  # 3) Object 2 shouldn't be present on coordinates (3, 0) since it is a blind
-  #    square (no object 2 object data added to expected visual-spatial field 
-  #    object values data structure).
-  object_2_move_to_blind_square = ArrayList.new
-  object_2_move_to_blind_square.add(ItemSquarePattern.new(test_objects[2][0], 1, 0))
-  object_2_move_to_blind_square.add(ItemSquarePattern.new(test_objects[2][0], 3, 0))
-  moves = ArrayList.new
-  moves.add(object_2_move_to_blind_square)
-  time_third_move_requested = model.getAttentionClock()
-  visual_spatial_field.moveObjects(moves, time_third_move_requested, false)
-  
-  # Set terminus for object 2 on coordinates (1, 0).
-  expected_visual_spatial_field_object_properties[1][0][1][3] = time_third_move_requested + visual_spatial_field_access_time
-  
-  #Add blind square object to (1, 0)
-  expected_visual_spatial_field_object_properties[1][0].push([
-    Scene.getBlindSquareIdentifier(),
-    Scene.getBlindSquareIdentifier(),
-    time_third_move_requested + visual_spatial_field_access_time,
-    nil,
-    false,
-    false
-  ])
-  check_values_of_visual_spatial_objects_against_expected(
-    visual_spatial_field,
-    expected_visual_spatial_field_object_properties,
-    model.getAttentionClock(),
-    "after performing the third move"
-  )
-  assert_equal(time_third_move_requested + visual_spatial_field_access_time + time_to_move_object, model.getAttentionClock(), "occurred when checking the time that the CHREST model associated with the visual-spatial field will be free after third move.")
-
-  #######################
-  ##### FOURTH MOVE #####
-  #######################
-  
-  # This move should transform the state of the visual-spatial field at the end
-  # of the first move to that depicted below since object 1 will be moved from 
-  # (2, 2) to (1, 3) and object 3's terminus should have been reached:
-  # 
-  #                  --------
-  # 4     x      x   |      |   x      x
-  #           ----------------------
-  # 3     x   | 1(B) |      |      |   x
-  #    ------------------------------------
-  # 2  |      |      |      |      |      |
-  #    ------------------------------------
-  # 1     x   |      |      |      |   x
-  #           ----------------------
-  # 0     x      x   |SLF(4)|   x      x
-  #                  --------
-  #       0      1      2       3      4     COORDINATES
-  #
-  # This will check that:
-  # 
-  # 1) The terminus for object 1 on coordinates (2, 2) should be set to the 
-  #    time the move was requested plus the time specified for visual-spatial 
-  #    field access.  This is because it is being moved from (2, 2) so should no 
-  #    longer exist here.
-  # 2) Coordinates (2, 2) should now be considered as an empty square since 
-  #    there are no objects left on these coordinates after 1 has moved.
-  # 3) Object 1 should be added to coordinates (1, 3), its creation time should
-  #    be equal to the time the fourth move is requested plus the time specified
-  #    to access the visual-spatial field plus the time specified to move an
-  #    object.
-  # 4) Object 3's terminus shouldn't be extended on coordinates (1, 3) since its
-  #    terminus will have already been reached.
-  object_1_move = ArrayList.new
-  object_1_move.add(ItemSquarePattern.new(test_objects[1][0], 2, 2))
-  object_1_move.add(ItemSquarePattern.new(test_objects[1][0], 1, 3))
-  moves = ArrayList.new
-  moves.add(object_1_move)
-  time_fourth_move_requested = expected_visual_spatial_field_object_properties[1][3][1][3]
-  visual_spatial_field.moveObjects(moves, time_fourth_move_requested, false)
-  
-  # Set terminus for object 0 on coordinates (2, 2).
-  expected_visual_spatial_field_object_properties[2][2][1][3] = time_fourth_move_requested + visual_spatial_field_access_time
-  
-  # Add empty square object to (2, 2)
-  expected_visual_spatial_field_object_properties[2][2].push([
-    Scene.getEmptySquareIdentifier(),
-    Scene.getEmptySquareIdentifier(),
-    time_fourth_move_requested + visual_spatial_field_access_time,
-    time_fourth_move_requested + visual_spatial_field_access_time + unrecognised_object_lifespan,
-    false,
-    false
-  ])
-
-  # Add object 1 to (1, 3)
-  expected_visual_spatial_field_object_properties[1][3].push([
-    test_objects[1][0],
-    test_objects[1][1],
-    time_fourth_move_requested + visual_spatial_field_access_time + time_to_move_object,
-    time_fourth_move_requested + visual_spatial_field_access_time + time_to_move_object + unrecognised_object_lifespan,
-    false,
-    false
-  ])
-  
-  check_values_of_visual_spatial_objects_against_expected(
-    visual_spatial_field,
-    expected_visual_spatial_field_object_properties,
-    model.getAttentionClock(),
-    "after performing the fourth move"
-  )
-  assert_equal(time_fourth_move_requested + visual_spatial_field_access_time + time_to_move_object, model.getAttentionClock(), "occurred when checking the time that the CHREST model associated with the visual-spatial field will be free after fourth move.")
-
-  #######################
-  ##### FIFTH MOVE #####
-  #######################
-  
-  # This move should transform the state of the visual-spatial field at the end
-  # of the first move to that depicted below since object 1 will be moved from 
-  # (1, 3) to (2, 2).  Since object 3's terminus was reached in the last moved,
-  # coordinates (1, 3) should now be empty:
-  # 
-  #                  --------
-  # 4     x      x   |      |   x      x
-  #           ----------------------
-  # 3     x   |      |      |      |   x
-  #    ------------------------------------
-  # 2  |      |      | 1(B) |      |      |
-  #    ------------------------------------
-  # 1     x   |      |      |      |   x
-  #           ----------------------
-  # 0     x      x   |SLF(4)|   x      x
-  #                  --------
-  #       0      1      2       3      4     COORDINATES
-  #
-  # This will check that:
-  # 
-  # 1) The terminus for object 1 on coordinates (1, 2) should be set to the 
-  #    time the move was requested plus the time specified for visual-spatial 
-  #    field access.  This is because it is being moved from (1, 3) so should no 
-  #    longer exist here.
-  # 2) Coordinates (1, 3) should now be considered as an empty square since 
-  #    there are no objects alive on these coordinates after 1 has moved.  An
-  #    empty square object should now be present on (1, 3).
-  # 3) Object 1 should be added to coordinates (2, 2), its creation time should
-  #    be equal to the time the fifth move is requested plus the time specified
-  #    to access the visual-spatial field plus the time specified to move an
-  #    object 
-  # 4) The terminus for the empty square object on (2, 2) will be set to the 
-  #    time object 1 is placed on these coordinates meaning that the coordinates
-  #    are no longer considered empty.
-  object_1_move = ArrayList.new
-  object_1_move.add(ItemSquarePattern.new(test_objects[1][0], 1, 3))
-  object_1_move.add(ItemSquarePattern.new(test_objects[1][0], 2, 2))
-  moves = ArrayList.new
-  moves.add(object_1_move)
-  time_fifth_move_requested = model.getAttentionClock()
-  visual_spatial_field.moveObjects(moves, time_fifth_move_requested, false)
-  
-  # Set terminus for object 1 on coordinates (1, 3).
-  expected_visual_spatial_field_object_properties[1][3][2][3] = time_fifth_move_requested + visual_spatial_field_access_time
-  
-  # Add empty square object to (1, 3)
-  expected_visual_spatial_field_object_properties[1][3].push([
-    Scene.getEmptySquareIdentifier(),
-    Scene.getEmptySquareIdentifier(),
-    time_fifth_move_requested + visual_spatial_field_access_time,
-    time_fifth_move_requested + visual_spatial_field_access_time + unrecognised_object_lifespan,
-    false,
-    false
-  ])
-
-  # Add object 1 to (2, 2)
-  expected_visual_spatial_field_object_properties[2][2].push([
-    test_objects[1][0],
-    test_objects[1][1],
-    time_fifth_move_requested + visual_spatial_field_access_time + time_to_move_object,
-    time_fifth_move_requested + visual_spatial_field_access_time + time_to_move_object + unrecognised_object_lifespan,
-    false,
-    false
-  ])
-
-  expected_visual_spatial_field_object_properties[2][2][3][3] = time_fifth_move_requested + visual_spatial_field_access_time + time_to_move_object
-
-  check_values_of_visual_spatial_objects_against_expected(
-    visual_spatial_field,
-    expected_visual_spatial_field_object_properties,
-    model.getAttentionClock(),
-    "after performing the fifth move"
-  )
-  assert_equal(time_fifth_move_requested + visual_spatial_field_access_time + time_to_move_object, model.getAttentionClock(), "occurred when checking the time that the CHREST model associated with the visual-spatial field will be free after fifth move.")
-
-  #######################
-  ##### SIXTH MOVE #####
-  #######################
-  
-  # This move should transform the state of the visual-spatial field to that 
-  # depicted below since object 1 will be moved from (2, 2) to (2, 0).
-  # 
-  #                  --------
-  # 4     x      x   |      |   x      x
-  #           ----------------------
-  # 3     x   |      |      |      |   x
-  #    ------------------------------------
-  # 2  |      |      |      |      |      |
-  #    ------------------------------------
-  # 1     x   |      |      |      |   x
-  #           ----------------------
-  # 0     x      x   |SLF(4)|   x      x
-  #                  | 1(B) |
-  #                  --------
-  #       0      1      2       3      4     COORDINATES
-  #
-  # This will check that:
-  # 
-  # 1) The terminus for object 1 on coordinates (2, 2) should be set to the 
-  #    time the move was requested plus the time specified for visual-spatial 
-  #    field access.  This is because it is being moved from (2, 2) so should no 
-  #    longer exist here.
-  # 2) Coordinates (2, 2) should now be considered as an empty square since 
-  #    there are no objects alive on these coordinates after 1 has moved.  An
-  #    empty square object should now be present on (2, 2).
-  # 3) Object 1 should be added to coordinates (2, 0), its creation time should
-  #    be equal to the time the sixth move is requested plus the time specified
-  #    to access the visual-spatial field plus the time specified to move an
-  #    object 
-  # 4) The terminus for the creator's avatar on (2, 0) should be unaltered.
-  object_1_move = ArrayList.new
-  object_1_move.add(ItemSquarePattern.new(test_objects[1][0], 2, 2))
-  object_1_move.add(ItemSquarePattern.new(test_objects[1][0], 2, 0))
-  moves = ArrayList.new
-  moves.add(object_1_move)
-  time_sixth_move_requested = model.getAttentionClock()
-  visual_spatial_field.moveObjects(moves, time_sixth_move_requested, false)
-  
-  # Set terminus for object 1 on coordinates (2, 2).
-  expected_visual_spatial_field_object_properties[2][2][4][3] = time_sixth_move_requested + visual_spatial_field_access_time
-  
-  # Add empty square object to (2, 2)
-  expected_visual_spatial_field_object_properties[2][2].push([
-    Scene.getEmptySquareIdentifier(),
-    Scene.getEmptySquareIdentifier(),
-    time_sixth_move_requested + visual_spatial_field_access_time,
-    time_sixth_move_requested + visual_spatial_field_access_time + unrecognised_object_lifespan,
-    false,
-    false
-  ])
-
-  # Add object 1 to (2, 0)
-  expected_visual_spatial_field_object_properties[2][0].push([
-    test_objects[1][0],
-    test_objects[1][1],
-    time_sixth_move_requested + visual_spatial_field_access_time + time_to_move_object,
-    time_sixth_move_requested + visual_spatial_field_access_time + time_to_move_object + unrecognised_object_lifespan,
-    false,
-    false
-  ])
-
-  ########################
-  ##### SEVENTH MOVE #####
-  ########################
-  
-  # This move should transform the state of the visual-spatial field to that 
-  # depicted below since object 1 will be moved from (2, 2) to (2, 0).
-  # 
-  #                  --------
-  # 4     x      x   |      |   x      x
-  #           ----------------------
-  # 3     x   |      |      |      |   x
-  #    ------------------------------------
-  # 2  |      |      |      |      |      |
-  #    ------------------------------------
-  # 1     x   |      |      | 1(B) |   x
-  #           ----------------------
-  # 0     x      x   |SLF(4)|   x      x
-  #                  --------
-  #       0      1      2       3      4     COORDINATES
-  #
-  # This will check that:
-  # 
-  # 1) The terminus for object 1 on coordinates (2, 0) should be set to the 
-  #    time the move was requested plus the time specified for visual-spatial 
-  #    field access.  This is because it is being moved from (2, 0) so should no 
-  #    longer exist here.
-  # 2) Coordinates (2, 0) should not be considered as an empty square since 
-  #    the creator's avatar still exists on these coordinates after 1 has moved.
-  # 3) The terminus for the creator's avatar on (2, 0) should be unaltered.
-  # 4) The terminus for the empty square on coordinates (3, 1) should be set to 
-  #    the time the move was requested plus the time specified to access the 
-  #    visual-spatial field plus the time specified to move an object.
-  # 5) Object 1 should be added to coordinates (3, 1), its creation time should
-  #    be equal to the time the move was requested plus the time specified
-  #    to access the visual-spatial field plus the time specified to move an
-  #    object.
-  object_1_move = ArrayList.new
-  object_1_move.add(ItemSquarePattern.new(test_objects[1][0], 2, 0))
-  object_1_move.add(ItemSquarePattern.new(test_objects[1][0], 3, 1))
-  moves = ArrayList.new
-  moves.add(object_1_move)
-  time_seventh_move_requested = model.getAttentionClock()
-  visual_spatial_field.moveObjects(moves, time_seventh_move_requested, false)
-  
-  # Set terminus for object 1 on coordinates (2, 0).
-  expected_visual_spatial_field_object_properties[2][0][1][3] = time_seventh_move_requested + visual_spatial_field_access_time
-
-  # Set terminus for empty square on coordinates (3, 1).
-  expected_visual_spatial_field_object_properties[3][1][1][3] = time_seventh_move_requested + visual_spatial_field_access_time + time_to_move_object
-  
-  # Add object 1 to (3, 1)
-  expected_visual_spatial_field_object_properties[3][1].push([
-    test_objects[1][0],
-    test_objects[1][1],
-    time_seventh_move_requested + visual_spatial_field_access_time + time_to_move_object,
-    time_seventh_move_requested + visual_spatial_field_access_time + time_to_move_object + unrecognised_object_lifespan,
-    false,
-    false
-  ])
+    check_values_of_visual_spatial_objects_against_expected(
+      visual_spatial_field,
+      expected_visual_spatial_field_object_properties,
+      model.getAttentionClock(),
+      "when checking initial state of visual-spatial field"
+    )
+    
+    ############################################################################
+    if (move_number == 0)
+      # ================
+      # MOVE DESCRIPTION
+      # ================
+      # - Move to square that has a live blind object on it.
+      # - Moves performed:
+      #   + Object 0 moved from (2, 0) to (1, 0).
+      # 
+      # ===============
+      # EXPECTED OUTPUT
+      # ===============
+      # - Object 0 on (2, 0) should have terminus modified
+      # - Empty square object should be placed on (2, 0)
+      # - Objects on coordinates (1, 0) should not be altered.
+      # - Attention clock of model should be set to the time that object 0 is
+      #   "put-down" on (1, 0).
+      # - Expected visual-spatial field state:
+      # 
+      #                  --------
+      # 4     x      x   |      |   x      x
+      #           ----------------------
+      # 3     x   | 2(B) |      |      |   x
+      #    ------------------------------------
+      # 2  |      |      | 1(A) |      |      |
+      #    ------------------------------------
+      # 1     x   |      |      |      |   x
+      #           ----------------------
+      # 0     x      x   |      |   x      x
+      #                  --------
+      #       0      1      2       3      4     COORDINATES
+      
+      # Construct move
+      move = ArrayList.new
+      move.add(ItemSquarePattern.new(objects[0][0], 2, 0))
+      move.add(ItemSquarePattern.new(objects[0][0], 1, 0))
+      move_sequence = ArrayList.new
+      move_sequence.add(move)
+      
+      # Set relevant timing parameters.
+      time_move_requested = model.getAttentionClock()
+      pickup_time = time_move_requested + visual_spatial_field_access_time
+      putdown_time = pickup_time + time_to_move_object
+      
+      # Set terminus for object 0 on (2, 0)
+      expected_visual_spatial_field_object_properties[2][0][0][3] = pickup_time
+      
+      # New empty square object should be added to (2, 0) when 0 picked up.
+      expected_visual_spatial_field_object_properties[2][0].push([
+        Scene.getEmptySquareToken(),
+        Scene.getEmptySquareToken(),
+        pickup_time,
+        pickup_time + unrecognised_object_lifespan,
+        false,
+        false
+      ])
+      
+      # Objects on (1, 0) should not be modified.
+    
+      visual_spatial_field.moveObjects(move_sequence, time_move_requested, false)
+      check_values_of_visual_spatial_objects_against_expected(
+        visual_spatial_field,
+        expected_visual_spatial_field_object_properties,
+        model.getAttentionClock(),
+        "when checking state of visual-spatial field after moving " + move_types[move_number] + 
+        " (move number: " + move_number.to_s + ")"
+      )
+      assert_equal(
+        putdown_time, 
+        model.getAttentionClock(), 
+        "occurred when checking the time that the CHREST model associated with " +
+        "the visual-spatial field will be free after moving " + move_types[move_number] + 
+        " (move number: " + move_number.to_s + ")"
+      )
+    
+    ############################################################################
+    elsif (move_number == 1)
+      # ================
+      # MOVE DESCRIPTION
+      # ================
+      # - Move to square that has a live empty object on it.
+      # - Move from square that was empty and has no other live objects on it
+      #   after object move.
+      # - Move(s) performed:
+      #   + Object 0 moved from (2, 0) to (1, 2).
+      #   + Object 0 moved from (1, 2) to (3, 2)
+      # 
+      # ===============
+      # EXPECTED OUTPUT
+      # ===============
+      # 
+      # - First move
+      #   + Object 0 on (2, 0) should have terminus set to time when object 0 is
+      #     "picked-up".
+      #   + Empty square object should be placed on (2, 0) when object 0 is 
+      #     "picked-up".
+      #   + Empty square object on (1, 2) should have terminus set to time when
+      #     object 0 is "put-down".
+      #   + Object 0 should be added to (1, 2) at time of put-down but should no
+      #     longer be recognised.
+      #   + Attention clock of model should be set to the time that object 0 is
+      #     "put-down" on (1, 2).
+      #   + Expected visual-spatial field state:
+      #	
+      #                  --------
+      # 4     x      x   |      |   x      x
+      #           ----------------------
+      # 3     x   | 2(B) |      |      |   x
+      #    ------------------------------------
+      # 2  |      |0(SLF)| 1(A) |      |      |
+      #    ------------------------------------
+      # 1     x   |      |      |      |   x
+      #           ----------------------
+      # 0     x      x   |      |   x      x
+      #                  --------
+      #       0      1      2       3      4     COORDINATES
+      #
+      # - Second move
+      #   + Object 0 on (1, 2) should have terminus set to time when object 0 is
+      #     "picked-up".
+      #   + Empty square object should be placed on (1, 2) when object 0 is 
+      #     "picked-up".
+      #   + Empty square object on (3, 2) should have terminus set to time when
+      #     object 0 is "put-down".
+      #   + Object 0 should be added to (3, 2) at time of put-down but should no
+      #     longer be recognised.
+      #   + Attention clock of model should be set to the time that object 0 is
+      #     "put-down" on (3, 2).
+      #   + Expected visual-spatial field state:
+      #	
+      #                  --------
+      # 4     x      x   |      |   x      x
+      #           ----------------------
+      # 3     x   | 2(B) |      |      |   x
+      #    ------------------------------------
+      # 2  |      |      | 1(A) |0(SLF)|      |
+      #    ------------------------------------
+      # 1     x   |      |      |      |   x
+      #           ----------------------
+      # 0     x      x   |      |   x      x
+      #                  --------
+      #       0      1      2       3      4     COORDINATES
+      
+      ######################
+      ##### FIRST MOVE #####
+      ######################
+      
+      # Construct move
+      move = ArrayList.new()
+      move.add(ItemSquarePattern.new(objects[0][0], 2, 0))
+      move.add(ItemSquarePattern.new(objects[0][0], 1, 2))
+      move_sequence = ArrayList.new()
+      move_sequence.add(move)
+      
+      # Set relevant timing parameters.
+      time_move_requested = model.getAttentionClock()
+      pickup_time = time_move_requested + visual_spatial_field_access_time
+      putdown_time = pickup_time + time_to_move_object
+      
+      # Set terminus for object 0 on (2, 0)
+      expected_visual_spatial_field_object_properties[2][0][0][3] = pickup_time
+      
+      # New empty square object should be added to (2, 0) when 0 picked up.
+      expected_visual_spatial_field_object_properties[2][0].push([
+        Scene.getEmptySquareToken(),
+        Scene.getEmptySquareToken(),
+        pickup_time,
+        pickup_time + unrecognised_object_lifespan,
+        false,
+        false
+      ])
+    
+      # Set terminus for empty square on (1, 2)
+      expected_visual_spatial_field_object_properties[1][2][1][3] = putdown_time
+      
+      # Object 0 should be added to (1, 2) at putdown time.
+      expected_visual_spatial_field_object_properties[1][2].push([
+        objects[0][0],
+        objects[0][1],
+        putdown_time,
+        nil,
+        false,
+        false
+      ])
+      
+      visual_spatial_field.moveObjects(move_sequence, time_move_requested, false)
+      check_values_of_visual_spatial_objects_against_expected(
+        visual_spatial_field,
+        expected_visual_spatial_field_object_properties,
+        model.getAttentionClock(),
+        "when checking state of visual-spatial field after first part of moving " + 
+        move_types[move_number] + " (move number: " + move_number.to_s + ")"
+      )
+      assert_equal(
+        putdown_time, 
+        model.getAttentionClock(), 
+        "occurred when checking the time that the CHREST model associated with " +
+        "the visual-spatial field will be free after first part of moving " + 
+        move_types[move_number] + " (move number: " + move_number.to_s + ")"
+      )
+      
+      #######################
+      ##### SECOND MOVE #####
+      #######################
+      
+      # Construct move
+      move = ArrayList.new
+      move.add(ItemSquarePattern.new(objects[0][0], 1, 2))
+      move.add(ItemSquarePattern.new(objects[0][0], 3, 2))
+      move_sequence = ArrayList.new
+      move_sequence.add(move)
+      
+      # Set relevant timing parameters
+      time_move_requested = model.getAttentionClock()
+      pickup_time = time_move_requested + visual_spatial_field_access_time
+      putdown_time = pickup_time + time_to_move_object
+      
+      # Set terminus for object 0 on (1, 2)
+      expected_visual_spatial_field_object_properties[1][2][2][3] = pickup_time
+      
+      # Add empty square to (1, 2)
+      expected_visual_spatial_field_object_properties[1][2].push([
+        Scene.getEmptySquareToken(),
+        Scene.getEmptySquareToken(),
+        pickup_time,
+        pickup_time + unrecognised_object_lifespan,
+        false,
+        false
+      ])
+    
+      # Set terminus for empty square on (3, 2)
+      expected_visual_spatial_field_object_properties[3][2][1][3] = putdown_time
+      
+      # Add object 0 to (3, 2)
+      expected_visual_spatial_field_object_properties[3][2].push([
+        objects[0][0],
+        objects[0][1],
+        putdown_time,
+        nil,
+        false,
+        false
+      ])
+    
+      visual_spatial_field.moveObjects(move_sequence, time_move_requested, false)
+      check_values_of_visual_spatial_objects_against_expected(
+        visual_spatial_field,
+        expected_visual_spatial_field_object_properties,
+        model.getAttentionClock(),
+        "when checking state of visual-spatial field after moving " + move_types[move_number] + 
+        " (move number: " + move_number.to_s + ")"
+      )
+      assert_equal(
+        putdown_time, 
+        model.getAttentionClock(), 
+        "occurred when checking the time that the CHREST model associated with " +
+        "the visual-spatial field will be free after moving " + move_types[move_number] + 
+        " (move number: " + move_number.to_s + ")"
+      )
+      
+    ############################################################################
+    elsif (move_number == 2)
+      #	================
+      # MOVE DESCRIPTION
+      # ================
+      #	- Move to square that has a live object on it that is not a blind square
+      #	  or an empty square.
+      #	- Move from square that has alive object on it that is not a blind 
+      #   square or an empty square.
+      # - Move(s) performed:
+      #   + Object 0 moved from (2, 0) to (2, 2).
+      #   + Object 0 moved from (2, 2) to (3, 2).
+      #	
+      #	===============
+      # EXPECTED OUTPUT
+      # ===============
+      # - After first move
+      #   + Object 0 on (2, 0) should have terminus set to time when it is
+      #     "picked-up".
+      #   + Empty square object should be placed on (2, 0) when object 0 is 
+      #     "picked-up".
+      #   + Object 0 should be added to (2, 2) at time of "put-down"
+      #   + Object 1 on (2, 2) should have its terminus extended to the
+      #     time object 0 is "put-down" plus the lifespan for an unrecognised
+      #     object.
+      #   + Attention clock of model should be set to the time that object 0 is
+      #     "put-down" on (2, 2).
+      #   + Expected visual-spatial field state:
+      #   
+      #                  --------
+      # 4     x      x   |      |   x      x
+      #           ----------------------
+      # 3     x   | 2(B) |      |      |   x
+      #    ------------------------------------
+      # 2  |      |      |0(SLF)|      |      |
+      #    |      |      | 1(A) |      |      |
+      #    ------------------------------------
+      # 1     x   |      |      |      |   x
+      #           ----------------------
+      # 0     x      x   |      |   x      x
+      #                  --------
+      #       0      1      2       3      4     COORDINATES
+      #       
+      # - After second move
+      #   + Object 0 on (2, 2) should have terminus set to time when it is
+      #     "picked-up".
+      #   + Terminus for object 1 should be extended to the time object 0 is
+      #     "picked-up" plus the lifespan specified for unrecognised objects.
+      #   + The empty square object on (3, 2) should have its terminus set to
+      #     the time that object 0 is "put-down".
+      #   + Object 0 should be added to (3, 2) at time of "put-down" and should 
+      #     not be recognised.
+      #   + Attention clock of model should be set to the time that object 0 is
+      #     "put-down" on (3, 2).
+      #   + Expected visual-spatial field state:
+      #
+      #                  --------
+      # 4     x      x   |      |   x      x
+      #           ----------------------
+      # 3     x   | 2(B) |      |      |   x
+      #    ------------------------------------
+      # 2  |      |      | 1(A) |0(SLF)|      |
+      #    ------------------------------------
+      # 1     x   |      |      |      |   x
+      #           ----------------------
+      # 0     x      x   |      |   x      x
+      #                  --------
+      #       0      1      2       3      4     COORDINATES
+      
+      ##############################
+      ##### FIRST PART OF MOVE #####
+      ##############################
+      
+      # Construct move
+      move = ArrayList.new
+      move.add(ItemSquarePattern.new(objects[0][0], 2, 0))
+      move.add(ItemSquarePattern.new(objects[0][0], 2, 2))
+      move_sequence = ArrayList.new
+      move_sequence.add(move)
+      
+      # Set relevant time parameters
+      time_move_requested = model.getAttentionClock()
+      pickup_time = time_move_requested + visual_spatial_field_access_time
+      putdown_time = pickup_time + time_to_move_object
+      
+      # Set terminus for object 0 on (2, 0)
+      expected_visual_spatial_field_object_properties[2][0][0][3] = pickup_time
+      
+      # New empty square object should be added to (2, 0) when 0 picked up.
+      expected_visual_spatial_field_object_properties[2][0].push([
+        Scene.getEmptySquareToken(),
+        Scene.getEmptySquareToken(),
+        pickup_time,
+        pickup_time + unrecognised_object_lifespan,
+        false,
+        false
+      ])
+      
+      # Object 0 should be added to (2, 2) at first putdown time.
+      expected_visual_spatial_field_object_properties[2][2].push([
+        objects[0][0],
+        objects[0][1],
+        putdown_time,
+        nil,
+        false,
+        false
+      ])
+    
+      # Update terminus for object 1 on (2, 2) since the coordinates have been
+      # looked at and the object is alive when 0 is putdown.
+      expected_visual_spatial_field_object_properties[2][2][1][3] = putdown_time + unrecognised_object_lifespan
+    
+      visual_spatial_field.moveObjects(move_sequence, time_move_requested, false)
+      check_values_of_visual_spatial_objects_against_expected(
+        visual_spatial_field,
+        expected_visual_spatial_field_object_properties,
+        model.getAttentionClock(),
+        "when checking state of visual-spatial field after first part of moving " + 
+        move_types[move_number] + " (move number: " + move_number.to_s + ")"
+      )
+      assert_equal(
+        putdown_time, 
+        model.getAttentionClock(), 
+        "occurred when checking the time that the CHREST model associated with " +
+        "the visual-spatial field will be free after first part of moving " + 
+        move_types[move_number] + " (move number: " + move_number.to_s + ")"
+      )
+      ###############################
+      ##### SECOND PART OF MOVE #####
+      ###############################
+      
+      # Construct move
+      move = ArrayList.new
+      move.add(ItemSquarePattern.new(objects[0][0], 2, 2))
+      move.add(ItemSquarePattern.new(objects[0][0], 3, 2))
+      move_sequence = ArrayList.new
+      move_sequence.add(move)
+      
+      # Set relevant timing parameters
+      time_move_requested = model.getAttentionClock()
+      pickup_time = time_move_requested + visual_spatial_field_access_time
+      putdown_time = pickup_time + time_to_move_object
+      
+      # Set terminus for object 0 on (2, 2)
+      expected_visual_spatial_field_object_properties[2][2][2][3] = pickup_time
+      
+      # Set terminus for object 1 on (2, 2)
+      expected_visual_spatial_field_object_properties[2][2][1][3] = pickup_time + unrecognised_object_lifespan
+      
+      # Set terminus for empty square object on (3, 2)
+      expected_visual_spatial_field_object_properties[3][2][1][3] = putdown_time
+      
+      # Add object 0 to (3, 2)
+      expected_visual_spatial_field_object_properties[3][2].push([
+        objects[0][0],
+        objects[0][1],
+        putdown_time,
+        nil,
+        false,
+        false
+      ])
+    
+      visual_spatial_field.moveObjects(move_sequence, time_move_requested, false)
+      check_values_of_visual_spatial_objects_against_expected(
+        visual_spatial_field,
+        expected_visual_spatial_field_object_properties,
+        model.getAttentionClock(),
+        "when checking state of visual-spatial field after second part of moving " + 
+        move_types[move_number] + " (move number: " + move_number.to_s + ")"
+      )
+      assert_equal(
+        putdown_time, 
+        model.getAttentionClock(), 
+        "occurred when checking the time that the CHREST model associated with " +
+        "the visual-spatial field will be free after second part of moving " + 
+        move_types[move_number] + " (move number: " + move_number.to_s + ")"
+      )
+      
+    ############################################################################
+    elsif(move_number == 3)
+      #	================
+      # MOVE DESCRIPTION
+      # ================
+      #	- Move to square that has a live, recognised object on it.
+      #	- Move from square that has a live, recognised object on it.
+      # - Move(s) performed:
+      #   + Object 0 moved from (2, 0) to (1, 3).
+      #   + Object 0 moved from (1, 3) to (3, 2).
+      # - Object 2's recognised status will be set manually.
+      #	
+      #	===============
+      # EXPECTED OUTPUT
+      # ===============
+      # - After first move
+      #   + Object 0 on (2, 0) should have terminus set to time when it is
+      #     "picked-up".
+      #   + Empty square object should be placed on (2, 0) when object 0 is 
+      #     "picked-up".
+      #   + Object 0 should be added to (1, 3) at time of "put-down".
+      #   + Object 2 on (1, 3) should have its terminus extended to the
+      #     time object 0 is "put-down" plus the lifespan for a recognised
+      #     object.
+      #   + Attention clock of model should be set to the time that object 0 is
+      #     "put-down" on (1, 3).
+      #   + Expected visual-spatial field state:
+      #   
+      #                  --------
+      # 4     x      x   |      |   x      x
+      #           ----------------------
+      # 3     x   |0(SLF)|      |      |   x
+      #           | 2(B) |      |      |
+      #    ------------------------------------
+      # 2  |      |      | 1(A) |      |      |
+      #    ------------------------------------
+      # 1     x   |      |      |      |   x
+      #           ----------------------
+      # 0     x      x   |      |   x      x
+      #                  --------
+      #       0      1      2       3      4     COORDINATES
+      #       
+      # - After second move
+      #   + Object 0 on (1, 3) should have terminus set to time when it is
+      #     "picked-up".
+      #   + Terminus for object 2 should be extended to the time object 0 is
+      #     "picked-up" plus the lifespan specified for recognised objects.
+      #   + The empty square object on (3, 2) should have its terminus set to
+      #     the time that object 0 is "put-down".
+      #   + Object 0 should be added to (3, 2) at time of "put-down" and should 
+      #     not be recognised.
+      #   + Attention clock of model should be set to the time that object 0 is
+      #     "put-down" on (3, 2).
+      #   + Expected visual-spatial field state:
+      #
+      #                  --------
+      # 4     x      x   |      |   x      x
+      #           ----------------------
+      # 3     x   | 2(B) |      |      |   x
+      #    ------------------------------------
+      # 2  |      |      | 1(A) |0(SLF)|      |
+      #    ------------------------------------
+      # 1     x   |      |      |      |   x
+      #           ----------------------
+      # 0     x      x   |      |   x      x
+      #                  --------
+      #       0      1      2       3      4     COORDINATES
+      
+      visual_spatial_field.getSquareContents(1, 3).get(1).setRecognised(model.getAttentionClock(), true)
+      expected_visual_spatial_field_object_properties[1][3][1][3] = model.getAttentionClock() + recognised_object_lifespan
+      expected_visual_spatial_field_object_properties[1][3][1][4] = true
+      
+      ##############################
+      ##### FIRST PART OF MOVE #####
+      ##############################
+      
+      # Construct move
+      move = ArrayList.new
+      move.add(ItemSquarePattern.new(objects[0][0], 2, 0))
+      move.add(ItemSquarePattern.new(objects[0][0], 1, 3))
+      move_sequence = ArrayList.new
+      move_sequence.add(move)
+      
+      # Set relevant time parameters
+      time_move_requested = model.getAttentionClock()
+      pickup_time = time_move_requested + visual_spatial_field_access_time
+      putdown_time = pickup_time + time_to_move_object
+      
+      # Set terminus for object 0 on (2, 0)
+      expected_visual_spatial_field_object_properties[2][0][0][3] = pickup_time
+      
+      # New empty square object should be added to (2, 0) when 0 picked up.
+      expected_visual_spatial_field_object_properties[2][0].push([
+        Scene.getEmptySquareToken(),
+        Scene.getEmptySquareToken(),
+        pickup_time,
+        pickup_time + unrecognised_object_lifespan,
+        false,
+        false
+      ])
+      
+      # Object 0 should be added to (1, 3) at first putdown time.
+      expected_visual_spatial_field_object_properties[1][3].push([
+        objects[0][0],
+        objects[0][1],
+        putdown_time,
+        nil,
+        false,
+        false
+      ])
+    
+      # Update terminus for object 2 on (1, 3) since the coordinates have been
+      # looked at and the object is alive when 0 is putdown.
+      expected_visual_spatial_field_object_properties[1][3][1][3] = putdown_time + recognised_object_lifespan
+    
+      visual_spatial_field.moveObjects(move_sequence, time_move_requested, false)
+      check_values_of_visual_spatial_objects_against_expected(
+        visual_spatial_field,
+        expected_visual_spatial_field_object_properties,
+        model.getAttentionClock(),
+        "when checking state of visual-spatial field after first part of moving " + 
+        move_types[move_number] + " (move number: " + move_number.to_s + ")"
+      )
+      assert_equal(
+        putdown_time, 
+        model.getAttentionClock(), 
+        "occurred when checking the time that the CHREST model associated with " +
+        "the visual-spatial field will be free after first part of moving " + 
+        move_types[move_number] + " (move number: " + move_number.to_s + ")"
+      )
+      ###############################
+      ##### SECOND PART OF MOVE #####
+      ###############################
+      
+      # Construct move
+      move = ArrayList.new
+      move.add(ItemSquarePattern.new(objects[0][0], 1, 3))
+      move.add(ItemSquarePattern.new(objects[0][0], 3, 2))
+      move_sequence = ArrayList.new
+      move_sequence.add(move)
+      
+      # Set relevant timing parameters
+      time_move_requested = model.getAttentionClock()
+      pickup_time = time_move_requested + visual_spatial_field_access_time
+      putdown_time = pickup_time + time_to_move_object
+      
+      # Set terminus for object 0 on (1, 3)
+      expected_visual_spatial_field_object_properties[1][3][2][3] = pickup_time
+      
+      # Set terminus for object 2 on (1, 3)
+      expected_visual_spatial_field_object_properties[1][3][1][3] = pickup_time + recognised_object_lifespan
+      
+      # Set terminus for empty square object on (3, 2)
+      expected_visual_spatial_field_object_properties[3][2][1][3] = putdown_time
+      
+      # Add object 0 to (3, 2)
+      expected_visual_spatial_field_object_properties[3][2].push([
+        objects[0][0],
+        objects[0][1],
+        putdown_time,
+        nil,
+        false,
+        false
+      ])
+    
+      visual_spatial_field.moveObjects(move_sequence, time_move_requested, false)
+      check_values_of_visual_spatial_objects_against_expected(
+        visual_spatial_field,
+        expected_visual_spatial_field_object_properties,
+        model.getAttentionClock(),
+        "when checking state of visual-spatial field after second part of moving " + 
+        move_types[move_number] + " (move number: " + move_number.to_s + ")"
+      )
+      assert_equal(
+        putdown_time, 
+        model.getAttentionClock(), 
+        "occurred when checking the time that the CHREST model associated with " +
+        "the visual-spatial field will be free after second part of moving " + 
+        move_types[move_number] + " (move number: " + move_number.to_s + ")"
+      )
+    
+    ############################################################################
+    elsif(move_number == 4)
+      #	================
+      # MOVE DESCRIPTION
+      # ================
+      #	- Move to square whose object status is unknown.
+      #	- Move from square whose object status was unknown.
+      #	- Move(s) performed:
+      #   + Object 0 moved from (2, 0) to (2, 3).
+      #   + Object 0 moved from (2, 3) to (3, 2).
+      # - Before the moves are applied, coordinates (2, 3) will be artificially
+      #   set to contain an unknown square object.
+      #	- Visual-spatial field state before moves performed (unknown square is 
+      #	  denoted by a "?"):
+      #	
+      #                  --------
+      # 4     x      x   |      |   x      x
+      #           ----------------------
+      # 3     x   |      |  ?   |      |   x
+      #    ------------------------------------
+      # 2  |      |      | 1(B) |      |      |
+      #    ------------------------------------
+      # 1     x   |      |      |      |   x
+      #           ----------------------
+      # 0     x      x   |0(SLF)|   x      x
+      #                  --------
+      #       0      1      2       3      4     COORDINATES
+      #
+      # ===============
+      # EXPECTED OUTPUT
+      # ===============
+      # - After first move
+      #   + Object 0 on (2, 0) should have terminus set to time when it is
+      #     "picked-up".
+      #   + Empty square object should be placed on (2, 0) when object 0 is 
+      #     "picked-up".
+      #   + Unknown square object on (2, 3) should have its terminus set to the 
+      #     time that object 0 is "put-down".
+      #   + Object 0 should be added to (2, 3) at time of "put-down" but should 
+      #     no longer be recognised.
+      #   + Attention clock of model should be set to the time that object 0 is
+      #     "put-down" on (2, 3).
+      #   + Expected visual-spatial field state:
+      #
+      #                  --------
+      # 4     x      x   |      |   x      x
+      #           ----------------------
+      # 3     x   |      |0(SLF)|      |   x
+      #    ------------------------------------
+      # 2  |      |      | 1(B) |      |      |
+      #    ------------------------------------
+      # 1     x   |      |      |      |   x
+      #           ----------------------
+      # 0     x      x   |      |   x      x
+      #                  --------
+      #       0      1      2       3      4     COORDINATES
+      #
+      #- After second move
+      #   + Object 0 on (2, 3) should have terminus set to time when it is
+      #     "picked-up".
+      #   + Empty square object should be placed on (2, 3) when object 0 is 
+      #     "picked-up".
+      #   + Empty square object on (3, 2) should have its terminus set to the 
+      #     time that object 0 is "put-down".
+      #   + Object 0 should be added to (3, 2) at time of "put-down".
+      #   + Attention clock of model should be set to the time that object 0 is
+      #     "put-down" on (3, 2).
+      #   + Expected visual-spatial field state:
+      #
+      #                  --------
+      # 4     x      x   |      |   x      x
+      #           ----------------------
+      # 3     x   |      |      |      |   x
+      #    ------------------------------------
+      # 2  |      |      | 1(B) |0(SLF)|      |
+      #    ------------------------------------
+      # 1     x   |      |      |      |   x
+      #           ----------------------
+      # 0     x      x   |      |   x      x
+      #                  --------
+      #       0      1      2       3      4     COORDINATES
+      
+      # Artificially create the unknown square
+      visual_spatial_field.getSquareContents(2, 3).get(1).setTerminus(model.getAttentionClock(), true)
+      visual_spatial_field.setUnknownSquares(model.getAttentionClock + 1)
+      
+      # Set expected object properties for the coordinates containing the 
+      # unknown square.
+      expected_visual_spatial_field_object_properties[2][3][1][3] = model.getAttentionClock()
+      expected_visual_spatial_field_object_properties[2][3].push([
+        VisualSpatialFieldObject.getUnknownSquareToken(),
+        VisualSpatialFieldObject.getUnknownSquareToken(),
+        model.getAttentionClock() + 1,
+        nil,
+        false,
+        false
+      ])
+    
+      check_values_of_visual_spatial_objects_against_expected(
+        visual_spatial_field,
+        expected_visual_spatial_field_object_properties,
+        model.getAttentionClock() + 1,
+        "when checking state of visual-spatial field before moving " + 
+        move_types[move_number] + " (move number: " + move_number.to_s + ")"
+      )
+      
+      ##############################
+      ##### FIRST PART OF MOVE #####
+      ##############################
+      
+      # Construct move
+      move = ArrayList.new
+      move.add(ItemSquarePattern.new(objects[0][0], 2, 0))
+      move.add(ItemSquarePattern.new(objects[0][0], 2, 3))
+      move_sequence = ArrayList.new
+      move_sequence.add(move)
+      
+      # Set relevant time parameters
+      time_move_requested = model.getAttentionClock() + 1
+      pickup_time = time_move_requested + visual_spatial_field_access_time
+      putdown_time = pickup_time + time_to_move_object
+      
+      # Set terminus for object 0 on (2, 0)
+      expected_visual_spatial_field_object_properties[2][0][0][3] = pickup_time
+      
+      # New empty square object should be added to (2, 0) when 0 picked up.
+      expected_visual_spatial_field_object_properties[2][0].push([
+        Scene.getEmptySquareToken(),
+        Scene.getEmptySquareToken(),
+        pickup_time,
+        pickup_time + unrecognised_object_lifespan,
+        false,
+        false
+      ])
+      
+      # Set terminus for unknown square on (2, 3)
+      expected_visual_spatial_field_object_properties[2][3][2][3] = putdown_time
+      
+      # Add object 0 to (2, 3)
+      expected_visual_spatial_field_object_properties[2][3].push([
+        objects[0][0],
+        objects[0][1],
+        putdown_time,
+        nil,
+        false,
+        false
+      ])
+    
+      visual_spatial_field.moveObjects(move_sequence, time_move_requested, false)
+      
+      check_values_of_visual_spatial_objects_against_expected(
+        visual_spatial_field,
+        expected_visual_spatial_field_object_properties,
+        model.getAttentionClock(),
+        "when checking state of visual-spatial field after first part of moving " + 
+        move_types[move_number] + " (move number: " + move_number.to_s + ")"
+      )
+      assert_equal(
+        putdown_time, 
+        model.getAttentionClock(), 
+        "occurred when checking the time that the CHREST model associated with " +
+        "the visual-spatial field will be free after first part of moving " + 
+        move_types[move_number] + " (move number: " + move_number.to_s + ")"
+      )
+      
+      ###############################
+      ##### SECOND PART OF MOVE #####
+      ###############################
+      
+      # Construct move
+      move = ArrayList.new()
+      move.add(ItemSquarePattern.new(objects[0][0], 2, 3))
+      move.add(ItemSquarePattern.new(objects[0][0], 3, 2))
+      move_sequence = ArrayList.new()
+      move_sequence.add(move)
+      
+      # Set relevant timing parameters
+      time_move_requested = model.getAttentionClock()
+      pickup_time = time_move_requested + visual_spatial_field_access_time
+      putdown_time = pickup_time + time_to_move_object
+      
+      # Set terminus for object 0 on (2, 3)
+      expected_visual_spatial_field_object_properties[2][3][3][3] = pickup_time
+      
+      # Add an empty square object to (2, 3)
+      expected_visual_spatial_field_object_properties[2][3].push([
+        Scene.getEmptySquareToken(),
+        Scene.getEmptySquareToken(),
+        pickup_time,
+        pickup_time + unrecognised_object_lifespan,
+        false,
+        false
+      ])
+      
+      # Set terminus for empty square object on (3, 2)
+      expected_visual_spatial_field_object_properties[3][2][1][3] = putdown_time
+      
+      # Add object 0 to (3, 2)
+      expected_visual_spatial_field_object_properties[3][2].push([
+        objects[0][0],
+        objects[0][1],
+        putdown_time,
+        nil,
+        false,
+        false
+      ])
+    
+      visual_spatial_field.moveObjects(move_sequence, time_move_requested, false)
+      check_values_of_visual_spatial_objects_against_expected(
+        visual_spatial_field,
+        expected_visual_spatial_field_object_properties,
+        model.getAttentionClock(),
+        "when checking state of visual-spatial field after second part of moving " + 
+        move_types[move_number] + " (move number: " + move_number.to_s + ")"
+      )
+      assert_equal(
+        putdown_time, 
+        model.getAttentionClock(), 
+        "occurred when checking the time that the CHREST model associated with " +
+        "the visual-spatial field will be free after second part of moving " + 
+        move_types[move_number] + " (move number: " + move_number.to_s + ")"
+      )
+    end 
+  end 
 end
 
 ################################################################################
@@ -1608,7 +5573,7 @@ unit_test "move_objects_illegally" do
   scene.addItemToSquare(1, 0, test_objects[0][0], test_objects[0][1])
   scene.addItemToSquare(0, 1, test_objects[2][0], test_objects[2][1])
   scene.addItemToSquare(1, 1, test_objects[1][0], test_objects[1][1])
-  scene.addItemToSquare(2, 1, Scene.getEmptySquareIdentifier(), Scene.getEmptySquareIdentifier())
+  scene.addItemToSquare(2, 1, Scene.getEmptySquareToken(), Scene.getEmptySquareToken())
   
   # Create a new CHREST instance and set its domain (important to enable 
   # perceptual mechanisms).
@@ -1647,8 +5612,8 @@ unit_test "move_objects_illegally" do
     for row in 0...visual_spatial_field.getSceneEncoded().getHeight()
       expected_visual_spatial_field_object_properties[col].push([])
       expected_visual_spatial_field_object_properties[col][row].push([
-        Scene.getBlindSquareIdentifier(),
-        Scene.getBlindSquareIdentifier(),
+        Scene.getBlindSquareToken(),
+        Scene.getBlindSquareToken(),
         creation_time + visual_spatial_field_access_time,
         nil,
         false,
@@ -1689,8 +5654,8 @@ unit_test "move_objects_illegally" do
 
   expected_visual_spatial_field_object_properties[2][1][0][3] = get_creation_time_for_object_after_visual_spatial_field_creation(creation_time, visual_spatial_field_access_time, time_to_encode_objects, time_to_encode_empty_squares, 3, 1)
   expected_visual_spatial_field_object_properties[2][1].push([
-    Scene.getEmptySquareIdentifier(),
-    Scene.getEmptySquareIdentifier(),
+    Scene.getEmptySquareToken(),
+    Scene.getEmptySquareToken(),
     get_creation_time_for_object_after_visual_spatial_field_creation(creation_time, visual_spatial_field_access_time, time_to_encode_objects, time_to_encode_empty_squares, 3, 1),
     get_terminus_for_object_after_visual_spatial_field_creation(creation_time, visual_spatial_field_access_time, time_to_encode_objects, time_to_encode_empty_squares, 3, 1, lifespan_for_unrecognised_objects),
     false,
@@ -2081,24 +6046,24 @@ def get_visual_spatial_field_construction_scenario_data(
     #   -------
     # 
     reality = Scene.new("Reality", 5, 5, nil)
-    reality.addItemToSquare(2, 0, "", Scene.getEmptySquareIdentifier())
-    reality.addItemToSquare(1, 1, "", Scene.getEmptySquareIdentifier())
-    reality.addItemToSquare(2, 1, "", Scene.getEmptySquareIdentifier())
-    reality.addItemToSquare(3, 1, "", Scene.getEmptySquareIdentifier())
-    reality.addItemToSquare(0, 2, "", Scene.getEmptySquareIdentifier())
-    reality.addItemToSquare(1, 2, "", Scene.getEmptySquareIdentifier())
-    reality.addItemToSquare(3, 2, "", Scene.getEmptySquareIdentifier())
-    reality.addItemToSquare(4, 2, "", Scene.getEmptySquareIdentifier())
-    reality.addItemToSquare(1, 3, "", Scene.getEmptySquareIdentifier())
-    reality.addItemToSquare(2, 3, "", Scene.getEmptySquareIdentifier())
-    reality.addItemToSquare(3, 3, "", Scene.getEmptySquareIdentifier())
-    reality.addItemToSquare(2, 4, "", Scene.getEmptySquareIdentifier())
+    reality.addItemToSquare(2, 0, "", Scene.getEmptySquareToken())
+    reality.addItemToSquare(1, 1, "", Scene.getEmptySquareToken())
+    reality.addItemToSquare(2, 1, "", Scene.getEmptySquareToken())
+    reality.addItemToSquare(3, 1, "", Scene.getEmptySquareToken())
+    reality.addItemToSquare(0, 2, "", Scene.getEmptySquareToken())
+    reality.addItemToSquare(1, 2, "", Scene.getEmptySquareToken())
+    reality.addItemToSquare(3, 2, "", Scene.getEmptySquareToken())
+    reality.addItemToSquare(4, 2, "", Scene.getEmptySquareToken())
+    reality.addItemToSquare(1, 3, "", Scene.getEmptySquareToken())
+    reality.addItemToSquare(2, 3, "", Scene.getEmptySquareToken())
+    reality.addItemToSquare(3, 3, "", Scene.getEmptySquareToken())
+    reality.addItemToSquare(2, 4, "", Scene.getEmptySquareToken())
     
     #Encode scene creator avatar, if specified.
     if(encode_scene_creator) 
       reality.addItemToSquare(2, 2, "00", Scene.getCreatorToken())
     else
-      reality.addItemToSquare(2, 2, "", Scene.getEmptySquareIdentifier())
+      reality.addItemToSquare(2, 2, "", Scene.getEmptySquareToken())
     end
     
     # Initialise the data structure used to store what list patterns should be
@@ -2124,8 +6089,8 @@ def get_visual_spatial_field_construction_scenario_data(
       for row in 0...reality.getHeight()
         expected_visual_spatial_field_object_properties[col].push(Array.new)
         expected_visual_spatial_field_object_properties[col][row].push([
-          Scene.getBlindSquareIdentifier, #Expected ID
-          Scene.getBlindSquareIdentifier, #Expected class
+          Scene.getBlindSquareToken, #Expected ID
+          Scene.getBlindSquareToken, #Expected class
           0, #Expected creation time.
           nil, #Expected lifespan (not exact terminus) of the object.
           false, #Expected recognised status
@@ -5634,9 +9599,9 @@ def add_expected_values_for_unrecognised_visual_spatial_objects(
           object_on_square_in_scene_encoded = scene_encoded_into_visual_spatial_field.getSquareContents(col, row)
           class_of_object_on_square_in_reality = object_on_square_in_scene_encoded.getObjectClass
           
-          if(class_of_object_on_square_in_reality != Scene.getBlindSquareIdentifier())
+          if(class_of_object_on_square_in_reality != Scene.getBlindSquareToken())
             
-            if(class_of_object_on_square_in_reality == Scene.getEmptySquareIdentifier())
+            if(class_of_object_on_square_in_reality == Scene.getEmptySquareToken())
               number_empty_squares += 1
             elsif(class_of_object_on_square_in_reality != Scene.getCreatorToken())
               number_unrecognised_objects += 1
@@ -5687,6 +9652,8 @@ def check_values_of_visual_spatial_objects_against_expected(visual_spatial_field
 
   for row in 0...visual_spatial_field.getSceneEncoded().getHeight()
     for col in 0...visual_spatial_field.getSceneEncoded().getWidth()
+      
+      puts "Processing square " + col.to_s  + ", " + row.to_s
 
       visual_spatial_field_objects = visual_spatial_field.getSquareContents(col, row)
       assert_equal(expected_visual_spatial_field_object_properties[col][row].count(), visual_spatial_field_objects.size(), "occurred when checking the number of items on col " + col.to_s + ", row " + row.to_s + " " + test_description)

@@ -7,8 +7,8 @@ unit_test "constructor" do
   for row in 0...scene.getHeight()
     for col in 0 ...scene.getWidth()
       object = scene.getSquareContents(col, row)
-      assert_equal(Scene.getBlindSquareIdentifier, object.getIdentifier, "occurred when checking the identifier of the item on col " + col.to_s + " and row " + row.to_s)
-      assert_equal(Scene.getBlindSquareIdentifier, object.getObjectClass, "occurred when checking the class of the item on col " + col.to_s + " and row " + row.to_s)
+      assert_equal(Scene.getBlindSquareToken, object.getIdentifier, "occurred when checking the identifier of the item on col " + col.to_s + " and row " + row.to_s)
+      assert_equal(Scene.getBlindSquareToken, object.getObjectClass, "occurred when checking the class of the item on col " + col.to_s + " and row " + row.to_s)
     end
   end
 end
@@ -46,20 +46,20 @@ unit_test "add-item-to-square" do
   # The Scene will currently be entirely blind at the moment so add items
   # accordingly.
   scene.addItemToSquare(2, 0, "0", Scene.getCreatorToken)
-  scene.addItemToSquare(1, 1, nil, Scene.getEmptySquareIdentifier)
+  scene.addItemToSquare(1, 1, nil, Scene.getEmptySquareToken)
   scene.addItemToSquare(2, 1, "1", "c")
-  scene.addItemToSquare(3, 1, nil, Scene.getEmptySquareIdentifier)
+  scene.addItemToSquare(3, 1, nil, Scene.getEmptySquareToken)
   scene.addItemToSquare(0, 2, "2", "a")
-  scene.addItemToSquare(1, 2, nil, Scene.getEmptySquareIdentifier)
-  scene.addItemToSquare(2, 2, nil, Scene.getEmptySquareIdentifier)
+  scene.addItemToSquare(1, 2, nil, Scene.getEmptySquareToken)
+  scene.addItemToSquare(2, 2, nil, Scene.getEmptySquareToken)
   scene.addItemToSquare(3, 2, "3", "b")
-  scene.addItemToSquare(4, 2, nil, Scene.getEmptySquareIdentifier)
+  scene.addItemToSquare(4, 2, nil, Scene.getEmptySquareToken)
   
   for row in 0..2
     for col in 0..4
       
-      expected_object_identifier = Scene.getBlindSquareIdentifier
-      expected_object_class = Scene.getBlindSquareIdentifier
+      expected_object_identifier = Scene.getBlindSquareToken
+      expected_object_class = Scene.getBlindSquareToken
       
       if col == 2 and row == 0 
         expected_object_identifier = "0"
@@ -68,8 +68,8 @@ unit_test "add-item-to-square" do
       
       if row == 1
         if col == 1 or col == 3
-          expected_object_identifier = Scene.getEmptySquareIdentifier
-          expected_object_class = Scene.getEmptySquareIdentifier
+          expected_object_identifier = Scene.getEmptySquareToken
+          expected_object_class = Scene.getEmptySquareToken
         elsif col == 2
           expected_object_identifier = "1"
           expected_object_class = "c"
@@ -78,8 +78,8 @@ unit_test "add-item-to-square" do
       
       if row == 2
         if col == 1 or col == 2 or col == 4
-          expected_object_identifier = Scene.getEmptySquareIdentifier
-          expected_object_class = Scene.getEmptySquareIdentifier
+          expected_object_identifier = Scene.getEmptySquareToken
+          expected_object_class = Scene.getEmptySquareToken
         elsif col == 0
           expected_object_identifier = "2"
           expected_object_class = "a"
@@ -104,8 +104,8 @@ unit_test "add-item-to-square" do
   for row in 0..2
     for col in 0..4
       
-      expected_object_identifier = Scene.getBlindSquareIdentifier
-      expected_object_class = Scene.getBlindSquareIdentifier
+      expected_object_identifier = Scene.getBlindSquareToken
+      expected_object_class = Scene.getBlindSquareToken
       
       if col == 2 and row == 0 
         expected_object_identifier = "0"
@@ -117,8 +117,8 @@ unit_test "add-item-to-square" do
           expected_object_identifier = "4"
           expected_object_class = "e"
         elsif col == 3
-          expected_object_identifier = Scene.getEmptySquareIdentifier
-          expected_object_class = Scene.getEmptySquareIdentifier
+          expected_object_identifier = Scene.getEmptySquareToken
+          expected_object_class = Scene.getEmptySquareToken
         elsif col == 2
           expected_object_identifier = "1"
           expected_object_class = "c"
@@ -127,8 +127,8 @@ unit_test "add-item-to-square" do
       
       if row == 2
         if col == 1 or col == 2 or col == 4
-          expected_object_identifier = Scene.getEmptySquareIdentifier
-          expected_object_class = Scene.getEmptySquareIdentifier
+          expected_object_identifier = Scene.getEmptySquareToken
+          expected_object_class = Scene.getEmptySquareToken
         elsif col == 0
           expected_object_identifier = "2"
           expected_object_class = "a"
@@ -148,12 +148,12 @@ unit_test "add-item-to-square" do
   ##### Sub-Test 3 #####
   ######################
   
-  scene.addItemToSquare(1, 1, Scene.getEmptySquareIdentifier, Scene.getEmptySquareIdentifier)
+  scene.addItemToSquare(1, 1, Scene.getEmptySquareToken, Scene.getEmptySquareToken)
   for row in 0..2
     for col in 0..4
       
-      expected_object_identifier = Scene.getBlindSquareIdentifier
-      expected_object_class = Scene.getBlindSquareIdentifier
+      expected_object_identifier = Scene.getBlindSquareToken
+      expected_object_class = Scene.getBlindSquareToken
       
       if col == 2 and row == 0 
         expected_object_identifier = "0"
@@ -162,8 +162,8 @@ unit_test "add-item-to-square" do
       
       if row == 1
         if col == 1 or col == 3
-          expected_object_identifier = Scene.getEmptySquareIdentifier
-          expected_object_class = Scene.getEmptySquareIdentifier
+          expected_object_identifier = Scene.getEmptySquareToken
+          expected_object_class = Scene.getEmptySquareToken
         elsif col == 2
           expected_object_identifier = "1"
           expected_object_class = "c"
@@ -172,8 +172,8 @@ unit_test "add-item-to-square" do
       
       if row == 2
         if col == 1 or col == 2 or col == 4
-          expected_object_identifier = Scene.getEmptySquareIdentifier
-          expected_object_class = Scene.getEmptySquareIdentifier
+          expected_object_identifier = Scene.getEmptySquareToken
+          expected_object_class = Scene.getEmptySquareToken
         elsif col == 0
           expected_object_identifier = "2"
           expected_object_class = "a"
@@ -197,8 +197,8 @@ unit_test "add-item-to-square" do
   for row in 0..2
     for col in 0..4
       
-      expected_object_identifier = Scene.getBlindSquareIdentifier
-      expected_object_class = Scene.getBlindSquareIdentifier
+      expected_object_identifier = Scene.getBlindSquareToken
+      expected_object_class = Scene.getBlindSquareToken
       
       if col == 2 and row == 0 
         expected_object_identifier = "0"
@@ -207,8 +207,8 @@ unit_test "add-item-to-square" do
       
       if row == 1
         if col == 1 or col == 3
-          expected_object_identifier = Scene.getEmptySquareIdentifier
-          expected_object_class = Scene.getEmptySquareIdentifier
+          expected_object_identifier = Scene.getEmptySquareToken
+          expected_object_class = Scene.getEmptySquareToken
         elsif col == 2
           expected_object_identifier = "5"
           expected_object_class = "e"
@@ -217,8 +217,8 @@ unit_test "add-item-to-square" do
       
       if row == 2
         if col == 1 or col == 2 or col == 4
-          expected_object_identifier = Scene.getEmptySquareIdentifier
-          expected_object_class = Scene.getEmptySquareIdentifier
+          expected_object_identifier = Scene.getEmptySquareToken
+          expected_object_class = Scene.getEmptySquareToken
         elsif col == 0
           expected_object_identifier = "2"
           expected_object_class = "a"
@@ -238,8 +238,8 @@ end
 ################################################################################
 unit_test "add-items-to-row" do
   scene = Scene.new("test", 5, 3, nil)
-  blind = Scene.getBlindSquareIdentifier
-  empty = Scene.getEmptySquareIdentifier
+  blind = Scene.getBlindSquareToken
+  empty = Scene.getEmptySquareToken
   
   row_0_items = ArrayList.new
   row_0_items.add(SceneObject.new("", blind))
@@ -313,21 +313,21 @@ end
 unit_test "get-square-contents" do
   scene = Scene.new("test", 2, 2, nil)
   scene.addItemToSquare(1, 0, "0", "a")
-  scene.addItemToSquare(1, 1, "", Scene.getEmptySquareIdentifier())
+  scene.addItemToSquare(1, 1, "", Scene.getEmptySquareToken())
   
   for row in 0..1
     for col in 0..1
       contents_of_square = scene.getSquareContents(col, row)
-      expected_object_identifier = Scene.getBlindSquareIdentifier()
-      expected_object_class = Scene.getBlindSquareIdentifier()
+      expected_object_identifier = Scene.getBlindSquareToken()
+      expected_object_class = Scene.getBlindSquareToken()
       
       if(col == 1)
         if(row == 0)
           expected_object_identifier = "0"
           expected_object_class = "a"
         elsif(row == 1)
-          expected_object_identifier = Scene.getEmptySquareIdentifier()
-          expected_object_class = Scene.getEmptySquareIdentifier()
+          expected_object_identifier = Scene.getEmptySquareToken()
+          expected_object_class = Scene.getEmptySquareToken()
         end
       end
       
@@ -335,6 +335,9 @@ unit_test "get-square-contents" do
       assert_equal(expected_object_class, contents_of_square.getObjectClass(), "occurred when checking the class of the item on col " + col.to_s + " and row " + row.to_s)
     end
   end
+  
+  assert_equal(nil, scene.getSquareContents(scene.getWidth(), 0), "occured when checking what's returned when specifying a col that's out of scope")
+  assert_equal(nil, scene.getSquareContents(0, scene.getHeight()), "occured when checking what's returned when specifying a row that's out of scope")
 end
 
 ################################################################################
@@ -344,15 +347,15 @@ unit_test "get-square-contents-as-list-pattern" do
   scene = Scene.new("test", 3, 3, nil)
   scene.addItemToSquare(1, 0, "1", "a")
   scene.addItemToSquare(1, 1, "0", Scene.getCreatorToken())
-  scene.addItemToSquare(2, 2, "", Scene.getEmptySquareIdentifier())
+  scene.addItemToSquare(2, 2, "", Scene.getEmptySquareToken())
   
   for row in 0..2
     for col in 0..2
       
       relative_col = nil
       relative_row = nil
-      expected_object_identifier = Scene.getBlindSquareIdentifier()
-      expected_object_class = Scene.getBlindSquareIdentifier()
+      expected_object_identifier = Scene.getBlindSquareToken()
+      expected_object_class = Scene.getBlindSquareToken()
       
       if(col == 0)
         relative_col = -1
@@ -380,8 +383,8 @@ unit_test "get-square-contents-as-list-pattern" do
         end
       elsif(col == 2)
         if(row == 2)
-          expected_object_identifier = Scene.getEmptySquareIdentifier()
-          expected_object_class = Scene.getEmptySquareIdentifier()
+          expected_object_identifier = Scene.getEmptySquareToken()
+          expected_object_class = Scene.getEmptySquareToken()
         end
       end
       
@@ -430,17 +433,17 @@ unit_test "get-as-list-pattern" do
   scene = Scene.new("test", 5, 3, nil)
   
   scene.addItemToSquare(2, 0, "0", Scene.getCreatorToken)
-  scene.addItemToSquare(1, 1, "", Scene.getEmptySquareIdentifier)
+  scene.addItemToSquare(1, 1, "", Scene.getEmptySquareToken)
   scene.addItemToSquare(2, 1, "1", "c")
-  scene.addItemToSquare(3, 1, "", Scene.getEmptySquareIdentifier)
+  scene.addItemToSquare(3, 1, "", Scene.getEmptySquareToken)
   scene.addItemToSquare(0, 2, "2", "a")
-  scene.addItemToSquare(1, 2, "", Scene.getEmptySquareIdentifier)
-  scene.addItemToSquare(2, 2, "", Scene.getEmptySquareIdentifier)
+  scene.addItemToSquare(1, 2, "", Scene.getEmptySquareToken)
+  scene.addItemToSquare(2, 2, "", Scene.getEmptySquareToken)
   scene.addItemToSquare(3, 2, "3", "b")
-  scene.addItemToSquare(4, 2, "", Scene.getEmptySquareIdentifier)
+  scene.addItemToSquare(4, 2, "", Scene.getEmptySquareToken)
   
-  blind = Scene.getBlindSquareIdentifier
-  empty = Scene.getEmptySquareIdentifier
+  blind = Scene.getBlindSquareToken
+  empty = Scene.getEmptySquareToken
   
   expected_list_pattern_no_relative_coords_objects_identified_by_id = ListPattern.new
   expected_list_pattern_no_relative_coords_objects_identified_by_id.add(ItemSquarePattern.new(blind, 0, 0))
@@ -537,7 +540,7 @@ unit_test "compute-errors-of-commission" do
   
   begin
     scene1.computeErrorsOfCommission(scene2)
-  rescue IllegalArgumentException
+  rescue 
     #Swallow the error output to retain pretty test output but set error_thrown 
     #flag to true to indicate that an error was actually thrown.
     error_thrown = true
@@ -566,8 +569,8 @@ unit_test "compute-errors-of-commission" do
   scene1 = Scene.new("test-scene-1", 5, 3, nil)
   scene2 = Scene.new("test-scene-2", 5, 3, nil)
   
-  blind = Scene.getBlindSquareIdentifier
-  empty = Scene.getEmptySquareIdentifier
+  blind = Scene.getBlindSquareToken
+  empty = Scene.getEmptySquareToken
   
   #Scene 1 should have 2 more objects than scene 2.
   scene_1_row_0_items = ArrayList.new
@@ -640,7 +643,7 @@ unit_test "compute-errors-of-omission" do
   
   begin
     scene1.computeErrorsOfOmission(scene2)
-  rescue IllegalArgumentException
+  rescue 
     #Swallow the error output to retain pretty test output but set error_thrown 
     #flag to true to indicate that an error was actually thrown.
     error_thrown = true
@@ -669,8 +672,8 @@ unit_test "compute-errors-of-omission" do
   scene1 = Scene.new("test-scene-1", 5, 3, nil)
   scene2 = Scene.new("test-scene-2", 5, 3, nil)
   
-  blind = Scene.getBlindSquareIdentifier
-  empty = Scene.getEmptySquareIdentifier
+  blind = Scene.getBlindSquareToken
+  empty = Scene.getEmptySquareToken
   
   #Scene 1 should have 2 fewer objects than scene 2.
   scene_1_row_0_items = ArrayList.new
@@ -762,7 +765,7 @@ unit_test "compute-precision" do
     #is passed as the parameter concerning this feature in the computePrecision 
     #function.
     scene1.computePrecision(scene2, false)
-  rescue IllegalArgumentException
+  rescue 
     #Swallow the error output to retain pretty test output but set error_thrown 
     #flag to true to indicate that an error was actually thrown.
     error_thrown = true
@@ -777,8 +780,8 @@ unit_test "compute-precision" do
   scene1 = Scene.new("test-scene-1", 5, 3, nil)
   scene2 = Scene.new("test-scene-2", 5, 3, nil)
   
-  blind = Scene.getBlindSquareIdentifier
-  empty = Scene.getEmptySquareIdentifier
+  blind = Scene.getBlindSquareToken
+  empty = Scene.getEmptySquareToken
   
   #Note that objects in both scenes are in the correct locations whilst their
   #object identifiers differ but their classes match.
@@ -877,7 +880,7 @@ unit_test "compute-recall" do
     #is passed as the parameter concerning this feature in the computeRecall 
     #function.
     scene1.computeRecall(scene2, false)
-  rescue IllegalArgumentException
+  rescue 
     #Swallow the error output to retain pretty test output but set error_thrown 
     #flag to true to indicate that an error was actually thrown.
     error_thrown = true
@@ -892,8 +895,8 @@ unit_test "compute-recall" do
   scene1 = Scene.new("test-scene-1", 5, 3, nil)
   scene2 = Scene.new("test-scene-2", 5, 3, nil)
   
-  blind = Scene.getBlindSquareIdentifier
-  empty = Scene.getEmptySquareIdentifier
+  blind = Scene.getBlindSquareToken
+  empty = Scene.getEmptySquareToken
   
   #Note that no object's location is the same between scenes and whilst the
   #object classes specified are the same in each scene, object identities differ.
@@ -953,10 +956,10 @@ unit_test "compute-recall" do
 end
 
 # Blind square identifier not publicly settable so not possible to test 
-# "getBlindSquareIdentifier" accurately.
+# "getBlindSquareToken" accurately.
 
 # Empty square identifier not publicly settable so not possible to test 
-# "getEmptySquareIdentifier" accurately.
+# "getEmptySquareToken" accurately.
 
 # Self identifier not publicly settable so not possible to test 
 # "getSelfIdentifier" accurately.
@@ -986,8 +989,8 @@ end
 #          
 #         -2     -1      0      1      2      CREATOR-RELATIVE COORDS
 unit_test "get_items_in_scope_as_list_pattern" do
-  blind = Scene.getBlindSquareIdentifier
-  empty = Scene.getEmptySquareIdentifier
+  blind = Scene.getBlindSquareToken
+  empty = Scene.getEmptySquareToken
   scene = Scene.new("test", 5, 5, nil)
 
   row_0_items = ArrayList.new
@@ -1159,8 +1162,8 @@ end
 #          |------|------|------|
 #      0      1      2      3      4      
 unit_test "get_location_of_self" do
-  blind = Scene.getBlindSquareIdentifier
-  empty = Scene.getEmptySquareIdentifier
+  blind = Scene.getBlindSquareToken
+  empty = Scene.getEmptySquareToken
   
   scene_with_creator = Scene.new("", 5, 5, nil)
   scene_with_creator.addItemToSquare(1, 0, "", empty);
@@ -1223,7 +1226,7 @@ end
 
 ################################################################################
 unit_test "is_square_blind" do
-  empty = Scene.getEmptySquareIdentifier
+  empty = Scene.getEmptySquareToken
   
   scene = Scene.new("", 5, 5, nil)
   scene.addItemToSquare(1, 0, "", empty);
@@ -1251,7 +1254,7 @@ end
 
 ################################################################################
 unit_test "is_square_empty" do
-  empty = Scene.getEmptySquareIdentifier
+  empty = Scene.getEmptySquareToken
   
   scene = Scene.new("", 5, 5, nil)
   scene.addItemToSquare(1, 0, "", empty);

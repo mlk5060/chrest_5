@@ -2,7 +2,7 @@ unit_test "normalise" do
   
   #Item square patterns are handled specially by the GenericDomain.normalise() 
   #function hence the verbose variable names.
-  empty_item_square_pattern = ItemSquarePattern.new(Scene.getEmptySquareIdentifier, 0, 1)
+  empty_item_square_pattern = ItemSquarePattern.new(Scene.getEmptySquareToken, 0, 1)
   self_item_square_pattern = ItemSquarePattern.new(Scene.getCreatorToken, 0, 2)
   non_empty_item_square_pattern = ItemSquarePattern.new("A", 0, 3)
   duplicate_non_empty_item_square_pattern = ItemSquarePattern.new("A", 0, 3)
@@ -16,7 +16,7 @@ unit_test "normalise" do
     
     #Empty square and self identifiers should be ignored by the 
     #GenericDomain.normalise method if they are of type StringPattern.
-    string_pattern_one = Pattern.makeString(Scene.getEmptySquareIdentifier())
+    string_pattern_one = Pattern.makeString(Scene.getEmptySquareToken())
     string_pattern_two = Pattern.makeString(Scene.getCreatorToken())
     string_list_pattern = ListPattern.new(modality)
     string_list_pattern.add(string_pattern_one)

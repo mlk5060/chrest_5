@@ -1638,7 +1638,7 @@ public class Chrest extends Observable {
    * @return 
    */
   public Map<ListPattern, Integer> getMovePredictions (Scene scene, int numFixations, String colour, int time) {
-    scanScene (scene, numFixations, time);
+    scanScene (scene, numFixations, time, false);
     // create a map of moves to their frequency of occurrence in nodes of STM
     Map<ListPattern, Integer> moveFrequencies = new HashMap<ListPattern, Integer> ();
     for (Node node : _visualStm) {
@@ -1739,8 +1739,8 @@ public class Chrest extends Observable {
    * @param time
    * @return 
    */
-  public Scene scanScene (Scene scene, int numFixations, int time) {  
-    return scanScene (scene, numFixations, true, time, false);
+  public Scene scanScene (Scene scene, int numFixations, int time, boolean debug) {  
+    return scanScene (scene, numFixations, true, time, debug);
   }
   
   /** 
@@ -1808,6 +1808,7 @@ public class Chrest extends Observable {
     _perceiver.setScene (scene);
     _perceiver.start (numFixations);
     for (int i = 0; i < numFixations; i++) {
+      if(debug) System.out.println("   - Moving eye " + (i+1) + " of " + numFixations + " times");
       _perceiver.moveEye (time);
     }
     
@@ -1898,8 +1899,9 @@ public class Chrest extends Observable {
                 System.out.println("         Ghost: " + object.isGhost());
               }
               
-              //Blind objects and the creator's avatar will have null termini so
-              //do not overwrite these.
+              //Squares that contain blind objects, unknown object status 
+              //objects and the creator's avatar will have null termini so do 
+              //not overwrite these.
               if(object.getTerminus() == null){
                 object.setUnrecognised(time, false);
               }else{

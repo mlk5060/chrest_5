@@ -352,17 +352,22 @@ public class ListPattern extends Pattern implements Iterable<PrimitivePattern> {
    * Creates a new {@link jchrest.lib.ListPattern} by removing all patterns from 
    * this {@link #this} where the result of calling 
    * {@link jchrest.lib.ItemSquarePattern#getItem()} returns 
-   * {@link jchrest.lib.Scene#getBlindSquareIdentifier()} or 
-   * {@link jchrest.lib.Scene#getEmptySquareIdentifier()}.
+   * {@link jchrest.lib.Scene#getBlindSquareToken()}, 
+   * {@link jchrest.lib.Scene#getEmptySquareToken()} or
+   * {@link jchrest.lib.VisualSpatialFieldObject#getUnknownSquareToken()}.
    * 
    * @return 
    */
-  public ListPattern removeBlindAndEmptyItems(){
+  public ListPattern removeBlindEmptyAndUnknownItems(){
     ListPattern result = new ListPattern(this.getModality());
     
     for(PrimitivePattern pattern : this){
       String item = ((ItemSquarePattern)pattern).getItem();
-      if( !item.equals(Scene.getBlindSquareIdentifier()) && !item.equals(Scene.getEmptySquareIdentifier()) ){
+      if( 
+        !item.equals(Scene.getBlindSquareToken()) && 
+        !item.equals(Scene.getEmptySquareToken()) &&
+        !item.equals(VisualSpatialFieldObject.getUnknownSquareToken())
+      ){
         result.add(pattern);
       }
     }

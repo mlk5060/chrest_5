@@ -22,14 +22,14 @@ unit_test "moves" do
   
   scene = Scene.new("Test movement scene", 5, 5, nil)
   scene.addItemToSquare(0, 0, "1", tile_token)
-  scene.addItemToSquare(2, 0, "", Scene.getEmptySquareIdentifier())
+  scene.addItemToSquare(2, 0, "", Scene.getEmptySquareToken())
   scene.addItemToSquare(4, 0, "2", tile_token)
   
   scene.addItemToSquare(1, 1, "3", hole_token)
   scene.addItemToSquare(2, 1, "4", opponent_token)
   scene.addItemToSquare(3, 1, "5", tile_token)
   
-  scene.addItemToSquare(0, 2, "", Scene.getEmptySquareIdentifier())
+  scene.addItemToSquare(0, 2, "", Scene.getEmptySquareToken())
   scene.addItemToSquare(1, 2, "6", hole_token)
   scene.addItemToSquare(2, 2, "0", Scene.getCreatorToken())
   scene.addItemToSquare(3, 2, "7", tile_token)
@@ -37,7 +37,7 @@ unit_test "moves" do
   
   scene.addItemToSquare(1, 3, "9", hole_token)
   scene.addItemToSquare(2, 3, "10", tile_token)
-  scene.addItemToSquare(3, 3, "", Scene.getEmptySquareIdentifier())
+  scene.addItemToSquare(3, 3, "", Scene.getEmptySquareToken())
   
   scene.addItemToSquare(0, 4, "11", tile_token)
   scene.addItemToSquare(2, 4, "12", hole_token)

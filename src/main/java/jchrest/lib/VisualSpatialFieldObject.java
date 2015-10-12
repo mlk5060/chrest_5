@@ -11,6 +11,10 @@ import jchrest.architecture.VisualSpatialField;
  */
 public class VisualSpatialFieldObject {
   
+  //The string used to denote a VisualSpatialFieldObject that represents an 
+  //unknown square in a VisualSpatialField.
+  private static final String UNKNOWN_SQUARE_TOKEN = "-";
+  
   //Stores the VisualSpatialField associated with this object.
   private final VisualSpatialField _associatedVisualSpatialField;
   
@@ -75,7 +79,7 @@ public class VisualSpatialFieldObject {
    * 
    * @param setTerminus Set to true to set the terminus now or false to set it
    * later.  If this {@link #this}'s class equal to the result of
-   * {@link jchrest.lib.Scene#getBlindSquareIdentifier()} or 
+   * {@link jchrest.lib.Scene#getBlindSquareToken()} or 
    * {@link jchrest.lib.Scene#getCreatorToken()} and this parameter is set to
    * true, the terminus for this object is not set (and is set to null) since 
    * blind squares and the creator's avatar should not decay like other 
@@ -100,11 +104,11 @@ public class VisualSpatialFieldObject {
   ){
     
     //Determine the identifier to use and set the identifier and object class.
-    if(objectClass.equals(Scene.getBlindSquareIdentifier())){
-      identifier = Scene.getBlindSquareIdentifier();
+    if(objectClass.equals(Scene.getBlindSquareToken())){
+      identifier = Scene.getBlindSquareToken();
     }
-    else if(objectClass.equals(Scene.getEmptySquareIdentifier())){
-      identifier = Scene.getEmptySquareIdentifier();
+    else if(objectClass.equals(Scene.getEmptySquareToken())){
+      identifier = Scene.getEmptySquareToken();
     }
     
     //Determine the time for creation and set this plus the first entry in the
@@ -123,7 +127,11 @@ public class VisualSpatialFieldObject {
 
     //Set terminus.
     if( 
-      ( !objectClass.equals(Scene.getBlindSquareIdentifier()) && !objectClass.equals(Scene.getCreatorToken()) ) || 
+      ( 
+        !objectClass.equals(Scene.getBlindSquareToken()) && 
+        !objectClass.equals(Scene.getCreatorToken()) &&
+        !objectClass.equals(VisualSpatialFieldObject.getUnknownSquareToken())
+      ) || 
       setTerminus
     ){
       this._terminus = timeCreated + this._associatedVisualSpatialField.getUnrecognisedObjectLifespan();
@@ -230,6 +238,13 @@ public class VisualSpatialFieldObject {
   }
   
   /**
+   * @return The string used to denote an unknown square.
+   */
+  public static String getUnknownSquareToken(){
+    return VisualSpatialFieldObject.UNKNOWN_SQUARE_TOKEN;
+  }
+    
+  /**
    * @param time The time to check the recognised status of this {@link #this}
    * against.
    * 
@@ -293,7 +308,7 @@ public class VisualSpatialFieldObject {
    */
   public void setTerminus(int time, boolean setToTime){
     if(this.alive(time)){
-      if(setToTime || this._objectClass.equals(Scene.getBlindSquareIdentifier())){
+      if(setToTime || this._objectClass.equals(Scene.getBlindSquareToken())){
         this._terminus = time;
       }
       else{

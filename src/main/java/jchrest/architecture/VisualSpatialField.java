@@ -429,7 +429,7 @@ public class VisualSpatialField {
       for(int row = 0; row < this._sceneEncoded.getHeight() && realityIsBlind; row++){
         String objectClass = this._sceneEncoded.getSquareContents(col, row).getObjectClass();
         if(
-          !objectClass.equals(Scene.getBlindSquareIdentifier()) &&
+          !objectClass.equals(Scene.getBlindSquareToken()) &&
           !objectClass.equals(Scene.getCreatorToken())
         ){
           if(debug) System.out.println("   - Col " + col + ", row " + row + " contains an object with class " + objectClass + ".");
@@ -463,8 +463,8 @@ public class VisualSpatialField {
 
           this._visualSpatialField.get(col).get(row).add(new VisualSpatialFieldObject(
             this, 
-            Scene.getBlindSquareIdentifier(), 
-            Scene.getBlindSquareIdentifier(), 
+            Scene.getBlindSquareToken(), 
+            Scene.getBlindSquareToken(), 
             time,
             false,
             false
@@ -498,7 +498,7 @@ public class VisualSpatialField {
       //Scan sceneToEncode to populate visual STM enabling recognised objects 
       //to be encoded.
       if(debug) System.out.println("- Scanning for recognised chunks in scene to encode...");
-      this._model.scanScene(sceneToEncode, numberFixations, time);
+      this._model.scanScene(sceneToEncode, numberFixations, time, debug);
       ArrayList<ListPattern> recognisedChunks = new ArrayList<>();
       this._model.getVisualStm().iterator().forEachRemaining(chunk -> {
         if(!chunk.equals(this._model.getVisualLtm()) && !chunk.getImage().isEmpty()){
@@ -622,7 +622,7 @@ public class VisualSpatialField {
               String mostRecentObjClassOnVisualSpatialCoordsSpecifiedByRecObj = mostRecentObjOnVisualSpatialCoordsSpecifiedByRecObj.getObjectClass();
 
               //If the most recent object is a blind object, set its terminus.
-              if(mostRecentObjClassOnVisualSpatialCoordsSpecifiedByRecObj.equals(Scene.getBlindSquareIdentifier())){
+              if(mostRecentObjClassOnVisualSpatialCoordsSpecifiedByRecObj.equals(Scene.getBlindSquareToken())){
                 if(debug) System.out.println("         - This is a blind object and will be overwritten.");
                 mostRecentObjOnVisualSpatialCoordsSpecifiedByRecObj.setTerminus(time, true);
               }
@@ -695,7 +695,7 @@ public class VisualSpatialField {
               //done if the blind square's terminus has already been set by 
               //another ghost object being placed here previously, see the
               //VisualSpatialFieldObject.setTerminus() method).
-              else if(mostRecentObjClassOnVisualSpatialCoordsSpecifiedByRecObj.equals(Scene.getBlindSquareIdentifier())){
+              else if(mostRecentObjClassOnVisualSpatialCoordsSpecifiedByRecObj.equals(Scene.getBlindSquareToken())){
                 if(debug) System.out.println("         - This is a blind object and will be overwritten.");
                 mostRecentObjOnVisualSpatialCoordsSpecifiedByRecObj.setTerminus(time, true);
                 encodeGhostObject = true;
@@ -772,7 +772,7 @@ public class VisualSpatialField {
           
           if(debug) System.out.println("   - Square " + col + ", " + row + " contains an object with class: " + objectInRealityClass);
           if( 
-            !objectInRealityClass.equals(Scene.getBlindSquareIdentifier()) && 
+            !objectInRealityClass.equals(Scene.getBlindSquareToken()) && 
             !objectInRealityClass.equals(Scene.getCreatorToken())
           ){
             if(debug) System.out.println("   - This isn't a blind square or the scene creator so will be processed.");
@@ -790,7 +790,7 @@ public class VisualSpatialField {
             //If the object in sceneToEncode is an empty square, the 
             //VisualSpatialFieldObject should be overwritten (ghost and blind 
             //squares killed).
-            if(objectInRealityClass.equals(Scene.getEmptySquareIdentifier())){
+            if(objectInRealityClass.equals(Scene.getEmptySquareToken())){
               if(debug)System.out.println("   - Unrecognised object is an empty square.");
               encodeObjectFromReality = true;
               time += emptySquareEncodingTime;
@@ -803,7 +803,7 @@ public class VisualSpatialField {
             //reality or a ghost.  If the objects are the same, do nothing 
             //otherwise, overwrite the ghost.
             else if(
-              mostRecentObjectAtCoordinates.getObjectClass().equals(Scene.getBlindSquareIdentifier()) ||
+              mostRecentObjectAtCoordinates.getObjectClass().equals(Scene.getBlindSquareToken()) ||
               mostRecentObjectAtCoordinates.isGhost()
             ){
               if(debug) System.out.println("   - Unrecognised object not an empty square");
@@ -886,8 +886,8 @@ public class VisualSpatialField {
         for(VisualSpatialFieldObject object : this.getSquareContents(col, row)){
           String identifier = object.getIdentifier();
           if(
-            !identifier.equals(Scene.getBlindSquareIdentifier()) &&
-            !identifier.equals(Scene.getEmptySquareIdentifier()) &&
+            !identifier.equals(Scene.getBlindSquareToken()) &&
+            !identifier.equals(Scene.getEmptySquareToken()) &&
             objectIds.add(object.getIdentifier()) == false
           ){
             throw new VisualSpatialFieldException("The identifer for the " + VisualSpatialFieldObject.class.getName() + " "
@@ -982,15 +982,18 @@ public class VisualSpatialField {
    * {@link jchrest.lib.VisualSpatialFieldObject#alive(int)}) on this {@link 
    * #this} at the time specified.  If a coordinate on this {@link #this} does
    * not contain any {@link jchrest.lib.VisualSpatialFieldObject}s that are 
-   * alive, a {@link jchrest.lib.SceneObject} that represents an empty square
-   * will be found on the {@link jchrest.lib.Scene} coordinates.  Also, if there
-   * are multiple {@link jchrest.lib.VisualSpatialFieldObject}s on a coordinate,
-   * the corresponding coordinate in the {@link jchrest.lib.Scene} returned will
-   * contain a {@link jchrest.lib.SceneObject} that represents the 
-   * {@link jchrest.lib.VisualSpatialFieldObject} that was added to the 
-   * coordinates most recently.
+   * alive, a {@link jchrest.lib.SceneObject} that represents a square whose
+   * object status is unknown will be found on the {@link jchrest.lib.Scene} 
+   * coordinates.  Also, if there are multiple {@link 
+   * jchrest.lib.VisualSpatialFieldObject}s on a coordinate, the corresponding 
+   * coordinate in the {@link jchrest.lib.Scene} returned will contain a {@link 
+   * jchrest.lib.SceneObject} that represents the {@link 
+   * jchrest.lib.VisualSpatialFieldObject} that was added to the coordinates 
+   * most recently.
    */
   public Scene getAsScene(int time, boolean encodeGhostObjects){
+    
+    this.setUnknownSquares(time);
       
     //Create a new Scene instance based on the current dimensions of this
     //visual-spatial field.
@@ -1003,18 +1006,6 @@ public class VisualSpatialField {
 
     for(int row = 0; row < this.getHeight(); row++){
       for(int col = 0; col < this.getWidth(); col++){
-        
-        //Set a boolean flag that will be used to determine if the model has to
-        //fall back on using the scene transposed in order to specify what 
-        //object is present on the current coordinates in the scene returned.  
-        //If this boolean flag is set to false after processing the objects on
-        //the current coordinates then, this means that there are no objects
-        //currently "alive" on the coordinates.  In this case, the model must 
-        //either encode the square as a blind square or an empty square.  If the
-        //coordinates in the scene originally transposed are blind, a blind 
-        //square will be encoded on the scene to be returned.  Otherwise, an
-        //empty square will be encoded.
-        boolean objectEncodedOnCoordinates = false;
         
         for(VisualSpatialFieldObject object : this.getSquareContents(col, row)){
           
@@ -1035,17 +1026,7 @@ public class VisualSpatialField {
             }
             
             if(encodeObject){
-              objectEncodedOnCoordinates = true;
               visualSpatialFieldScene.addItemToSquare(col, row, object.getIdentifier(), object.getObjectClass());
-            }
-          }
-          
-          if(!objectEncodedOnCoordinates){
-            SceneObject squareContents = this.getSceneEncoded().getSquareContents(col, row);
-            if(squareContents.getObjectClass().equals(Scene.getBlindSquareIdentifier())){
-              visualSpatialFieldScene.addItemToSquare(col, row, Scene.getBlindSquareIdentifier(), Scene.getBlindSquareIdentifier());
-            } else {
-              visualSpatialFieldScene.addItemToSquare(col, row, Scene.getEmptySquareIdentifier(), Scene.getEmptySquareIdentifier());
             }
           }
         }
@@ -1124,7 +1105,7 @@ public class VisualSpatialField {
    */
   public void moveObjects(ArrayList<ArrayList<ItemSquarePattern>> moveSequences, int time, boolean debug) throws VisualSpatialFieldException {
     
-    if(debug) System.out.println("== VisualSpatialField.moveObjects() ==");
+    if(debug) System.out.println("=== VisualSpatialField.moveObjects() ===");
     //Check that attention is free, if so, continue.
     if(this._model.attentionFree(time)){
       
@@ -1132,12 +1113,13 @@ public class VisualSpatialField {
       
       //Clone the current visual-spatial field so that if any moves are illegal, 
       //all moves performed up until the illegal move can be reversed.
+      if(debug) System.out.println("- Cloning current state of visual-spatial field.");
       ArrayList<ArrayList<ArrayList<VisualSpatialFieldObject>>> visualSpatialFieldBeforeMovesApplied = new ArrayList<>();
       for(int col = 0; col < this._visualSpatialField.size(); col++){
         visualSpatialFieldBeforeMovesApplied.add(new ArrayList<>());
         for(int row = 0; row < this._visualSpatialField.get(col).size(); row++){
           visualSpatialFieldBeforeMovesApplied.get(col).add(new ArrayList<>());
-          if(debug)System.out.println("~~~ Cloning items on square " + col + ", " + row + " ~~~");
+          if(debug)System.out.println("   - Cloning square " + col + ", " + row);
           for(int object = 0; object < this._visualSpatialField.get(col).get(row).size(); object++){
             VisualSpatialFieldObject original = this._visualSpatialField.get(col).get(row).get(object);
             VisualSpatialFieldObject clone = original.createClone();
@@ -1150,7 +1132,7 @@ public class VisualSpatialField {
       //assign terminus values for objects moved and update the attention clock
       //of the associated CHREST model.
       time += this._accessTime;
-      int timeMoveSequenceBegins = time;
+      int timeMoveSequenceBegins = time;      
       if(debug) System.out.println("- Time moves begin: " + time);
       
       //Process each object move sequence.
@@ -1213,6 +1195,7 @@ public class VisualSpatialField {
                 boolean makeSquareToMoveFromBlind = false;
                 boolean makeSquareToMoveFromEmpty = false;
                 int timeObjectMoved = 0;
+                int timeMoveRequested = time;
                 
                 if(debug) System.out.println("   - Checking for object on visual-spatial coordinates to move from");
                 for(VisualSpatialFieldObject objectOnSquareToMoveFrom : objectsOnSquareToMoveFrom){
@@ -1248,8 +1231,18 @@ public class VisualSpatialField {
                     //    with other non-empty objects that are currently alive.
                     if(debug) System.out.println("         - Checking if square should be made blind/empty again");
                     
-                    boolean squareBlindInSceneTransposed = this.getSceneEncoded().getSquareContents(colToMoveFrom, rowToMoveFrom).getObjectClass().equals(Scene.getBlindSquareIdentifier());
-                    VisualSpatialFieldObject previousObject = objectsOnSquareToMoveFrom.get( objectsOnSquareToMoveFrom.indexOf(objectOnSquareToMoveFrom) - 1);
+                    boolean squareBlindInSceneTransposed = this.getSceneEncoded().getSquareContents(colToMoveFrom, rowToMoveFrom).getObjectClass().equals(Scene.getBlindSquareToken());
+                    if(debug) System.out.println("            - Is square blind in original scene? " + squareBlindInSceneTransposed);
+                    
+                    int previousObjectIndex = objectsOnSquareToMoveFrom.indexOf(objectOnSquareToMoveFrom) - 1;
+                    if(previousObjectIndex < 0){
+                      previousObjectIndex = 0;
+                    }
+                    VisualSpatialFieldObject previousObject = objectsOnSquareToMoveFrom.get(previousObjectIndex );
+                    if(debug) System.out.println("            - Previous object on square to move from:");
+                    if(debug) System.out.println("               - ID: " + previousObject.getIdentifier());
+                    if(debug) System.out.println("               - Class: " + previousObject.getObjectClass());
+                    
                     boolean otherObjectAliveOnCoordinates = false;
                     
                     //Cycle through all objects on the square to see if any are
@@ -1257,8 +1250,8 @@ public class VisualSpatialField {
                     for(VisualSpatialFieldObject objectToCheck : objectsOnSquareToMoveFrom){
                       String objectToCheckClass = objectToCheck.getObjectClass();
                       if(
-                        !objectToCheckClass.equals(Scene.getBlindSquareIdentifier()) && 
-                        !objectToCheckClass.equals(Scene.getEmptySquareIdentifier()) &&
+                        !objectToCheckClass.equals(Scene.getBlindSquareToken()) && 
+                        !objectToCheckClass.equals(Scene.getEmptySquareToken()) &&
                         objectToCheck.alive(time)
                       ){
                         otherObjectAliveOnCoordinates = true;
@@ -1268,7 +1261,7 @@ public class VisualSpatialField {
                     if(!squareBlindInSceneTransposed){
                       if(debug) System.out.println("         - Square is not blind in scene transposed");
                       if(
-                        previousObject.getObjectClass().equals(Scene.getEmptySquareIdentifier()) ||
+                        previousObject.getObjectClass().equals(Scene.getEmptySquareToken()) ||
                         !otherObjectAliveOnCoordinates
                       ){
                         if(debug) System.out.println("         - Setting the boolean flag to make the square empty again");
@@ -1300,7 +1293,7 @@ public class VisualSpatialField {
                       objectOnSquareToMoveFrom.getIdentifier(),
                       objectOnSquareToMoveFrom.getObjectClass(),
                       time,
-                      true, 
+                      false, 
                       objectOnSquareToMoveFrom.isGhost()
                     );
                     if(debug) System.out.println("         - Created the new object representation to be added to coordinates to move object to.");
@@ -1322,7 +1315,7 @@ public class VisualSpatialField {
                   else{
                     if(debug) System.out.println("         - This isn't the object to move but its terminus will be updated");
                     if(debug) System.out.println("            Current terminus: " + objectOnSquareToMoveFrom.getTerminus());
-                    objectOnSquareToMoveFrom.setTerminus(time, false);
+                    objectOnSquareToMoveFrom.setTerminus(timeMoveRequested, false);
                     if(debug) System.out.println("            New terminus: " + objectOnSquareToMoveFrom.getTerminus());
                   }
                 }
@@ -1332,8 +1325,8 @@ public class VisualSpatialField {
                   if(debug) System.out.println("         - Making the square blind again");
                   objectsOnSquareToMoveFrom.add(new VisualSpatialFieldObject(
                     this,
-                    Scene.getBlindSquareIdentifier(),
-                    Scene.getBlindSquareIdentifier(),
+                    Scene.getBlindSquareToken(),
+                    Scene.getBlindSquareToken(),
                     timeObjectMoved,
                     false,
                     false
@@ -1345,8 +1338,8 @@ public class VisualSpatialField {
                   if(debug) System.out.println("         - Making the square empty again");
                   objectsOnSquareToMoveFrom.add(new VisualSpatialFieldObject(
                     this,
-                    Scene.getEmptySquareIdentifier(),
-                    Scene.getEmptySquareIdentifier(),
+                    Scene.getEmptySquareToken(),
+                    Scene.getEmptySquareToken(),
                     timeObjectMoved,
                     true,
                     false
@@ -1374,7 +1367,7 @@ public class VisualSpatialField {
                   //contents: there is only one object per square in the Scene
                   //transposed, however).
                   boolean squareToMoveToIsBlind = false;
-                  if(this.getSceneEncoded().getSquareContents(colToMoveTo, rowToMoveTo).getObjectClass().equals(Scene.getBlindSquareIdentifier())){
+                  if(this.getSceneEncoded().getSquareContents(colToMoveTo, rowToMoveTo).getObjectClass().equals(Scene.getBlindSquareToken())){
                     squareToMoveToIsBlind = true;
                   }
                   
@@ -1389,7 +1382,7 @@ public class VisualSpatialField {
                     
                     //Process the termini of objects on the square to be moved
                     //to.
-                    if(debug) System.out.println("      - Updating termini of objects on cooridnates to move to");
+                    if(debug) System.out.println("      - Updating termini of objects on coordinates to move to");
                     for(VisualSpatialFieldObject objectOnSquareToMoveTo : objectsOnSquareToMoveTo){
                       if(debug) System.out.println("         - Processing object " + objectOnSquareToMoveTo.getIdentifier());
                       if(debug) System.out.println("            Current terminus: " + objectOnSquareToMoveTo.getTerminus());
@@ -1403,10 +1396,14 @@ public class VisualSpatialField {
                         objectOnSquareToMoveTo.alive(time)
                       ){
                         
-                        //If the object is an empty-square, kill it since the
-                        //square should no longer be empty (there's an object 
-                        //being moved onto it).
-                        if(objectOnSquareToMoveTo.getObjectClass().equals(Scene.getEmptySquareIdentifier())){
+                        //If the object is an empty-square or unknown-square, 
+                        //kill it.  This is because the square should no longer 
+                        //be empty or its object status unknown (there's an 
+                        //object being moved onto it).
+                        if(
+                          objectOnSquareToMoveTo.getObjectClass().equals(Scene.getEmptySquareToken()) ||
+                          objectOnSquareToMoveTo.getObjectClass().equals(VisualSpatialFieldObject.getUnknownSquareToken())
+                        ){
                           objectOnSquareToMoveTo.setTerminus(time, true);
                         }
                         //If the object isn't an empty square identifier, extend
@@ -1416,6 +1413,9 @@ public class VisualSpatialField {
                         else{
                           objectOnSquareToMoveTo.setTerminus(time, false);
                         }
+                      }
+                      else if(debug){
+                        System.out.println("This object is either the creator's avatar or isn't alive at time " + time + " so its terminus won't be altered.");
                       }
                       if(debug) System.out.println("            New terminus: " + objectOnSquareToMoveTo.getTerminus());
                     }
@@ -1509,6 +1509,42 @@ public class VisualSpatialField {
     }
     else{
       if(debug) System.out.println("- Attention is not free, exiting");
+    }
+  }
+  
+  /**
+   * Adds a {@link jchrest.lib.SceneObject} that represents a square whose 
+   * object status is unknown to any coordinates whose {@link 
+   * jchrest.lib.SceneObject}s termini have all expired at the time specified in
+   * this {@link #this}.
+   *
+   * @param time 
+   */
+  public void setUnknownSquares (int time){
+    for(int col = 0; col < this.getWidth(); col++){
+      for(int row = 0; row < this.getHeight(); row++){
+        
+        ArrayList<VisualSpatialFieldObject> coordinateContents = this._visualSpatialField.get(col).get(row);
+        boolean objectAliveOnCoordinates = false;
+        
+        for(VisualSpatialFieldObject object : coordinateContents){
+          if(object.alive(time)){
+            objectAliveOnCoordinates = true;
+            break;
+          }
+        }
+        
+        if(!objectAliveOnCoordinates){
+          coordinateContents.add(new VisualSpatialFieldObject(
+            this,
+            VisualSpatialFieldObject.getUnknownSquareToken(),
+            VisualSpatialFieldObject.getUnknownSquareToken(),
+            time,
+            false,
+            false
+          ));
+        }
+      }
     }
   }
 }

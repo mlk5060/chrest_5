@@ -48,12 +48,12 @@ public class Scene {
   
   private final VisualSpatialField _visualSpatialFieldGeneratedFrom;
   
-  //The string used to identify "blind-spots" i.e. squares that can't be seen in
-  //a Scene instance.
-  private static final String BLIND_SQUARE_IDENTIFIER = "null";
+  //The string used to denote blind squares in a Scene, i.e. squares that can't 
+  //be seen in a Scene instance.
+  private static final String BLIND_SQUARE_TOKEN = "null";
   
-  //The string used to identify empty squares
-  private static final String EMPTY_SQUARE_IDENTIFIER = ".";
+  //The string used to denote empty squares.
+  private static final String EMPTY_SQUARE_TOKEN = ".";
   
   //The string used to identify the creator of the Scene instance.
   private static final String CREATOR_TOKEN = "SELF";
@@ -62,14 +62,14 @@ public class Scene {
   private final ArrayList<ArrayList<SceneObject>> _scene;
 
   /**
-   * Constructor: the instance created is initially "blind", empty squares and
-   * items must be added using the appropriate methods from this class.
+   * Constructor: the {@link #this} created is initially "blind"; empty squares
+   * and items must be added using the appropriate methods from this class.
    * 
    * @param name Human-readable identifier for the Scene instance created.
    * @param width Represents the maximum number of indivisible x-coordinates 
-   * that can be "seen" in an external vision.
+   * that can be "seen".
    * @param height Represents the maximum number of indivisible y-coordinates 
-   * that can be "seen" in an external vision.
+   * that can be "seen".
    * @param visualSpatialFieldGeneratedFrom Set to null if this {@link #this} is
    * not being generated from a {@link jchrest.architecture.VisualSpatialField}
    */
@@ -90,16 +90,16 @@ public class Scene {
     for(int col = 0; col < width; col++){
       this._scene.add(new ArrayList<>());
       for(int row = 0; row < height; row++){
-        this._scene.get(col).add(new SceneObject("", Scene.getBlindSquareIdentifier()));
+        this._scene.get(col).add(new SceneObject("", Scene.getBlindSquareToken()));
       }
     }
   }
   
   /**
-   * Creates a new {@link jchrest.lib.SceneObject} representing the item 
-   * specified and inserts this {@link jchrest.lib.SceneObject} into the 
-   * specified coordinate in this {@link #this}.  If an item already exists on 
-   * the coordinate specified, the new item overwrites the old one.
+   * Creates a new {@link jchrest.lib.SceneObject} and inserts it into the 
+   * specified coordinate in this {@link #this}.  If a {@link 
+   * jchrest.lib.SceneObject} already exists on the coordinates specified, the 
+   * new {@link jchrest.lib.SceneObject} overwrites the old one.
    * 
    * @param row
    * @param col
@@ -112,48 +112,52 @@ public class Scene {
   }
   
   /**
-   * Adds the items specified along the x-axis of the y-axis (row) specified 
-   * from the minimum x-axis coordinate incrementally.  If the number of items 
-   * specified is greater than the maximum x-axis value of the {@link #this},
-   * the extra items are ignored.
+   * Adds the {@link jchrest.lib.SceneObject}s specified along the columns of 
+   * the row specified from the minimum column in the row incrementally.  If the 
+   * number of {@link jchrest.lib.SceneObject}s specified is greater than the 
+   * maximum number of columns in this {@link #this},  the extra {@link 
+   * jchrest.lib.SceneObject}s are ignored.
    * 
-   * If a coordinate already contains an item, the new item overwrites the old
-   * item.
+   * If a coordinate already contains a {@link jchrest.lib.SceneObject}, the new 
+   * {@link jchrest.lib.SceneObject} overwrites the old one.
    * 
    * @param row The row to be modified.
-   * @param items The items to added to the row as 
-   * {@link jchrest.lib.SceneObject} instances.
+   * @param items The {@link jchrest.lib.SceneObject}s to added to the row.
    */
   public void addItemsToRow (int row, ArrayList<SceneObject> items) {
     for (int i = 0; i < this._width; i++) {
       SceneObject item = items.get(i);
-      if(!item.getObjectClass().equals(Scene.BLIND_SQUARE_IDENTIFIER)){
+      if(!item.getObjectClass().equals(Scene.BLIND_SQUARE_TOKEN)){
         this.addItemToSquare(i, row, item.getIdentifier(), item.getObjectClass());
       }
     }
   }
   
   /**
-   * Compute the errors of commission in this scene compared to another.
+   * Compute the errors of commission in this {@link #this} compared to another.
    * 
    * @param sceneToCompareAgainst
    * 
    * @return 
    * <ul>
    *  <li>
-   *    The number of items that are in this scene but not another.  For 
-   *    example, if this {@link #this} were to have 4 items and another 
-   *    {@link jchrest.lib.Scene} were to have 3, the output of this function 
-   *    would be 1 (blind and empty "items" are not included in the calculation).  
+   *    If the number of squares in the {@link #this}s to be used in the 
+   *    calculation are equal, the number of {@link jchrest.lib.SceneObject}s 
+   *    that are in this {@link #this} but not the other is returned.  For 
+   *    example, if this {@link #this} were to have 4 {@link 
+   *    jchrest.lib.SceneObject}s and another {@link jchrest.lib.Scene} were to 
+   *    have 3, the output of this function would be 1 (blind and empty 
+   *    {@link jchrest.lib.SceneObject}s are not included in the calculation).  
    *  </li>
    *  <li>
-   *    If the number of squares in the scenes to be used in the calculation are 
-   *    not equal, an error is thrown since a fair calculation can not be made 
-   *    in these circumstances.  
+   *    If the number of squares in the {@link #this}s to be used in the 
+   *    calculation are not equal, an error is thrown since a fair calculation 
+   *    can not be made in these circumstances.  
    *  </li>
    *  <li>
-   *    If the number of items in a scene is less than the number of items in 
-   *    the scene compared against, 0 is returned.
+   *    If the number of {@link jchrest.lib.SceneObject}s in this {@link #this} 
+   *    is less than the number of {@link jchrest.lib.SceneObject}s in the 
+   *    {@link #this} compared against, 0 is returned.
    *  </li>
    * </ul>
    */
@@ -166,8 +170,8 @@ public class Scene {
       );
     }
     
-    int numberItemsInThisScene = this.getAsListPattern(false, true).removeBlindAndEmptyItems().size();
-    int numberItemsInOtherScene = sceneToCompareAgainst.getAsListPattern(false, true).removeBlindAndEmptyItems().size();
+    int numberItemsInThisScene = this.getAsListPattern(false, true).removeBlindEmptyAndUnknownItems().size();
+    int numberItemsInOtherScene = sceneToCompareAgainst.getAsListPattern(false, true).removeBlindEmptyAndUnknownItems().size();
     
     if(numberItemsInThisScene <= numberItemsInOtherScene){
       return 0;
@@ -184,20 +188,23 @@ public class Scene {
    * @return 
    * <ul>
    *  <li>
-   *    The number of non-blind and non-empty squares that aren't in this 
-   *    scene but are in the other.  For example, if this {@link #this} were to 
-   *    have 3 non blind/empty squares the other {@link jchrest.lib.Scene} were 
-   *    to have 4, the output of this function would be 1.  
+   *    If the number of squares in the {@link #this}s to be used in the 
+   *    calculation are equal, the number of {@link jchrest.lib.SceneObject}s 
+   *    that aren't in this {@link #this} but are in the other is returned.  For 
+   *    example, if this {@link #this} were to have 3 {@link 
+   *    jchrest.lib.SceneObject}s and another {@link jchrest.lib.Scene} were to 
+   *    have 4, the output of this function would be 1 (blind and empty 
+   *    {@link jchrest.lib.SceneObject}s are not included in the calculation).  
    *  </li>
    *  <li>
-   *    If the number of squares in the scenes to be used in the calculation are 
-   *    not equal, an error is thrown since a fair calculation can not be made 
-   *    in these circumstances.  
+   *    If the number of squares in the {@link #this}s to be used in the 
+   *    calculation are not equal, an error is thrown since a fair calculation 
+   *    can not be made in these circumstances.  
    *  </li>
    *  <li>
-   *    If the number of non blind/empty squares in the base scene is greater 
-   *    than the number of non blind/empty squares in the scene compared 
-   *    against, 0 is returned.
+   *    If the number of {@link jchrest.lib.SceneObject}s in this {@link #this} 
+   *    is greater than the number of {@link jchrest.lib.SceneObject}s in the 
+   *    {@link #this} compared against, 0 is returned.
    *  </li>
    * </ul>
    */
@@ -210,8 +217,8 @@ public class Scene {
       );
     }
     
-    int numberItemsInThisScene = this.getAsListPattern(false, true).removeBlindAndEmptyItems().size();
-    int numberItemsInOtherScene = sceneToCompareAgainst.getAsListPattern(false, true).removeBlindAndEmptyItems().size();
+    int numberItemsInThisScene = this.getAsListPattern(false, true).removeBlindEmptyAndUnknownItems().size();
+    int numberItemsInOtherScene = sceneToCompareAgainst.getAsListPattern(false, true).removeBlindEmptyAndUnknownItems().size();
 
     if(numberItemsInThisScene >= numberItemsInOtherScene){
       return 0;
@@ -221,20 +228,21 @@ public class Scene {
   }
   
   /**
-   * Compute precision of this scene against a given scene i.e. the percentage 
-   * of non blind/empty squares in the scene, p (0 &lt;= p &lt;= 1), that are
-   * correct in their placement when compared to another scene.
+   * Compute precision of this {@link #this} against another, i.e. the 
+   * percentage of non blind/empty {@link jchrest.lib.SceneObject}s in this 
+   * {@link #this}, p (0 &lt;= p &lt;= 1), that are correct in their placement 
+   * when compared to another.
    * 
    * @param sceneToCompareAgainst
-   * @param itemsIdentifiedByObjectClass Set to true to specify that the items
-   * in this {@link jchrest.lib.Scene} and the {@link jchrest.lib.Scene} 
-   * compared against should be identified and compared according to their 
-   * object classes.  Set to false to specify that the items should be 
-   * identified and compared by their unique identifiers.
+   * @param objectsIdentifiedByObjectClass Set to true to specify that the 
+   * {@link jchrest.lib.SceneObject}s in the {@link #this}s to compare should be 
+   * identified and compared according to their object classes.  Set to false to 
+   * specify that the items should be identified and compared by their unique 
+   * identifiers.
    * 
    * @return 
    */
-  public float computePrecision (Scene sceneToCompareAgainst, boolean itemsIdentifiedByObjectClass) {
+  public float computePrecision (Scene sceneToCompareAgainst, boolean objectsIdentifiedByObjectClass) {
     if(this.getHeight() != sceneToCompareAgainst.getHeight() || this.getWidth() != sceneToCompareAgainst.getWidth()){
       throw new IllegalArgumentException("Dimensions of scenes to compare are not equal: "
         + "height and width of scene whose recall is to be calculated = " + this.getHeight() + ", " + this.getWidth()
@@ -243,8 +251,8 @@ public class Scene {
       );
     }
       
-    ListPattern itemsInThisScene = this.getAsListPattern(false, itemsIdentifiedByObjectClass).removeBlindAndEmptyItems();
-    ListPattern itemsInOtherScene = sceneToCompareAgainst.getAsListPattern(false, itemsIdentifiedByObjectClass).removeBlindAndEmptyItems();
+    ListPattern itemsInThisScene = this.getAsListPattern(false, objectsIdentifiedByObjectClass).removeBlindEmptyAndUnknownItems();
+    ListPattern itemsInOtherScene = sceneToCompareAgainst.getAsListPattern(false, objectsIdentifiedByObjectClass).removeBlindEmptyAndUnknownItems();
 
     //Check for potential to divide by 0.
     if( itemsInThisScene.isEmpty() || itemsInOtherScene.isEmpty() ){
@@ -265,16 +273,16 @@ public class Scene {
   }
   
   /**
-   * Compute recall of given scene against this one, i.e. the proportion of 
-   * items in this scene which have been correctly recalled, irrespective of 
-   * their placement.
+   * Compute recall of given {@link #this} against this one, i.e. the proportion 
+   * of {@link jchrest.lib.SceneObject}s in this {@link #this} which have been 
+   * correctly recalled, irrespective of their placement.
    * 
    * @param sceneToCompareAgainst
-   * @param itemsIdentifiedByObjectClass
+   * @param objectsIdentifiedByObjectClass
    * 
    * @return 
    */
-  public float computeRecall (Scene sceneToCompareAgainst, boolean itemsIdentifiedByObjectClass) {
+  public float computeRecall (Scene sceneToCompareAgainst, boolean objectsIdentifiedByObjectClass) {
     if(this.getHeight() != sceneToCompareAgainst.getHeight() || this.getWidth() != sceneToCompareAgainst.getWidth()){
       throw new IllegalArgumentException("Dimensions of scenes to compare are not equal: "
         + "height and width of scene whose recall is to be calculated = " + this.getHeight() + ", " + this.getWidth()
@@ -283,8 +291,8 @@ public class Scene {
       );
     }
     
-    ListPattern itemsInThisScene = this.getAsListPattern(false, itemsIdentifiedByObjectClass).removeBlindAndEmptyItems();
-    ListPattern itemsInOtherScene = sceneToCompareAgainst.getAsListPattern(false, itemsIdentifiedByObjectClass).removeBlindAndEmptyItems();
+    ListPattern itemsInThisScene = this.getAsListPattern(false, objectsIdentifiedByObjectClass).removeBlindEmptyAndUnknownItems();
+    ListPattern itemsInOtherScene = sceneToCompareAgainst.getAsListPattern(false, objectsIdentifiedByObjectClass).removeBlindEmptyAndUnknownItems();
 
     if(itemsInThisScene.isEmpty() || itemsInOtherScene.isEmpty()){
       return 0.0f;
@@ -315,52 +323,45 @@ public class Scene {
   }
   
   /**
-   * Returns the string used to denote blind squares in the scene.
-   * 
-   * @return 
+   * @return The token used to denote blind squares in a {@link #this}.
    */
-  public static String getBlindSquareIdentifier(){
-    return Scene.BLIND_SQUARE_IDENTIFIER;
+  public static String getBlindSquareToken(){
+    return Scene.BLIND_SQUARE_TOKEN;
   }
   
   /**
-   * Returns the string used to denote empty squares in the scene.
-   * 
-   * @return 
+   * @return The token used to denote empty squares in a {@link #this}.
    */
-  public static String getEmptySquareIdentifier(){
-    return Scene.EMPTY_SQUARE_IDENTIFIER;
+  public static String getEmptySquareToken(){
+    return Scene.EMPTY_SQUARE_TOKEN;
   }
   
   /**
-   * Returns the scene (including blind and empty squares) from east -> west 
-   * then south -> north as a {@link jchrest.lib.ListPattern} instance composed
-   * of {@link jchrest.lib.ItemSquarePattern} instances representing the items
-   * in the scene.
+   * @param creatorRelativeCoordinates Set to true to have the locations of 
+   * {@link jchrest.lib.SceneObject}s in this {@link #this} set relative to the
+   * location of the {@link #this} creator in this {@link #this}.  Set to false 
+   * to force the function to return the locations of {@link 
+   * jchrest.lib.SceneObject}s as their actual coordinates in this {@link 
+   * #this}.  For example, if an object, "A" is located on coordinates (2, 3) 
+   * and the creator is located on coordinates (3, 2), setting this parameter to
+   * true would return "A"s location as (-1, 1) whereas setting it to false 
+   * would return (2, 3).
    * 
-   * @param creatorRelativeCoordinates Set to false to force the function to 
-   * return Scene specific coordinates for squares comprising the Scene even 
-   * when the Scene's creator is identified in the Scene.  Set to true to have 
-   * coordinates for squares comprising the Scene relative to the Scene 
-   * creator's location.
+   * @param objectsIdentifiedByObjectClass Set to true to identify {@link 
+   * jchrest.lib.SceneObject}s by their object class, set to false to identify 
+   * {@link jchrest.lib.SceneObject}s by their unique identifier.
    * 
-   * @param identifyItemsByObjectClass Set to true to have the identifiers for 
-   * the {@link jchrest.lib.ItemSquarePattern} instances make up the {@link 
-   * jchrest.lib.ListPattern} returned set to the result of calling
-   * {@link jchrest.lib.SceneObject#getObjectClass()} on each 
-   * {@link jchrest.lib.SceneObject} in this {@link jchrest.lib.Scene}.  Set to
-   * false to have the identifiers set to the result of calling 
-   * {@link jchrest.lib.SceneObject#getIdentifier()} on each 
-   * {@link jchrest.lib.SceneObject} in this {@link jchrest.lib.Scene} instead.
-   * 
-   * @return
+   * @return The {@link jchrest.lib.SceneObject}s in this {@link #this} 
+   * (including blind and empty {@link jchrest.lib.SceneObject}s) in order from 
+   * east -> west then south -> north as a {@link jchrest.lib.ListPattern} 
+   * composed of {@link jchrest.lib.ItemSquarePattern}s.
    */
-  public ListPattern getAsListPattern(boolean creatorRelativeCoordinates, boolean identifyItemsByObjectClass){
+  public ListPattern getAsListPattern(boolean creatorRelativeCoordinates, boolean objectsIdentifiedByObjectClass){
     ListPattern scene = new ListPattern();
     
     for(int row = 0; row < _height; row++){
       for(int col = 0; col < _width; col++){
-        scene = scene.append(this.getSquareContentsAsListPattern(col, row, creatorRelativeCoordinates, identifyItemsByObjectClass));
+        scene = scene.append(this.getSquareContentsAsListPattern(col, row, creatorRelativeCoordinates, objectsIdentifiedByObjectClass));
       }
     }
     
@@ -368,46 +369,44 @@ public class Scene {
   }
   
   /**
-   * Returns the maximum height of the scene.
-   * 
-   * @return 
+   * @return The number of rows in this {@link #this}.
    */
   public int getHeight () {
     return _height;
   }
   
   /**
-   * Retrieve all items within given row and column +/- model's current field of 
-   * view (see {@link jchrest.architecture.Perceiver#getFieldOfView() and @link
-   * jchrest.architecture.Perceiver#setFieldOfView()}). Blind and empty squares
-   * are not returned).
-   * 
    * @param startCol
    * @param startRow
    * @param fieldOfView
-   * @param creatorRelativeCoordinates Set to true to return square coordinates 
-   * relative to the creator of the scene if the creator is identified in the 
-   * scene itself.
+   * @param creatorRelativeCoordinates Set to true to have the locations of 
+   * {@link jchrest.lib.SceneObject}s in this {@link #this} set relative to the
+   * location of the {@link #this} creator in this {@link #this}.  Set to false 
+   * to force the function to return the locations of {@link 
+   * jchrest.lib.SceneObject}s as their actual coordinates in this {@link 
+   * #this}.  For example, if an object, "A" is located on coordinates (2, 3) 
+   * and the creator is located on coordinates (3, 2), setting this parameter to
+   * true would return "A"s location as (-1, 1) whereas setting it to false 
+   * would return (2, 3).
    * 
-   * @param identifyItemsByObjectClass Set to true to have the identifiers for 
-   * the {@link jchrest.lib.ItemSquarePattern} instances make up the {@link 
-   * jchrest.lib.ListPattern} returned set to the result of calling
-   * {@link jchrest.lib.SceneObject#getObjectClass()} on each 
-   * {@link jchrest.lib.SceneObject} in this {@link jchrest.lib.Scene}.  Set to
-   * false to have the identifiers set to the result of calling 
-   * {@link jchrest.lib.SceneObject#getIdentifier()} on each 
-   * {@link jchrest.lib.SceneObject} in this {@link jchrest.lib.Scene} instead.
+   * @param objectsIdentifiedByObjectClass Set to true to identify {@link 
+   * jchrest.lib.SceneObject}s by their object class, set to false to identify 
+   * {@link jchrest.lib.SceneObject}s by their unique identifier.
    * 
-   * @return 
+   * @return All {@link jchrest.lib.SceneObject}s within given row and column 
+   * +/- the specified field of view in order from east -> west then south -> 
+   * north as a {@link jchrest.lib.ListPattern} composed of {@link 
+   * jchrest.lib.ItemSquarePattern}s. Blind and empty {@link 
+   * jchrest.lib.SceneObject}s are not returned.
    */
-  public ListPattern getItemsInScopeAsListPattern (int startCol, int startRow, int fieldOfView, boolean creatorRelativeCoordinates, boolean identifyItemsByObjectClass) {
+  public ListPattern getItemsInScopeAsListPattern (int startCol, int startRow, int fieldOfView, boolean creatorRelativeCoordinates, boolean objectsIdentifiedByObjectClass) {
     ListPattern itemsInScope = new ListPattern ();
     
     for (int row = startRow - fieldOfView; row <= startRow + fieldOfView; row++) {
       if (row >= 0 && row < _height) {
         for (int col = startCol - fieldOfView; col <= startCol + fieldOfView; col++) {
           if (col >= 0 && col < _width) {
-            itemsInScope = itemsInScope.append(this.getSquareContentsAsListPattern(col, row, creatorRelativeCoordinates, identifyItemsByObjectClass));
+            itemsInScope = itemsInScope.append(this.getSquareContentsAsListPattern(col, row, creatorRelativeCoordinates, objectsIdentifiedByObjectClass));
           }
         }
       }
@@ -416,35 +415,42 @@ public class Scene {
   }
    
   /**
-   * Returns the contents of the square identified in this 
-   * {@link jchrest.lib.Scene}.
-   * 
    * @param col
    * @param row
-   * @return 
+   * @return The contents of the coordinate specified in this {@link #this}.
    */
   public SceneObject getSquareContents(int col, int row){
-    return this._scene.get(col).get(row);
+    if(
+      (col >= 0 && col < this.getWidth()) && 
+      (row >= 0 && row < this.getHeight())
+    ){
+      return this._scene.get(col).get(row);
+    }
+    else{
+      return null;
+    }
   }
   
   /**
-   * Returns all items on a square in this {@link jchrest.lib.Scene} as 
-   * {@link jchrest.lib.ItemSquarePattern}s with coordinates relative to this 
-   * {@link jchrest.lib.Scene}'s creator (if the creator is identified in this 
-   * {@link jchrest.lib.Scene}) contained within a {@link 
-   * jchrest.lib.ListPattern}.
-   * 
    * @param col
    * @param row
-   * @param creatorRelativeCoordinates Set to false to force the column and row
-   * coordinates specified in the {@link jchrest.lib.ItemSquarePattern}s 
-   * returned to not be relative to the creator of this 
-   * {@link jchrest.lib.Scene} if they are present in it.
-   * @param identifyItemsByObjectClass
+   * @param creatorRelativeCoordinates Set to true to have the locations of 
+   * {@link jchrest.lib.SceneObject}s in this {@link #this} set relative to the
+   * location of the {@link #this} creator in this {@link #this}.  Set to false 
+   * to force the function to return the locations of {@link 
+   * jchrest.lib.SceneObject}s as their actual coordinates in this {@link 
+   * #this}.  For example, if an object, "A" is located on coordinates (2, 3) 
+   * and the creator is located on coordinates (3, 2), setting this parameter to
+   * true would return "A"s location as (-1, 1) whereas setting it to false 
+   * would return (2, 3).
    * 
-   * @return 
+   * @param objectsIdentifiedByObjectClass Set to true to identify {@link 
+   * jchrest.lib.SceneObject}s by their object class, set to false to identify 
+   * {@link jchrest.lib.SceneObject}s by their unique identifier.
+   * 
+   * @return The contents of the coordinate specified in this {@link #this}.
    */
-  public ListPattern getSquareContentsAsListPattern (int col, int row, boolean creatorRelativeCoordinates, boolean identifyItemsByObjectClass) {
+  public ListPattern getSquareContentsAsListPattern (int col, int row, boolean creatorRelativeCoordinates, boolean objectsIdentifiedByObjectClass) {
     ListPattern squareContentsAsListPattern = new ListPattern();
     
     if (row >= 0 && row < _height && col >= 0 && col < _width) {
@@ -475,7 +481,7 @@ public class Scene {
       String itemIdentifier = squareContents.getObjectClass();
 
       
-      if(!identifyItemsByObjectClass){
+      if(!objectsIdentifiedByObjectClass){
         itemIdentifier = squareContents.getIdentifier();
       }
 
@@ -490,11 +496,8 @@ public class Scene {
   }
   
   /**
-   * Returns a {@link jchrest.lib.Square} specifying the location of the entity 
-   * that constructed this {@link jchrest.lib.Scene} (if it identified itself) 
-   * in this {@link jchrest.lib.Scene}.
-   * 
-   * @return
+   * @return The location of this {@link #this}'s creator (if it identified 
+   * itself) in this {@link jchrest.lib.Scene}.
    */
   public Square getLocationOfCreator(){
     for(int row = 0; row < this._height; row++){
@@ -510,76 +513,51 @@ public class Scene {
   }
 
   /**
-   * Returns the name of the scene.
-   * 
-   * @return 
+   * @return The name of this {@link #this}.
    */
   public String getName () {
     return _name;
   }
   
    /**
-   * Returns the string used to denote the creator of a scene in the scene.
-   * @return 
+   * @return The string used to denote the creator of the {@link #this} in the
+   * {@link #this}.
    */
   public static String getCreatorToken(){
     return Scene.CREATOR_TOKEN;
   }
 
   /**
-   * Returns the maximum width of the scene.
-   * 
-   * @return 
+   * @return The number of columns in this {@link #this}
    */
   public int getWidth () {
     return _width;
   }
   
   /**
-   * Determines whether the coordinates specified are a blind spot in the scene.
-   * 
    * @param col
    * @param row
-   * @return True if the coordinate is a blind spot, false if not.
+   * @return True if the coordinate specified contains a {@link 
+   * jchrest.lib.SceneObject} representing a blind square.
    */
-  public boolean isSquareBlind(int col, int row){
-    if (
-      row >= 0 && 
-      row < _height && 
-      col >= 0 && 
-      col < _width 
-    ) {
-      return _scene.get(col).get(row).getObjectClass().equals(Scene.BLIND_SQUARE_IDENTIFIER);
-    } else {
-      return true;
-    }
+  public Boolean isSquareBlind(int col, int row){
+    return _scene.get(col).get(row).getObjectClass().equals(Scene.BLIND_SQUARE_TOKEN);
   }
 
   /**
-   * Determines whether the coordinate specified in the scene contains an item
-   * or not.  
-   * 
    * @param row
    * @param col
-   * @return False if there is an item on the coordinate specified in this
-   * scene, true if not or the item is a blind-spot.  If the row or col 
-   * specified is less than 0 or greater than/equal to the max
-   * height/width of this scene then the coordinate specified is considered to
-   * be a blind spot.  Consequently, true is returned.
+   * @return True if the coordinate specified contains a {@link 
+   * jchrest.lib.SceneObject} representing an empty square.
    */
   public boolean isSquareEmpty (int col, int row) {
-    if (
-      row >= 0 && 
-      row < _height && 
-      col >= 0 && 
-      col < _width 
-    ) {
-      return _scene.get(col).get(row).getObjectClass().equals(Scene.EMPTY_SQUARE_IDENTIFIER);
-    } else {
-      return true; // no item off scene (!)
-    }
+    return _scene.get(col).get(row).getObjectClass().equals(Scene.EMPTY_SQUARE_TOKEN);
   }
   
+  /**
+   * @return The {@link jchrest.architecture.VisualSpatialField} this {@link 
+   * #this} was created from, if applicable.
+   */
   public VisualSpatialField getVisualSpatialFieldGeneratedFrom(){
     return this._visualSpatialFieldGeneratedFrom;
   }

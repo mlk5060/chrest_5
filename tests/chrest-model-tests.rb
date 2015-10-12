@@ -435,17 +435,17 @@ process_test "scan_scene (no creator in scene)" do
   
   scene = Scene.new("scene", 5, 5, nil)
   scene.addItemToSquare(2, 0, objects[4][0], objects[4][1])
-  scene.addItemToSquare(1, 1, Scene.getEmptySquareIdentifier(), Scene.getEmptySquareIdentifier())
-  scene.addItemToSquare(2, 1, Scene.getEmptySquareIdentifier(), Scene.getEmptySquareIdentifier())
-  scene.addItemToSquare(3, 1, Scene.getEmptySquareIdentifier(), Scene.getEmptySquareIdentifier())
-  scene.addItemToSquare(0, 2, Scene.getEmptySquareIdentifier(), Scene.getEmptySquareIdentifier())
+  scene.addItemToSquare(1, 1, Scene.getEmptySquareToken(), Scene.getEmptySquareToken())
+  scene.addItemToSquare(2, 1, Scene.getEmptySquareToken(), Scene.getEmptySquareToken())
+  scene.addItemToSquare(3, 1, Scene.getEmptySquareToken(), Scene.getEmptySquareToken())
+  scene.addItemToSquare(0, 2, Scene.getEmptySquareToken(), Scene.getEmptySquareToken())
   scene.addItemToSquare(1, 2, objects[0][0], objects[0][1])
-  scene.addItemToSquare(2, 2, Scene.getEmptySquareIdentifier(), Scene.getEmptySquareIdentifier())
+  scene.addItemToSquare(2, 2, Scene.getEmptySquareToken(), Scene.getEmptySquareToken())
   scene.addItemToSquare(3, 2, objects[3][0], objects[3][1])
-  scene.addItemToSquare(4, 2, Scene.getEmptySquareIdentifier(), Scene.getEmptySquareIdentifier())
+  scene.addItemToSquare(4, 2, Scene.getEmptySquareToken(), Scene.getEmptySquareToken())
   scene.addItemToSquare(1, 3, objects[1][0], objects[1][1])
-  scene.addItemToSquare(2, 3, Scene.getEmptySquareIdentifier(), Scene.getEmptySquareIdentifier())
-  scene.addItemToSquare(3, 3, Scene.getEmptySquareIdentifier(), Scene.getEmptySquareIdentifier())
+  scene.addItemToSquare(2, 3, Scene.getEmptySquareToken(), Scene.getEmptySquareToken())
+  scene.addItemToSquare(3, 3, Scene.getEmptySquareToken(), Scene.getEmptySquareToken())
   scene.addItemToSquare(2, 4, objects[2][0], objects[2][1])
   
   ##############################
@@ -467,8 +467,8 @@ process_test "scan_scene (no creator in scene)" do
     expected_recalled_scene.push(Array.new)
     for row in 0...scene.getHeight()
       expected_recalled_scene[col].push([
-        Scene.getBlindSquareIdentifier(),
-        Scene.getBlindSquareIdentifier()
+        Scene.getBlindSquareToken(),
+        Scene.getBlindSquareToken()
       ])
     end
   end
@@ -539,8 +539,8 @@ process_test "scan_scene (no creator in scene)" do
     expected_recalled_scene.push(Array.new)
     for row in 0...scene.getHeight()
       expected_recalled_scene[col].push([
-        Scene.getBlindSquareIdentifier(),
-        Scene.getBlindSquareIdentifier()
+        Scene.getBlindSquareToken(),
+        Scene.getBlindSquareToken()
       ])
     end
   end
@@ -623,8 +623,8 @@ process_test "scan_scene (no creator in scene)" do
     for row in 0...scene.getHeight()
       expected_visual_spatial_field_object_properties[col].push(Array.new)
       expected_visual_spatial_field_object_properties[col][row].push([
-        Scene.getBlindSquareIdentifier, #Expected ID
-        Scene.getBlindSquareIdentifier, #Expected class
+        Scene.getBlindSquareToken, #Expected ID
+        Scene.getBlindSquareToken, #Expected class
         visual_spatial_field_creation_time + access_time, #Expected creation time.
         nil, #Expected lifespan (not exact terminus) of the object.
         false, #Expected recognised status
@@ -667,8 +667,8 @@ process_test "scan_scene (no creator in scene)" do
 
   expected_visual_spatial_field_object_properties[1][1][0][3] = visual_spatial_field_creation_time + access_time + (object_encoding_time * 2) + empty_square_encoding_time
   expected_visual_spatial_field_object_properties[1][1].push([
-    Scene.getEmptySquareIdentifier(),
-    Scene.getEmptySquareIdentifier(),
+    Scene.getEmptySquareToken(),
+    Scene.getEmptySquareToken(),
     visual_spatial_field_creation_time + access_time + (object_encoding_time * 2) + empty_square_encoding_time,
     visual_spatial_field_creation_time + access_time + (object_encoding_time * 2) + empty_square_encoding_time + unrecognised_object_lifespan,
     false,
@@ -677,8 +677,8 @@ process_test "scan_scene (no creator in scene)" do
 
   expected_visual_spatial_field_object_properties[2][1][0][3] = visual_spatial_field_creation_time + access_time + (object_encoding_time * 2) + (empty_square_encoding_time * 2)
   expected_visual_spatial_field_object_properties[2][1].push([
-    Scene.getEmptySquareIdentifier(),
-    Scene.getEmptySquareIdentifier(),
+    Scene.getEmptySquareToken(),
+    Scene.getEmptySquareToken(),
     visual_spatial_field_creation_time + access_time + (object_encoding_time * 2) + (empty_square_encoding_time * 2),
     visual_spatial_field_creation_time + access_time + (object_encoding_time * 2) + (empty_square_encoding_time * 2) + unrecognised_object_lifespan,
     false,
@@ -687,8 +687,8 @@ process_test "scan_scene (no creator in scene)" do
 
   expected_visual_spatial_field_object_properties[3][1][0][3] = visual_spatial_field_creation_time + access_time + (object_encoding_time * 2) + (empty_square_encoding_time * 3)
   expected_visual_spatial_field_object_properties[3][1].push([
-    Scene.getEmptySquareIdentifier(),
-    Scene.getEmptySquareIdentifier(),
+    Scene.getEmptySquareToken(),
+    Scene.getEmptySquareToken(),
     visual_spatial_field_creation_time + access_time + (object_encoding_time * 2) + (empty_square_encoding_time * 3),
     visual_spatial_field_creation_time + access_time + (object_encoding_time * 2) + (empty_square_encoding_time * 3) + unrecognised_object_lifespan,
     false,
@@ -697,8 +697,8 @@ process_test "scan_scene (no creator in scene)" do
 
   expected_visual_spatial_field_object_properties[0][2][0][3] = visual_spatial_field_creation_time + access_time + (object_encoding_time * 2) + (empty_square_encoding_time * 4)
   expected_visual_spatial_field_object_properties[0][2].push([
-    Scene.getEmptySquareIdentifier(),
-    Scene.getEmptySquareIdentifier(),
+    Scene.getEmptySquareToken(),
+    Scene.getEmptySquareToken(),
     visual_spatial_field_creation_time + access_time + (object_encoding_time * 2) + (empty_square_encoding_time * 4),
     visual_spatial_field_creation_time + access_time + (object_encoding_time * 2) + (empty_square_encoding_time * 4) + unrecognised_object_lifespan,
     false,
@@ -707,8 +707,8 @@ process_test "scan_scene (no creator in scene)" do
 
   expected_visual_spatial_field_object_properties[2][2][0][3] = visual_spatial_field_creation_time + access_time + (object_encoding_time * 2) + (empty_square_encoding_time * 5)
   expected_visual_spatial_field_object_properties[2][2].push([
-    Scene.getEmptySquareIdentifier(),
-    Scene.getEmptySquareIdentifier(),
+    Scene.getEmptySquareToken(),
+    Scene.getEmptySquareToken(),
     visual_spatial_field_creation_time + access_time + (object_encoding_time * 2) + (empty_square_encoding_time * 5),
     visual_spatial_field_creation_time + access_time + (object_encoding_time * 2) + (empty_square_encoding_time * 5) + unrecognised_object_lifespan,
     false,
@@ -727,8 +727,8 @@ process_test "scan_scene (no creator in scene)" do
 
   expected_visual_spatial_field_object_properties[4][2][0][3] = visual_spatial_field_creation_time + access_time + (object_encoding_time * 3) + (empty_square_encoding_time * 6)
   expected_visual_spatial_field_object_properties[4][2].push([
-    Scene.getEmptySquareIdentifier(),
-    Scene.getEmptySquareIdentifier(),
+    Scene.getEmptySquareToken(),
+    Scene.getEmptySquareToken(),
     visual_spatial_field_creation_time + access_time + (object_encoding_time * 3) + (empty_square_encoding_time * 6),
     visual_spatial_field_creation_time + access_time + (object_encoding_time * 3) + (empty_square_encoding_time * 6) + unrecognised_object_lifespan,
     false,
@@ -737,8 +737,8 @@ process_test "scan_scene (no creator in scene)" do
 
   expected_visual_spatial_field_object_properties[2][3][0][3] = visual_spatial_field_creation_time + access_time + (object_encoding_time * 3) + (empty_square_encoding_time * 7)
   expected_visual_spatial_field_object_properties[2][3].push([
-    Scene.getEmptySquareIdentifier(),
-    Scene.getEmptySquareIdentifier(),
+    Scene.getEmptySquareToken(),
+    Scene.getEmptySquareToken(),
     visual_spatial_field_creation_time + access_time + (object_encoding_time * 3) + (empty_square_encoding_time * 7),
     visual_spatial_field_creation_time + access_time + (object_encoding_time * 3) + (empty_square_encoding_time * 7) + unrecognised_object_lifespan,
     false,
@@ -747,8 +747,8 @@ process_test "scan_scene (no creator in scene)" do
 
   expected_visual_spatial_field_object_properties[3][3][0][3] = visual_spatial_field_creation_time + access_time + (object_encoding_time * 3) + (empty_square_encoding_time * 8)
   expected_visual_spatial_field_object_properties[3][3].push([
-    Scene.getEmptySquareIdentifier(),
-    Scene.getEmptySquareIdentifier(),
+    Scene.getEmptySquareToken(),
+    Scene.getEmptySquareToken(),
     visual_spatial_field_creation_time + access_time + (object_encoding_time * 3) + (empty_square_encoding_time * 8),
     visual_spatial_field_creation_time + access_time + (object_encoding_time * 3) + (empty_square_encoding_time * 8) + unrecognised_object_lifespan,
     false,
@@ -819,8 +819,8 @@ process_test "scan_scene (no creator in scene)" do
     expected_recalled_scene.push(Array.new)
     for row in 0...scene.getHeight()
       expected_recalled_scene[col].push([
-        Scene.getBlindSquareIdentifier(),
-        Scene.getBlindSquareIdentifier()
+        Scene.getBlindSquareToken(),
+        Scene.getBlindSquareToken()
       ])
     end
   end
@@ -858,8 +858,8 @@ process_test "scan_scene (no creator in scene)" do
   # Set expected values for the empty square placed on (1, 2) after object 0 is 
   # "picked-up".
   expected_visual_spatial_field_object_properties[1][2].push([
-    Scene.getEmptySquareIdentifier(),
-    Scene.getEmptySquareIdentifier(),
+    Scene.getEmptySquareToken(),
+    Scene.getEmptySquareToken(),
     time_move_requested + access_time,
     time_of_scan + unrecognised_object_lifespan,
     false,
@@ -890,8 +890,8 @@ process_test "scan_scene (no creator in scene)" do
   # Set expected values for the empty square placed on (1, 3) after object 0 is 
   # "picked-up".
   expected_visual_spatial_field_object_properties[1][3].push([
-    Scene.getEmptySquareIdentifier(),
-    Scene.getEmptySquareIdentifier(),
+    Scene.getEmptySquareToken(),
+    Scene.getEmptySquareToken(),
     time_move_requested + access_time + object_movement_time,
     time_of_scan + unrecognised_object_lifespan,
     false,
@@ -994,8 +994,8 @@ process_test "scan_scene (no creator in scene)" do
     expected_recalled_scene.push(Array.new)
     for row in 0...scene.getHeight()
       expected_recalled_scene[col].push([
-        Scene.getBlindSquareIdentifier(),
-        Scene.getBlindSquareIdentifier()
+        Scene.getBlindSquareToken(),
+        Scene.getBlindSquareToken()
       ])
     end
   end
@@ -1039,8 +1039,8 @@ process_test "scan_scene (no creator in scene)" do
   # Set expected values for the empty square placed on (3, 1) after object 0 is 
   # "picked-up".
   expected_visual_spatial_field_object_properties[3][1].push([
-    Scene.getEmptySquareIdentifier(),
-    Scene.getEmptySquareIdentifier(),
+    Scene.getEmptySquareToken(),
+    Scene.getEmptySquareToken(),
     time_move_requested + access_time,
     time_of_scan + unrecognised_object_lifespan,
     false,
@@ -1161,17 +1161,17 @@ process_test "scan_scene (creator in scene)" do
   
   scene = Scene.new("scene", 5, 5, nil)
   scene.addItemToSquare(2, 0, objects[4][0], objects[4][1])
-  scene.addItemToSquare(1, 1, Scene.getEmptySquareIdentifier(), Scene.getEmptySquareIdentifier())
-  scene.addItemToSquare(2, 1, Scene.getEmptySquareIdentifier(), Scene.getEmptySquareIdentifier())
-  scene.addItemToSquare(3, 1, Scene.getEmptySquareIdentifier(), Scene.getEmptySquareIdentifier())
-  scene.addItemToSquare(0, 2, Scene.getEmptySquareIdentifier(), Scene.getEmptySquareIdentifier())
+  scene.addItemToSquare(1, 1, Scene.getEmptySquareToken(), Scene.getEmptySquareToken())
+  scene.addItemToSquare(2, 1, Scene.getEmptySquareToken(), Scene.getEmptySquareToken())
+  scene.addItemToSquare(3, 1, Scene.getEmptySquareToken(), Scene.getEmptySquareToken())
+  scene.addItemToSquare(0, 2, Scene.getEmptySquareToken(), Scene.getEmptySquareToken())
   scene.addItemToSquare(1, 2, objects[0][0], objects[0][1])
   scene.addItemToSquare(2, 2, objects[5][0], objects[5][1])
   scene.addItemToSquare(3, 2, objects[3][0], objects[3][1])
-  scene.addItemToSquare(4, 2, Scene.getEmptySquareIdentifier(), Scene.getEmptySquareIdentifier())
+  scene.addItemToSquare(4, 2, Scene.getEmptySquareToken(), Scene.getEmptySquareToken())
   scene.addItemToSquare(1, 3, objects[1][0], objects[1][1])
-  scene.addItemToSquare(2, 3, Scene.getEmptySquareIdentifier(), Scene.getEmptySquareIdentifier())
-  scene.addItemToSquare(3, 3, Scene.getEmptySquareIdentifier(), Scene.getEmptySquareIdentifier())
+  scene.addItemToSquare(2, 3, Scene.getEmptySquareToken(), Scene.getEmptySquareToken())
+  scene.addItemToSquare(3, 3, Scene.getEmptySquareToken(), Scene.getEmptySquareToken())
   scene.addItemToSquare(2, 4, objects[2][0], objects[2][1])
   
   ##############################
@@ -1193,8 +1193,8 @@ process_test "scan_scene (creator in scene)" do
     expected_recalled_scene.push(Array.new)
     for row in 0...scene.getHeight()
       expected_recalled_scene[col].push([
-        (col == 2 and row == 2) ? objects[5][0] : Scene.getBlindSquareIdentifier(),
-        (col == 2 and row == 2) ? objects[5][1] : Scene.getBlindSquareIdentifier()
+        (col == 2 and row == 2) ? objects[5][0] : Scene.getBlindSquareToken(),
+        (col == 2 and row == 2) ? objects[5][1] : Scene.getBlindSquareToken()
       ])
     end
   end
@@ -1265,8 +1265,8 @@ process_test "scan_scene (creator in scene)" do
     expected_recalled_scene.push(Array.new)
     for row in 0...scene.getHeight()
       expected_recalled_scene[col].push([
-        (col == 2 and row == 2) ? objects[5][0] : Scene.getBlindSquareIdentifier(),
-        (col == 2 and row == 2) ? objects[5][1] : Scene.getBlindSquareIdentifier()
+        (col == 2 and row == 2) ? objects[5][0] : Scene.getBlindSquareToken(),
+        (col == 2 and row == 2) ? objects[5][1] : Scene.getBlindSquareToken()
       ])
     end
   end
@@ -1349,8 +1349,8 @@ process_test "scan_scene (creator in scene)" do
     for row in 0...scene.getHeight()
       expected_visual_spatial_field_object_properties[col].push(Array.new)
       expected_visual_spatial_field_object_properties[col][row].push([
-        (col == 2 and row == 2) ? objects[5][0] : Scene.getBlindSquareIdentifier, #Expected ID
-        (col == 2 and row == 2) ? objects[5][1] : Scene.getBlindSquareIdentifier, #Expected class
+        (col == 2 and row == 2) ? objects[5][0] : Scene.getBlindSquareToken, #Expected ID
+        (col == 2 and row == 2) ? objects[5][1] : Scene.getBlindSquareToken, #Expected class
         visual_spatial_field_creation_time + access_time, #Expected creation time.
         nil, #Expected lifespan (not exact terminus) of the object.
         false, #Expected recognised status
@@ -1393,8 +1393,8 @@ process_test "scan_scene (creator in scene)" do
 
   expected_visual_spatial_field_object_properties[1][1][0][3] = visual_spatial_field_creation_time + access_time + (object_encoding_time * 2) + empty_square_encoding_time
   expected_visual_spatial_field_object_properties[1][1].push([
-    Scene.getEmptySquareIdentifier(),
-    Scene.getEmptySquareIdentifier(),
+    Scene.getEmptySquareToken(),
+    Scene.getEmptySquareToken(),
     visual_spatial_field_creation_time + access_time + (object_encoding_time * 2) + empty_square_encoding_time,
     visual_spatial_field_creation_time + access_time + (object_encoding_time * 2) + empty_square_encoding_time + unrecognised_object_lifespan,
     false,
@@ -1403,8 +1403,8 @@ process_test "scan_scene (creator in scene)" do
 
   expected_visual_spatial_field_object_properties[2][1][0][3] = visual_spatial_field_creation_time + access_time + (object_encoding_time * 2) + (empty_square_encoding_time * 2)
   expected_visual_spatial_field_object_properties[2][1].push([
-    Scene.getEmptySquareIdentifier(),
-    Scene.getEmptySquareIdentifier(),
+    Scene.getEmptySquareToken(),
+    Scene.getEmptySquareToken(),
     visual_spatial_field_creation_time + access_time + (object_encoding_time * 2) + (empty_square_encoding_time * 2),
     visual_spatial_field_creation_time + access_time + (object_encoding_time * 2) + (empty_square_encoding_time * 2) + unrecognised_object_lifespan,
     false,
@@ -1413,8 +1413,8 @@ process_test "scan_scene (creator in scene)" do
 
   expected_visual_spatial_field_object_properties[3][1][0][3] = visual_spatial_field_creation_time + access_time + (object_encoding_time * 2) + (empty_square_encoding_time * 3)
   expected_visual_spatial_field_object_properties[3][1].push([
-    Scene.getEmptySquareIdentifier(),
-    Scene.getEmptySquareIdentifier(),
+    Scene.getEmptySquareToken(),
+    Scene.getEmptySquareToken(),
     visual_spatial_field_creation_time + access_time + (object_encoding_time * 2) + (empty_square_encoding_time * 3),
     visual_spatial_field_creation_time + access_time + (object_encoding_time * 2) + (empty_square_encoding_time * 3) + unrecognised_object_lifespan,
     false,
@@ -1423,8 +1423,8 @@ process_test "scan_scene (creator in scene)" do
 
   expected_visual_spatial_field_object_properties[0][2][0][3] = visual_spatial_field_creation_time + access_time + (object_encoding_time * 2) + (empty_square_encoding_time * 4)
   expected_visual_spatial_field_object_properties[0][2].push([
-    Scene.getEmptySquareIdentifier(),
-    Scene.getEmptySquareIdentifier(),
+    Scene.getEmptySquareToken(),
+    Scene.getEmptySquareToken(),
     visual_spatial_field_creation_time + access_time + (object_encoding_time * 2) + (empty_square_encoding_time * 4),
     visual_spatial_field_creation_time + access_time + (object_encoding_time * 2) + (empty_square_encoding_time * 4) + unrecognised_object_lifespan,
     false,
@@ -1443,8 +1443,8 @@ process_test "scan_scene (creator in scene)" do
 
   expected_visual_spatial_field_object_properties[4][2][0][3] = visual_spatial_field_creation_time + access_time + (object_encoding_time * 3) + (empty_square_encoding_time * 5)
   expected_visual_spatial_field_object_properties[4][2].push([
-    Scene.getEmptySquareIdentifier(),
-    Scene.getEmptySquareIdentifier(),
+    Scene.getEmptySquareToken(),
+    Scene.getEmptySquareToken(),
     visual_spatial_field_creation_time + access_time + (object_encoding_time * 3) + (empty_square_encoding_time * 5),
     visual_spatial_field_creation_time + access_time + (object_encoding_time * 3) + (empty_square_encoding_time * 5) + unrecognised_object_lifespan,
     false,
@@ -1453,8 +1453,8 @@ process_test "scan_scene (creator in scene)" do
 
   expected_visual_spatial_field_object_properties[2][3][0][3] = visual_spatial_field_creation_time + access_time + (object_encoding_time * 3) + (empty_square_encoding_time * 6)
   expected_visual_spatial_field_object_properties[2][3].push([
-    Scene.getEmptySquareIdentifier(),
-    Scene.getEmptySquareIdentifier(),
+    Scene.getEmptySquareToken(),
+    Scene.getEmptySquareToken(),
     visual_spatial_field_creation_time + access_time + (object_encoding_time * 3) + (empty_square_encoding_time * 6),
     visual_spatial_field_creation_time + access_time + (object_encoding_time * 3) + (empty_square_encoding_time * 6) + unrecognised_object_lifespan,
     false,
@@ -1463,8 +1463,8 @@ process_test "scan_scene (creator in scene)" do
 
   expected_visual_spatial_field_object_properties[3][3][0][3] = visual_spatial_field_creation_time + access_time + (object_encoding_time * 3) + (empty_square_encoding_time * 7)
   expected_visual_spatial_field_object_properties[3][3].push([
-    Scene.getEmptySquareIdentifier(),
-    Scene.getEmptySquareIdentifier(),
+    Scene.getEmptySquareToken(),
+    Scene.getEmptySquareToken(),
     visual_spatial_field_creation_time + access_time + (object_encoding_time * 3) + (empty_square_encoding_time * 7),
     visual_spatial_field_creation_time + access_time + (object_encoding_time * 3) + (empty_square_encoding_time * 7) + unrecognised_object_lifespan,
     false,
@@ -1536,8 +1536,8 @@ process_test "scan_scene (creator in scene)" do
     expected_recalled_scene.push(Array.new)
     for row in 0...scene.getHeight()
       expected_recalled_scene[col].push([
-        (col == 2 and row == 2) ? objects[5][0] : Scene.getBlindSquareIdentifier(),
-        (col == 2 and row == 2) ? objects[5][1] : Scene.getBlindSquareIdentifier()
+        (col == 2 and row == 2) ? objects[5][0] : Scene.getBlindSquareToken(),
+        (col == 2 and row == 2) ? objects[5][1] : Scene.getBlindSquareToken()
       ])
     end
   end
@@ -1575,8 +1575,8 @@ process_test "scan_scene (creator in scene)" do
   # Set expected values for the empty square placed on (1, 2) after object 0 is 
   # "picked-up".
   expected_visual_spatial_field_object_properties[1][2].push([
-    Scene.getEmptySquareIdentifier(),
-    Scene.getEmptySquareIdentifier(),
+    Scene.getEmptySquareToken(),
+    Scene.getEmptySquareToken(),
     time_move_requested + access_time,
     time_of_scan + unrecognised_object_lifespan,
     false,
@@ -1607,8 +1607,8 @@ process_test "scan_scene (creator in scene)" do
   # Set expected values for the empty square placed on (1, 3) after object 0 is 
   # "picked-up".
   expected_visual_spatial_field_object_properties[1][3].push([
-    Scene.getEmptySquareIdentifier(),
-    Scene.getEmptySquareIdentifier(),
+    Scene.getEmptySquareToken(),
+    Scene.getEmptySquareToken(),
     time_move_requested + access_time + object_movement_time,
     time_of_scan + unrecognised_object_lifespan,
     false,
@@ -1711,8 +1711,8 @@ process_test "scan_scene (creator in scene)" do
     expected_recalled_scene.push(Array.new)
     for row in 0...scene.getHeight()
       expected_recalled_scene[col].push([
-        (col == 2 and row == 2) ? objects[5][0] : Scene.getBlindSquareIdentifier(),
-        (col == 2 and row == 2) ? objects[5][1] : Scene.getBlindSquareIdentifier()
+        (col == 2 and row == 2) ? objects[5][0] : Scene.getBlindSquareToken(),
+        (col == 2 and row == 2) ? objects[5][1] : Scene.getBlindSquareToken()
       ])
     end
   end
@@ -1756,8 +1756,8 @@ process_test "scan_scene (creator in scene)" do
   # Set expected values for the empty square placed on (3, 3) after object 0 is 
   # "picked-up".
   expected_visual_spatial_field_object_properties[3][3].push([
-    Scene.getEmptySquareIdentifier(),
-    Scene.getEmptySquareIdentifier(),
+    Scene.getEmptySquareToken(),
+    Scene.getEmptySquareToken(),
     time_move_requested + access_time,
     time_of_scan + unrecognised_object_lifespan,
     false,

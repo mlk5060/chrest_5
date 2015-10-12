@@ -21,24 +21,21 @@ public class GenericDomain extends DomainSpecifics {
   }
   
   /**
-   * Remove self and empty identifiers along with duplicates from 
-   * {@link jchrest.lib.ListPattern} passed.
+   * @param pattern
+   * @return A {@link jchrest.lib.ListPattern} stripped of {@link 
+   * jchrest.lib.ItemSquarePattern}s that:
    * 
    * <ol type="1">
    *  <li>
-   *    The creator will never need to learn its own location given that 
-   *    everything will be relative to it if it exists in the pattern passed.
+   *    Represent the CHREST model or the agent equipped with the CHREST model.
    *  </li>
    *  <li> 
-   *    Empty and blind square identifiers are useless.
+   *    Blind, empty and unknown {@link jchrest.lib.ItemSquarePattern}s.
    *  </li>
    *  <li> 
-   *    Duplicates are useless.
+   *    Are duplicated in the {@link jchrest.lib.ListPattern} passed.
    *  </li>
-   * </ul>
-   * 
-   * @param pattern
-   * @return 
+   * </ol>
    */
   @Override
   public ListPattern normalise (ListPattern pattern) {
@@ -50,8 +47,9 @@ public class GenericDomain extends DomainSpecifics {
         String identifier = itemSquarePrim.getItem();
         if( 
           !identifier.equalsIgnoreCase(Scene.getCreatorToken()) &&
-          !identifier.equals(Scene.getEmptySquareIdentifier()) && 
-          !identifier.equals(Scene.getBlindSquareIdentifier()) &&
+          !identifier.equals(Scene.getEmptySquareToken()) && 
+          !identifier.equals(Scene.getBlindSquareToken()) &&
+          !identifier.equals(VisualSpatialFieldObject.getUnknownSquareToken()) &&
           !result.contains(prim)
         ){
           result.add(prim);
@@ -83,31 +81,25 @@ public class GenericDomain extends DomainSpecifics {
   }
 
   /** 
-   * Return a random square on scene that isn't blind or empty.
    * @param scene
    * @param model
-   * @return 
+   * @return A random square that doesn't represent a blind square.
    */
   @Override
   public Set<Square> proposeSalientSquareFixations (Scene scene, Chrest model) {
     Set<Square> result = new HashSet<> ();
     
-    Square locationOfSceneCreator = scene.getLocationOfCreator();
-    if(locationOfSceneCreator != null){
-      result.add(locationOfSceneCreator);
-    }
-    else{
-      int randomCol = new java.util.Random().nextInt(scene.getWidth ());
-      int randomRow = new java.util.Random().nextInt(scene.getHeight ());
-
-      while( scene.getSquareContentsAsListPattern(randomCol, randomRow, false, true).isEmpty() ){
-        randomCol = new java.util.Random().nextInt(scene.getWidth ());
-        randomRow = new java.util.Random().nextInt(scene.getHeight ());
-      }
-      
-      result.add (new Square(randomCol, randomRow));
-    }
+    int randomCol = new java.util.Random().nextInt(scene.getWidth ());
+    int randomRow = new java.util.Random().nextInt(scene.getHeight ());
+    String objectOnSquare = scene.getSquareContents(randomCol, randomRow).getObjectClass();
     
+    while( !objectOnSquare.equals(Scene.getBlindSquareToken()) ){
+      randomCol = new java.util.Random().nextInt(scene.getWidth ());
+      randomRow = new java.util.Random().nextInt(scene.getHeight ());
+      objectOnSquare = scene.getSquareContents(randomCol, randomRow).getObjectClass();
+    }
+
+    result.add (new Square(randomCol, randomRow));
     return result;
   }
 

@@ -11,11 +11,11 @@ public class SceneObject {
   
   /**
    * Constructor.  If the object class is equal to 
-   * {@link jchrest.lib.Scene#getBlindSquareIdentifier()} or
-   * {@link jchrest.lib.Scene#getEmptySquareIdentifier()} then, the identifier 
+   * {@link jchrest.lib.Scene#getBlindSquareToken()} or
+   * {@link jchrest.lib.Scene#getEmptySquareToken()} then, the identifier 
    * passed is always overwritten to the result of 
-   * {@link jchrest.lib.Scene#getBlindSquareIdentifier()} or
-   * {@link jchrest.lib.Scene#getEmptySquareIdentifier()} accordingly.  
+   * {@link jchrest.lib.Scene#getBlindSquareToken()} or
+   * {@link jchrest.lib.Scene#getEmptySquareToken()} accordingly.  
    * Otherwise, if the {@link jchrest.lib.Scene} that this {@link #this} is a 
    * part of is rendered as a {@link jchrest.lib.ListPattern} and objects are 
    * encoded using their unique identifiers, there may be some
@@ -36,11 +36,11 @@ public class SceneObject {
    */
   public SceneObject(String identifier, String objectClass){
     
-    if(objectClass.equals(Scene.getBlindSquareIdentifier())){
-      identifier = Scene.getBlindSquareIdentifier();
+    if(objectClass.equals(Scene.getBlindSquareToken())){
+      identifier = Scene.getBlindSquareToken();
     }
-    else if(objectClass.equals(Scene.getEmptySquareIdentifier())){
-      identifier = Scene.getEmptySquareIdentifier();
+    else if(objectClass.equals(Scene.getEmptySquareToken())){
+      identifier = Scene.getEmptySquareToken();
     }
     
     this._identifier =  identifier;
