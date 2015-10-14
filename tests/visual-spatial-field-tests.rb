@@ -3,7 +3,7 @@
 # field constructor, i.e. nothing is encoded so CHREST's attention clock is not 
 # incremented from the time of visual-spatial field creation specified.
 unit_test "constructor (blind scene to encode)" do
-  scene = Scene.new("blind ", 10, 10, nil)
+  scene = Scene.new("blind", 10, 10, nil)
   scene.addItemToSquare(5, 5, "00", Scene.getCreatorToken())
   
   creation_time = 0
@@ -5147,6 +5147,126 @@ unit_test "get" do
     expected_vsf,
     "after move and termini of objects 1-3 but before the termini of objects 4 and 5"
   )
+end
+
+################################################################################
+# Checks for correct operation of the "VisualSpatialField.getSquareContents()"
+# method by performing three sub-tests:
+# 
+# 1) Get contents of a square not represented in the visual-spatial field.
+# 2) Get contents of a square that contains more than one object but only one
+#    object is alive at time of content retrieval.
+# 3) Get contents of a square at a time when all contained objects have decayed.
+# 
+# To enable sub-test 2, VisualSpatialFieldObject's must be moved otherwise it is 
+# not possible to have two objects co-exist on the same visual-spatial field 
+# coordinates.  The state of the visual-spatial field before and after the move
+# performed are illustrated below (objects are denoted by their unique 
+# identifiers with their class in parenthesis):
+# 
+# INITIAL SCENE STATE
+# ===================
+# 
+#    ----------------------
+# 0  | 0(A) | 1(B) | 2(C) |
+#    ---------------------- 
+#       0      1      2      COORDINATES
+#
+# AFETR MOVE
+# ==========
+# 
+#    ----------------------
+# 0  | 0(A) | 1(B) |      |
+#    |      | 2(C) |      |
+#    ----------------------
+#       0      1      2      COORDINATES
+#
+unit_test "get_square_contents" do
+  objects = [
+    ["0", "A"],
+    ["1", "B"],
+    ["2", "C"]
+  ]
+  scene = Scene.new("test", 3, 1, nil)
+  scene.addItemToSquare(0, 0, objects[0][0], objects[0][1])
+  scene.addItemToSquare(1, 0, objects[1][0], objects[1][1])
+  scene.addItemToSquare(2, 0, objects[2][0], objects[2][1])
+  
+  model = Chrest.new
+  model.setDomain(GenericDomain.new(model))
+  
+  visual_spatial_field = VisualSpatialField.new(
+    model,
+    scene, 
+    10, 
+    5, 
+    20, 
+    10, 
+    60000, 
+    30000, 
+    2, 
+    0,
+    false,
+    false
+  )
+  
+  ######################
+  ##### SUB-TEST 1 #####
+  ######################
+  assert_equal(
+    ArrayList.new(), 
+    visual_spatial_field.getSquareContents(1, 1, model.getAttentionClock()), 
+    "occurred when checking output for coordinates not represented in the visual-spatial field"
+  )
+  
+  ######################
+  ##### SUB-TEST 2 #####
+  ######################
+  
+  # Move object 2 onto same square as object 1.
+  move = ArrayList.new()
+  move.add(ItemSquarePattern.new(objects[2][0], 2, 0))
+  move.add(ItemSquarePattern.new(objects[2][0], 1, 0))
+  moves = ArrayList.new()
+  moves.add(move)
+  visual_spatial_field.moveObjects(moves, model.getAttentionClock(), false)
+  
+  # Set the terminus of object 1 to the model's current attention clock value - 
+  # 1.
+  vsf = get_entire_visual_spatial_field(visual_spatial_field)
+  vsf.get(1).get(0).get(1).setTerminus(model.getAttentionClock() - 1, true)
+  
+  # Get the contents of coordinates (1, 0) at the time specified by the model's 
+  # current attention clock value.
+  square_contents = visual_spatial_field.getSquareContents(1, 0, model.getAttentionClock())
+  test_description = "after moving object " + objects[2][0] + " onto the same square as " + objects[1][0] + 
+    " in the visual-spatial field and getting the square's contents after " + objects[1][0] + "'s terminus has " +
+    "been reached but before " + objects[2][0] + "'s has been"
+  assert_equal(1, square_contents.size(), "occurred when checking the number of objects returned " + test_description)
+  assert_equal(objects[2][0], square_contents.get(0).getIdentifier(), "occurred when checking the identifier of the object returned ")
+  assert_equal(objects[2][1], square_contents.get(0).getObjectClass(), "occurred when checking the class of the object returned ")
+  
+  ######################
+  ##### SUB-TEST 3 #####
+  ######################
+  
+  # Determine the maximum terminus for objects on coordinates (1, 0)
+  objs = vsf.get(1).get(0)
+  max_terminus = 0
+  for obj in objs
+    if obj.getTerminus() > max_terminus
+      max_terminus = obj.getTerminus()
+    end
+  end
+  
+  # Get the contents of coordinates (1, 0) at the maximum terminus decided upon
+  # above.
+  square_contents = visual_spatial_field.getSquareContents(1, 0, max_terminus)
+  test_description = "when the contents of coordinates (1, 0) are retrieved at a " + 
+    "time when the termini for all objects on these coordinates has passed"
+  assert_equal(1, square_contents.size(), "occurred when checking the number of objects returned " + test_description)
+  assert_equal(VisualSpatialFieldObject.getUnknownSquareToken(), square_contents.get(0).getIdentifier(), "occurred when checking the identifier of the object returned ")
+  assert_equal(VisualSpatialFieldObject.getUnknownSquareToken(), square_contents.get(0).getObjectClass(), "occurred when checking the class of the object returned ")
 end
 
 ################################################################################

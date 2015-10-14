@@ -932,26 +932,29 @@ public class VisualSpatialField {
    * @return All {@link jchrest.lib.VisualSpatialFieldObject} instances on the 
    * square specified that are alive at the time specified.  If no objects are
    * alive, a {@link jchrest.lib.VisualSpatialFieldObject} representing an 
-   * unknown square is returned.
+   * unknown square is returned.  If the coordinates specified are not 
+   * represented in the visual-spatial field, an empty list is returned.
    */
   public ArrayList<VisualSpatialFieldObject> getSquareContents(int col, int row, int time){
     ArrayList<VisualSpatialFieldObject> squareContents = new ArrayList<>();
     
-    for(VisualSpatialFieldObject object : this._visualSpatialField.get(col).get(row)){
-      if(object.alive(time)){
-        squareContents.add(object);
+    if(col >= 0 && col < this.getWidth() && row >= 0 && row < this.getHeight()){
+      for(VisualSpatialFieldObject object : this._visualSpatialField.get(col).get(row)){
+        if(object.alive(time)){
+          squareContents.add(object);
+        }
       }
-    }
-    
-    if(squareContents.isEmpty()){
-      squareContents.add(new VisualSpatialFieldObject(
-        this,
-        VisualSpatialFieldObject.getUnknownSquareToken(),
-        VisualSpatialFieldObject.getUnknownSquareToken(),
-        null,
-        false,
-        false
-      ));
+
+      if(squareContents.isEmpty()){
+        squareContents.add(new VisualSpatialFieldObject(
+          this,
+          VisualSpatialFieldObject.getUnknownSquareToken(),
+          VisualSpatialFieldObject.getUnknownSquareToken(),
+          null,
+          false,
+          false
+        ));
+      }
     }
     
     return squareContents;
