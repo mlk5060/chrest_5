@@ -1,4 +1,5 @@
 # Overall tests of Chrest
+require 'visual-spatial-field-tests' # Use this to access the 'check_visual_spatial_field_against_expected' method for the methods involving the visual-spatial field
 
 unit_test "get maximum clock value" do
   model = Chrest.new
@@ -765,7 +766,7 @@ process_test "scan_scene (no creator in scene)" do
     false
   ])
 
-  check_values_of_visual_spatial_objects_against_expected(
+  check_visual_spatial_field_against_expected(
     visual_spatial_field, 
     expected_visual_spatial_field_object_properties,
     model.getAttentionClock(),
@@ -914,7 +915,7 @@ process_test "scan_scene (no creator in scene)" do
     false
   ])
   
-  check_values_of_visual_spatial_objects_against_expected(
+  check_visual_spatial_field_against_expected(
     visual_spatial_field, 
     expected_visual_spatial_field_object_properties,
     model.getAttentionClock(),
@@ -1069,7 +1070,7 @@ process_test "scan_scene (no creator in scene)" do
   expected_visual_spatial_field_object_properties[2][4][1][3] = time_move_requested + access_time + object_movement_time + recognised_object_lifespan
   expected_visual_spatial_field_object_properties[2][4][1][4] = true
   
-  check_values_of_visual_spatial_objects_against_expected(
+  check_visual_spatial_field_against_expected(
     visual_spatial_field, 
     expected_visual_spatial_field_object_properties,
     model.getAttentionClock(),
@@ -1481,7 +1482,7 @@ process_test "scan_scene (creator in scene)" do
     false
   ])
 
-  check_values_of_visual_spatial_objects_against_expected(
+  check_visual_spatial_field_against_expected(
     visual_spatial_field, 
     expected_visual_spatial_field_object_properties,
     model.getAttentionClock(),
@@ -1631,7 +1632,7 @@ process_test "scan_scene (creator in scene)" do
     false
   ])
   
-  check_values_of_visual_spatial_objects_against_expected(
+  check_visual_spatial_field_against_expected(
     visual_spatial_field, 
     expected_visual_spatial_field_object_properties,
     model.getAttentionClock(),
@@ -1786,36 +1787,12 @@ process_test "scan_scene (creator in scene)" do
   expected_visual_spatial_field_object_properties[2][4][1][3] = time_move_requested + access_time + object_movement_time + recognised_object_lifespan
   expected_visual_spatial_field_object_properties[2][4][1][4] = true
   
-  check_values_of_visual_spatial_objects_against_expected(
+  check_visual_spatial_field_against_expected(
     visual_spatial_field, 
     expected_visual_spatial_field_object_properties,
     model.getAttentionClock(),
     "after the second object movement."
   )
-end
-
-def check_values_of_visual_spatial_objects_against_expected(visual_spatial_field, expected_visual_spatial_field_object_properties, time_to_check_recognised_status_against, test_description)
-
-  for row in 0...visual_spatial_field.getSceneEncoded().getHeight()
-    for col in 0...visual_spatial_field.getSceneEncoded().getWidth()
-
-      visual_spatial_field_objects = visual_spatial_field.getSquareContents(col, row)
-      assert_equal(expected_visual_spatial_field_object_properties[col][row].count(), visual_spatial_field_objects.size(), "occurred when checking the number of items on col " + col.to_s + ", row " + row.to_s + " " + test_description)
-
-      for i in 0...visual_spatial_field_objects.size()
-        expected_visual_spatial_field_object = expected_visual_spatial_field_object_properties[col][row][i]
-        visual_spatial_field_object = visual_spatial_field_objects[i]
-        error_message_postscript = " for object " + i.to_s  + " (ID: '" + visual_spatial_field_object.getIdentifier() + "', class: '" + visual_spatial_field_object.getObjectClass() +"') on col " + col.to_s + ", row " + row.to_s + " in the visual-spatial field " + test_description
-        
-        assert_equal(expected_visual_spatial_field_object[0], visual_spatial_field_object.getIdentifier(), "occurred when checking the identifier" + error_message_postscript)
-        assert_equal(expected_visual_spatial_field_object[1], visual_spatial_field_object.getObjectClass(), "occurred when checking the object class" + error_message_postscript)
-        assert_equal(expected_visual_spatial_field_object[2], visual_spatial_field_object.getTimeCreated(), "occurred when checking the creation time" + error_message_postscript)
-        assert_equal(expected_visual_spatial_field_object[3], visual_spatial_field_object.getTerminus(), "occurred when checking the terminus" + error_message_postscript)
-        assert_equal(expected_visual_spatial_field_object[4], visual_spatial_field_object.recognised(time_to_check_recognised_status_against), "occurred when checking the recognised status" + error_message_postscript)
-        assert_equal(expected_visual_spatial_field_object[5], visual_spatial_field_object.isGhost(), "occurred when checking the ghost status" + error_message_postscript)
-      end
-    end
-  end
 end
 
 def check_scene_against_expected(scene, expected_scene, test_description)

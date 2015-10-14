@@ -1859,7 +1859,7 @@ public class Chrest extends Observable {
             
             if(associatedVisualSpatialField != null){
               if(debug) System.out.println("         ~ Updating object in associated visual-spatial field");
-              for(VisualSpatialFieldObject objectOnVisualSpatialSquare : associatedVisualSpatialField.getSquareContents(col, row)){
+              for(VisualSpatialFieldObject objectOnVisualSpatialSquare : associatedVisualSpatialField.getSquareContents(col, row, time)){
                 if(objectOnVisualSpatialSquare.getIdentifier().equals(recognisedObject.getIdentifier())){
                   objectOnVisualSpatialSquare.setRecognised(time, true);
                   recognisedObjectIdentifiers.add(objectOnVisualSpatialSquare.getIdentifier());
@@ -1887,7 +1887,7 @@ public class Chrest extends Observable {
         for(int col = 0; col < associatedVisualSpatialField.getWidth(); col++){
           if(debug) System.out.println("   - Processing objects on col " + col + ", row " + row);
           
-          for(VisualSpatialFieldObject object : associatedVisualSpatialField.getSquareContents(col, row)){  
+          for(VisualSpatialFieldObject object : associatedVisualSpatialField.getSquareContents(col, row, time)){  
             if(!recognisedObjectIdentifiers.contains(object.getIdentifier())){
               if(debug){
                 System.out.println("      - Object unrecognised.  Current status:");
@@ -1899,9 +1899,8 @@ public class Chrest extends Observable {
                 System.out.println("         Ghost: " + object.isGhost());
               }
               
-              //Squares that contain blind objects, unknown object status 
-              //objects and the creator's avatar will have null termini so do 
-              //not overwrite these.
+              //Squares that contain blind objects and the creator's avatar will 
+              //have null termini so do not overwrite these.
               if(object.getTerminus() == null){
                 object.setUnrecognised(time, false);
               }else{
