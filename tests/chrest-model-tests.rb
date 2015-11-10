@@ -220,71 +220,72 @@ end
 
 #The aim of this test is to check for the correct operation of all implemented
 #reinforcement theories in the jchrest.lib.ReinforcementLearning class in the
-#CHREST architecture.  The following tests are run:
-# 1) The size of the "_actionLinks" variable should = 0 after initialisation.
-# 2) After adding an action node to a visual node's "_actionLinks" variable, 
-#    the action node should be present in the visual node's "_actionLinks"
-#    variable.
-# 3) After adding an action node to a visual node's "_actionLinks" variable, 
-#    the reinforcement value of the link between the visual and action node 
-#    should be set to 0.0.
-# 4) Passing too few variables to a reinforcement learning theory should return 
-#    boolean false from that theory's "correctNumberOfVariables" method.
-# 5) Passing too many variables to a reinforcement learning theory should return 
-#    boolean false from that theory's "correctNumberOfVariables" method.
-# 6) Passing the correct number of variables to a reinforcement learning theory 
-#    should return boolean true from that theory's "correctNumberOfVariables" 
-#    method.
-# 7) After passing the correct number of variables to a reinforcement theory and
-#    using that theory's "calculateReinforcementValue" method, the value 
-#    returned should equal an expected value.
-# 8) After passing the correct number of variables to a reinforcement theory and
-#    using the visual node's "reinforceActionLink" method, the final 
-#    reinforcement value of the link between the visual and action node should 
-#    equal an expected value.
+#CHREST architecture. A visual and action pattern are created and fully
+#committed to LTM before associating them (thus creating a production).  The
+#following tests are then run:
+#
+# 1) The action should be a production for the visual node.
+# 2) The value of the production should be set to 0.0.
+# 3) Too few variables are passed to a reinforcement learning theory.  This 
+#    should result in boolean 'false' being returned.
+# 4) Too many variables are passed to a reinforcement learning theory.  This 
+#    should result in boolean 'false' being returned.
+# 5) Passing the correct number of variables to a reinforcement learning theory 
+#    should return:
+#    a) Boolean true.
+#    b) An expected value.
+# 6) Applying the value returned in 5 to the production created earlier should
+#    result in the production's value equalling an expected value.
 process_test "reinforcement theory tests" do
   
   #Retrieve all currently implemented reinforcement learning theories.
-  validReinforcementLearningTheories = ReinforcementLearning.getReinforcementLearningTheories()
+  reinforcement_learning_theories = ReinforcementLearning.getReinforcementLearningTheories()
   
   #Construct a test visual pattern.
-  visualPattern = Pattern.makeVisualList [1].to_java(:int)
-  visualPattern.setFinished
-  visualPatternString = visualPattern.toString
+  visual_pattern = Pattern.makeVisualList [1].to_java(:int)
+  visual_pattern_string = visual_pattern.toString
   
   #Construct a test action pattern.
-  actionPattern = Pattern.makeActionList ["A"].to_java(:string)
-  actionPattern.setFinished
-  actionPatternString = actionPattern.toString
+  action_pattern = Pattern.makeActionList ["A"].to_java(:string)
+  action_pattern_string = action_pattern.toString
   
   #Test each reinforcement learning theory implemented in the CHREST 
   #architecture.
-  validReinforcementLearningTheories.each do |reinforcementLearningTheory|
+  reinforcement_learning_theories.each do |reinforcement_learning_theory|
     
     #Create a new CHREST model instance and set its reinforcement learning 
     #theory to the one that is to be tested.
     model = Chrest.new
-    model.setReinforcementLearningTheory(reinforcementLearningTheory)
-    reinforcementLearningTheoryName = reinforcementLearningTheory.toString
+    model.setReinforcementLearningTheory(reinforcement_learning_theory)
+    reinforcement_learning_theory_name = reinforcement_learning_theory.toString
   
     #Learn visual and action patterns.
-    model.recogniseAndLearn(visualPattern, model.getLearningClock())
-    model.recogniseAndLearn(actionPattern, model.getLearningClock())
-  
-    #Retrieve visual and action nodes after learning.
-    visualNode = model.recognise(visualPattern, model.getLearningClock())
-    actionNode = model.recognise(actionPattern, model.getLearningClock())
-  
-    #Test 1.
-    visualNodeActionLinks = visualNode.getActionLinks
-    assert_equal(0, visualNodeActionLinks.size, "See test 1.")
-  
-    #Test 2 and 3.
-    visualNode.addActionLink(actionNode, model.getLearningClock())
-    visualNodeActionLinks = visualNode.getActionLinks
-    visualNodeActionLinkValue = visualNodeActionLinks.get(actionNode)
-    assert_true(visualNodeActionLinks.containsKey(actionNode), "After adding " + actionPatternString + " to the _actionLinks variable of " + visualPatternString + ", " + visualPatternString + "'s _actionLinks does not contain " + actionPatternString + ".")
-    assert_equal(0.0, visualNodeActionLinkValue, "See test 3.")
+    visual_chunk_string = ""
+    until visual_chunk_string.eql?(visual_pattern_string)
+      visual_chunk_string = model.recogniseAndLearn(visual_pattern, model.getLearningClock()).getImage().toString()
+    end
+    
+    action_chunk_string = ""
+    until action_chunk_string.eql?(action_pattern_string)
+      action_chunk_string = model.recogniseAndLearn(action_pattern, model.getLearningClock()).getImage().toString()
+    end
+
+    model.associateAndLearn(visual_pattern, action_pattern, model.getLearningClock())
+    
+    productions = model.recognise(visual_pattern, model.getLearningClock()).getProductions()
+    assert_equal(1, productions.size(), "occurred when checking the number of productions returned")
+    
+    action_chunk_is_production = false
+    production_value = 0.0
+    for production in productions.entrySet()
+      if production.getKey().getImage().toString().eql?(action_chunk_string)
+        action_chunk_is_production = true
+        production_value = production.getValue()
+      end
+    end
+    
+    assert_true(action_chunk_is_production, "occurred when checking if the action is a production.")
+    assert_equal(0.0, production_value, "occurred when checking the production's value")
   
     #Depending upon the model's current reinforcement learning theory, 5 
     #variables should be created:
@@ -313,41 +314,38 @@ process_test "reinforcement theory tests" do
     #    of the "expectedReinforcementValues" array after adding the calculated
     #    reinforcement value to the current reinforcement value between the 
     #    visual and action node.
+    too_few = []
+    too_many = []
+    just_right = []
+    expected_reinforcement_values = []
+    expected_production_values = []
     case 
-      when reinforcementLearningTheoryName.casecmp("profit_sharing_with_discount_rate").zero?
-        puts
-          tooFewVariables = [1]
-          tooManyVariables = [1,2,3,4,5]
-          correctVariables = [[1,0.5,2,2],[1,0.5,2,1]]
-          expectedCalculationValues = [1,0.5]
-          expectedReinforcementValues = [1,1.5]
-    end
-    
-    #Convert declared arrays into Double[] data types since the methods in the
-    #ReinforcementLearning class require Double[] variables.
-    tooFewVariables = tooFewVariables.to_java(:Double)
-    tooManyVariables = tooManyVariables.to_java(:Double)
-    expectedCalculationValues = expectedCalculationValues.to_java(:Double)
-    expectedReinforcementValues = expectedReinforcementValues.to_java(:Double)
-    
-    #Same as above but for each inner array in the "correctVariables" array.
-    correctVariables.each do |groupOfCorrectVariables|
-      groupOfCorrectVariables.to_java(:Double)
+      when reinforcement_learning_theory_name.casecmp("profit_sharing_with_discount_rate").zero?
+        too_few = [1].to_java(:Double)
+        too_many = [1,2,3,4,5].to_java(:Double)
+        just_right = [
+          [1,0.5,2,2].to_java(:Double),
+          [1,0.5,2,1].to_java(:Double)
+        ]
+        expected_reinforcement_values = [1,0.5].to_java(:Double)
+        expected_production_values = [1,1.5].to_java(:Double)
     end
     
     #Tests 4 and 5.
-    assert_false(reinforcementLearningTheory.correctNumberOfVariables(tooFewVariables), "FOR " + reinforcementLearningTheoryName + ": The number of variables in the 'tooFewVariables' parameter is not incorrect.")
-    assert_false(reinforcementLearningTheory.correctNumberOfVariables(tooManyVariables), "FOR " + reinforcementLearningTheoryName + ": The number of variables in the 'tooManyVariables' parameter is not incorrect.")
+    assert_false(reinforcement_learning_theory.correctNumberOfVariables(too_few), "FOR " + reinforcement_learning_theory_name + ": The number of variables in the 'tooFewVariables' parameter is not incorrect.")
+    assert_false(reinforcement_learning_theory.correctNumberOfVariables(too_many), "FOR " + reinforcement_learning_theory_name + ": The number of variables in the 'tooManyVariables' parameter is not incorrect.")
     
     #Tests 6, 7 and 8.
     index = 0
-    correctVariables.each do |groupOfCorrectVariables|
-      assert_true(reinforcementLearningTheory.correctNumberOfVariables(groupOfCorrectVariables), "FOR " + reinforcementLearningTheoryName + ": The number of variables in item " + index.to_s + " of the 'correctvariables' parameter is incorrect.")
-      calculationValue = reinforcementLearningTheory.calculateReinforcementValue(groupOfCorrectVariables)
-      visualNode.reinforceActionLink(actionNode, groupOfCorrectVariables, model.getLearningClock())
-      visualNodeActionLinkValue = visualNode.getActionLinks.get(actionNode)
-      assert_equal(expectedCalculationValues[index], calculationValue, "Triggered by the " + reinforcementLearningTheoryName + ".calculateReinforcementValue() method.  See item " + index.to_s + " in the 'expectedCalculationValues' variable.")
-      assert_equal(expectedReinforcementValues[index], visualNodeActionLinkValue, "Triggered by the Node.reinforceActionLink() method (addition of current and new reinforcement values incorrect).  See item " + index.to_s + " in the 'expectedReinforcementValues' variable for the '" + reinforcementLearningTheoryName + "' reinforcement learning theory.")
+    just_right.each do |variables|
+      assert_true(reinforcement_learning_theory.correctNumberOfVariables(variables), "FOR " + reinforcement_learning_theory_name + ": The number of variables in item " + index.to_s + " of the 'correctvariables' parameter is incorrect.")
+      
+      reinforcement_value = reinforcement_learning_theory.calculateReinforcementValue(variables)
+      assert_equal(expected_reinforcement_values[index], reinforcement_value, "occurred when checking the reinforcement value returned by the " + reinforcement_learning_theory_name  + " theory.")
+      
+      model.reinforceProduction(visual_pattern, action_pattern, variables, model.getLearningClock())
+      production_value = model.recognise(visual_pattern, model.getLearningClock()).getProductions().values()[0]
+      assert_equal(expected_production_values[index], production_value, ".")
       index += 1
     end
   end
@@ -1140,7 +1138,8 @@ process_test "scan_scene (creator in scene)" do
     ["2", "A"],
     ["3", "D"],
     ["4", "G"],
-    ["5", Scene.getCreatorToken()]
+    ["5", Scene.getCreatorToken()],
+    ["6", "C"]
   ]
   
   # Test clock, the time by which all CHREST and visual-spatial field operations
@@ -1793,6 +1792,112 @@ process_test "scan_scene (creator in scene)" do
     model.getAttentionClock(),
     "after the second object movement."
   )
+end
+
+# Tests for correct operation of the Chrest.getProductionsCount() method by:
+# 
+# 1. Creating a LTM network where the number of visual LTM nodes and the depth 
+#    of visual LTM is > 1.
+# 2. Creating an action LTM node to enable production creation.
+# 3. Creating productions for each visual node created in step 1 with the action
+#    node created in step 2.
+# 4. Calculating the number of productions in visual LTM manually and storing 
+#    the result.
+# 5. Comparing the result of 4 with the output of invoking the 
+#    "getProductionsCount" function.
+unit_test "getProductionsCount" do
+  
+  #############
+  ### SETUP ###
+  #############
+  model = Chrest.new
+  
+  visual_pattern_1 = ListPattern.new(Modality::VISUAL)
+  visual_pattern_1.add(ItemSquarePattern.new("A", 0, 0))
+  visual_pattern_1.add(ItemSquarePattern.new("B", 0, 1))
+  visual_pattern_1.add(ItemSquarePattern.new("C", 0, 2))
+  visual_pattern_1.setFinished()
+  
+  visual_pattern_2 = ListPattern.new(Modality::VISUAL)
+  visual_pattern_2.add(ItemSquarePattern.new("A", 0, 0))
+  visual_pattern_2.add(ItemSquarePattern.new("C", 0, 2))
+  visual_pattern_2.add(ItemSquarePattern.new("B", 0, 1))
+  visual_pattern_2.add(ItemSquarePattern.new("D", 0, 3))
+  visual_pattern_2.setFinished()
+  
+  visual_pattern_3 = ListPattern.new(Modality::VISUAL)
+  visual_pattern_3.add(ItemSquarePattern.new("A", 0, 0))
+  visual_pattern_3.add(ItemSquarePattern.new("D", 0, 3))
+  visual_pattern_3.add(ItemSquarePattern.new("C", 0, 2))
+  visual_pattern_3.add(ItemSquarePattern.new("B", 0, 1))
+  visual_pattern_3.setFinished()
+  
+  visual_pattern_4 = ListPattern.new(Modality::VISUAL)
+  visual_pattern_4.add(ItemSquarePattern.new("G", 0, 0))
+  visual_pattern_4.add(ItemSquarePattern.new("F", 0, 1))
+  visual_pattern_4.setFinished()
+  
+  visual_pattern_5 = ListPattern.new(Modality::VISUAL)
+  visual_pattern_5.add(ItemSquarePattern.new("D", 0, 3))
+  visual_pattern_5.add(ItemSquarePattern.new("B", 0, 1))
+  visual_pattern_5.setFinished()
+  
+  visual_pattern_6 = ListPattern.new(Modality::VISUAL)
+  visual_pattern_6.add(ItemSquarePattern.new("D", 0, 3))
+  visual_pattern_6.setFinished()
+  
+  action_pattern = ListPattern.new(Modality::ACTION)
+  action_pattern.add(ItemSquarePattern.new("PUSH", 0, 1))
+  
+  list_patterns_to_learn = [
+    visual_pattern_1,
+    visual_pattern_2,
+    visual_pattern_3,
+    visual_pattern_4,
+    visual_pattern_5,
+    visual_pattern_6,
+    action_pattern
+  ]
+  
+  ######################################
+  ### CREATE VISUAL/ACTION LTM NODES ###
+  ######################################
+  
+  for i in 0...list_patterns_to_learn.size
+    list_pattern_to_learn = list_patterns_to_learn[i]
+    i = 1
+    until i == 50
+      model.recogniseAndLearn(list_pattern_to_learn, model.getLearningClock)
+      i += 1
+    end
+  end
+  
+  ##########################
+  ### CREATE PRODUCTIONS ###
+  ##########################
+  
+  for i in 0...list_patterns_to_learn.size - 1
+    list_pattern_to_learn = list_patterns_to_learn[i]
+    until model.recognise(list_pattern_to_learn, model.getLearningClock).getProductions().size() == 1
+      model.associateAndLearn(list_pattern_to_learn, action_pattern, model.getLearningClock).getImage.toString()
+    end
+  end
+  
+  ##################################################
+  ### CALCULATE NUMBER OF PRODUCTIONS "MANUALLY" ###
+  ##################################################
+  
+  number_productions = 0
+  for i in 0...list_patterns_to_learn.size - 1
+    list_pattern = list_patterns_to_learn[i]
+    number_productions += model.recognise(list_pattern, model.getLearningClock).getProductions().size
+  end
+
+  ############
+  ### TEST ###
+  ############
+  
+  assert_equal(number_productions, model.getProductionCount())
 end
 
 def check_scene_against_expected(scene, expected_scene, test_description)

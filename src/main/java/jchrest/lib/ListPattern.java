@@ -180,12 +180,6 @@ public class ListPattern extends Pattern implements Iterable<PrimitivePattern> {
   /** 
    * Two patterns match if they are both ListPatterns and this ListPattern
    * is a presequence of given pattern. 
-   * 
-   * TODO: Matching depends on the order of the patterns passed; should this be
-   *       the case?  For example, if an observer has learnt a chunk where 
-   *       object A is at row 1 and col 2 and object B is at row 2 and col 3 and
-   *       the pattern to be checked has objects C and D before A and B, the
-   *       patterns do not match.
    */
   public boolean matches (Pattern givenPattern) {
     if (!(givenPattern instanceof ListPattern)) return false;

@@ -53,7 +53,7 @@ public class Node extends Observable {
   
   //The variables listed in this section can change throughout the Node's 
   //life-cycle.
-  private HashMap<Node, Double> _actionLinks;
+  private HashMap<Node, Double> _productions;
   private Node _associatedNode;
   private List<Link> _children;
   private List<ItemSquarePattern> _filledItemSlots;
@@ -97,7 +97,7 @@ public class Node extends Observable {
   //multiple Node references.  These are used to indicate what Nodes were 
   //present in the instance variable they keep a history for from the domain 
   //time indicated by the respective key.
-  private TreeMap<Integer, HashMap<Integer, Double>> _actionLinksHistory = new TreeMap<>();
+  private TreeMap<Integer, HashMap<Integer, Double>> _productionHistory = new TreeMap<>();
   private TreeMap<Integer, Integer> _associatedNodeHistory = new TreeMap<>();
   private TreeMap<Integer, Integer> _namedByHistory = new TreeMap<>();
   private TreeMap<Integer, List<Integer>> _semanticLinksHistory = new TreeMap<>();
@@ -151,14 +151,14 @@ public class Node extends Observable {
     _semanticLinks = new ArrayList<Node> ();
     _associatedNode = null;
     _namedBy = null;
-    _actionLinks = new HashMap<>();
+    _productions = new HashMap<>();
     _creationTime = time;
     
     
     //Set-up history variables except for STM history since this should only be
     //modified when the Node is input/output of STM and this happens 
     //independently of Node creation.
-    this.updateActionLinksHistory(time);
+    this.updateProductionHistory(time);
     this.updateAssociatedNodeHistory(time);
     this.updateChildHistory(time);
     this.updateImageHistory(time);
@@ -168,18 +168,12 @@ public class Node extends Observable {
   }
   
   /**
-   * Returns references for all Node instances that this Node had production
-   * links between and the values of these links at the time specified.
-   * 
-   * @param time
-   * 
-   * @return A HashMap whose keys are references to the Node's that this 
-   * Node had action links to and whose values are the values associated with these
-   * links at the time specified.  If no action links were present at the time 
-   * specified then null is returned. 
+   * @return The productions that existed for this {@link #this} at the time 
+   * specified.  If no productions were present at the time specified then null 
+   * is returned. 
    */
-  private HashMap<Integer, Double> getActionLinksAtTime(int time){
-    return this._actionLinksHistory.floorEntry(time).getValue();
+  private HashMap<Integer, Double> getProductionsAtTime(int time){
+    return this._productionHistory.floorEntry(time).getValue();
   }
   
   /**
@@ -279,20 +273,19 @@ public class Node extends Observable {
   }
   
   /**
-   * Updates the Node's action link history.
    * @param time 
    */
-  private void updateActionLinksHistory(int time){
+  private void updateProductionHistory(int time){
     if(this._model.canUpdateNodeHistoryOrDrawLtmState()){
-      if(this._actionLinks.isEmpty()){
-        this._actionLinksHistory.put(time, null);
+      if(this._productions.isEmpty()){
+        this._productionHistory.put(time, null);
       }
       else{
         HashMap<Integer, Double> newActionLinkHistoryEntry = new HashMap<>();
-        for(Entry<Node, Double> actionLink : this.getActionLinks().entrySet()){
+        for(Entry<Node, Double> actionLink : this.getProductions().entrySet()){
           newActionLinkHistoryEntry.put(actionLink.getKey().getReference(), actionLink.getValue());
         }
-        this._actionLinksHistory.put(time, newActionLinkHistoryEntry);
+        this._productionHistory.put(time, newActionLinkHistoryEntry);
       }
     }
   }
@@ -582,22 +575,27 @@ public class Node extends Observable {
 
   /**
    * Add the node specified by the parameter passed to this function to the list 
-   * of action links for the current node if the following are true. 
+   * of productions for the current node if the following are true. 
    * <ul>
-   *  <li>The node specified by the parameter passed to the function has action 
-   *  modality.</li>
-   *  <li>The node specified by the parameter passed to the function is not 
-   *  already a key in the current node's _actionLinks variable.</li>
+   *  <li>
+   *    The node specified by the parameter passed to the function has action 
+   *    modality.
+   *  </li>
+   *  <li>
+   *    The node specified by the parameter passed to the function is not 
+   *    already a key in the current node's _productions variable.
+   *  </li>
    * </ul>
    * 
-   * @param node The node to be linked to this node.
+   * @param node The node that the production will terminate with.
+   * @param time
    */
-  public void addActionLink (Node node, int time) {
-    if (node.getImage().getModality().equals(Modality.ACTION) && !_actionLinks.containsKey(node)) { 
-      _actionLinks.put(node, 0.00);
+  public void addProduction (Node node, int time) {
+    if (node.getImage().getModality().equals(Modality.ACTION) && !_productions.containsKey(node)) { 
+      _productions.put(node, 0.00);
     }
     
-    this.updateActionLinksHistory(time);
+    this.updateProductionHistory(time);
   }
 
   /**
@@ -605,8 +603,8 @@ public class Node extends Observable {
    * 
    * @return 
    */
-  public HashMap<Node, Double> getActionLinks () {
-    return _actionLinks;
+  public HashMap<Node, Double> getProductions () {
+    return _productions;
   }
   
   /**
@@ -621,16 +619,30 @@ public class Node extends Observable {
    * {@link jchrest.lib.ReinforcementLearning}
    * @param time The time that the reinforcement is requested.
    */
-  public void reinforceActionLink (Node actionNode, Double[] variables, int time){
+  public void reinforceProduction (Node actionNode, Double[] variables, int time){
     String reinforcementLearningTheory = _model.getReinforcementLearningTheory();
     if (
       !reinforcementLearningTheory.equals("null") && 
-      _actionLinks.containsKey(actionNode) && 
+      _productions.containsKey(actionNode) && 
       actionNode.getContents().getModality().equals(Modality.ACTION)
     ){
-      _actionLinks.put(actionNode, (_actionLinks.get(actionNode) + ReinforcementLearning.ReinforcementLearningTheories.valueOf(reinforcementLearningTheory).calculateReinforcementValue(variables)));
-      this.updateActionLinksHistory(time);
+      _productions.put(actionNode, (_productions.get(actionNode) + ReinforcementLearning.ReinforcementLearningTheories.valueOf(reinforcementLearningTheory).calculateReinforcementValue(variables)));
+      this.updateProductionHistory(time);
     }
+  }
+  
+  /**
+   * @return The number of productions from this {@link #this} and all children
+   * until the base of LTM is reached. 
+   */
+  protected int getProductionCount(){
+    int count = this._productions.size();
+    
+    for(Link child : this._children){
+      count += child.getChildNode().getProductionCount();
+    }
+    
+    return count;
   }
 
   /** 
@@ -1220,7 +1232,7 @@ public class Node extends Observable {
     String description = "New info in input: " + newInformation.toString();
     
     // EXIT if nothing to learn
-    if (newInformation.isEmpty ()) {
+    if (newInformation.isEmpty ()) {  
       description += ", empty.";
       historyRowToInsert.put(Chrest._executionHistoryTableDescriptionColumnName, description);
       this._model.addEpisodeToExecutionHistory(historyRowToInsert);
@@ -1378,7 +1390,7 @@ public class Node extends Observable {
         }
         
         //Clone Node instances in instance variables that contain multiple nodes.
-        for(Node node : this._actionLinks.keySet()){
+        for(Node node : this._productions.keySet()){
           if(node != null){
             node.deepClone(time, setOfClonedNodeReferences);
           }
@@ -1401,12 +1413,12 @@ public class Node extends Observable {
         /**** INSTANTIATE INSTANCE VARIABLES AS THEY WERE @ TIME SPECIFIED ****/
         /**********************************************************************/
         
-        HashMap<Integer, Double> historicalActionLinks = this.getActionLinksAtTime(time);
-        if(historicalActionLinks != null){
-          for(Entry<Integer, Double> historicalActionLink : historicalActionLinks.entrySet()){
+        HashMap<Integer, Double> historicalProductions = this.getProductionsAtTime(time);
+        if(historicalProductions != null){
+          for(Entry<Integer, Double> historicalActionLink : historicalProductions.entrySet()){
             //An action link can only every be in action LTM so just search the
             //Node instances in this LTM modality for the relevant clone.
-            clone._actionLinks.put( Node.searchForNodeFromBaseNode(historicalActionLink.getKey(), this._model.getLtmByModality(Modality.ACTION))._clone, historicalActionLink.getValue() );
+            clone._productions.put( Node.searchForNodeFromBaseNode(historicalActionLink.getKey(), this._model.getLtmByModality(Modality.ACTION))._clone, historicalActionLink.getValue() );
           }
         }
         

@@ -551,7 +551,7 @@ public class Chrest extends Observable {
     Integer maxTime = this._experimentNamesAndMaximumTimes.get(experiment);
     
     if(maxTime == null){
-      this.getMaximumClockValue();
+      maxTime = this.getMaximumClockValue();
     }
 
     return maxTime;
@@ -1217,6 +1217,13 @@ public class Chrest extends Observable {
 
     return size;
   }
+  
+  /**
+   * @return The total number of productions in LTM.
+   */
+  public int getProductionCount(){
+    return this._visualLtm.getProductionCount();
+  }
 
   /**
    * Return a map from number of semantic links to frequencies for the model's LTM.
@@ -1349,7 +1356,7 @@ public class Chrest extends Observable {
     }
     // TODO: Handle differing modalities.
     else if(pattern2.getModalityString().equalsIgnoreCase(Modality.ACTION.toString())){
-      return learnPatternAndLinkToActionPattern(pattern1, pattern2, time);
+      return learnPatternsAndCreateProduction(pattern1, pattern2, time);
     }
     else{
       return null;
@@ -1396,10 +1403,10 @@ public class Chrest extends Observable {
   
   /**
    * Learns first pattern (which can be of any modality) and a second pattern 
-   * (whose modality must be "action") and learns an action link between the 
+   * (whose modality must be "action") and creates a production between the 
    * first pattern and the second pattern pattern
    */
-  private Node learnPatternAndLinkToActionPattern(ListPattern pattern1, ListPattern actionPattern, int time) {
+  private Node learnPatternsAndCreateProduction(ListPattern pattern1, ListPattern actionPattern, int time) {
     Node pat1Retrieved = recognise (pattern1, time);
     Boolean actionPatternMatched = false;
     
@@ -1408,8 +1415,8 @@ public class Chrest extends Observable {
       
       // 2. does retrieved node have any action links?  If so, check each one to
       // see if it matches actionPattern.
-      if (pat1Retrieved.getActionLinks() != null) {
-        HashMap<Node, Double> pattern1ActionLinks = pat1Retrieved.getActionLinks();
+      if (pat1Retrieved.getProductions() != null) {
+        HashMap<Node, Double> pattern1ActionLinks = pat1Retrieved.getProductions();
         for (Node currentActionNode : pattern1ActionLinks.keySet()) {
           
           // 3. is linked node image match pattern2? if not, learn pattern2
@@ -1465,6 +1472,21 @@ public class Chrest extends Observable {
     }
       
     return pat1Retrieved;
+  }
+  
+  public void reinforceProduction(ListPattern visualPattern, ListPattern actionPattern, Double[] variables, int time){
+    
+    Node recognisedVisualNode = this.recognise(visualPattern, time);
+    Node recognisedActionNode = this.recognise(actionPattern, time);
+    
+    if(
+      visualPattern.getModality().equals(Modality.VISUAL) &&
+      actionPattern.getModality().equals(Modality.ACTION) &&
+      recognisedVisualNode.getImage().equals(visualPattern) &&
+      recognisedActionNode.getImage().equals(actionPattern) 
+    ){
+      recognisedVisualNode.reinforceProduction(recognisedActionNode, variables, time);
+    }
   }
 
   /**
@@ -1546,7 +1568,7 @@ public class Chrest extends Observable {
    */
   private void associatePatterns(Node firstNode, Node secondNode, String modalityOfSecondNode, int time){
     if(modalityOfSecondNode.equalsIgnoreCase(Modality.ACTION.toString())){
-      firstNode.addActionLink(secondNode, time);
+      firstNode.addProduction(secondNode, time);
     }
     //TODO: Handle verbal and visual patterns differently (if required).
     else{
@@ -1610,7 +1632,7 @@ public class Chrest extends Observable {
     // attempt to link action with each perceived chunk
     if (_visualStm.getCount () > 0 && _actionStm.getCount () > 0) {
       for (Node node : _visualStm) {
-        node.addActionLink (_actionStm.getItem (0), time);
+        node.addProduction (_actionStm.getItem (0), time);
       }
     }
     setChanged ();
@@ -1642,7 +1664,7 @@ public class Chrest extends Observable {
     // create a map of moves to their frequency of occurrence in nodes of STM
     Map<ListPattern, Integer> moveFrequencies = new HashMap<ListPattern, Integer> ();
     for (Node node : _visualStm) {
-      for (Node action : node.getActionLinks ().keySet()) {
+      for (Node action : node.getProductions ().keySet()) {
         if (sameColour(action.getImage(), colour)) {
           if (moveFrequencies.containsKey(action.getImage ())) {
             moveFrequencies.put (
@@ -1848,32 +1870,49 @@ public class Chrest extends Observable {
             
             //Get the SceneObject that represents the recalled object
             SceneObject recognisedObject = scene.getSquareContents(col, row);
-            if(debug){
-              System.out.println("         ~ Equivalent of object in scene scanned");
-              System.out.println("            ID: " + recognisedObject.getIdentifier());
-              System.out.println("            Class: " + recognisedObject.getObjectClass());
-            }
+            //TODO: Write a test that checks for the null check below preventing
+            //      this function from erroring-out when the recognisedObject is 
+            //      set to null (picked up in Netlogo where a turtle learned a
+            //      ListPattern like <[H 0 -2][T -2 -1]> and recognised this 
+            //      when it was at the edge of a Scene and a hole was in the
+            //      location specified in the ListPattern but the tile wasn't
+            //      since that location was not represented since the "self" was
+            //      on the western-most point of the Scene scanned).
+            if(debug) System.out.println("         ~ Equivalent of object in scene scanned");
 
-            //Add the item to the recalled scene.
-            recalledScene.addItemToSquare(col, row, recognisedObject.getIdentifier(), recognisedObject.getObjectClass());
+            //The recalled object may be a ghost (part of a LTM chunk but doesn't exist in the
+            //scene being scanned) so check for this here lest a NullPointerException be thrown.
+            if(recognisedObject != null){
+              
+              if(debug){
+                System.out.println("            = ID: " + recognisedObject.getIdentifier());
+                System.out.println("            = Class: " + recognisedObject.getObjectClass());
+                System.out.println("         ~ Adding object to col " + col + ", row " + row + " in the Scene recalled");
+              }
+
+              recalledScene.addItemToSquare(col, row, recognisedObject.getIdentifier(), recognisedObject.getObjectClass());
             
-            if(associatedVisualSpatialField != null){
-              if(debug) System.out.println("         ~ Updating object in associated visual-spatial field");
-              for(VisualSpatialFieldObject objectOnVisualSpatialSquare : associatedVisualSpatialField.getSquareContents(col, row, time)){
-                if(objectOnVisualSpatialSquare.getIdentifier().equals(recognisedObject.getIdentifier())){
-                  objectOnVisualSpatialSquare.setRecognised(time, true);
-                  recognisedObjectIdentifiers.add(objectOnVisualSpatialSquare.getIdentifier());
+              if(associatedVisualSpatialField != null){
+                if(debug) System.out.println("         ~ Updating object in associated visual-spatial field");
+                for(VisualSpatialFieldObject objectOnVisualSpatialSquare : associatedVisualSpatialField.getSquareContents(col, row, time)){
+                  if(objectOnVisualSpatialSquare.getIdentifier().equals(recognisedObject.getIdentifier())){
+                    objectOnVisualSpatialSquare.setRecognised(time, true);
+                    recognisedObjectIdentifiers.add(objectOnVisualSpatialSquare.getIdentifier());
                   
-                  if(debug){
-                    System.out.println("            ID: " + objectOnVisualSpatialSquare.getIdentifier());
-                    System.out.println("            Class: " + objectOnVisualSpatialSquare.getObjectClass());
-                    System.out.println("            Created at: " + objectOnVisualSpatialSquare.getTimeCreated());
-                    System.out.println("            Terminus: " + objectOnVisualSpatialSquare.getTerminus());
-                    System.out.println("            Recognised: " + objectOnVisualSpatialSquare.recognised(time));
-                    System.out.println("            Ghost: " + objectOnVisualSpatialSquare.isGhost());
+                    if(debug){
+                      System.out.println("            ID: " + objectOnVisualSpatialSquare.getIdentifier());
+                      System.out.println("            Class: " + objectOnVisualSpatialSquare.getObjectClass());
+                      System.out.println("            Created at: " + objectOnVisualSpatialSquare.getTimeCreated());
+                      System.out.println("            Terminus: " + objectOnVisualSpatialSquare.getTerminus());
+                      System.out.println("            Recognised: " + objectOnVisualSpatialSquare.recognised(time));
+                      System.out.println("            Ghost: " + objectOnVisualSpatialSquare.isGhost());
+                    }
                   }
                 }
               }
+            }
+            else if(debug){
+              System.out.println("            = There is no equivalent object (recognised object must be a ghost)");
             }
           }
         }
