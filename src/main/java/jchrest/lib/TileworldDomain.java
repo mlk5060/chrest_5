@@ -18,22 +18,12 @@ public class TileworldDomain extends DomainSpecifics{
   
   //These variables should not be changed during run-time since problems with 
   //"Scene" instances will ensue.
-  private final String _tileToken;
-  private final String _holeToken; 
-  private final String _opponentToken;
+  private static final String TILE_TOKEN = "T";
+  private static final String HOLE_TOKEN = "H"; 
+  private static final String OPPONENT_TOKEN = "O";
   
   public TileworldDomain(Chrest model) {
     super(model);
-    this._tileToken = "T";
-    this._holeToken = "H";
-    this._opponentToken = "O";
-  }
-  
-  public TileworldDomain(Chrest model, String holeToken, String opponentToken, String tileToken){
-    super(model);
-    this._holeToken = holeToken;
-    this._opponentToken = opponentToken;
-    this._tileToken = tileToken;
   }
 
   /** 
@@ -135,9 +125,9 @@ public class TileworldDomain extends DomainSpecifics{
     
     String objectOnSquare = scene.getSquareContents(col, row).getObjectClass();
     if(
-      objectOnSquare.equals(this._tileToken) ||
+      objectOnSquare.equals(this.TILE_TOKEN) ||
       objectOnSquare.equals(Scene.getCreatorToken()) ||
-      objectOnSquare.equals(this._opponentToken)
+      objectOnSquare.equals(this.OPPONENT_TOKEN)
     ){
       movementFixations.add(new Square(col, row + 1));//North
       movementFixations.add(new Square(col + 1, row));//East
@@ -153,15 +143,15 @@ public class TileworldDomain extends DomainSpecifics{
     throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
   }
   
-  public String getHoleIdentifier(){
-    return this._holeToken;
+  public static String getHoleIdentifier(){
+    return HOLE_TOKEN;
   }
   
-  public String getOpponentIdentifier(){
-    return this._opponentToken;
+  public static String getOpponentIdentifier(){
+    return OPPONENT_TOKEN;
   }
   
-  public String getTileIdentifier(){
-    return this._tileToken;
+  public static String getTileIdentifier(){
+    return TILE_TOKEN;
   }
 }
