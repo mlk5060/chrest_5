@@ -632,14 +632,21 @@ public class Node extends Observable {
   }
   
   /**
-   * @return The number of productions from this {@link #this} and all children
-   * until the base of LTM is reached. 
+   * @param recurse Set to {@link java.lang.Boolean#TRUE} to apply function 
+   * recursively, returning the number of productions in this {@link #this}
+   * and its children, its children's children etc.  Set to {@link 
+   * java.lang.Boolean#FALSE} to just return the number of productions in this
+   * {@link #this} only.
+   * 
+   * @return See parameter documentation.
    */
-  protected int getProductionCount(){
+  protected int getProductionCount(boolean recurse){
     int count = this._productions.size();
     
-    for(Link child : this._children){
-      count += child.getChildNode().getProductionCount();
+    if(recurse){
+      for(Link child : this._children){
+        count += child.getChildNode().getProductionCount(true);
+      }
     }
     
     return count;

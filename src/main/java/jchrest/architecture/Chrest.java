@@ -1018,7 +1018,7 @@ public class Chrest extends Observable {
   /** 
    * Return a count of the number of nodes in visual long-term memory.
    */
-  public int ltmVisualSize () {
+  public int getVisualLtmSize () {
     return _visualLtm.size ();
   }
 
@@ -1039,7 +1039,7 @@ public class Chrest extends Observable {
   /**
    * Return a count of the number of nodes in verbal long-term memory.
    */
-  public int ltmVerbalSize () {
+  public int getVerbalLtmSize () {
     return _verbalLtm.size ();
   }
 
@@ -1053,7 +1053,7 @@ public class Chrest extends Observable {
   /**
    * Return a count of the number of nodes in action long-term memory.
    */
-  public int ltmActionSize () {
+  public int getActionLtmSize () {
     return _actionLtm.size ();
   }
 
@@ -1101,7 +1101,7 @@ public class Chrest extends Observable {
    */
   public boolean isExperienced () {
     if (!_experienced) {
-      if (ltmVisualSize()+ltmVerbalSize()+ltmActionSize() > 2000)
+      if (getVisualLtmSize()+getVerbalLtmSize()+getActionLtmSize() > 2000)
         _experienced = true;
     }
     return _experienced;
@@ -1222,7 +1222,7 @@ public class Chrest extends Observable {
    * @return The total number of productions in LTM.
    */
   public int getProductionCount(){
-    return this._visualLtm.getProductionCount();
+    return this._visualLtm.getProductionCount(true);
   }
 
   /**

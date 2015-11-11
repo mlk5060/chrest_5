@@ -1794,7 +1794,8 @@ process_test "scan_scene (creator in scene)" do
   )
 end
 
-# Tests for correct operation of the Chrest.getProductionsCount() method by:
+# Tests for correct operation of Chrest.getProductionsCount() and 
+# Node.getProductionCount() by:
 # 
 # 1. Creating a LTM network where the number of visual LTM nodes and the depth 
 #    of visual LTM is > 1.
@@ -1805,6 +1806,18 @@ end
 #    the result.
 # 5. Comparing the result of 4 with the output of invoking the 
 #    "getProductionsCount" function.
+#
+# This ensures that:
+#
+# a) The Chrest.getProductionsCount() works correctly since the total number of
+#    productions in LTM is checked.
+# b) To produce the correct value for a) the recursive variant of the 
+#    Node.getProductionCount() method must work since getting the value for a) 
+#    is dependent upon the recursive aspects of the method operating correctly.
+# c) To produce the correct value for a) the non-recursive variant of the 
+#    Node.getProductionCount() method must work since getting the value for a) 
+#    is dependent upon the non-recursive aspects of the method operating 
+#    correctly.
 unit_test "getProductionsCount" do
   
   #############

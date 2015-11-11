@@ -676,11 +676,11 @@ public class Shell extends JFrame implements Observer {
         "<html><p>" + 
         "Total nodes in LTM: " + _model.getTotalLtmNodes () +
         "<hr>" + 
-        "Visual nodes: " + _model.ltmVisualSize () + 
+        "Visual nodes: " + _model.getVisualLtmSize () + 
         " Average depth: " + twoPlaces.format (_model.getVisualLtmAverageDepth ()) +
-        "<br>Verbal nodes: " + _model.ltmVerbalSize () + 
+        "<br>Verbal nodes: " + _model.getVerbalLtmSize () + 
         " Average depth: " + twoPlaces.format (_model.getVerbalLtmAverageDepth ()) +
-        "<br>Action nodes: " + _model.ltmActionSize () + 
+        "<br>Action nodes: " + _model.getActionLtmSize () + 
         " Average depth: " + twoPlaces.format (_model.getActionLtmAverageDepth ()) +
         "<br>Number of templates: " + _model.countTemplates () +
         "</p></html>"
