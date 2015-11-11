@@ -5,8 +5,6 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 import jchrest.architecture.Chrest;
 
 /**
@@ -125,9 +123,9 @@ public class TileworldDomain extends DomainSpecifics{
     
     String objectOnSquare = scene.getSquareContents(col, row).getObjectClass();
     if(
-      objectOnSquare.equals(this.TILE_TOKEN) ||
+      objectOnSquare.equals(TILE_TOKEN) ||
       objectOnSquare.equals(Scene.getCreatorToken()) ||
-      objectOnSquare.equals(this.OPPONENT_TOKEN)
+      objectOnSquare.equals(OPPONENT_TOKEN)
     ){
       movementFixations.add(new Square(col, row + 1));//North
       movementFixations.add(new Square(col + 1, row));//East
