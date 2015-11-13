@@ -40,7 +40,7 @@ public class ChrestLtmView extends JPanel {
     setLayout (new BorderLayout ());
 
     // -- the treeview pane
-    if (!this._model.canUpdateNodeHistoryOrDrawLtmState()) {
+    if (!this._model.canDrawLtmState()) {
       _ltmView = null;
       add (new JLabel ("Sorry - LTM too large to display"));
     } else {
@@ -75,7 +75,7 @@ public class ChrestLtmView extends JPanel {
       this._stateAtTimeValue = stateAtTimeValue;
       this._experimentToVisualise = experimentName;
       
-      if (!this._model.canUpdateNodeHistoryOrDrawLtmState()) {
+      if (!this._model.canDrawLtmState()) {
         // TODO : change display if number of nodes is too large
         //        this.add (new JLabel ("Sorry - LTM too large to display"));
       } else {

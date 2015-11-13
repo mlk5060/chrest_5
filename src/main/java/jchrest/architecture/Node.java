@@ -27,6 +27,9 @@ import jchrest.lib.ReinforcementLearning;
 /**
  * Represents a node within the model's long-term memory discrimination network.
  * Methods support learning and also display.
+ * 
+ * Nodes maintain a history of themselves to support CHREST's operation in 
+ * simulations where an external clock to CHREST is used.
  *
  * @author Peter C. R. Lane
  */
@@ -40,7 +43,8 @@ public class Node extends Observable {
   
   //The variables listed in this section stay consistent throughout the Node's
   //life-cycle.
-  private final ListPattern _contents; //The test-link trail that leads to this Node in LTM.
+  private final ListPattern _contents; //The test-link trail that leads to this 
+                                       //Node in LTM.
   private final int _creationTime;
   private final Chrest _model;
   private final int _reference;
@@ -126,7 +130,6 @@ public class Node extends Observable {
    * Constructor to construct a new root node for the model.  
    */
   public Node (Chrest model, int reference, ListPattern type, int domainTime) {
-    //Root nodes are always present so have no experiment name
     this (model, reference, type, type, domainTime);
   }
  
@@ -142,7 +145,7 @@ public class Node extends Observable {
    * Constructor to build a new Chrest node with given reference, contents and image.
    * Package access only, as should only be used by Chrest.java.
    */
-  Node (Chrest model, int reference, ListPattern contents, ListPattern image, int time) {
+  Node (Chrest model, int reference, ListPattern contents, ListPattern image, int creationTime) {
     _model = model;
     _reference = reference;
     _contents = contents.clone ();
@@ -152,19 +155,19 @@ public class Node extends Observable {
     _associatedNode = null;
     _namedBy = null;
     _productions = new HashMap<>();
-    _creationTime = time;
+    _creationTime = creationTime;
     
     
     //Set-up history variables except for STM history since this should only be
     //modified when the Node is input/output of STM and this happens 
     //independently of Node creation.
-    this.updateProductionHistory(time);
-    this.updateAssociatedNodeHistory(time);
-    this.updateChildHistory(time);
-    this.updateImageHistory(time);
-    this.updateItemSlotHistory(time);
-    this.updatePositionSlotHistory(time);
-    this.updateSemanticLinkHistory(time);
+    this.updateProductionHistory(creationTime);
+    this.updateAssociatedNodeHistory(creationTime);
+    this.updateChildHistory(creationTime);
+    this.updateImageHistory(creationTime);
+    this.updateItemSlotHistory(creationTime);
+    this.updatePositionSlotHistory(creationTime);
+    this.updateSemanticLinkHistory(creationTime);
   }
   
   /**
@@ -276,17 +279,15 @@ public class Node extends Observable {
    * @param time 
    */
   private void updateProductionHistory(int time){
-    if(this._model.canUpdateNodeHistoryOrDrawLtmState()){
-      if(this._productions.isEmpty()){
-        this._productionHistory.put(time, null);
+    if(this._productions.isEmpty()){
+      this._productionHistory.put(time, null);
+    }
+    else{
+      HashMap<Integer, Double> newActionLinkHistoryEntry = new HashMap<>();
+      for(Entry<Node, Double> actionLink : this.getProductions().entrySet()){
+        newActionLinkHistoryEntry.put(actionLink.getKey().getReference(), actionLink.getValue());
       }
-      else{
-        HashMap<Integer, Double> newActionLinkHistoryEntry = new HashMap<>();
-        for(Entry<Node, Double> actionLink : this.getProductions().entrySet()){
-          newActionLinkHistoryEntry.put(actionLink.getKey().getReference(), actionLink.getValue());
-        }
-        this._productionHistory.put(time, newActionLinkHistoryEntry);
-      }
+      this._productionHistory.put(time, newActionLinkHistoryEntry);
     }
   }
   
@@ -295,13 +296,11 @@ public class Node extends Observable {
    * @param time 
    */
   private void updateAssociatedNodeHistory(int time){
-    if(this._model.canUpdateNodeHistoryOrDrawLtmState()){
-      if(this._associatedNode == null){
-        this._associatedNodeHistory.put(time, null);
-      }
-      else{
-        this._associatedNodeHistory.put(time, this._associatedNode.getReference());
-      }
+    if(this._associatedNode == null){
+      this._associatedNodeHistory.put(time, null);
+    }
+    else{
+      this._associatedNodeHistory.put(time, this._associatedNode.getReference());
     }
   }
   
@@ -310,27 +309,25 @@ public class Node extends Observable {
    * @param time 
    */
   private void updateChildHistory(int time){
-    if(this._model.canUpdateNodeHistoryOrDrawLtmState()){
-      if(this._children.isEmpty()){
-        this._childrenHistory.put(time, null);
+    if(this._children.isEmpty()){
+      this._childrenHistory.put(time, null);
+    }
+    else{
+      List<List<Object>> copiedChildrenDetails = new ArrayList<>();
+      Iterator<Link> childrenIterator = this._children.iterator();
+
+      while(childrenIterator.hasNext()){
+        Link childToProcess = childrenIterator.next();
+        ArrayList<Object> copiedChildDetails = new ArrayList<>();
+        copiedChildDetails.add(childToProcess.getTest().clone());
+        copiedChildDetails.add(childToProcess.getChildNode().getReference());
+        copiedChildDetails.add(childToProcess.getCreationTime());
+        copiedChildDetails.add(childToProcess.getExperimentCreatedIn());
+
+        copiedChildrenDetails.add(copiedChildDetails);
       }
-      else{
-        List<List<Object>> copiedChildrenDetails = new ArrayList<>();
-        Iterator<Link> childrenIterator = this._children.iterator();
 
-        while(childrenIterator.hasNext()){
-          Link childToProcess = childrenIterator.next();
-          ArrayList<Object> copiedChildDetails = new ArrayList<>();
-          copiedChildDetails.add(childToProcess.getTest().clone());
-          copiedChildDetails.add(childToProcess.getChildNode().getReference());
-          copiedChildDetails.add(childToProcess.getCreationTime());
-          copiedChildDetails.add(childToProcess.getExperimentCreatedIn());
-
-          copiedChildrenDetails.add(copiedChildDetails);
-        }
-
-        this._childrenHistory.put(time, copiedChildrenDetails);
-      }
+      this._childrenHistory.put(time, copiedChildrenDetails);
     }
   }
   
@@ -339,13 +336,11 @@ public class Node extends Observable {
    * @param time 
    */
   private void updateImageHistory(int time){
-    if(this._model.canUpdateNodeHistoryOrDrawLtmState()){
-      if(this._image.isEmpty()){
-        this._imageHistory.put(time, null);
-      }
-      else{
-        this._imageHistory.put(time, this._image.clone());
-      }
+    if(this._image.isEmpty()){
+      this._imageHistory.put(time, null);
+    }
+    else{
+      this._imageHistory.put(time, this._image.clone());
     }
   }
   
@@ -354,24 +349,22 @@ public class Node extends Observable {
    * @param time 
    */
   private void updateItemSlotHistory(int time){
-    if(this._model.canUpdateNodeHistoryOrDrawLtmState()){
-      if(this._itemSlots == null){
-        this._itemSlotsHistory.put(time, null);
-      }
-      else if(this._itemSlots.isEmpty()){
-        this._itemSlotsHistory.put(time, null);
-      }
-      else{
-        Iterator<ItemSquarePattern> itemSlotIterator = this._itemSlots.iterator();
-        List<ItemSquarePattern> itemSlotsCopy = new ArrayList<>();
+    if(this._itemSlots == null){
+      this._itemSlotsHistory.put(time, null);
+    }
+    else if(this._itemSlots.isEmpty()){
+      this._itemSlotsHistory.put(time, null);
+    }
+    else{
+      Iterator<ItemSquarePattern> itemSlotIterator = this._itemSlots.iterator();
+      List<ItemSquarePattern> itemSlotsCopy = new ArrayList<>();
 
-        while(itemSlotIterator.hasNext()){
-          ItemSquarePattern itemSlotContents = itemSlotIterator.next();
-          itemSlotsCopy.add(new ItemSquarePattern(itemSlotContents.getItem(), itemSlotContents.getColumn(), itemSlotContents.getRow()));
-        }
-
-        this._itemSlotsHistory.put(time, itemSlotsCopy);
+      while(itemSlotIterator.hasNext()){
+        ItemSquarePattern itemSlotContents = itemSlotIterator.next();
+        itemSlotsCopy.add(new ItemSquarePattern(itemSlotContents.getItem(), itemSlotContents.getColumn(), itemSlotContents.getRow()));
       }
+
+      this._itemSlotsHistory.put(time, itemSlotsCopy);
     }
   }
   
@@ -381,13 +374,11 @@ public class Node extends Observable {
    * @param time 
    */
   private void updateNamedByHistory(int time){
-    if(this._model.canUpdateNodeHistoryOrDrawLtmState()){
-      if(this._namedBy == null){
-        this._namedByHistory.put(time, null);
-      }
-      else{
-        this._namedByHistory.put(time, this._namedBy._reference);
-      }
+    if(this._namedBy == null){
+      this._namedByHistory.put(time, null);
+    }
+    else{
+      this._namedByHistory.put(time, this._namedBy._reference);
     }
   }
   
@@ -396,24 +387,22 @@ public class Node extends Observable {
    * @param time 
    */
   private void updatePositionSlotHistory(int time){
-    if(this._model.canUpdateNodeHistoryOrDrawLtmState()){
-      if(this._positionSlots == null){
-        this._positionSlotsHistory.put(time, null);
-      }
-      else if(this._positionSlots.isEmpty()){
-        this._positionSlotsHistory.put(time, null);
-      }
-      else{
-        Iterator<ItemSquarePattern> positionSlotIterator = this._positionSlots.iterator();
-        List<ItemSquarePattern> positionSlotsCopy = new ArrayList<>();
+    if(this._positionSlots == null){
+      this._positionSlotsHistory.put(time, null);
+    }
+    else if(this._positionSlots.isEmpty()){
+      this._positionSlotsHistory.put(time, null);
+    }
+    else{
+      Iterator<ItemSquarePattern> positionSlotIterator = this._positionSlots.iterator();
+      List<ItemSquarePattern> positionSlotsCopy = new ArrayList<>();
 
-        while(positionSlotIterator.hasNext()){
-            ItemSquarePattern positionSlotContents = positionSlotIterator.next();
-            positionSlotsCopy.add(new ItemSquarePattern(positionSlotContents.getItem(), positionSlotContents.getColumn(), positionSlotContents.getRow()));
-          }
+      while(positionSlotIterator.hasNext()){
+          ItemSquarePattern positionSlotContents = positionSlotIterator.next();
+          positionSlotsCopy.add(new ItemSquarePattern(positionSlotContents.getItem(), positionSlotContents.getColumn(), positionSlotContents.getRow()));
+        }
 
-        this._positionSlotsHistory.put(time, positionSlotsCopy);
-      }
+      this._positionSlotsHistory.put(time, positionSlotsCopy);
     }
   }
   
@@ -422,20 +411,18 @@ public class Node extends Observable {
    * @param time 
    */
   private void updateSemanticLinkHistory(int time){
-    if(this._model.canUpdateNodeHistoryOrDrawLtmState()){
-      if(this._semanticLinks.isEmpty()){
-        this._semanticLinksHistory.put(time, null);
-      }
-      else{
-        Iterator<Node> semanticLinksIterator = this._semanticLinks.iterator();
-        List<Integer> semanticLinkCopy = new ArrayList<>();
+    if(this._semanticLinks.isEmpty()){
+      this._semanticLinksHistory.put(time, null);
+    }
+    else{
+      Iterator<Node> semanticLinksIterator = this._semanticLinks.iterator();
+      List<Integer> semanticLinkCopy = new ArrayList<>();
 
-        while(semanticLinksIterator.hasNext()){
-          semanticLinkCopy.add(semanticLinksIterator.next()._reference);
-        }
-
-        this._semanticLinksHistory.put(time, semanticLinkCopy);
+      while(semanticLinksIterator.hasNext()){
+        semanticLinkCopy.add(semanticLinksIterator.next()._reference);
       }
+
+      this._semanticLinksHistory.put(time, semanticLinkCopy);
     }
   }
 
@@ -1095,7 +1082,7 @@ public class Node extends Observable {
     
     historyRowToInsert.put(Chrest._executionHistoryTableDescriptionColumnName, "Using input to create new test & child from node " + this.getReference() + ".");
     this._model.addEpisodeToExecutionHistory(historyRowToInsert);
-
+    
     Node child = new Node (
       _model, 
       ( (_reference == 0) ? pattern : _model.getDomainSpecifics().normalise (_contents.append(pattern))), // don't append to 'Root'

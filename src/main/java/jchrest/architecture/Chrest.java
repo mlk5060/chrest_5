@@ -139,7 +139,8 @@ public class Chrest extends Observable {
   //Long-term-memory (LTM) holds information within the model permanently and
   //can be cloned.
   private int _totalNodes;
-  private final int _drawingAndHistoryThreshold = 5000; //How many nodes in LTM is too many for Node history updates and LTM drawing to occur.
+  private final int _drawingThreshold = 5000; //How many nodes in LTM is too 
+                                              //many for LTM drawing to occur.
   private Node _visualLtm;
   private Node _verbalLtm;
   private Node _actionLtm;
@@ -670,8 +671,8 @@ public class Chrest extends Observable {
    * 
    * @return 
    */
-  public boolean canUpdateNodeHistoryOrDrawLtmState(){
-    return this.getTotalLtmNodes() < this._drawingAndHistoryThreshold;
+  public boolean canDrawLtmState(){
+    return this.getTotalLtmNodes() < this._drawingThreshold;
   }
   
   /**
