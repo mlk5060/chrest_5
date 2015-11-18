@@ -109,6 +109,7 @@ unit_test "constructor (non-blind scenes to encode)" do
       squares_to_be_ignored = data[4]
       number_unrecognised_objects = data[5]
       number_empty_squares = data[6]
+      squares_to_fixate_on = data[7]
       
       # Create a new CHREST instance and set its domain (important to enable 
       # correct or expected perceptual mechanisms).
@@ -158,15 +159,20 @@ unit_test "constructor (non-blind scenes to encode)" do
       # STM after constructing the visual-spatial field are what is expected by 
       # the current scenario.
       visual_stm_contents_as_expected = false
+      fixations_as_expected = false
       creation_time = domain_time
       expected_stm_contents = ""
       for list_pattern in list_patterns_to_learn
         expected_stm_contents += list_pattern.toString()
       end
 
-      until visual_stm_contents_as_expected do
+      while !visual_stm_contents_as_expected or !fixations_as_expected do
         
-       # Set creation time to the current domain time (this is important in 
+        #Reset loop control variables.
+        visual_stm_contents_as_expected = false
+        fixations_as_expected = false
+        
+        # Set creation time to the current domain time (this is important in 
         # calculating a lot of test variables below).
         creation_time = domain_time
 
@@ -205,6 +211,9 @@ unit_test "constructor (non-blind scenes to encode)" do
         # Check if STM contents are as expected, if they are, set the flag that
         # controls when the model is ready for testing to true.
         expected_stm_contents == stm_contents ? visual_stm_contents_as_expected = true : nil
+        
+        # Check if the fixations expected to have been made have been made
+        fixations_as_expected = expected_fixations_made?(model, squares_to_fixate_on)
 
         # Advance domain time to the time that the visual-spatial field will be 
         # completely instantiated so that the model's attention will be free 
@@ -304,30 +313,57 @@ end
 #    identifier, irrespective of whether they have the same class.
 #
 unit_test "duplicate items" do
-  error_thrown = false
   
   ######################
   ##### SUB-TEST 1 #####
   ######################
   
+  model = Chrest.new
+  model.setDomain(GenericDomain.new(model))
+  model.getPerceiver().setFieldOfView(1)
+  
   scene = Scene.new("Blind and empty", 5, 5, nil)
   scene.addItemToSquare(0, 0, Scene.getEmptySquareToken(), Scene.getEmptySquareToken())
   scene.addItemToSquare(0, 1, Scene.getEmptySquareToken(), Scene.getEmptySquareToken())
-  begin
-    VisualSpatialField.new( 
-      Chrest.new,
-      scene, 
-      0,
-      0,
-      0, 
-      0, 
-      0,
-      0,
-      2,
-      0,
-      false,
-      false
-    )
+  
+  # The CHREST model needs to fixate on both the squares with the objects on
+  # so this data structure facilitates checking that this is the case when the
+  # visual-spatial field is constructed.  If the required squares are not 
+  # fixated on, the visual-spatial field is constructed again until they are.
+  squares_to_fixate_on = [
+    [0, 0],
+    [0, 1]
+  ]
+  
+  # Used to stipulate if the fixations that should be made have been made in 
+  # order for the test to proceed.
+  fixations_as_expected = false
+  
+  # Used to determine if an error is thrown correctly when both squares 
+  # containing the objects of interest to this test are fixated on.
+  error_thrown = false
+  
+  begin #Required since an error will be thrown (like a try-catch block in Java)
+    
+    until fixations_as_expected
+      VisualSpatialField.new( 
+        model,
+        scene, 
+        0,
+        0,
+        0, 
+        0, 
+        0,
+        0,
+        20,
+        0,
+        false,
+        false
+      )
+    
+      fixations_as_expected = expected_fixations_made?(model, squares_to_fixate_on)
+    end
+    
   rescue
     error_thrown = true
   end
@@ -343,21 +379,43 @@ unit_test "duplicate items" do
   scene.addItemToSquare(0, 2, "0", "A")
   scene.addItemToSquare(0, 3, "1", "A")
   
-  begin
-    VisualSpatialField.new( 
-      Chrest.new,
-      scene, 
-      0,
-      0,
-      0, 
-      0, 
-      0,
-      0,
-      2,
-      0,
-      false,
-      false
-    )
+  # Create a new CHREST model
+  model = Chrest.new
+  model.setDomain(GenericDomain.new(model))
+  model.getPerceiver().setFieldOfView(2)
+  
+  # Modify "squares_to_fixate_on" data structure and reset the 
+  # "fixations_as_expected" variable
+  squares_to_fixate_on = [
+    [0, 2],
+    [0, 3]
+  ]
+  
+  # Reset the "fixations_as_expected" variable.
+  fixations_as_expected = false
+  
+  # Reset the "error_thrown" variable.
+  error_thrown = false
+  
+  begin #Required since an error will be thrown (like a try-catch block in Java)
+    until fixations_as_expected
+      VisualSpatialField.new( 
+        model,
+        scene, 
+        0,
+        0,
+        0, 
+        0, 
+        0,
+        0,
+        20,
+        0,
+        false,
+        false
+      )
+    
+      fixations_as_expected = expected_fixations_made?(model, squares_to_fixate_on)
+    end
   rescue
     error_thrown = true
   end
@@ -373,21 +431,41 @@ unit_test "duplicate items" do
   scene.addItemToSquare(0, 2, "0", "A")
   scene.addItemToSquare(0, 3, "0", "B")
   
-  begin
-    VisualSpatialField.new( 
-      Chrest.new,
-      scene, 
-      0,
-      0,
-      0, 
-      0, 
-      0,
-      0,
-      2,
-      0,
-      false,
-      false
-    )
+  # Reset the CHREST model
+  model = Chrest.new
+  model.setDomain(GenericDomain.new(model))
+  model.getPerceiver().setFieldOfView(2)
+  
+  # Modify "squares_to_fixate_on" data structure and reset the 
+  # "fixations_as_expected" variable
+  squares_to_fixate_on = [
+    [0, 2],
+    [0, 3]
+  ]
+  fixations_as_expected = false
+  
+  # Reset the "error_thrown" variable.
+  error_thrown = false
+  
+  begin #Required since an error will be thrown (like a try-catch block in Java)
+    until fixations_as_expected
+      VisualSpatialField.new( 
+        model,
+        scene, 
+        0,
+        0,
+        0, 
+        0, 
+        0,
+        0,
+        20,
+        0,
+        false,
+        false
+      )
+    
+      fixations_as_expected = expected_fixations_made?(model, squares_to_fixate_on)
+    end
   rescue
     error_thrown = true
   end
@@ -493,11 +571,24 @@ unit_test "get_as_scene" do
   time_to_move_object = 250
   recognised_object_lifespan = 60000
   unrecognised_object_lifespan = 30000
+  
+  creation_time = domain_time
 
   visual_stm_contents_as_expected = false
-  creation_time = domain_time
   expected_stm_contents = recognised_chunk
-  until visual_stm_contents_as_expected do
+  
+  expected_fixations_made = false
+  fixations_expected = [
+    [2, 0],
+    [1, 1], 
+    [2, 2],
+    [1, 3],
+  ]
+  
+  until visual_stm_contents_as_expected and expected_fixations_made do
+    
+    visual_stm_contents_as_expected = false
+    expected_fixations_made = false
 
     # Set creation time to the current domain time (this is important in 
     # calculating a lot of test variables below).
@@ -538,6 +629,8 @@ unit_test "get_as_scene" do
     # Check if STM contents are as expected, if they are, set the flag that
     # controls when the model is ready for testing to true.
     expected_stm_contents == stm_contents ? visual_stm_contents_as_expected = true : nil
+    
+    expected_fixations_made = expected_fixations_made?(model, fixations_expected)
 
     # Advance domain time to the time that the visual-spatial field will be 
     # completely instantiated so that the model's attention will be free 
@@ -794,11 +887,23 @@ unit_test "move_object (recognised real object)" do
     recognised_object_lifespan = 60000
     unrecognised_object_lifespan = 30000
 
-    visual_stm_contents_as_expected = false
     creation_time = domain_time
+    
+    visual_stm_contents_as_expected = false
     expected_stm_contents = recognised_chunk
+    
+    expected_fixations_made = false
+    fixations_expected = [
+      [2, 0],
+      [1, 1], 
+      [2, 2],
+      [1, 3],
+    ]
 
-    until visual_stm_contents_as_expected do
+    until visual_stm_contents_as_expected and expected_fixations_made do
+      
+      visual_stm_contents_as_expected = false
+      expected_fixations_made = false
 
       creation_time = domain_time
 
@@ -837,6 +942,8 @@ unit_test "move_object (recognised real object)" do
       # Check if STM contents are as expected, if they are, set the flag that
       # controls when the model is ready for testing to true.
       expected_stm_contents == stm_contents ? visual_stm_contents_as_expected = true : nil
+      
+      expected_fixations_made = expected_fixations_made?(model, fixations_expected)
 
       # Advance domain time to the time that the visual-spatial field will be 
       # completely instantiated so that the model's attention will be free 
@@ -1843,31 +1950,43 @@ unit_test "move_object (unrecognised real object)" do
     ##########################################
     ##### CONSTRUCT VISUAL-SPATIAL FIELD #####
     ##########################################
+    
+    expected_fixations_made = false
+    fixations_expected = [
+      [2, 0],
+      [1, 1], 
+      [2, 2],
+      [1, 3],
+    ]
+    
+    until expected_fixations_made
+      # Set visual-spatial field variables.
+      creation_time = 0
+      number_fixations = 20
+      time_to_encode_objects = 50
+      time_to_encode_empty_squares = 10
+      visual_spatial_field_access_time = 100
+      time_to_move_object = 250
+      recognised_object_lifespan = 60000
+      unrecognised_object_lifespan = 30000
 
-    # Set visual-spatial field variables.
-    creation_time = 0
-    number_fixations = 20
-    time_to_encode_objects = 50
-    time_to_encode_empty_squares = 10
-    visual_spatial_field_access_time = 100
-    time_to_move_object = 250
-    recognised_object_lifespan = 60000
-    unrecognised_object_lifespan = 30000
-
-    visual_spatial_field = VisualSpatialField.new(
-      model,
-      scene, 
-      time_to_encode_objects,
-      time_to_encode_empty_squares,
-      visual_spatial_field_access_time, 
-      time_to_move_object, 
-      recognised_object_lifespan,
-      unrecognised_object_lifespan,
-      number_fixations,
-      creation_time,
-      true,
-      false
-    )
+      visual_spatial_field = VisualSpatialField.new(
+        model,
+        scene, 
+        time_to_encode_objects,
+        time_to_encode_empty_squares,
+        visual_spatial_field_access_time, 
+        time_to_move_object, 
+        recognised_object_lifespan,
+        unrecognised_object_lifespan,
+        number_fixations,
+        creation_time,
+        true,
+        false
+      )
+      
+      expected_fixations_made = expected_fixations_made?(model, fixations_expected)
+    end
 
     ####################################################################
     ##### SET-UP EXPECTED VISUAL-SPATIAL FIELD COORDINATE CONTENTS #####
@@ -2851,11 +2970,23 @@ unit_test "move_object (ghost object)" do
     recognised_object_lifespan = 60000
     unrecognised_object_lifespan = 30000
 
-    visual_stm_contents_as_expected = false
     creation_time = domain_time
+    
+    visual_stm_contents_as_expected = false
     expected_stm_contents = recognised_chunk
+    
+    expected_fixations_made = false
+    fixations_expected = [
+      [2, 0],
+      [1, 1], 
+      [2, 2],
+      [1, 3],
+    ]
 
-    until visual_stm_contents_as_expected do
+    until visual_stm_contents_as_expected and expected_fixations_made do
+      
+      visual_stm_contents_as_expected = false
+      expected_fixations_made = false
 
       creation_time = domain_time
 
@@ -2894,6 +3025,8 @@ unit_test "move_object (ghost object)" do
       # Check if STM contents are as expected, if they are, set the flag that
       # controls when the model is ready for testing to true.
       expected_stm_contents == stm_contents ? visual_stm_contents_as_expected = true : nil
+      
+      expected_fixations_made = expected_fixations_made?(model, fixations_expected)
 
       # Advance domain time to the time that the visual-spatial field will be 
       # completely instantiated so that the model's attention will be free 
@@ -3921,22 +4054,33 @@ unit_test "move_object (creator)" do
     time_to_move_object = 250
     recognised_object_lifespan = 60000
     unrecognised_object_lifespan = 30000
+    
+    expected_fixations_made = false
+    fixations_expected = [
+      [2, 0],
+      [2, 2],
+      [1, 3]
+    ]
 
-    # Construct the visual-spatial field.
-    visual_spatial_field = VisualSpatialField.new(
-      model,
-      scene, 
-      time_to_encode_objects,
-      time_to_encode_empty_squares,
-      visual_spatial_field_access_time, 
-      time_to_move_object, 
-      recognised_object_lifespan,
-      unrecognised_object_lifespan,
-      number_fixations,
-      creation_time,
-      true,
-      false
-    )
+    until expected_fixations_made do
+
+      visual_spatial_field = VisualSpatialField.new(
+        model,
+        scene, 
+        time_to_encode_objects,
+        time_to_encode_empty_squares,
+        visual_spatial_field_access_time, 
+        time_to_move_object, 
+        recognised_object_lifespan,
+        unrecognised_object_lifespan,
+        number_fixations,
+        creation_time,
+        true,
+        false
+      )
+      
+      expected_fixations_made = expected_fixations_made?(model, fixations_expected)
+    end
 
     ####################################################################
     ##### SET-UP EXPECTED VISUAL-SPATIAL FIELD COORDINATE CONTENTS #####
@@ -4696,7 +4840,7 @@ unit_test "move_objects_illegally" do
   
   # Set independent variables.
   creation_time = 0
-  number_fixations = 2
+  number_fixations = 5
   time_to_encode_objects = 50
   time_to_encode_empty_squares = 0
   visual_spatial_field_access_time = 100
@@ -4705,20 +4849,32 @@ unit_test "move_objects_illegally" do
   lifespan_for_unrecognised_objects = 30000
   
   # Create the visual-spatial field
-  visual_spatial_field = VisualSpatialField.new(
-    model,
-    scene, 
-    time_to_encode_objects,
-    time_to_encode_empty_squares,
-    visual_spatial_field_access_time, 
-    time_to_move_object, 
-    lifespan_for_recognised_objects,
-    lifespan_for_unrecognised_objects,
-    number_fixations,
-    creation_time,
-    false,
-    false
-  )
+  expected_fixations_made = false
+  fixations_expected = [
+    [1, 0],
+    [0, 1],
+    [1, 1]
+  ]
+
+  until expected_fixations_made do
+  
+    visual_spatial_field = VisualSpatialField.new(
+      model,
+      scene, 
+      time_to_encode_objects,
+      time_to_encode_empty_squares,
+      visual_spatial_field_access_time, 
+      time_to_move_object, 
+      lifespan_for_recognised_objects,
+      lifespan_for_unrecognised_objects,
+      number_fixations,
+      creation_time,
+      false,
+      false
+    )
+    
+    expected_fixations_made = expected_fixations_made?(model, fixations_expected)
+  end
   
   expected_visual_spatial_field_object_properties = Array.new
   for col in 0...visual_spatial_field.getSceneEncoded().getWidth()
@@ -4935,20 +5091,34 @@ unit_test "get" do
   unrecognised_object_lifespan = 30000
   visual_spatial_field_creation_time = 0
   
-  visual_spatial_field = VisualSpatialField.new(
-    model, 
-    scene,
-    object_encoding_time,
-    empty_square_encoding_time, 
-    access_time, 
-    object_movement_time, 
-    recognised_object_lifespan, 
-    unrecognised_object_lifespan, 
-    2, 
-    visual_spatial_field_creation_time, 
-    false,
-    false
-  )
+  expected_fixations_made = false
+  fixations_expected = [
+    [2, 0],
+    [2, 1],
+    [1, 2],
+    [3, 2],
+    [4, 2],
+    [2, 3]
+  ]
+  
+  until expected_fixations_made
+    visual_spatial_field = VisualSpatialField.new(
+      model, 
+      scene,
+      object_encoding_time,
+      empty_square_encoding_time, 
+      access_time, 
+      object_movement_time, 
+      recognised_object_lifespan, 
+      unrecognised_object_lifespan, 
+      20, 
+      visual_spatial_field_creation_time, 
+      false,
+      false
+    )
+    
+    expected_fixations_made = expected_fixations_made?(model, fixations_expected)
+  end
   
   ##############################
   ##### INITIAL STATE TEST #####
@@ -5194,21 +5364,33 @@ unit_test "get_square_contents" do
   
   model = Chrest.new
   model.setDomain(GenericDomain.new(model))
+  model.getPerceiver().setFieldOfView(2)
   
-  visual_spatial_field = VisualSpatialField.new(
-    model,
-    scene, 
-    10, 
-    5, 
-    20, 
-    10, 
-    60000, 
-    30000, 
-    2, 
-    0,
-    false,
-    false
-  )
+  expected_fixations_made = false
+  fixations_expected = [
+    [0, 0],
+    [1, 0],
+    [2, 0]
+  ]  
+  
+  until expected_fixations_made
+    visual_spatial_field = VisualSpatialField.new(
+      model,
+      scene, 
+      10, 
+      5, 
+      20, 
+      10, 
+      60000, 
+      30000, 
+      20, 
+      0,
+      false,
+      false
+    )
+    
+    expected_fixations_made = expected_fixations_made?(model, fixations_expected)
+  end
   
   ######################
   ##### SUB-TEST 1 #####
@@ -5534,6 +5716,8 @@ def get_visual_spatial_field_construction_scenario_data(
   #    values for unrecognised objects on visual-spatial squares.
   # 6) The number of unrecognised objects present in reality.
   # 7) The number of empty squares present in reality.
+  # 8) The coordinates (col, row) of squares containing unrecognised objects 
+  #    that should be fixated on.
   scenario_data = Array.new
   
   max_scenario = 24
@@ -5636,6 +5820,7 @@ def get_visual_spatial_field_construction_scenario_data(
     squares_to_be_ignored = Array.new
     number_unrecognised_objects = 0
     number_empty_squares = 0
+    squares_to_fixate_on = Array.new
     
     ############################################################################
     if scenario == 1
@@ -5736,6 +5921,10 @@ def get_visual_spatial_field_construction_scenario_data(
       number_recognised_chunks = 1
       number_unrecognised_objects = 2
       number_empty_squares = encode_scene_creator ? 8 : 9
+      squares_to_fixate_on = [
+        [3, 3],
+        [2, 3]
+      ]
              
     ############################################################################
     elsif scenario == 2
@@ -5835,6 +6024,10 @@ def get_visual_spatial_field_construction_scenario_data(
       number_recognised_chunks = 1
       number_unrecognised_objects = 2
       number_empty_squares = encode_scene_creator ? 8 : 9
+      squares_to_fixate_on = [
+        [3, 3],
+        [4, 2]
+      ]
  
     ############################################################################
     elsif scenario == 3
@@ -5860,7 +6053,7 @@ def get_visual_spatial_field_construction_scenario_data(
       # List Patterns to Learn
       # ======================
       # 
-      # <[A, 1, 2][B, 1, 3]><[D, 2, 2][A, 1, 2]>
+      # <[A, 1, 2][B, 1, 3]><[D, 2, 3][A, 1, 2]>
       # 
       # ==============================================================
       # Expected VisualSpatialFieldObjects and Properties for Recognised Objects
@@ -5963,6 +6156,10 @@ def get_visual_spatial_field_construction_scenario_data(
       number_recognised_chunks = 2
       number_unrecognised_objects = 2
       number_empty_squares = encode_scene_creator ? 7 : 8
+      squares_to_fixate_on = [
+        [2, 4],
+        [3, 3]
+      ]
       
     ############################################################################
     elsif scenario == 4
@@ -6103,6 +6300,10 @@ def get_visual_spatial_field_construction_scenario_data(
       number_recognised_chunks = 2
       number_unrecognised_objects = 2
       number_empty_squares = encode_scene_creator ? 6 : 7
+      squares_to_fixate_on = [
+        [2, 3],
+        [2, 0]
+      ]
       
     ############################################################################
     elsif scenario == 5
@@ -6240,6 +6441,11 @@ def get_visual_spatial_field_construction_scenario_data(
       number_recognised_chunks = 2
       number_unrecognised_objects = 2
       number_empty_squares = encode_scene_creator ? 6 : 7
+      
+      squares_to_fixate_on = [
+        [3, 3],
+        [4, 2]
+      ]
            
     ############################################################################
     elsif scenario == 6
@@ -6355,6 +6561,11 @@ def get_visual_spatial_field_construction_scenario_data(
       number_recognised_chunks = 1
       number_unrecognised_objects = 2
       number_empty_squares = encode_scene_creator ? 9 : 10
+      
+      squares_to_fixate_on = [
+        [3, 2],
+        [4, 2]
+      ]
     
     ############################################################################
     elsif scenario == 7
@@ -6470,6 +6681,11 @@ def get_visual_spatial_field_construction_scenario_data(
       number_recognised_chunks = 1
       number_unrecognised_objects = 2
       number_empty_squares = encode_scene_creator ? 9 : 10
+      
+      squares_to_fixate_on = [
+        [3, 2],
+        [2, 3]
+      ]
       
     ############################################################################
     elsif scenario == 8
@@ -6632,6 +6848,10 @@ def get_visual_spatial_field_construction_scenario_data(
       number_recognised_chunks = 2
       number_unrecognised_objects = 2
       number_empty_squares = encode_scene_creator ? 8 : 9
+      squares_to_fixate_on = [
+        [3, 3],
+        [2, 4]
+      ]
       
     ############################################################################
     elsif scenario == 9
@@ -6785,6 +7005,10 @@ def get_visual_spatial_field_construction_scenario_data(
       number_recognised_chunks = 2
       number_unrecognised_objects = 2
       number_empty_squares = encode_scene_creator ? 8 : 9
+      squares_to_fixate_on = [
+        [3, 2],
+        [2, 0]
+      ]
       
     ############################################################################
     elsif scenario == 10
@@ -6939,6 +7163,10 @@ def get_visual_spatial_field_construction_scenario_data(
       number_recognised_chunks = 2
       number_unrecognised_objects = 2
       number_empty_squares = encode_scene_creator ? 7 : 8
+      squares_to_fixate_on = [
+        [3, 2],
+        [3, 1]
+      ]
       
     ############################################################################
     elsif scenario == 11
@@ -7071,6 +7299,11 @@ def get_visual_spatial_field_construction_scenario_data(
       number_unrecognised_objects = 2
       number_empty_squares = encode_scene_creator ? 8 : 9
       
+      squares_to_fixate_on = [
+        [2, 4],
+        [2, 0]
+      ]
+      
     ############################################################################
     elsif scenario == 12
       
@@ -7201,6 +7434,11 @@ def get_visual_spatial_field_construction_scenario_data(
       number_recognised_chunks = 1
       number_unrecognised_objects = 2
       number_empty_squares = encode_scene_creator ? 8 : 9
+      
+      squares_to_fixate_on = [
+        [2, 3],
+        [2, 0]
+      ]
       
     ############################################################################
     elsif scenario == 13
@@ -7356,6 +7594,11 @@ def get_visual_spatial_field_construction_scenario_data(
       number_unrecognised_objects = 2
       number_empty_squares = encode_scene_creator ? 7 : 8
       
+      squares_to_fixate_on = [
+        [0, 2],
+        [2, 0]
+      ]
+      
     ############################################################################  
     elsif scenario == 14
       
@@ -7508,6 +7751,10 @@ def get_visual_spatial_field_construction_scenario_data(
       number_recognised_chunks = 2
       number_unrecognised_objects = 2
       number_empty_squares = encode_scene_creator ? 7 : 8
+      squares_to_fixate_on = [
+        [2, 0],
+        [4, 2]
+      ]
         
     ############################################################################  
     elsif scenario == 15
@@ -7662,6 +7909,10 @@ def get_visual_spatial_field_construction_scenario_data(
       number_recognised_chunks = 2
       number_unrecognised_objects = 2
       number_empty_squares = encode_scene_creator ? 7 : 8
+      squares_to_fixate_on = [
+        [0, 2],
+        [4, 2]
+      ]
       
     ############################################################################
     elsif scenario == 16
@@ -7799,6 +8050,11 @@ def get_visual_spatial_field_construction_scenario_data(
       number_unrecognised_objects = 2
       number_empty_squares = encode_scene_creator ? 9 : 10
       
+      squares_to_fixate_on = [
+        [2, 0],
+        [3, 2]
+      ]
+      
     ############################################################################
     elsif scenario == 17
       
@@ -7934,6 +8190,11 @@ def get_visual_spatial_field_construction_scenario_data(
       number_recognised_chunks = 1
       number_unrecognised_objects = 2
       number_empty_squares = encode_scene_creator ? 9 : 10
+      
+      squares_to_fixate_on = [
+        [4, 2],
+        [3, 3]
+      ]
       
     ############################################################################
     elsif scenario == 18
@@ -8077,6 +8338,11 @@ def get_visual_spatial_field_construction_scenario_data(
       number_recognised_chunks = 2
       number_unrecognised_objects = 2
       number_empty_squares = encode_scene_creator ? 8 : 9
+      
+      squares_to_fixate_on = [
+        [2, 4],
+        [3, 3]
+      ]
       
     ############################################################################
     elsif scenario == 19
@@ -8243,6 +8509,11 @@ def get_visual_spatial_field_construction_scenario_data(
       number_unrecognised_objects = 2
       number_empty_squares = encode_scene_creator ? 8 : 9
       
+      squares_to_fixate_on = [
+        [4, 2],
+        [2, 0]
+      ]
+      
     ############################################################################
     elsif scenario == 20
       
@@ -8402,6 +8673,11 @@ def get_visual_spatial_field_construction_scenario_data(
       number_recognised_chunks = 2
       number_unrecognised_objects = 2
       number_empty_squares = encode_scene_creator ? 8 : 9
+      
+      squares_to_fixate_on = [
+        [4, 2],
+        [2, 0]
+      ]
       
     ############################################################################
     elsif scenario == 21
@@ -8566,6 +8842,11 @@ def get_visual_spatial_field_construction_scenario_data(
       number_unrecognised_objects = 2
       number_empty_squares = encode_scene_creator ? 8 : 9
       
+      squares_to_fixate_on = [
+        [0, 2],
+        [3, 2]
+      ]
+      
     ############################################################################
     elsif scenario == 22
       
@@ -8686,6 +8967,11 @@ def get_visual_spatial_field_construction_scenario_data(
       number_unrecognised_objects = 2
       number_empty_squares = encode_scene_creator ? 9 : 10
       
+      squares_to_fixate_on = [
+        [4, 2],
+        [3, 3]
+      ]
+      
     ############################################################################
     elsif scenario == 23
       
@@ -8799,6 +9085,11 @@ def get_visual_spatial_field_construction_scenario_data(
       number_recognised_chunks = 1
       number_unrecognised_objects = 2
       number_empty_squares = encode_scene_creator ? 9 : 10
+      
+      squares_to_fixate_on = [
+        [3, 2],
+        [2, 4]
+      ]
      
     ############################################################################
     elsif scenario == 24
@@ -8919,6 +9210,12 @@ def get_visual_spatial_field_construction_scenario_data(
       number_unrecognised_objects = 3
       number_empty_squares = encode_scene_creator ? 8 : 9
       
+      squares_to_fixate_on = [
+        [2, 4],
+        [3, 2],
+        [4, 2]
+      ]
+      
     ############################################################################
     elsif scenario == 25
       
@@ -9005,6 +9302,11 @@ def get_visual_spatial_field_construction_scenario_data(
       number_recognised_chunks = 1
       number_unrecognised_objects = 2
       number_empty_squares = 9
+      
+      squares_to_fixate_on = [
+        [4, 2],
+        [2, 4]
+      ]
     end
     
     # If the scene's creator has been encoded, the patterns contained in the 
@@ -9044,7 +9346,8 @@ def get_visual_spatial_field_construction_scenario_data(
       expected_visual_spatial_field_object_properties,
       squares_to_be_ignored,
       number_unrecognised_objects,
-      number_empty_squares
+      number_empty_squares,
+      squares_to_fixate_on
     ])
   end
   
@@ -9180,6 +9483,39 @@ def get_visual_spatial_field_instantiation_complete_time(creation_time, visual_s
     (time_to_encode_objects * number_recognised_chunks) + 
     (time_to_encode_objects * number_unrecognised_objects) + 
     (time_to_encode_empty_squares * number_empty_squares)
+end
+
+def expected_fixations_made?(model, squares_expected_to_have_been_fixated_on)
+  fixations = model.getPerceiver().getFixations()
+  
+  # A square may have been fixated on more than once so remove duplicates to 
+  # speed up function operation.
+  fixations = fixations.to_a.uniq
+  
+  for i in 0...squares_expected_to_have_been_fixated_on.size()
+    square_to_fixate_on = squares_expected_to_have_been_fixated_on[i]
+    fixations_checked = Array.new
+    square_fixated_on = false
+
+    for j in 0...fixations.size()
+      fixation = fixations[j]
+      fixation_to_check = [fixation.getX(), fixation.getY()]
+
+      if(!fixations_checked.include? fixation_to_check)
+        !fixations_checked.push(fixation_to_check)
+
+        if(fixation_to_check[0] == square_to_fixate_on[0] and fixation_to_check[1] == square_to_fixate_on[1])
+          square_fixated_on = true
+        end
+      end
+    end
+    
+    if !square_fixated_on
+      return false
+    end
+  end
+
+  return true
 end
 
 def check_visual_spatial_field_against_expected(visual_spatial_field, expected_visual_spatial_field, time_to_check_recognised_status_against, test_description)

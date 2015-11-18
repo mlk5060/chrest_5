@@ -1,5 +1,9 @@
 # Overall tests of Chrest
-require 'visual-spatial-field-tests' # Use this to access the 'check_visual_spatial_field_against_expected' method for the methods involving the visual-spatial field
+require 'visual-spatial-field-tests' # Use this to access the 
+                                     #'check_visual_spatial_field_against_expected' 
+                                     #and 'expected_fixations_made' methods for 
+                                     #the tests checking the visual-spatial 
+                                     #field.
 
 unit_test "get maximum clock value" do
   model = Chrest.new
@@ -556,13 +560,26 @@ process_test "scan_scene (no creator in scene)" do
   ##### INSTANTIATE VISUAL-SPATIAL FIELD #####
   ############################################
 
-  visual_stm_contents_as_expected = false
   visual_spatial_field_creation_time = domain_time
+  
+  visual_stm_contents_as_expected = false
   expected_stm_contents = list_patterns_to_learn[0].toString()
+  
+  expected_fixations_made = false
+  fixations_expected = [
+    [2, 0],
+    [1, 2],
+    [3, 2],
+    [1, 3],
+    [2, 4]
+  ]
 
   # Need to ensure that the visual-spatial field is instantiated according to 
   # what has been learned in order to set expected test output correctly.
-  until visual_stm_contents_as_expected do
+  until visual_stm_contents_as_expected and expected_fixations_made do
+    
+    visual_stm_contents_as_expected = false
+    expected_fixations_made = false
 
     # Set creation time to the current domain time (this is important in 
     # calculating a lot of test variables below).
@@ -603,6 +620,8 @@ process_test "scan_scene (no creator in scene)" do
     # Check if STM contents are as expected, if they are, set the flag that
     # controls when the model is ready for testing to true.
     expected_stm_contents == stm_contents ? visual_stm_contents_as_expected = true : nil
+    
+    expected_fixations_made = expected_fixations_made?(model, fixations_expected)
 
     # Advance domain time to the time that the visual-spatial field will be 
     # completely instantiated so that the model's attention will be free 
@@ -1283,14 +1302,28 @@ process_test "scan_scene (creator in scene)" do
   ##### INSTANTIATE VISUAL-SPATIAL FIELD #####
   ############################################
 
-  visual_stm_contents_as_expected = false
   visual_spatial_field_creation_time = domain_time
+  
+  visual_stm_contents_as_expected = false
   expected_stm_contents = list_patterns_to_learn[0].toString()
+  
+  expected_fixations_made = false
+  fixations_expected = [
+    [2, 0],
+    [1, 2],
+    [2, 2],
+    [3, 2],
+    [1, 3],
+    [2, 4]
+  ]
 
   # Need to ensure that the visual-spatial field is instantiated according to 
   # what has been learned in order to set expected test output correctly.
-  until visual_stm_contents_as_expected do
-
+  until visual_stm_contents_as_expected and expected_fixations_made do
+    
+    visual_stm_contents_as_expected = false
+    expected_fixations_made = false
+    
     # Set creation time to the current domain time (this is important in 
     # calculating a lot of test variables below).
     visual_spatial_field_creation_time = domain_time
@@ -1330,6 +1363,8 @@ process_test "scan_scene (creator in scene)" do
     # Check if STM contents are as expected, if they are, set the flag that
     # controls when the model is ready for testing to true.
     expected_stm_contents == stm_contents ? visual_stm_contents_as_expected = true : nil
+    
+    expected_fixations_made = expected_fixations_made?(model, fixations_expected)
 
     # Advance domain time to the time that the visual-spatial field will be 
     # completely instantiated so that the model's attention will be free 

@@ -3,8 +3,10 @@ package jchrest.architecture;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
+import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import jchrest.lib.Fixation;
 import jchrest.lib.ItemSquarePattern;
 import jchrest.lib.ListPattern;
 import jchrest.lib.VisualSpatialFieldException;
@@ -165,8 +167,8 @@ public class VisualSpatialField {
    *    discussed below.
    *  </li>
    *  <li>
-   *    Finally, empty squares and unrecognised objects from the 
-   *    {@link jchrest.lib.Scene} to encode are encoded as 
+   *    Finally, empty squares and any unrecognised objects fixated on when the
+   *    {@link jchrest.lib.Scene} to encode is scanned are encoded as 
    *    {@link jchrest.lib.VisualSpatialFieldObject}s in order of their
    *    location in the {@link jchrest.lib.Scene} to encode from east -> west 
    *    then south-> north, e.g. the most south-easterly unrecognised object or 
@@ -176,13 +178,17 @@ public class VisualSpatialField {
    *    <i>emptySquareEncodingTime</i> parameter whereas encoding an 
    *    unrecognised object incurs an attentional time cost of the value 
    *    specified by the <i>objectEncodingTime</i> parameter.  So, if there are
-   *    two empty squares and two unrecognised objects present in the 
+   *    two empty squares and two unrecognised objects are fixated on in the 
    *    {@link jchrest.lib.Scene} to encode, the attentional time cost incurred
    *    would be equal to (<i>emptySquareEncodingTime</i> * 2) + 
    *    (<i>objectEncodingTime</i> * 2).  The terminus for unrecognised objects
    *    (both empty squares and actual objects) is set to the time that the
    *    object is encoded plus the value specified for the 
-   *    <i>lifespanForUnrecognisedObjects</i> parameter.
+   *    <i>lifespanForUnrecognisedObjects</i> parameter.  Note that, if an 
+   *    unrecognised object exists in the {@link jchrest.lib.Scene} to encode
+   *    but its location is not fixated on when the {@link jchrest.lib.Scene} to 
+   *    encode is scanned, its location in this {@link #this} will contain an
+   *    empty square.
    *  <li>
    * </ol>
    * 
@@ -432,7 +438,7 @@ public class VisualSpatialField {
           !objectClass.equals(Scene.getBlindSquareToken()) &&
           !objectClass.equals(Scene.getCreatorToken())
         ){
-          if(debug) System.out.println("   - Col " + col + ", row " + row + " contains an object with class " + objectClass + ".");
+          if(debug) System.out.println("   - Col " + col + ", row " + row + " contains an object with class '" + objectClass + "'.");
           realityIsBlind = false;
           break;
         }
@@ -445,7 +451,7 @@ public class VisualSpatialField {
       this._height = sceneToEncode.getHeight();
       this._width = sceneToEncode.getWidth();
       if(debug) System.out.println("- Height and width of visual-spatial field set to "
-        + this._height + " and " + this._width + "respectively");
+        + this._height + " and " + this._width + " respectively");
       
       time += this._accessTime;
       if(debug) System.out.println("- Visual-spatial field accessed at time " + time);
@@ -751,12 +757,15 @@ public class VisualSpatialField {
         if(debug) System.out.println("   - No chunks recognised");
       }
       
-      /*********************************************************/
-      /***** ENCODE EMPTY SQUARES AND UNRECOGNISED OBJECTS *****/
-      /*********************************************************/
+      /********************************************************************/
+      /***** ENCODE EMPTY SQUARES AND UNRECOGNISED OBJECTS FIXATED ON *****/
+      /********************************************************************/
       
       if(debug) System.out.println("   - Finished encoding recognised chunks @ time: " + time);
       if(debug) System.out.println("- Start encoding unrecognised objects @ time: " + time);
+      
+      List<Fixation> fixations = this._model.getPerceiver().getFixations();
+      if(debug) System.out.println("- Fixations made during scene scan: " + fixations.toString());
       
       //Encode the remaining objects (unrecognised objects) in the scene to 
       //encode.  Encoding each unrecognised object incurs a time cost.
@@ -780,6 +789,30 @@ public class VisualSpatialField {
             
             if(debug) System.out.println("   - Time before encoding the object = " + time);
             
+            if(!objectInRealityClass.equals(Scene.getEmptySquareToken())){
+              if(debug) System.out.println("   - Coordinates (" + col + "," + row + ") in reality aren't empty so checking to see if I fixated on it");
+              
+              //If the coordinate being processed wasn't fixated on, set the
+              //objectInReality and objectInRealityClass to an empty square.
+              boolean coordinatesFixatedOn = false;
+              for(Fixation fixation : fixations){
+                if(fixation.getX() == col && fixation.getY() == row){
+                  coordinatesFixatedOn = true;
+                }
+              }
+
+              if(!coordinatesFixatedOn){
+                if(debug) System.out.println("      - Coordinates weren't fixated on so this coordinate will be considered as an empty square.");
+                objectInReality = new SceneObject(Scene.getEmptySquareToken(), Scene.getEmptySquareToken());
+                objectInRealityClass = objectInReality.getObjectClass();
+              }
+              else if(debug){
+                System.out.println("      - Coordinates were fixated on so the exact contents of this coordinate in reality will be retained.");
+              }
+            }
+            
+            if(debug) System.out.println("   - Coordinates are considered to contain an object with class '" + objectInRealityClass + "' in reality");
+               
             //Get the most recent object on the coordinates specified from the
             //visual-spatial field.  This will either be a blind object or an 
             //actual object (empty squares not encoded yet).
@@ -788,12 +821,19 @@ public class VisualSpatialField {
             if(debug)System.out.println("   - Class of the most recent object on this square in the visual-spatial field: " + mostRecentObjectAtCoordinates.getObjectClass());
             
             //If the object in sceneToEncode is an empty square, the 
-            //VisualSpatialFieldObject should be overwritten (ghost and blind 
-            //squares killed).
+            //VisualSpatialFieldObject on the VisualSpatialField square should 
+            //be overwritten if it isn't recognised (blind squares killed) or if 
+            //it is a ghost.
             if(objectInRealityClass.equals(Scene.getEmptySquareToken())){
-              if(debug)System.out.println("   - Unrecognised object is an empty square.");
-              encodeObjectFromReality = true;
-              time += emptySquareEncodingTime;
+              
+              if(
+                !mostRecentObjectAtCoordinates.recognised(time) ||
+                mostRecentObjectAtCoordinates.isGhost()
+              ){
+                if(debug)System.out.println("   - Unrecognised object is an empty square and most recent object isn't recognised or is a ghost.");
+                encodeObjectFromReality = true;
+                time += emptySquareEncodingTime;
+              }
             }
             //Otherwise, if its not an empty square, its a real object (blind 
             //squares were ignored earlier).  If the most recent 
