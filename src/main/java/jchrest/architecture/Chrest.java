@@ -759,7 +759,7 @@ public class Chrest extends Observable {
    * @param node The node whose clone is to be cleared. 
    */
   private void clearClonedLtm(Node node){
-    for(Link childLink : node.getTestLinks()){
+    for(Link childLink : node.getChildren()){
       this.clearClonedLtm(childLink.getChildNode());
     }
     node.clearClone();
@@ -1283,7 +1283,7 @@ public class Chrest extends Observable {
   public Node recognise (ListPattern pattern, int domainTime) {
     Node currentNode = getLtmByModality (pattern);
     
-    List<Link> children = currentNode.getTestLinks ();
+    List<Link> children = currentNode.getChildren ();
     ListPattern sortedPattern = pattern;
     int nextLink = 0;
 
@@ -1292,7 +1292,7 @@ public class Chrest extends Observable {
       if (link.passes (sortedPattern)) { // descend a test link in network
         // reset the current node, list of children and link index
         currentNode = link.getChildNode ();
-        children = link.getChildNode ().getTestLinks ();
+        children = link.getChildNode ().getChildren ();
         nextLink = 0;
         // remove the matched test from the sorted pattern
         sortedPattern = sortedPattern.remove (link.getTest ());

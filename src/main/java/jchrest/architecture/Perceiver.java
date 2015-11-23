@@ -105,7 +105,7 @@ public class Perceiver {
    */
   private boolean ltmHeuristic (int time) {
     if (_model.getVisualStm().getCount () >= 1) {
-      List<Link> hypothesisChildren = _model.getVisualStm().getItem(0).getTestLinks ();
+      List<Link> hypothesisChildren = _model.getVisualStm().getItem(0).getChildren ();
       if (hypothesisChildren.isEmpty ()) return false;
       //        System.out.println ("Checking LTM heuristic");
       for (int i = 0; i < hypothesisChildren.size () && i < 1; ++i) { // *** i == 0 only

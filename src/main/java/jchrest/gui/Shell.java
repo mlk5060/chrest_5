@@ -379,18 +379,16 @@ public class Shell extends JFrame implements Observer {
               _task = line.trim ();
             }
 
-              if (_task.equals ("recognise-and-learn")) {
-                _items = InputOutput.readItems (input, false);
-              } else if (_task.equals ("serial-anticipation")) {
-                _items = InputOutput.readItems (input, true);
-              } else if (_task.equals ("paired-associate")) {
-                _pairs = InputOutput.readPairedItems (input, false);
-              } else if (_task.equals ("categorisation")) {
-                _pairs = InputOutput.readPairedItems (input, true);
-              } else if (_task.equals ("visual-search")) {
-                _scenes = Scenes.read (input); // throws IOException if any problem
-              } else if (_task.equals ("visual-search-with-move")){
-                _scenes = Scenes.readWithMove (input); // throws IOException if any problem
+            if (_task.equals ("recognise-and-learn")) {
+              _items = InputOutput.readItems (input, false);
+            } else if (_task.equals ("serial-anticipation")) {
+              _items = InputOutput.readItems (input, true);
+            } else if (_task.equals ("paired-associate")) {
+              _pairs = InputOutput.readPairedItems (input, false);
+            } else if (_task.equals ("categorisation")) {
+              _pairs = InputOutput.readPairedItems (input, true);
+            } else if (_task.equals ("visual-search")) {
+              _scenes = Scenes.read (input); // throws IOException if any problem
             }
           } catch (InterruptedIOException ioe) {
             _status = Status.CANCELLED_RUNNING; // flag cancelled error
