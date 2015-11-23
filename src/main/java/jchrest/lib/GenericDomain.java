@@ -6,6 +6,7 @@ package jchrest.lib;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
 
@@ -113,5 +114,77 @@ public class GenericDomain extends DomainSpecifics {
   @Override
   public int getCurrentTime() {
     throw new UnsupportedOperationException("Not supported yet.");
+  }
+
+  /**
+   * Takes into account the location of a creator in the {@link 
+   * jchrest.lib.Scene} passed so that, if one is present, coordinates are 
+   * translated so they are relative to the location of the {@link 
+   * jchrest.lib.Scene} creator otherwise, coordinates remain unaltered.
+   * 
+   * @param listPattern
+   * @param scene
+   * @return 
+   */
+  @Override
+  public ListPattern convertDomainSpecificCoordinatesToSceneSpecificCoordinates(ListPattern listPattern, Scene scene) {
+    Square locationOfCreator = scene.getLocationOfCreator();
+    if(locationOfCreator == null){
+      return listPattern;
+    }
+    else{
+      ListPattern convertedListPattern = new ListPattern(listPattern.getModality());
+      Iterator<PrimitivePattern> iterator = listPattern.iterator();
+      while(iterator.hasNext()){
+        PrimitivePattern pattern = iterator.next();
+        assert (pattern instanceof ItemSquarePattern);
+        ItemSquarePattern isp = (ItemSquarePattern)pattern;
+        convertedListPattern.add(
+          new ItemSquarePattern(
+            isp.getItem(),
+            isp.getColumn() + locationOfCreator.getColumn(),
+            isp.getRow() + locationOfCreator.getRow()
+          )
+        );
+      }
+      
+      return convertedListPattern;
+    }
+  }
+
+  /**
+   * Takes into account the location of a creator in the {@link 
+   * jchrest.lib.Scene} passed so that, if one is present, coordinates are 
+   * translated so they are relative to the location of the {@link 
+   * jchrest.lib.Scene} creator otherwise, coordinates remain unaltered. 
+   * 
+   * @param listPattern
+   * @param scene
+   * @return 
+   */
+  @Override
+  public ListPattern convertSceneSpecificCoordinatesToDomainSpecificCoordinates(ListPattern listPattern, Scene scene) {
+    Square locationOfCreator = scene.getLocationOfCreator();
+    if(locationOfCreator == null){
+      return listPattern;
+    }
+    else{
+      ListPattern convertedListPattern = new ListPattern(listPattern.getModality());
+      Iterator<PrimitivePattern> iterator = listPattern.iterator();
+      while(iterator.hasNext()){
+        PrimitivePattern pattern = iterator.next();
+        assert (pattern instanceof ItemSquarePattern);
+        ItemSquarePattern isp = (ItemSquarePattern)pattern;
+        convertedListPattern.add(
+          new ItemSquarePattern(
+            isp.getItem(),
+            isp.getColumn() - locationOfCreator.getColumn(),
+            isp.getRow() - locationOfCreator.getRow()
+          )
+        );
+      }
+      
+      return convertedListPattern;
+    }
   }
 }

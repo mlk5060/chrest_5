@@ -105,7 +105,7 @@ public class Perceiver {
    */
   private boolean ltmHeuristic (int time) {
     if (_model.getVisualStm().getCount () >= 1) {
-      List<Link> hypothesisChildren = _model.getVisualStm().getItem(0).getChildren ();
+      List<Link> hypothesisChildren = _model.getVisualStm().getItem(0).getTestLinks ();
       if (hypothesisChildren.isEmpty ()) return false;
       //        System.out.println ("Checking LTM heuristic");
       for (int i = 0; i < hypothesisChildren.size () && i < 1; ++i) { // *** i == 0 only
@@ -114,20 +114,44 @@ public class Perceiver {
         Pattern first = test.getItem (0);
         //        System.out.println ("Checking: " + first);
         if (first instanceof ItemSquarePattern) {
-          ItemSquarePattern ios = (ItemSquarePattern)first;
+          ItemSquarePattern iosWithDomainSpecificCoordinates = (ItemSquarePattern)first;
+          
+          ListPattern list = new ListPattern(test.getModality());
+          list.add(iosWithDomainSpecificCoordinates);
+          list = this._model.getDomainSpecifics().convertDomainSpecificCoordinatesToSceneSpecificCoordinates(list, this._currentScene);
+          ItemSquarePattern ios = (ItemSquarePattern)list.getItem(0);
 
           // check if we should make the fixation
           // 1. is it a different square?
-          if (ios.getColumn()-1 == _fixationX && 
-              ios.getRow()-1 == _fixationY) {
-            ; // return false; // we are already at this square
+          // 2. is the square represented in the current scene?  Required since
+          //    CHREST may have learned the location of an object using its 
+          //    visual-spatial field and, if object locations are relative to 
+          //    the visual-spatial avatar of the agent equipped with CHREST,
+          //    its visual-spatial sight boundary can be greater than its 
+          //    "physical" sight boundary.  For example, CHREST may learn that 
+          //    an object is 3 squares to the east of its avatar in its 
+          //    visual-spatial field but the agent equipped with CHREST can only
+          //    see 2 squares in any direction in "reality".
+          if (
+            (ios.getColumn() == _fixationX && ios.getRow() == _fixationY) || //Already looking at this square
+            (
+              ios.getColumn() < 0 || 
+              ios.getColumn() >= this._currentScene.getWidth() ||
+              ios.getRow() < 0 ||
+              ios.getRow() >= this._currentScene.getHeight()
+            ) //Square not represented in current scene
+          ) {
+            ; // return false;
+            
           } else {
             // all ok, so we make the fixation
-            _fixationX = ios.getColumn ()-1; // because ios start from 1
-            _fixationY = ios.getRow ()-1; 
+            
+            _fixationX = ios.getColumn(); 
+            _fixationY = ios.getRow(); 
             _lastHeuristic = FixationType.ltm;
-
+            
             addFixation (new Fixation (_lastHeuristic, _fixationX, _fixationY));
+            
             // look at square given by first test link
             // then look to see if a test link has the same square and observed piece
             for (Link link : hypothesisChildren) {
@@ -135,9 +159,14 @@ public class Perceiver {
                 // Note: using first test created gives more uses of LTM heuristic
                 if (link.getTest().getItem (link.getTest().size() - 1) instanceof ItemSquarePattern) {
                   ItemSquarePattern testIos = (ItemSquarePattern)link.getTest().getItem (0);
+                  list = new ListPattern(link.getTest().getModality());
+                  list.add(testIos);
+                  list = this._model.getDomainSpecifics().convertDomainSpecificCoordinatesToSceneSpecificCoordinates(list, this._currentScene);
+                  testIos = (ItemSquarePattern)list.getItem(0);
+                  
                   // check all details of test are correct
                   if (
-                    _currentScene.getSquareContentsAsListPattern(_fixationX, _fixationY, true, true).contains( testIos )
+                    _currentScene.getSquareContentsAsListPattern(_fixationX, _fixationY, true).contains( testIos )
                   ){
                     _model.getVisualStm().replaceHypothesis (link.getChildNode (), time);
                   }
@@ -275,7 +304,14 @@ public class Perceiver {
     //that information learned should be generalisable so instead of getting
     //unique identifiers for objects in the scope specified in the scene, 
     //the identifiers for each object should be the object's class.
-    _model.recogniseAndLearn (_model.getDomainSpecifics().normalise (_currentScene.getItemsInScopeAsListPattern (_fixationX, _fixationY, this.getFieldOfView(), true, true)));
+    _model.recogniseAndLearn (
+      _model.getDomainSpecifics().normalise (
+        _model.getDomainSpecifics().convertSceneSpecificCoordinatesToDomainSpecificCoordinates(
+          _currentScene.getItemsInScopeAsListPattern (_fixationX, _fixationY, this.getFieldOfView(), true),
+          this._currentScene
+        )
+      )
+    );
 
     // NB: template construction is only assumed to occur after training, so 
     // template completion code is not included here
@@ -295,7 +331,15 @@ public class Perceiver {
       if(debug) System.out.println("- Doing initial fixations");
       fixationDone = doInitialFixation ();
       if (fixationDone) {
-        node = _model.recognise (_model.getDomainSpecifics().normalise (_currentScene.getItemsInScopeAsListPattern (_fixationX, _fixationY, this.getFieldOfView(), true, true)), time);
+        node = _model.recognise (
+          _model.getDomainSpecifics().normalise (
+            _model.getDomainSpecifics().convertSceneSpecificCoordinatesToDomainSpecificCoordinates(
+              _currentScene.getItemsInScopeAsListPattern (_fixationX, _fixationY, this.getFieldOfView(), true),
+              this._currentScene
+            )
+          ), 
+          time
+        );
       }
     }
     
@@ -310,7 +354,15 @@ public class Perceiver {
     if (!fixationDone) {
       if(debug) System.out.println("- Moving eye using heuristics");
       moveEyeUsingHeuristics ();
-      node = _model.recognise (_model.getDomainSpecifics().normalise (_currentScene.getItemsInScopeAsListPattern (_fixationX, _fixationY, this.getFieldOfView(), true, true)), time);
+      node = _model.recognise (
+        _model.getDomainSpecifics().normalise (
+          _model.getDomainSpecifics().convertSceneSpecificCoordinatesToDomainSpecificCoordinates(
+            _currentScene.getItemsInScopeAsListPattern (_fixationX, _fixationY, this.getFieldOfView(), true),
+            this._currentScene
+          )
+        ), 
+        time
+      );
     }
     
     if(debug) System.out.println("Adding node " + node.getReference() + " (image: " + node.getImage().toString() + ") to nodes recognised");
@@ -320,7 +372,12 @@ public class Perceiver {
     // Attempt to fill out the slots on the top-node of visual STM with the currently 
     // fixated items
     if (_model.getVisualStm().getCount () >= 1) {
-      _model.getVisualStm().getItem(0).fillSlots (_currentScene.getItemsInScopeAsListPattern (_fixationX, _fixationY, this.getFieldOfView(), true, true));
+      _model.getVisualStm().getItem(0).fillSlots (
+        _model.getDomainSpecifics().convertSceneSpecificCoordinatesToDomainSpecificCoordinates(
+          _currentScene.getItemsInScopeAsListPattern (_fixationX, _fixationY, this.getFieldOfView(), true),
+          this._currentScene
+        )
+      );
     }
   }
 
@@ -401,12 +458,20 @@ public class Perceiver {
         !_currentScene.isSquareEmpty (_fixations.get(i).getX (), _fixations.get(i).getY ()) &&
         !_currentScene.isSquareBlind (_fixations.get(i).getX (), _fixations.get(i).getY ())
       ) {
-        for( PrimitivePattern itemOnSquare : _currentScene.getSquareContentsAsListPattern(_fixations.get(i).getY(), _fixations.get(i).getX(), true, true) ){
+        for( PrimitivePattern itemOnSquare : _currentScene.getSquareContentsAsListPattern(_fixations.get(i).getY(), _fixations.get(i).getX(), true) ){
           fixatedPattern.add ( (ItemSquarePattern)itemOnSquare );
         }
       }
     }
-    _model.recogniseAndLearn (_model.getDomainSpecifics().normalise (fixatedPattern.append(_currentScene.getItemsInScopeAsListPattern(_fixationX, _fixationY, this.getFieldOfView(), true, true)))).getImage();
+    _model.recogniseAndLearn (
+      _model.getDomainSpecifics().normalise (
+        _model.getDomainSpecifics().convertSceneSpecificCoordinatesToDomainSpecificCoordinates(
+          fixatedPattern.append(_currentScene.getItemsInScopeAsListPattern(_fixationX, _fixationY, this.getFieldOfView(), true)),
+          this._currentScene
+        )
+      )
+    ).getImage();
+    
     // begin cycle again, from point where we stopped
     _fixationsLearnFrom = _fixations.size () - 1;
   }

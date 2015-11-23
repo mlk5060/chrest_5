@@ -3,6 +3,7 @@ package jchrest.lib;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
 import jchrest.architecture.Chrest;
@@ -19,9 +20,19 @@ public class TileworldDomain extends DomainSpecifics{
   private static final String TILE_TOKEN = "T";
   private static final String HOLE_TOKEN = "H"; 
   private static final String OPPONENT_TOKEN = "O";
+  private final int _verticalFieldOfView;
+  private final int _horizontalFieldOfView;
   
-  public TileworldDomain(Chrest model) {
+  /**
+   * 
+   * @param model
+   * @param verticalFieldOfView How many squares ahead can be seen.
+   * @param horizontalFieldOfView How many squares to the side can be seen.
+   */
+  public TileworldDomain(Chrest model, Integer verticalFieldOfView, Integer horizontalFieldOfView) {
     super(model);
+    this._verticalFieldOfView = verticalFieldOfView;
+    this._horizontalFieldOfView = horizontalFieldOfView;
   }
 
   /** 
@@ -121,16 +132,20 @@ public class TileworldDomain extends DomainSpecifics{
     int col = square.getColumn();
     int row = square.getRow();
     
-    String objectOnSquare = scene.getSquareContents(col, row).getObjectClass();
-    if(
-      objectOnSquare.equals(TILE_TOKEN) ||
-      objectOnSquare.equals(Scene.getCreatorToken()) ||
-      objectOnSquare.equals(OPPONENT_TOKEN)
-    ){
-      movementFixations.add(new Square(col, row + 1));//North
-      movementFixations.add(new Square(col + 1, row));//East
-      movementFixations.add(new Square(col, row - 1));//South
-      movementFixations.add(new Square(col - 1, row));//West
+    SceneObject objectOnSquare = scene.getSquareContents(col, row);
+    
+    if(objectOnSquare != null){
+      String objectOnSquareClass = objectOnSquare.getObjectClass();
+      if(
+        objectOnSquareClass.equals(TILE_TOKEN) ||
+        objectOnSquareClass.equals(Scene.getCreatorToken()) ||
+        objectOnSquareClass.equals(OPPONENT_TOKEN)
+      ){
+        if ((row + 1 >= 0) && (row + 1 < scene.getHeight())) movementFixations.add(new Square(col, row + 1)); //North
+        if ((col + 1 >= 0) && (col + 1 < scene.getWidth())) movementFixations.add(new Square(col + 1, row));//East
+        if ((row - 1 >= 0) && (row - 1 < scene.getHeight())) movementFixations.add(new Square(col, row - 1));//South
+        if ((col - 1 >= 0) && (col - 1 < scene.getWidth())) movementFixations.add(new Square(col - 1, row));//West
+      }
     }
     
     return movementFixations;
@@ -151,5 +166,67 @@ public class TileworldDomain extends DomainSpecifics{
   
   public static String getTileIdentifier(){
     return TILE_TOKEN;
+  }
+
+  /**
+   * Converts relative coordinates in {@link jchrest.lib.ItemSquarePattern}s 
+   * contained in a {@link jchrest.lib.ListPattern} to zero-indexed coordinates
+   * so the information in the {@link jchrest.lib.ListPattern}'s {@link 
+   * jchrest.lib.ItemSquarePattern}s can be mapped onto a 
+   * {@link jchrest.lib.Scene}.  For example, if the 
+   * coordinates to translate are (-2, -2) and the horizontal/vertical field of
+   * view specified is 2, the returned coordinates would be (0, 0).
+   * 
+   * @param listPattern
+   * @param scene Not used so can be set to null
+   * @return 
+   */
+  @Override
+  public ListPattern convertDomainSpecificCoordinatesToSceneSpecificCoordinates(ListPattern listPattern, Scene scene) {
+    ListPattern preparedListPattern = new ListPattern(Modality.VISUAL);
+    Iterator<PrimitivePattern> listPatternIterator = listPattern.iterator();
+    
+    while(listPatternIterator.hasNext()){
+      ItemSquarePattern isp = (ItemSquarePattern)listPatternIterator.next();
+      preparedListPattern.add(
+        new ItemSquarePattern(
+          isp.getItem(),
+          isp.getColumn() + this._horizontalFieldOfView, 
+          isp.getRow() + this._verticalFieldOfView
+        )
+      );
+    }
+    
+    return preparedListPattern;
+  }
+
+  /**
+   * Converts zero-indexed coordinates in {@link jchrest.lib.ItemSquarePattern}s 
+   * contained in a {@link jchrest.lib.ListPattern} to coordinates relative to
+   * the sight parameters specified for this class.  For example, if the 
+   * coordinates to translate are (0, 0) and the horizontal/vertical field of
+   * view specified is 2, the returned coordinates would be (-2, -2).
+   * 
+   * @param listPattern
+   * @param scene Not used, can be set to null
+   * @return 
+   */
+  @Override
+  public ListPattern convertSceneSpecificCoordinatesToDomainSpecificCoordinates(ListPattern listPattern, Scene scene) {
+    ListPattern preparedListPattern = new ListPattern(Modality.VISUAL);
+    Iterator<PrimitivePattern> listPatternIterator = listPattern.iterator();
+    
+    while(listPatternIterator.hasNext()){
+      ItemSquarePattern isp = (ItemSquarePattern)listPatternIterator.next();
+      preparedListPattern.add(
+        new ItemSquarePattern(
+          isp.getItem(),
+          isp.getColumn() - this._horizontalFieldOfView, 
+          isp.getRow() - this._verticalFieldOfView
+        )
+      );
+    }
+    
+    return preparedListPattern;
   }
 }

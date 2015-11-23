@@ -787,7 +787,7 @@ class SceneDisplay extends JPanel {
         for (int j = 0; j < _scene.getWidth (); ++j) {
           if (!_scene.isSquareEmpty (j, i) && !_scene.isSquareBlind(j, i)) {
             String items = "";
-            for(PrimitivePattern itemOnSquare : _scene.getSquareContentsAsListPattern(j, i, false, true)){
+            for(PrimitivePattern itemOnSquare : _scene.getSquareContentsAsListPattern(j, i, true)){
               items += ", " + ( (ItemSquarePattern)itemOnSquare ).getItem();
             }
             

@@ -170,8 +170,8 @@ public class Scene {
       );
     }
     
-    int numberItemsInThisScene = this.getAsListPattern(false, true).removeBlindEmptyAndUnknownItems().size();
-    int numberItemsInOtherScene = sceneToCompareAgainst.getAsListPattern(false, true).removeBlindEmptyAndUnknownItems().size();
+    int numberItemsInThisScene = this.getAsListPattern(true).removeBlindEmptyAndUnknownItems().size();
+    int numberItemsInOtherScene = sceneToCompareAgainst.getAsListPattern(true).removeBlindEmptyAndUnknownItems().size();
     
     if(numberItemsInThisScene <= numberItemsInOtherScene){
       return 0;
@@ -217,8 +217,8 @@ public class Scene {
       );
     }
     
-    int numberItemsInThisScene = this.getAsListPattern(false, true).removeBlindEmptyAndUnknownItems().size();
-    int numberItemsInOtherScene = sceneToCompareAgainst.getAsListPattern(false, true).removeBlindEmptyAndUnknownItems().size();
+    int numberItemsInThisScene = this.getAsListPattern(true).removeBlindEmptyAndUnknownItems().size();
+    int numberItemsInOtherScene = sceneToCompareAgainst.getAsListPattern(true).removeBlindEmptyAndUnknownItems().size();
 
     if(numberItemsInThisScene >= numberItemsInOtherScene){
       return 0;
@@ -251,8 +251,8 @@ public class Scene {
       );
     }
       
-    ListPattern itemsInThisScene = this.getAsListPattern(false, objectsIdentifiedByObjectClass).removeBlindEmptyAndUnknownItems();
-    ListPattern itemsInOtherScene = sceneToCompareAgainst.getAsListPattern(false, objectsIdentifiedByObjectClass).removeBlindEmptyAndUnknownItems();
+    ListPattern itemsInThisScene = this.getAsListPattern(objectsIdentifiedByObjectClass).removeBlindEmptyAndUnknownItems();
+    ListPattern itemsInOtherScene = sceneToCompareAgainst.getAsListPattern(objectsIdentifiedByObjectClass).removeBlindEmptyAndUnknownItems();
 
     //Check for potential to divide by 0.
     if( itemsInThisScene.isEmpty() || itemsInOtherScene.isEmpty() ){
@@ -291,8 +291,8 @@ public class Scene {
       );
     }
     
-    ListPattern itemsInThisScene = this.getAsListPattern(false, objectsIdentifiedByObjectClass).removeBlindEmptyAndUnknownItems();
-    ListPattern itemsInOtherScene = sceneToCompareAgainst.getAsListPattern(false, objectsIdentifiedByObjectClass).removeBlindEmptyAndUnknownItems();
+    ListPattern itemsInThisScene = this.getAsListPattern(objectsIdentifiedByObjectClass).removeBlindEmptyAndUnknownItems();
+    ListPattern itemsInOtherScene = sceneToCompareAgainst.getAsListPattern(objectsIdentifiedByObjectClass).removeBlindEmptyAndUnknownItems();
 
     if(itemsInThisScene.isEmpty() || itemsInOtherScene.isEmpty()){
       return 0.0f;
@@ -337,16 +337,6 @@ public class Scene {
   }
   
   /**
-   * @param creatorRelativeCoordinates Set to true to have the locations of 
-   * {@link jchrest.lib.SceneObject}s in this {@link #this} set relative to the
-   * location of the {@link #this} creator in this {@link #this}.  Set to false 
-   * to force the function to return the locations of {@link 
-   * jchrest.lib.SceneObject}s as their actual coordinates in this {@link 
-   * #this}.  For example, if an object, "A" is located on coordinates (2, 3) 
-   * and the creator is located on coordinates (3, 2), setting this parameter to
-   * true would return "A"s location as (-1, 1) whereas setting it to false 
-   * would return (2, 3).
-   * 
    * @param objectsIdentifiedByObjectClass Set to true to identify {@link 
    * jchrest.lib.SceneObject}s by their object class, set to false to identify 
    * {@link jchrest.lib.SceneObject}s by their unique identifier.
@@ -356,12 +346,12 @@ public class Scene {
    * east -> west then south -> north as a {@link jchrest.lib.ListPattern} 
    * composed of {@link jchrest.lib.ItemSquarePattern}s.
    */
-  public ListPattern getAsListPattern(boolean creatorRelativeCoordinates, boolean objectsIdentifiedByObjectClass){
+  public ListPattern getAsListPattern (boolean objectsIdentifiedByObjectClass){
     ListPattern scene = new ListPattern();
     
     for(int row = 0; row < _height; row++){
       for(int col = 0; col < _width; col++){
-        scene = scene.append(this.getSquareContentsAsListPattern(col, row, creatorRelativeCoordinates, objectsIdentifiedByObjectClass));
+        scene = scene.append(this.getSquareContentsAsListPattern(col, row, objectsIdentifiedByObjectClass));
       }
     }
     
@@ -378,16 +368,7 @@ public class Scene {
   /**
    * @param startCol
    * @param startRow
-   * @param fieldOfView
-   * @param creatorRelativeCoordinates Set to true to have the locations of 
-   * {@link jchrest.lib.SceneObject}s in this {@link #this} set relative to the
-   * location of the {@link #this} creator in this {@link #this}.  Set to false 
-   * to force the function to return the locations of {@link 
-   * jchrest.lib.SceneObject}s as their actual coordinates in this {@link 
-   * #this}.  For example, if an object, "A" is located on coordinates (2, 3) 
-   * and the creator is located on coordinates (3, 2), setting this parameter to
-   * true would return "A"s location as (-1, 1) whereas setting it to false 
-   * would return (2, 3).
+   * @param scope
    * 
    * @param objectsIdentifiedByObjectClass Set to true to identify {@link 
    * jchrest.lib.SceneObject}s by their object class, set to false to identify 
@@ -399,14 +380,14 @@ public class Scene {
    * jchrest.lib.ItemSquarePattern}s. Blind and empty {@link 
    * jchrest.lib.SceneObject}s are not returned.
    */
-  public ListPattern getItemsInScopeAsListPattern (int startCol, int startRow, int fieldOfView, boolean creatorRelativeCoordinates, boolean objectsIdentifiedByObjectClass) {
+  public ListPattern getItemsInScopeAsListPattern (int startCol, int startRow, int scope, boolean objectsIdentifiedByObjectClass) {
     ListPattern itemsInScope = new ListPattern ();
     
-    for (int row = startRow - fieldOfView; row <= startRow + fieldOfView; row++) {
+    for (int row = startRow - scope; row <= startRow + scope; row++) {
       if (row >= 0 && row < _height) {
-        for (int col = startCol - fieldOfView; col <= startCol + fieldOfView; col++) {
+        for (int col = startCol - scope; col <= startCol + scope; col++) {
           if (col >= 0 && col < _width) {
-            itemsInScope = itemsInScope.append(this.getSquareContentsAsListPattern(col, row, creatorRelativeCoordinates, objectsIdentifiedByObjectClass));
+            itemsInScope = itemsInScope.append(this.getSquareContentsAsListPattern(col, row, objectsIdentifiedByObjectClass));
           }
         }
       }
@@ -434,15 +415,6 @@ public class Scene {
   /**
    * @param col
    * @param row
-   * @param creatorRelativeCoordinates Set to true to have the locations of 
-   * {@link jchrest.lib.SceneObject}s in this {@link #this} set relative to the
-   * location of the {@link #this} creator in this {@link #this}.  Set to false 
-   * to force the function to return the locations of {@link 
-   * jchrest.lib.SceneObject}s as their actual coordinates in this {@link 
-   * #this}.  For example, if an object, "A" is located on coordinates (2, 3) 
-   * and the creator is located on coordinates (3, 2), setting this parameter to
-   * true would return "A"s location as (-1, 1) whereas setting it to false 
-   * would return (2, 3).
    * 
    * @param objectsIdentifiedByObjectClass Set to true to identify {@link 
    * jchrest.lib.SceneObject}s by their object class, set to false to identify 
@@ -450,36 +422,18 @@ public class Scene {
    * 
    * @return The contents of the coordinate specified in this {@link #this}.
    */
-  public ListPattern getSquareContentsAsListPattern (int col, int row, boolean creatorRelativeCoordinates, boolean objectsIdentifiedByObjectClass) {
+  public ListPattern getSquareContentsAsListPattern (int col, int row, boolean objectsIdentifiedByObjectClass) {
     ListPattern squareContentsAsListPattern = new ListPattern();
     
     if (row >= 0 && row < _height && col >= 0 && col < _width) {
-      Square locationOfSelf = this.getLocationOfCreator();
       SceneObject squareContents = this.getSquareContents(col, row);
       int itemSquarePatternCol = col;
       int itemSquarePatternRow = row;
-        
-      //Get self relative coordinates only if the self is present and self
-      //relative coordinates have been requested.
-      //
-      // |---------------|----------------------------|----------------------|
-      // | Self present? | Relative coords requested? | Result               |
-      // |---------------|----------------------------|----------------------|
-      // | Yes           | Yes                        | Self-relative coords |
-      // | Yes           | No                         | Scene-relative coords|
-      // | No            | Yes                        | Scene-relative coords|
-      // | No            | No                         | Scene-relative coords|
-      // |---------------|----------------------------|----------------------|
-      if(locationOfSelf != null && creatorRelativeCoordinates){
-        itemSquarePatternCol = col - locationOfSelf.getColumn();
-        itemSquarePatternRow = row - locationOfSelf.getRow();
-      }   
       
       //By default, assume that the item identifier for the ItemSquarePattern
       //representation of the object on square will have the object's class
       //as the item identifier.
       String itemIdentifier = squareContents.getObjectClass();
-
       
       if(!objectsIdentifiedByObjectClass){
         itemIdentifier = squareContents.getIdentifier();
@@ -497,7 +451,7 @@ public class Scene {
   
   /**
    * @return The location of this {@link #this}'s creator (if it identified 
-   * itself) in this {@link jchrest.lib.Scene}.
+   * itself) in this {@link jchrest.lib.Scene}.  If it didn't, null is returned.
    */
   public Square getLocationOfCreator(){
     for(int row = 0; row < this._height; row++){
@@ -512,7 +466,7 @@ public class Scene {
     return null;
   }
 
-  /**
+  /**git 
    * @return The name of this {@link #this}.
    */
   public String getName () {

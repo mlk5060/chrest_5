@@ -3,9 +3,6 @@
 # field constructor, i.e. nothing is encoded so CHREST's attention clock is not 
 # incremented from the time of visual-spatial field creation specified.
 unit_test "constructor (blind scene to encode)" do
-  scene = Scene.new("blind", 10, 10, nil)
-  scene.addItemToSquare(5, 5, "00", Scene.getCreatorToken())
-  
   creation_time = 0
   time_to_encode_objects = 50
   time_to_encode_empty_squares = 5
@@ -17,6 +14,9 @@ unit_test "constructor (blind scene to encode)" do
   
   model = Chrest.new
   model.setDomain(GenericDomain.new(model))
+  
+  scene = Scene.new("blind", 10, 10, nil)
+  scene.addItemToSquare(5, 5, "00", Scene.getCreatorToken())
   
   visual_spatial_field = VisualSpatialField.new(
     model,
@@ -165,7 +165,7 @@ unit_test "constructor (non-blind scenes to encode)" do
       for list_pattern in list_patterns_to_learn
         expected_stm_contents += list_pattern.toString()
       end
-
+      
       while !visual_stm_contents_as_expected or !fixations_as_expected do
         
         #Reset loop control variables.
@@ -214,13 +214,13 @@ unit_test "constructor (non-blind scenes to encode)" do
         
         # Check if the fixations expected to have been made have been made
         fixations_as_expected = expected_fixations_made?(model, squares_to_fixate_on)
-
+        
         # Advance domain time to the time that the visual-spatial field will be 
         # completely instantiated so that the model's attention will be free 
         # should a new visual-field need to be constructed.
         domain_time = model.getAttentionClock
       end
-    
+      
       ###################
       ##### TESTING #####
       ###################
@@ -5690,12 +5690,12 @@ end
 # Note that correct encoding of squares that are blind, empty or occupied by an 
 # unrecognised object is tested in each scenario modelled.
 def get_visual_spatial_field_construction_scenario_data(
-    encode_scene_creator, 
-    encode_ghost_objects, 
-    time_to_encode_objects, 
-    time_to_encode_empty_squares,
-    recognised_object_lifespan
-  )
+  encode_scene_creator, 
+  encode_ghost_objects, 
+  time_to_encode_objects, 
+  time_to_encode_empty_squares,
+  recognised_object_lifespan
+)
   
   # This data structure will be populated with the following data for each 
   # scenario and returned:

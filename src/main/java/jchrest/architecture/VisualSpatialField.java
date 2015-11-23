@@ -4,8 +4,6 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 import jchrest.lib.Fixation;
 import jchrest.lib.ItemSquarePattern;
 import jchrest.lib.ListPattern;
@@ -548,25 +546,17 @@ public class VisualSpatialField {
         //object in the visual-spatial field, it must be ensured that a chunk 
         //pattern's location information is non-creator relative.
         if(creatorLocation != null){
-          if(debug) System.out.println("   - Translating recognised object coordinates to be relative to scene creator...");
+          if(debug) System.out.println("   - Translating domain-specific coordinates to scene specific coordinates...");
           
           for(int i = 0; i < recognisedChunks.size(); i++){
-            ListPattern chunkWithCreatorSpecificCoords = recognisedChunks.get(i);
-            ListPattern chunkWithSceneSpecificCoords = new ListPattern(chunkWithCreatorSpecificCoords.getModality());
-
-            chunkWithCreatorSpecificCoords.iterator().forEachRemaining(patternWithCreatorSpecificCoords -> {
-              ItemSquarePattern iosWithCreatorSpecificCoords = (ItemSquarePattern)patternWithCreatorSpecificCoords;
-              chunkWithSceneSpecificCoords.add(new ItemSquarePattern(
-                iosWithCreatorSpecificCoords.getItem(),
-                iosWithCreatorSpecificCoords.getColumn() + creatorLocation.getColumn(),
-                iosWithCreatorSpecificCoords.getRow() + creatorLocation.getRow()
-              ));
-            });
-            
-            recognisedChunks.set(i, chunkWithSceneSpecificCoords);
+            ListPattern chunkWithDomainSpecificCoords = recognisedChunks.get(i);
+            recognisedChunks.set(
+              i, 
+              this._model.getDomainSpecifics().convertDomainSpecificCoordinatesToSceneSpecificCoordinates(chunkWithDomainSpecificCoords, sceneToEncode)
+            );
           }
           
-          if(debug) System.out.println("   - Recognised chunk contents with creator-relative coordinates:"); recognisedChunks.forEach(chunk -> { if(debug) System.out.println("      " + chunk.toString()); });
+          if(debug) System.out.println("   - After translation:"); recognisedChunks.forEach(chunk -> { if(debug) System.out.println("      " + chunk.toString()); });
         }
         
         /*************************************************/

@@ -21,7 +21,6 @@ import java.util.TreeMap;
 import jchrest.database.DatabaseInterface;
 import jchrest.lib.*;
 import jchrest.lib.ReinforcementLearning.ReinforcementLearningTheories;
-import org.reflections.Reflections;
 
 /**
  * The parent class for an instance of a Chrest model.
@@ -760,7 +759,7 @@ public class Chrest extends Observable {
    * @param node The node whose clone is to be cleared. 
    */
   private void clearClonedLtm(Node node){
-    for(Link childLink : node.getChildren()){
+    for(Link childLink : node.getTestLinks()){
       this.clearClonedLtm(childLink.getChildNode());
     }
     node.clearClone();
@@ -1284,7 +1283,7 @@ public class Chrest extends Observable {
   public Node recognise (ListPattern pattern, int domainTime) {
     Node currentNode = getLtmByModality (pattern);
     
-    List<Link> children = currentNode.getChildren ();
+    List<Link> children = currentNode.getTestLinks ();
     ListPattern sortedPattern = pattern;
     int nextLink = 0;
 
@@ -1293,7 +1292,7 @@ public class Chrest extends Observable {
       if (link.passes (sortedPattern)) { // descend a test link in network
         // reset the current node, list of children and link index
         currentNode = link.getChildNode ();
-        children = link.getChildNode ().getChildren ();
+        children = link.getChildNode ().getTestLinks ();
         nextLink = 0;
         // remove the matched test from the sorted pattern
         sortedPattern = sortedPattern.remove (link.getTest ());
@@ -1789,20 +1788,6 @@ public class Chrest extends Observable {
       if(debug) System.out.println("- Clearing STM");
       _visualStm.clear (time);
     }
-        
-    //Get the location of the creator in the scene.  If the creator of the scene 
-    //is present in it then all chunks will have coordinates relative to the 
-    //position of the creator.  Therefore, when visual STM is used to create
-    //the recalled scene below, coordinates will be relative to the creator and
-    //need to be converted into non-relative coordinates so that the scene can
-    //be constructed correctly.
-    Square selfLocation = scene.getLocationOfCreator();
-    if(debug) System.out.println("- Is the Scene creator encoded and, if so, where? " + 
-      (selfLocation  != null ? 
-        " Yes, location: " + selfLocation.toString() :
-        " No"
-      ) 
-    );
     
     //Get the VisualSpatialField associated with the Scene to be scanned.  If
     //there is an associated VisualSpatialField, SceneObjects that are 
@@ -1849,8 +1834,11 @@ public class Chrest extends Observable {
           recalledInformation = recalledInformation.append(node.getFilledSlots ());
         }
         
-        if(debug) System.out.println("   - Processing chunk with image: '" + node.getImage().toString() + "'");
-      
+        if(debug) System.out.println("   - Processing chunk with image: '" + recalledInformation.toString() + "'");
+        
+        recalledInformation = this.getDomainSpecifics().convertDomainSpecificCoordinatesToSceneSpecificCoordinates(recalledInformation, scene);
+        if(debug) System.out.println("      - Image with scene-specific coordinates: '" + recalledInformation.toString() + "'");
+        
         //Add all recognised items to the scene to be returned and flag the 
         //corresponding VisualSpatialFieldObjects as being recognised.
         for (int i = 0; i < recalledInformation.size(); i++){
@@ -1860,12 +1848,6 @@ public class Chrest extends Observable {
             ItemSquarePattern ios = (ItemSquarePattern)item;
             int col = ios.getColumn ();
             int row = ios.getRow ();
-            
-            //Translate domain-specific coordinates if necessary.
-            if(selfLocation != null){
-              col += selfLocation.getColumn();
-              row += selfLocation.getRow();
-            }
             
             if(debug) System.out.println("      - Processing object " + ios.toString() );
             
@@ -1963,12 +1945,11 @@ public class Chrest extends Observable {
     }
     
     //If the creator of the scene was identified in the original scene then add
-    //it into the recalled scene.  This enables domain-specific coordinates to
-    //be returned for items in the recalled scene if its contents are to be 
-    //returned.
-    if(selfLocation != null){
-      SceneObject self = scene.getSquareContents(selfLocation.getColumn(), selfLocation.getRow());
-      recalledScene.addItemToSquare(selfLocation.getColumn(), selfLocation.getRow(), self.getIdentifier(), self.getObjectClass());
+    //it into the recalled scene.
+    Square creatorLocation = scene.getLocationOfCreator();
+    if(creatorLocation != null){
+      SceneObject self = scene.getSquareContents(creatorLocation.getColumn(), creatorLocation.getRow());
+      recalledScene.addItemToSquare(creatorLocation.getColumn(), creatorLocation.getRow(), self.getIdentifier(), self.getObjectClass());
     }
 
     return recalledScene;

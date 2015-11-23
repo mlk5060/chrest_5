@@ -43,18 +43,7 @@ unit_test "moves" do
   scene.addItemToSquare(2, 4, "12", hole_token)
   scene.addItemToSquare(4, 4, "13", tile_token)
   
-#  object_movements = ArrayList.new
-#  object_movements.add(1)
-#  object_movements.add(1)
-#  object_movements.add(1)
-#  object_movements.add(1)
-#  
-#  item_identifiers_and_movements = HashMap.new
-#  item_identifiers_and_movements.put(tile_token, object_movements)
-#  item_identifiers_and_movements.put(Scene.getSelfIdentifier(), object_movements)
-#  item_identifiers_and_movements.put(opponent_token, object_movements)
-  
-  domain = TileworldDomain.new(Chrest.new)
+  domain = TileworldDomain.new(Chrest.new, 2, 2)
   row = 0
   col = 0
   until row == scene.getHeight() do
@@ -65,14 +54,35 @@ unit_test "moves" do
       if (
         (col == 0 and row == 0) or
         (col == 4 and row == 0) or
+        (col == 0 and row == 4) or
+        (col == 4 and row == 4)
+      )
+        expected_number_of_movement_fixations = 2
+        
+        if(col == 0 and row == 0)
+          expected_movement_fixations.add(Square.new(col, row + 1))
+          expected_movement_fixations.add(Square.new(col + 1, row))
+        elsif(col == 4 and row == 0)
+          expected_movement_fixations.add(Square.new(col, row + 1))
+          expected_movement_fixations.add(Square.new(col - 1, row))
+        elsif(col == 0 and row == 4)
+          expected_movement_fixations.add(Square.new(col, row - 1))
+          expected_movement_fixations.add(Square.new(col + 1, row))
+        else
+          expected_movement_fixations.add(Square.new(col, row - 1))
+          expected_movement_fixations.add(Square.new(col - 1, row))
+        end
+      elsif(col == 4 and row == 2)
+        expected_number_of_movement_fixations = 3
+        expected_movement_fixations.add(Square.new(col, row + 1))
+        expected_movement_fixations.add(Square.new(col - 1, row))
+        expected_movement_fixations.add(Square.new(col, row - 1))
+      elsif(
         (col == 2 and row == 1) or
         (col == 3 and row == 1) or 
         (col == 2 and row == 2) or
         (col == 3 and row == 2) or
-        (col == 4 and row == 2) or
-        (col == 2 and row == 3) or
-        (col == 0 and row == 4) or
-        (col == 4 and row == 4)
+        (col == 2 and row == 3)
       )
         expected_number_of_movement_fixations = 4
         expected_movement_fixations.add(Square.new(col, row + 1))
@@ -81,9 +91,19 @@ unit_test "moves" do
         expected_movement_fixations.add(Square.new(col - 1, row))
       end
       
-      movement_fixations = domain.proposeMovementFixations(scene, Square.new(col, row))     
+      movement_fixations = domain.proposeMovementFixations(scene, Square.new(col, row))  
       assert_equal(expected_number_of_movement_fixations, movement_fixations.size(), "Occurred when checking the number of movement fixations for an object on square with col " + col.to_s + " and row " + row.to_s + ".  Fixations calculated: " + movement_fixations.to_s + ".")
-      assert_equal(expected_movement_fixations.to_s, movement_fixations.to_s, "Occurred when checking the movement fixations for an object on square with col " + col.to_s + " and row " + row.to_s + ".  Fixations calculated: " + movement_fixations.to_s + ".")
+      
+      for i in 0...expected_movement_fixations.size
+        expected_movement_fixation = expected_movement_fixations[i].to_s
+        expected_movement_fixation_in_movement_fixations_returned = false
+        for j in 0...movement_fixations.size
+          if movement_fixations[j].to_s == expected_movement_fixation
+            expected_movement_fixation_in_movement_fixations_returned = true
+          end
+        end
+        assert_true(expected_movement_fixation_in_movement_fixations_returned, "Occurred when checking the movement fixations for an object on square with col " + col.to_s + " and row " + row.to_s + ".  Fixations calculated: " + movement_fixations.to_s + ".")
+      end
       
       col += 1
     end

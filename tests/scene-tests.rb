@@ -352,26 +352,8 @@ unit_test "get-square-contents-as-list-pattern" do
   for row in 0..2
     for col in 0..2
       
-      relative_col = nil
-      relative_row = nil
       expected_object_identifier = Scene.getBlindSquareToken()
       expected_object_class = Scene.getBlindSquareToken()
-      
-      if(col == 0)
-        relative_col = -1
-      elsif(col == 1)
-        relative_col = 0
-      else
-        relative_col = 1
-      end
-      
-      if(row == 0)
-        relative_row = -1
-      elsif(row == 1)
-        relative_row = 0
-      else
-        relative_row = 1
-      end
       
       if(col == 1)
         if(row == 0)
@@ -388,27 +370,17 @@ unit_test "get-square-contents-as-list-pattern" do
         end
       end
       
-      expected_list_pattern_no_relative_coords_objects_identified_by_id = ListPattern.new
-      expected_list_pattern_no_relative_coords_objects_identified_by_id.add(ItemSquarePattern.new(expected_object_identifier.to_s, col, row))
+      expected_list_pattern_objects_identified_by_id = ListPattern.new
+      expected_list_pattern_objects_identified_by_id.add(ItemSquarePattern.new(expected_object_identifier.to_s, col, row))
       
-      expected_list_pattern_no_relative_coords_objects_identified_by_class = ListPattern.new
-      expected_list_pattern_no_relative_coords_objects_identified_by_class.add(ItemSquarePattern.new(expected_object_class, col, row))
+      expected_list_pattern_objects_identified_by_class = ListPattern.new
+      expected_list_pattern_objects_identified_by_class.add(ItemSquarePattern.new(expected_object_class.to_s, col, row))
       
-      expected_list_pattern_relative_coords_objects_identified_by_id = ListPattern.new
-      expected_list_pattern_relative_coords_objects_identified_by_id.add(ItemSquarePattern.new(expected_object_identifier.to_s, relative_col, relative_row))
+      objects_identified_by_id = scene.getSquareContentsAsListPattern(col, row, false)
+      objects_identified_by_class = scene.getSquareContentsAsListPattern(col, row, true)
       
-      expected_list_pattern_relative_coords_objects_identified_by_class = ListPattern.new
-      expected_list_pattern_relative_coords_objects_identified_by_class.add(ItemSquarePattern.new(expected_object_class, relative_col, relative_row))
-      
-      no_relative_coords_objects_identified_by_id = scene.getSquareContentsAsListPattern(col, row, false, false)
-      no_relative_coords_objects_identified_by_class = scene.getSquareContentsAsListPattern(col, row, false, true)
-      relative_coords_objects_identified_by_id = scene.getSquareContentsAsListPattern(col, row, true, false)
-      relative_coords_objects_identified_by_class = scene.getSquareContentsAsListPattern(col, row, true, true)
-      
-      assert_equal(expected_list_pattern_no_relative_coords_objects_identified_by_id.toString(), no_relative_coords_objects_identified_by_id.toString(), "occurred when checking col " + col.to_s + " and row " + row.to_s + " when non-creator-relative coordinates and object identifiers are requested in the list pattern returned")
-      assert_equal(expected_list_pattern_no_relative_coords_objects_identified_by_class.toString(), no_relative_coords_objects_identified_by_class.toString(), "occurred when checking col " + col.to_s + " and row " + row.to_s + " when creator-relative coordinates and object identifiers are requested in the list pattern returned")
-      assert_equal(expected_list_pattern_relative_coords_objects_identified_by_id.toString(), relative_coords_objects_identified_by_id.toString(), "occurred when checking col " + col.to_s + " and row " + row.to_s + " when non-creator-relative coordinates and object classes' are requested in the list pattern returned")
-      assert_equal(expected_list_pattern_relative_coords_objects_identified_by_class.toString(), relative_coords_objects_identified_by_class.toString(), "occurred when checking col " + col.to_s + " and row " + row.to_s + " when creator-relative coordinates and object classes' are requested in the list pattern returned")
+      assert_equal(expected_list_pattern_objects_identified_by_id.toString(), objects_identified_by_id.toString(), "occurred when checking col " + col.to_s + " and row " + row.to_s + " and object identifiers are requested in the list pattern returned")
+      assert_equal(expected_list_pattern_objects_identified_by_class.toString(), objects_identified_by_class.toString(), "occurred when checking col " + col.to_s + " and row " + row.to_s + " and object classes are requested in the list pattern returned")
     end
   end
 end
@@ -445,78 +417,42 @@ unit_test "get-as-list-pattern" do
   blind = Scene.getBlindSquareToken
   empty = Scene.getEmptySquareToken
   
-  expected_list_pattern_no_relative_coords_objects_identified_by_id = ListPattern.new
-  expected_list_pattern_no_relative_coords_objects_identified_by_id.add(ItemSquarePattern.new(blind, 0, 0))
-  expected_list_pattern_no_relative_coords_objects_identified_by_id.add(ItemSquarePattern.new(blind, 1, 0))
-  expected_list_pattern_no_relative_coords_objects_identified_by_id.add(ItemSquarePattern.new("0", 2, 0))
-  expected_list_pattern_no_relative_coords_objects_identified_by_id.add(ItemSquarePattern.new(blind, 3, 0))
-  expected_list_pattern_no_relative_coords_objects_identified_by_id.add(ItemSquarePattern.new(blind, 4, 0))
-  expected_list_pattern_no_relative_coords_objects_identified_by_id.add(ItemSquarePattern.new(blind, 0, 1))
-  expected_list_pattern_no_relative_coords_objects_identified_by_id.add(ItemSquarePattern.new(empty, 1, 1))
-  expected_list_pattern_no_relative_coords_objects_identified_by_id.add(ItemSquarePattern.new("1", 2, 1))
-  expected_list_pattern_no_relative_coords_objects_identified_by_id.add(ItemSquarePattern.new(empty, 3, 1))
-  expected_list_pattern_no_relative_coords_objects_identified_by_id.add(ItemSquarePattern.new(blind, 4, 1))
-  expected_list_pattern_no_relative_coords_objects_identified_by_id.add(ItemSquarePattern.new("2".to_s, 0, 2))
-  expected_list_pattern_no_relative_coords_objects_identified_by_id.add(ItemSquarePattern.new(empty, 1, 2))
-  expected_list_pattern_no_relative_coords_objects_identified_by_id.add(ItemSquarePattern.new(empty, 2, 2))
-  expected_list_pattern_no_relative_coords_objects_identified_by_id.add(ItemSquarePattern.new("3", 3, 2))
-  expected_list_pattern_no_relative_coords_objects_identified_by_id.add(ItemSquarePattern.new(empty, 4, 2))
+  expected_list_pattern_objects_identified_by_id = ListPattern.new
+  expected_list_pattern_objects_identified_by_id.add(ItemSquarePattern.new(blind, 0, 0))
+  expected_list_pattern_objects_identified_by_id.add(ItemSquarePattern.new(blind, 1, 0))
+  expected_list_pattern_objects_identified_by_id.add(ItemSquarePattern.new("0", 2, 0))
+  expected_list_pattern_objects_identified_by_id.add(ItemSquarePattern.new(blind, 3, 0))
+  expected_list_pattern_objects_identified_by_id.add(ItemSquarePattern.new(blind, 4, 0))
+  expected_list_pattern_objects_identified_by_id.add(ItemSquarePattern.new(blind, 0, 1))
+  expected_list_pattern_objects_identified_by_id.add(ItemSquarePattern.new(empty, 1, 1))
+  expected_list_pattern_objects_identified_by_id.add(ItemSquarePattern.new("1", 2, 1))
+  expected_list_pattern_objects_identified_by_id.add(ItemSquarePattern.new(empty, 3, 1))
+  expected_list_pattern_objects_identified_by_id.add(ItemSquarePattern.new(blind, 4, 1))
+  expected_list_pattern_objects_identified_by_id.add(ItemSquarePattern.new("2".to_s, 0, 2))
+  expected_list_pattern_objects_identified_by_id.add(ItemSquarePattern.new(empty, 1, 2))
+  expected_list_pattern_objects_identified_by_id.add(ItemSquarePattern.new(empty, 2, 2))
+  expected_list_pattern_objects_identified_by_id.add(ItemSquarePattern.new("3", 3, 2))
+  expected_list_pattern_objects_identified_by_id.add(ItemSquarePattern.new(empty, 4, 2))
   
-  expected_list_pattern_no_relative_coords_objects_identified_by_class = ListPattern.new
-  expected_list_pattern_no_relative_coords_objects_identified_by_class.add(ItemSquarePattern.new(blind, 0, 0))
-  expected_list_pattern_no_relative_coords_objects_identified_by_class.add(ItemSquarePattern.new(blind, 1, 0))
-  expected_list_pattern_no_relative_coords_objects_identified_by_class.add(ItemSquarePattern.new(Scene.getCreatorToken, 2, 0))
-  expected_list_pattern_no_relative_coords_objects_identified_by_class.add(ItemSquarePattern.new(blind, 3, 0))
-  expected_list_pattern_no_relative_coords_objects_identified_by_class.add(ItemSquarePattern.new(blind, 4, 0))
-  expected_list_pattern_no_relative_coords_objects_identified_by_class.add(ItemSquarePattern.new(blind, 0, 1))
-  expected_list_pattern_no_relative_coords_objects_identified_by_class.add(ItemSquarePattern.new(empty, 1, 1))
-  expected_list_pattern_no_relative_coords_objects_identified_by_class.add(ItemSquarePattern.new("c", 2, 1))
-  expected_list_pattern_no_relative_coords_objects_identified_by_class.add(ItemSquarePattern.new(empty, 3, 1))
-  expected_list_pattern_no_relative_coords_objects_identified_by_class.add(ItemSquarePattern.new(blind, 4, 1))
-  expected_list_pattern_no_relative_coords_objects_identified_by_class.add(ItemSquarePattern.new("a", 0, 2))
-  expected_list_pattern_no_relative_coords_objects_identified_by_class.add(ItemSquarePattern.new(empty, 1, 2))
-  expected_list_pattern_no_relative_coords_objects_identified_by_class.add(ItemSquarePattern.new(empty, 2, 2))
-  expected_list_pattern_no_relative_coords_objects_identified_by_class.add(ItemSquarePattern.new("b", 3, 2))
-  expected_list_pattern_no_relative_coords_objects_identified_by_class.add(ItemSquarePattern.new(empty, 4, 2))
+  expected_list_pattern_objects_identified_by_class = ListPattern.new
+  expected_list_pattern_objects_identified_by_class.add(ItemSquarePattern.new(blind, 0, 0))
+  expected_list_pattern_objects_identified_by_class.add(ItemSquarePattern.new(blind, 1, 0))
+  expected_list_pattern_objects_identified_by_class.add(ItemSquarePattern.new(Scene.getCreatorToken, 2, 0))
+  expected_list_pattern_objects_identified_by_class.add(ItemSquarePattern.new(blind, 3, 0))
+  expected_list_pattern_objects_identified_by_class.add(ItemSquarePattern.new(blind, 4, 0))
+  expected_list_pattern_objects_identified_by_class.add(ItemSquarePattern.new(blind, 0, 1))
+  expected_list_pattern_objects_identified_by_class.add(ItemSquarePattern.new(empty, 1, 1))
+  expected_list_pattern_objects_identified_by_class.add(ItemSquarePattern.new("c", 2, 1))
+  expected_list_pattern_objects_identified_by_class.add(ItemSquarePattern.new(empty, 3, 1))
+  expected_list_pattern_objects_identified_by_class.add(ItemSquarePattern.new(blind, 4, 1))
+  expected_list_pattern_objects_identified_by_class.add(ItemSquarePattern.new("a", 0, 2))
+  expected_list_pattern_objects_identified_by_class.add(ItemSquarePattern.new(empty, 1, 2))
+  expected_list_pattern_objects_identified_by_class.add(ItemSquarePattern.new(empty, 2, 2))
+  expected_list_pattern_objects_identified_by_class.add(ItemSquarePattern.new("b", 3, 2))
+  expected_list_pattern_objects_identified_by_class.add(ItemSquarePattern.new(empty, 4, 2))
   
-  expected_list_pattern_relative_coords_objects_identified_by_id = ListPattern.new
-  expected_list_pattern_relative_coords_objects_identified_by_id.add(ItemSquarePattern.new(blind, -2, 0))
-  expected_list_pattern_relative_coords_objects_identified_by_id.add(ItemSquarePattern.new(blind, -1, 0))
-  expected_list_pattern_relative_coords_objects_identified_by_id.add(ItemSquarePattern.new("0", 0, 0))
-  expected_list_pattern_relative_coords_objects_identified_by_id.add(ItemSquarePattern.new(blind, 1, 0))
-  expected_list_pattern_relative_coords_objects_identified_by_id.add(ItemSquarePattern.new(blind, 2, 0))
-  expected_list_pattern_relative_coords_objects_identified_by_id.add(ItemSquarePattern.new(blind, -2, 1))
-  expected_list_pattern_relative_coords_objects_identified_by_id.add(ItemSquarePattern.new(empty, -1, 1))
-  expected_list_pattern_relative_coords_objects_identified_by_id.add(ItemSquarePattern.new("1", 0, 1))
-  expected_list_pattern_relative_coords_objects_identified_by_id.add(ItemSquarePattern.new(empty, 1, 1))
-  expected_list_pattern_relative_coords_objects_identified_by_id.add(ItemSquarePattern.new(blind, 2, 1))
-  expected_list_pattern_relative_coords_objects_identified_by_id.add(ItemSquarePattern.new("2", -2, 2))
-  expected_list_pattern_relative_coords_objects_identified_by_id.add(ItemSquarePattern.new(empty, -1, 2))
-  expected_list_pattern_relative_coords_objects_identified_by_id.add(ItemSquarePattern.new(empty, 0, 2))
-  expected_list_pattern_relative_coords_objects_identified_by_id.add(ItemSquarePattern.new("3", 1, 2))
-  expected_list_pattern_relative_coords_objects_identified_by_id.add(ItemSquarePattern.new(empty, 2, 2))
-  
-  expected_list_pattern_relative_coords_objects_identified_by_class = ListPattern.new
-  expected_list_pattern_relative_coords_objects_identified_by_class.add(ItemSquarePattern.new(blind, -2, 0))
-  expected_list_pattern_relative_coords_objects_identified_by_class.add(ItemSquarePattern.new(blind, -1, 0))
-  expected_list_pattern_relative_coords_objects_identified_by_class.add(ItemSquarePattern.new(Scene.getCreatorToken, 0, 0))
-  expected_list_pattern_relative_coords_objects_identified_by_class.add(ItemSquarePattern.new(blind, 1, 0))
-  expected_list_pattern_relative_coords_objects_identified_by_class.add(ItemSquarePattern.new(blind, 2, 0))
-  expected_list_pattern_relative_coords_objects_identified_by_class.add(ItemSquarePattern.new(blind, -2, 1))
-  expected_list_pattern_relative_coords_objects_identified_by_class.add(ItemSquarePattern.new(empty, -1, 1))
-  expected_list_pattern_relative_coords_objects_identified_by_class.add(ItemSquarePattern.new("c", 0, 1))
-  expected_list_pattern_relative_coords_objects_identified_by_class.add(ItemSquarePattern.new(empty, 1, 1))
-  expected_list_pattern_relative_coords_objects_identified_by_class.add(ItemSquarePattern.new(blind, 2, 1))
-  expected_list_pattern_relative_coords_objects_identified_by_class.add(ItemSquarePattern.new("a", -2, 2))
-  expected_list_pattern_relative_coords_objects_identified_by_class.add(ItemSquarePattern.new(empty, -1, 2))
-  expected_list_pattern_relative_coords_objects_identified_by_class.add(ItemSquarePattern.new(empty, 0, 2))
-  expected_list_pattern_relative_coords_objects_identified_by_class.add(ItemSquarePattern.new("b", 1, 2))
-  expected_list_pattern_relative_coords_objects_identified_by_class.add(ItemSquarePattern.new(empty, 2, 2))
-  
-  assert_equal(expected_list_pattern_no_relative_coords_objects_identified_by_id, scene.getAsListPattern(false, false), "occurred when checking if list pattern returned is correct when scene coordinates are absolute and objects are identified using unique identifiers")
-  assert_equal(expected_list_pattern_no_relative_coords_objects_identified_by_class, scene.getAsListPattern(false, true), "occurred when checking if list pattern returned is correct when scene coordinates are absolute and objects are identified using their class")
-  assert_equal(expected_list_pattern_relative_coords_objects_identified_by_id, scene.getAsListPattern(true, false), "occurred when checking if list pattern returned is correct when scene coordinates are relative to the scene creator and objects are identified using unique identifiers")
-  assert_equal(expected_list_pattern_relative_coords_objects_identified_by_class, scene.getAsListPattern(true, true), "occurred when checking if list pattern returned is correct when scene coordinates are relative to the scene creator and objects are identified using their class")
+  assert_equal(expected_list_pattern_objects_identified_by_id, scene.getAsListPattern(false), "occurred when checking if list pattern returned is correct when objects are identified using unique identifiers")
+  assert_equal(expected_list_pattern_objects_identified_by_class, scene.getAsListPattern(true), "occurred when checking if list pattern returned is correct when objects are identified using their class")
 end
 
 ################################################################################
@@ -1034,118 +970,62 @@ unit_test "get_items_in_scope_as_list_pattern" do
   scene.addItemsToRow(3, row_3_items)
   scene.addItemsToRow(4, row_4_items)
   
-  expected_items_non_creator_relative_identified_by_object_class = ListPattern.new
-  expected_items_non_creator_relative_identified_by_object_class.add(ItemSquarePattern.new(blind, 0, 0))
-  expected_items_non_creator_relative_identified_by_object_class.add(ItemSquarePattern.new(empty, 1, 0))
-  expected_items_non_creator_relative_identified_by_object_class.add(ItemSquarePattern.new("f", 2, 0))
-  expected_items_non_creator_relative_identified_by_object_class.add(ItemSquarePattern.new(empty, 3, 0))
-  expected_items_non_creator_relative_identified_by_object_class.add(ItemSquarePattern.new(blind, 4, 0))
-  expected_items_non_creator_relative_identified_by_object_class.add(ItemSquarePattern.new(empty, 0, 1))
-  expected_items_non_creator_relative_identified_by_object_class.add(ItemSquarePattern.new(blind, 1, 1))
-  expected_items_non_creator_relative_identified_by_object_class.add(ItemSquarePattern.new("a", 2, 1))
-  expected_items_non_creator_relative_identified_by_object_class.add(ItemSquarePattern.new(blind, 3, 1))
-  expected_items_non_creator_relative_identified_by_object_class.add(ItemSquarePattern.new(empty, 4, 1))
-  expected_items_non_creator_relative_identified_by_object_class.add(ItemSquarePattern.new(empty, 0, 2))
-  expected_items_non_creator_relative_identified_by_object_class.add(ItemSquarePattern.new("b", 1, 2))
-  expected_items_non_creator_relative_identified_by_object_class.add(ItemSquarePattern.new(Scene.getCreatorToken(), 2, 2))
-  expected_items_non_creator_relative_identified_by_object_class.add(ItemSquarePattern.new("e", 3, 2))
-  expected_items_non_creator_relative_identified_by_object_class.add(ItemSquarePattern.new(empty, 4, 2))
-  expected_items_non_creator_relative_identified_by_object_class.add(ItemSquarePattern.new(empty, 0, 3))
-  expected_items_non_creator_relative_identified_by_object_class.add(ItemSquarePattern.new(blind, 1, 3))
-  expected_items_non_creator_relative_identified_by_object_class.add(ItemSquarePattern.new("d", 2, 3))
-  expected_items_non_creator_relative_identified_by_object_class.add(ItemSquarePattern.new(blind, 3, 3))
-  expected_items_non_creator_relative_identified_by_object_class.add(ItemSquarePattern.new(empty, 4, 3))
-  expected_items_non_creator_relative_identified_by_object_class.add(ItemSquarePattern.new(blind, 0, 4))
-  expected_items_non_creator_relative_identified_by_object_class.add(ItemSquarePattern.new(empty, 1, 4))
-  expected_items_non_creator_relative_identified_by_object_class.add(ItemSquarePattern.new("g", 2, 4))
-  expected_items_non_creator_relative_identified_by_object_class.add(ItemSquarePattern.new(empty, 3, 4))
-  expected_items_non_creator_relative_identified_by_object_class.add(ItemSquarePattern.new(blind, 4, 4))
+  expected_items_identified_by_object_class = ListPattern.new
+  expected_items_identified_by_object_class.add(ItemSquarePattern.new(blind, 0, 0))
+  expected_items_identified_by_object_class.add(ItemSquarePattern.new(empty, 1, 0))
+  expected_items_identified_by_object_class.add(ItemSquarePattern.new("f", 2, 0))
+  expected_items_identified_by_object_class.add(ItemSquarePattern.new(empty, 3, 0))
+  expected_items_identified_by_object_class.add(ItemSquarePattern.new(blind, 4, 0))
+  expected_items_identified_by_object_class.add(ItemSquarePattern.new(empty, 0, 1))
+  expected_items_identified_by_object_class.add(ItemSquarePattern.new(blind, 1, 1))
+  expected_items_identified_by_object_class.add(ItemSquarePattern.new("a", 2, 1))
+  expected_items_identified_by_object_class.add(ItemSquarePattern.new(blind, 3, 1))
+  expected_items_identified_by_object_class.add(ItemSquarePattern.new(empty, 4, 1))
+  expected_items_identified_by_object_class.add(ItemSquarePattern.new(empty, 0, 2))
+  expected_items_identified_by_object_class.add(ItemSquarePattern.new("b", 1, 2))
+  expected_items_identified_by_object_class.add(ItemSquarePattern.new(Scene.getCreatorToken(), 2, 2))
+  expected_items_identified_by_object_class.add(ItemSquarePattern.new("e", 3, 2))
+  expected_items_identified_by_object_class.add(ItemSquarePattern.new(empty, 4, 2))
+  expected_items_identified_by_object_class.add(ItemSquarePattern.new(empty, 0, 3))
+  expected_items_identified_by_object_class.add(ItemSquarePattern.new(blind, 1, 3))
+  expected_items_identified_by_object_class.add(ItemSquarePattern.new("d", 2, 3))
+  expected_items_identified_by_object_class.add(ItemSquarePattern.new(blind, 3, 3))
+  expected_items_identified_by_object_class.add(ItemSquarePattern.new(empty, 4, 3))
+  expected_items_identified_by_object_class.add(ItemSquarePattern.new(blind, 0, 4))
+  expected_items_identified_by_object_class.add(ItemSquarePattern.new(empty, 1, 4))
+  expected_items_identified_by_object_class.add(ItemSquarePattern.new("g", 2, 4))
+  expected_items_identified_by_object_class.add(ItemSquarePattern.new(empty, 3, 4))
+  expected_items_identified_by_object_class.add(ItemSquarePattern.new(blind, 4, 4))
   
-  expected_items_creator_relative_identified_by_object_class = ListPattern.new
-  expected_items_creator_relative_identified_by_object_class.add(ItemSquarePattern.new(blind, -2, -2))
-  expected_items_creator_relative_identified_by_object_class.add(ItemSquarePattern.new(empty, -1, -2))
-  expected_items_creator_relative_identified_by_object_class.add(ItemSquarePattern.new("f", 0, -2))
-  expected_items_creator_relative_identified_by_object_class.add(ItemSquarePattern.new(empty, 1, -2))
-  expected_items_creator_relative_identified_by_object_class.add(ItemSquarePattern.new(blind, 2, -2))
-  expected_items_creator_relative_identified_by_object_class.add(ItemSquarePattern.new(empty, -2, -1))
-  expected_items_creator_relative_identified_by_object_class.add(ItemSquarePattern.new(blind, -1, -1))
-  expected_items_creator_relative_identified_by_object_class.add(ItemSquarePattern.new("a", 0, -1))
-  expected_items_creator_relative_identified_by_object_class.add(ItemSquarePattern.new(blind, 1, -1))
-  expected_items_creator_relative_identified_by_object_class.add(ItemSquarePattern.new(empty, 2, -1))
-  expected_items_creator_relative_identified_by_object_class.add(ItemSquarePattern.new(empty, -2, 0))
-  expected_items_creator_relative_identified_by_object_class.add(ItemSquarePattern.new("b", -1, 0))
-  expected_items_creator_relative_identified_by_object_class.add(ItemSquarePattern.new(Scene.getCreatorToken(), 0, 0))
-  expected_items_creator_relative_identified_by_object_class.add(ItemSquarePattern.new("e", 1, 0))
-  expected_items_creator_relative_identified_by_object_class.add(ItemSquarePattern.new(empty, 2, 0))
-  expected_items_creator_relative_identified_by_object_class.add(ItemSquarePattern.new(empty, -2, 1))
-  expected_items_creator_relative_identified_by_object_class.add(ItemSquarePattern.new(blind, -1, 1))
-  expected_items_creator_relative_identified_by_object_class.add(ItemSquarePattern.new("d", 0, 1))
-  expected_items_creator_relative_identified_by_object_class.add(ItemSquarePattern.new(blind, 1, 1))
-  expected_items_creator_relative_identified_by_object_class.add(ItemSquarePattern.new(empty, 2, 1))
-  expected_items_creator_relative_identified_by_object_class.add(ItemSquarePattern.new(blind, -2, 2))
-  expected_items_creator_relative_identified_by_object_class.add(ItemSquarePattern.new(empty, -1, 2))
-  expected_items_creator_relative_identified_by_object_class.add(ItemSquarePattern.new("g", 0, 2))
-  expected_items_creator_relative_identified_by_object_class.add(ItemSquarePattern.new(empty, 1, 2))
-  expected_items_creator_relative_identified_by_object_class.add(ItemSquarePattern.new(blind, 2, 2))
+  expected_items_identified_by_object_id = ListPattern.new
+  expected_items_identified_by_object_id.add(ItemSquarePattern.new(blind, 0, 0))
+  expected_items_identified_by_object_id.add(ItemSquarePattern.new(empty, 1, 0))
+  expected_items_identified_by_object_id.add(ItemSquarePattern.new("1", 2, 0))
+  expected_items_identified_by_object_id.add(ItemSquarePattern.new(empty, 3, 0))
+  expected_items_identified_by_object_id.add(ItemSquarePattern.new(blind, 4, 0))
+  expected_items_identified_by_object_id.add(ItemSquarePattern.new(empty, 0, 1))
+  expected_items_identified_by_object_id.add(ItemSquarePattern.new(blind, 1, 1))
+  expected_items_identified_by_object_id.add(ItemSquarePattern.new("2", 2, 1))
+  expected_items_identified_by_object_id.add(ItemSquarePattern.new(blind, 3, 1))
+  expected_items_identified_by_object_id.add(ItemSquarePattern.new(empty, 4, 1))
+  expected_items_identified_by_object_id.add(ItemSquarePattern.new(empty, 0, 2))
+  expected_items_identified_by_object_id.add(ItemSquarePattern.new("3", 1, 2))
+  expected_items_identified_by_object_id.add(ItemSquarePattern.new("0", 2, 2))
+  expected_items_identified_by_object_id.add(ItemSquarePattern.new("4", 3, 2))
+  expected_items_identified_by_object_id.add(ItemSquarePattern.new(empty, 4, 2))
+  expected_items_identified_by_object_id.add(ItemSquarePattern.new(empty, 0, 3))
+  expected_items_identified_by_object_id.add(ItemSquarePattern.new(blind, 1, 3))
+  expected_items_identified_by_object_id.add(ItemSquarePattern.new("5", 2, 3))
+  expected_items_identified_by_object_id.add(ItemSquarePattern.new(blind, 3, 3))
+  expected_items_identified_by_object_id.add(ItemSquarePattern.new(empty, 4, 3))
+  expected_items_identified_by_object_id.add(ItemSquarePattern.new(blind, 0, 4))
+  expected_items_identified_by_object_id.add(ItemSquarePattern.new(empty, 1, 4))
+  expected_items_identified_by_object_id.add(ItemSquarePattern.new("6", 2, 4))
+  expected_items_identified_by_object_id.add(ItemSquarePattern.new(empty, 3, 4))
+  expected_items_identified_by_object_id.add(ItemSquarePattern.new(blind, 4, 4))
   
-  expected_items_non_creator_relative_identified_by_object_id = ListPattern.new
-  expected_items_non_creator_relative_identified_by_object_id.add(ItemSquarePattern.new(blind, 0, 0))
-  expected_items_non_creator_relative_identified_by_object_id.add(ItemSquarePattern.new(empty, 1, 0))
-  expected_items_non_creator_relative_identified_by_object_id.add(ItemSquarePattern.new("1", 2, 0))
-  expected_items_non_creator_relative_identified_by_object_id.add(ItemSquarePattern.new(empty, 3, 0))
-  expected_items_non_creator_relative_identified_by_object_id.add(ItemSquarePattern.new(blind, 4, 0))
-  expected_items_non_creator_relative_identified_by_object_id.add(ItemSquarePattern.new(empty, 0, 1))
-  expected_items_non_creator_relative_identified_by_object_id.add(ItemSquarePattern.new(blind, 1, 1))
-  expected_items_non_creator_relative_identified_by_object_id.add(ItemSquarePattern.new("2", 2, 1))
-  expected_items_non_creator_relative_identified_by_object_id.add(ItemSquarePattern.new(blind, 3, 1))
-  expected_items_non_creator_relative_identified_by_object_id.add(ItemSquarePattern.new(empty, 4, 1))
-  expected_items_non_creator_relative_identified_by_object_id.add(ItemSquarePattern.new(empty, 0, 2))
-  expected_items_non_creator_relative_identified_by_object_id.add(ItemSquarePattern.new("3", 1, 2))
-  expected_items_non_creator_relative_identified_by_object_id.add(ItemSquarePattern.new("0", 2, 2))
-  expected_items_non_creator_relative_identified_by_object_id.add(ItemSquarePattern.new("4", 3, 2))
-  expected_items_non_creator_relative_identified_by_object_id.add(ItemSquarePattern.new(empty, 4, 2))
-  expected_items_non_creator_relative_identified_by_object_id.add(ItemSquarePattern.new(empty, 0, 3))
-  expected_items_non_creator_relative_identified_by_object_id.add(ItemSquarePattern.new(blind, 1, 3))
-  expected_items_non_creator_relative_identified_by_object_id.add(ItemSquarePattern.new("5", 2, 3))
-  expected_items_non_creator_relative_identified_by_object_id.add(ItemSquarePattern.new(blind, 3, 3))
-  expected_items_non_creator_relative_identified_by_object_id.add(ItemSquarePattern.new(empty, 4, 3))
-  expected_items_non_creator_relative_identified_by_object_id.add(ItemSquarePattern.new(blind, 0, 4))
-  expected_items_non_creator_relative_identified_by_object_id.add(ItemSquarePattern.new(empty, 1, 4))
-  expected_items_non_creator_relative_identified_by_object_id.add(ItemSquarePattern.new("6", 2, 4))
-  expected_items_non_creator_relative_identified_by_object_id.add(ItemSquarePattern.new(empty, 3, 4))
-  expected_items_non_creator_relative_identified_by_object_id.add(ItemSquarePattern.new(blind, 4, 4))
-  
-  expected_items_creator_relative_identified_by_object_id = ListPattern.new
-  expected_items_creator_relative_identified_by_object_id.add(ItemSquarePattern.new(blind, -2, -2))
-  expected_items_creator_relative_identified_by_object_id.add(ItemSquarePattern.new(empty, -1, -2))
-  expected_items_creator_relative_identified_by_object_id.add(ItemSquarePattern.new("1", 0, -2))
-  expected_items_creator_relative_identified_by_object_id.add(ItemSquarePattern.new(empty, 1, -2))
-  expected_items_creator_relative_identified_by_object_id.add(ItemSquarePattern.new(blind, 2, -2))
-  expected_items_creator_relative_identified_by_object_id.add(ItemSquarePattern.new(empty, -2, -1))
-  expected_items_creator_relative_identified_by_object_id.add(ItemSquarePattern.new(blind, -1, -1))
-  expected_items_creator_relative_identified_by_object_id.add(ItemSquarePattern.new("2", 0, -1))
-  expected_items_creator_relative_identified_by_object_id.add(ItemSquarePattern.new(blind, 1, -1))
-  expected_items_creator_relative_identified_by_object_id.add(ItemSquarePattern.new(empty, 2, -1))
-  expected_items_creator_relative_identified_by_object_id.add(ItemSquarePattern.new(empty, -2, 0))
-  expected_items_creator_relative_identified_by_object_id.add(ItemSquarePattern.new("3", -1, 0))
-  expected_items_creator_relative_identified_by_object_id.add(ItemSquarePattern.new("0", 0, 0))
-  expected_items_creator_relative_identified_by_object_id.add(ItemSquarePattern.new("4", 1, 0))
-  expected_items_creator_relative_identified_by_object_id.add(ItemSquarePattern.new(empty, 2, 0))
-  expected_items_creator_relative_identified_by_object_id.add(ItemSquarePattern.new(empty, -2, 1))
-  expected_items_creator_relative_identified_by_object_id.add(ItemSquarePattern.new(blind, -1, 1))
-  expected_items_creator_relative_identified_by_object_id.add(ItemSquarePattern.new("5", 0, 1))
-  expected_items_creator_relative_identified_by_object_id.add(ItemSquarePattern.new(blind, 1, 1))
-  expected_items_creator_relative_identified_by_object_id.add(ItemSquarePattern.new(empty, 2, 1))
-  expected_items_creator_relative_identified_by_object_id.add(ItemSquarePattern.new(blind, -2, 2))
-  expected_items_creator_relative_identified_by_object_id.add(ItemSquarePattern.new(empty, -1, 2))
-  expected_items_creator_relative_identified_by_object_id.add(ItemSquarePattern.new("6", 0, 2))
-  expected_items_creator_relative_identified_by_object_id.add(ItemSquarePattern.new(empty, 1, 2))
-  expected_items_creator_relative_identified_by_object_id.add(ItemSquarePattern.new(blind, 2, 2))
-  
-  assert_equal(expected_items_non_creator_relative_identified_by_object_class, scene.getItemsInScopeAsListPattern(2, 2, 2, false, true), "occurred when items should have scene-specific coordinates and be identified by their class.")
-  assert_equal(expected_items_creator_relative_identified_by_object_class, scene.getItemsInScopeAsListPattern(2, 2, 2, true, true), "occurred when items should have creator-specific coordinates and be identified by their class.")
-  assert_equal(expected_items_non_creator_relative_identified_by_object_id, scene.getItemsInScopeAsListPattern(2, 2, 2, false, false), "occurred when items should have scene-specific coordinates and be identified by their id.")
-  assert_equal(expected_items_creator_relative_identified_by_object_id, scene.getItemsInScopeAsListPattern(2, 2, 2, true, false), "occurred when items should have creator-specific coordinates and be identified by their id.")
+  assert_equal(expected_items_identified_by_object_class, scene.getItemsInScopeAsListPattern(2, 2, 2, true), "occurred when items should be identified by their class.")
+  assert_equal(expected_items_identified_by_object_id, scene.getItemsInScopeAsListPattern(2, 2, 2, false), "occurred when items should be identified by their id.")
 end
 
 ################################################################################

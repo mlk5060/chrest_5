@@ -4,10 +4,10 @@
 package jchrest.lib;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -149,7 +149,7 @@ public class ChessDomain extends DomainSpecifics {
     for (int i = 0; i < scene.getWidth (); ++i) {
       for (int j = 0; j < scene.getHeight (); ++j) {
         if (!scene.isSquareEmpty (i, j) && !scene.isSquareBlind(i, j)) {
-          ListPattern itemsOnSquare = scene.getSquareContentsAsListPattern(i, j, false, true);
+          ListPattern itemsOnSquare = scene.getSquareContentsAsListPattern(i, j, true);
           for(PrimitivePattern itemOnSquare : itemsOnSquare){
             ItemSquarePattern ios = (ItemSquarePattern)itemOnSquare;
             if( !ios.getItem().equals("P") && !ios.getItem().equals("p") ){
@@ -177,7 +177,7 @@ public class ChessDomain extends DomainSpecifics {
     for (int i = 0; i < scene.getWidth (); ++i) {
       for (int j = 0; j < scene.getHeight (); ++j) {
         if(!scene.isSquareBlind(i, j)){
-          ListPattern itemsOnSquare = scene.getSquareContentsAsListPattern(i, j, false, true);
+          ListPattern itemsOnSquare = scene.getSquareContentsAsListPattern(i, j, true);
           for(PrimitivePattern itemOnSquare : itemsOnSquare){
             ItemSquarePattern ios = (ItemSquarePattern)itemOnSquare;
             
@@ -198,8 +198,8 @@ public class ChessDomain extends DomainSpecifics {
   }
 
   private boolean differentColour (Scene board, Square square1, Square square2) {
-    char item1 = ( (ItemSquarePattern)board.getSquareContentsAsListPattern(square1.getColumn(), square1.getRow(), false, true).getItem(0) ).getItem().charAt (0);
-    char item2 = ( (ItemSquarePattern)board.getSquareContentsAsListPattern(square2.getColumn(), square2.getRow(), false, true).getItem(0) ).getItem().charAt (0);
+    char item1 = ( (ItemSquarePattern)board.getSquareContentsAsListPattern(square1.getColumn(), square1.getRow(), true).getItem(0) ).getItem().charAt (0);
+    char item2 = ( (ItemSquarePattern)board.getSquareContentsAsListPattern(square2.getColumn(), square2.getRow(), true).getItem(0) ).getItem().charAt (0);
 
     return 
       (Character.isUpperCase (item1) && Character.isLowerCase (item2)) ||
@@ -425,7 +425,7 @@ public class ChessDomain extends DomainSpecifics {
    */
   @Override
   public List<Square> proposeMovementFixations (Scene board, Square square) {
-    String piece = ( (ItemSquarePattern)board.getSquareContentsAsListPattern(square.getColumn(), square.getRow(), false, true).getItem(0) ).getItem();
+    String piece = ( (ItemSquarePattern)board.getSquareContentsAsListPattern(square.getColumn(), square.getRow(), true).getItem(0) ).getItem();
 
     if (piece.equals ("P")) {
       return findWhitePawnMoves (board, square);
@@ -449,6 +449,65 @@ public class ChessDomain extends DomainSpecifics {
   @Override
   public int getCurrentTime() {
     throw new UnsupportedOperationException("Not supported yet.");
+  }
+
+  /**
+   * Converts coordinates in {@link jchrest.lib.ItemSquarePattern}s 
+   * contained in a {@link jchrest.lib.ListPattern} to zero-indexed coordinates
+   * so the information in the {@link jchrest.lib.ListPattern}'s {@link 
+   * jchrest.lib.ItemSquarePattern}s can be mapped onto a 
+   * {@link jchrest.lib.Scene}.
+   * 
+   * @param listPattern
+   * @param scene Not used so can be set to null.
+   * @return 
+   */
+  @Override
+  public ListPattern convertDomainSpecificCoordinatesToSceneSpecificCoordinates(ListPattern listPattern, Scene scene) {
+    ListPattern preparedListPattern = new ListPattern(Modality.VISUAL);
+    Iterator<PrimitivePattern> listPatternIterator = listPattern.iterator();
+    
+    while(listPatternIterator.hasNext()){
+      ItemSquarePattern isp = (ItemSquarePattern)listPatternIterator.next();
+      preparedListPattern.add(
+        new ItemSquarePattern(
+          isp.getItem(),
+          isp.getColumn() - 1, 
+          isp.getRow() - 1
+        )
+      );
+    }
+    
+    return preparedListPattern;
+  }
+
+  /**
+   * Converts coordinates in {@link jchrest.lib.ItemSquarePattern}s 
+   * contained in a {@link jchrest.lib.ListPattern} from zero-indexed 
+   * coordinates so the information in the {@link jchrest.lib.ListPattern}'s 
+   * {@link jchrest.lib.ItemSquarePattern}s can be used in chess.
+   * 
+   * @param listPattern
+   * @param scene Not used so can be set to null.
+   * @return 
+   */
+  @Override
+  public ListPattern convertSceneSpecificCoordinatesToDomainSpecificCoordinates(ListPattern listPattern, Scene scene) {
+    ListPattern preparedListPattern = new ListPattern(Modality.VISUAL);
+    Iterator<PrimitivePattern> listPatternIterator = listPattern.iterator();
+    
+    while(listPatternIterator.hasNext()){
+      ItemSquarePattern isp = (ItemSquarePattern)listPatternIterator.next();
+      preparedListPattern.add(
+        new ItemSquarePattern(
+          isp.getItem(),
+          isp.getColumn() + 1, 
+          isp.getRow() + 1
+        )
+      );
+    }
+    
+    return preparedListPattern;
   }
 }
 
