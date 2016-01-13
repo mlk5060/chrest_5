@@ -113,12 +113,14 @@ public class CategorisationExperiment extends JPanel {
     private void collectResponses () {
       List<ListPattern> responses = new ArrayList<ListPattern> ();
       for (PairedPattern pair : _patterns) {
-        ListPattern response = _model.namePattern (pair.getFirst (), _exptClock);
-        if (response != null) {
-          responses.add (response);
-        } else {
-          responses.add (Pattern.makeVisualList (new String[]{"NONE"}));
-        }
+        //TODO: fix this when node associations refactored.
+        
+//        ListPattern response = _model.namePattern (pair.getFirst (), _exptClock);
+//        if (response != null) {
+//          responses.add (response);
+//        } else {
+//          responses.add (Pattern.makeVisualList (new String[]{"NONE"}));
+//        }
       }
       _responses.add (responses);
     }
@@ -128,7 +130,8 @@ public class CategorisationExperiment extends JPanel {
       _model.freeze (); // save all gui updates to the end
       collectResponses ();
       for (PairedPattern pair : preparePatterns ()) {
-        _model.learnAndNamePatterns (pair.getFirst (), pair.getSecond ());
+        //TODO: fix this when node associations refactored
+//        _model.learnAndNamePatterns (pair.getFirst (), pair.getSecond ());
         _exptClock += 1;
       }
       updateControls ();

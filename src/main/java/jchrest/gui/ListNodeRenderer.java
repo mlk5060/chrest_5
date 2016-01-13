@@ -10,9 +10,11 @@ import javax.swing.border.*;
 
 public class ListNodeRenderer extends JLabel implements ListCellRenderer {
   private Chrest _model;
+  private int _time;
 
-  ListNodeRenderer (Chrest model) {
+  ListNodeRenderer (Chrest model, int time) {
     _model = model;
+    _time = time;
   }
 
   public Component getListCellRendererComponent (
@@ -23,7 +25,7 @@ public class ListNodeRenderer extends JLabel implements ListCellRenderer {
       boolean cellHasFocus) {
     JLabel cell = new JLabel ("");
     cell.setBorder (new CompoundBorder (new EmptyBorder (3, 3, 3, 3), new EtchedBorder ()));
-    cell.setIcon (new NodeIcon ((Node)value, list));
+    cell.setIcon (new NodeIcon ((Node)value, list, _time));
 
     return cell;
 

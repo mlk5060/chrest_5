@@ -7,16 +7,9 @@ import jchrest.architecture.*;
 
 import java.awt.*;
 import java.awt.event.*;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.Map;
-import java.util.Map.Entry;
+import java.util.List;
 import javax.swing.*;
 import javax.swing.border.*;
-import jchrest.lib.ItemSquarePattern;
-import jchrest.lib.ListPattern;
 import jchrest.lib.Modality;
 
 public class ChrestStmView extends JPanel {
@@ -27,7 +20,7 @@ public class ChrestStmView extends JPanel {
   //Holds the time that the state of the STM to be drawn should represent.
   private Integer _stateAtTimeValue;
 
-  public ChrestStmView (Chrest model) {
+  public ChrestStmView (Chrest model, int time) {
     super ();
 
     //Associated model variable set-up.
@@ -35,7 +28,7 @@ public class ChrestStmView extends JPanel {
     
     //Set the following variable value before the STM view is constructed since 
     //its construction depends on the value being set correctly.
-    _stateAtTimeValue = _model.getMaximumClockValue(); 
+    _stateAtTimeValue = time; 
     
     //Visual STM set-up.
     setLayout (new GridLayout (1, 1));
@@ -44,7 +37,7 @@ public class ChrestStmView extends JPanel {
     visualPanel.setBorder (new TitledBorder ("Visual STM"));
     _visualStmView = new DefaultListModel ();
     _visualStmList = new JList (_visualStmView);
-    _visualStmList.setCellRenderer (new ListNodeRenderer (_model));
+    _visualStmList.setCellRenderer (new ListNodeRenderer (_model, _stateAtTimeValue));
     _visualStmList.addMouseListener(new MouseAdapter() {
       
       /**
@@ -57,7 +50,7 @@ public class ChrestStmView extends JPanel {
         JList list = (JList)evt.getSource();
         if (evt.getClickCount() == 2) { 
           int index = list.locationToIndex(evt.getPoint());
-          new NodeView (_model, (Node)_visualStmView.getElementAt (index));
+          new NodeView (_model, (Node)_visualStmView.getElementAt (index), time);
         }
       }
     });
@@ -69,7 +62,7 @@ public class ChrestStmView extends JPanel {
     verbalPanel.setBorder (new TitledBorder ("Verbal STM"));
     _verbalStmView = new DefaultListModel ();
     _verbalStmList = new JList (_verbalStmView);
-    _verbalStmList.setCellRenderer (new ListNodeRenderer (_model));
+    _verbalStmList.setCellRenderer (new ListNodeRenderer (_model, _stateAtTimeValue));
     _verbalStmList.addMouseListener(new MouseAdapter() {
       
       /**
@@ -82,7 +75,7 @@ public class ChrestStmView extends JPanel {
         JList list = (JList)evt.getSource();
         if (evt.getClickCount() == 2) { 
           int index = list.locationToIndex(evt.getPoint());
-          new NodeView (_model, (Node)_verbalStmView.getElementAt (index));
+          new NodeView (_model, (Node)_verbalStmView.getElementAt (index), ChrestStmView.this._stateAtTimeValue);
         }
       }
     });
@@ -93,47 +86,22 @@ public class ChrestStmView extends JPanel {
     jsp.setOneTouchExpandable (true);
     add (jsp);
 
-    update (_model.getMaximumClockValue(), false);
+    update (_model.getMaximumClockValue());
   }
 
-  public void update (int stateAtTime, boolean historicalSearch) {
+  public void update (int time) {
     _verbalStmView.clear();
     _visualStmView.clear();
     
-    if(historicalSearch){
-      //Since all Nodes in LTM will have been cloned thanks to the 
-      //ChrestView.update() method at this stage and since the Node.deepClone()
-      //method clones Nodes so that their state reflects the original Node's 
-      //state at the time specified (in this case, "stateAtTime"), we just need 
-      //to fetch the clones and add them to the respective STM view.
-      
-      Entry<Integer, java.util.List<Integer>> verbalStmContents = _model.getVerbalStm().getStateAtTime(stateAtTime);
-      if(verbalStmContents != null){
-        Iterator<Integer> verbalStmContentIterator = verbalStmContents.getValue().iterator();
-        while(verbalStmContentIterator.hasNext()){
-          _verbalStmView.addElement( Node.searchForNodeFromBaseNode(verbalStmContentIterator.next(), this._model.getLtmByModality(Modality.VERBAL)).getClone() );
-        }
-      }
-      
-      Entry<Integer, java.util.List<Integer>> visualStmContents = _model.getVisualStm().getStateAtTime(stateAtTime);
-      if(visualStmContents != null){
-        Iterator<Integer> visualStmContentIterator = visualStmContents.getValue().iterator();
-        while(visualStmContentIterator.hasNext()){
-          _visualStmView.addElement( Node.searchForNodeFromBaseNode(visualStmContentIterator.next(), this._model.getLtmByModality(Modality.VISUAL)).getClone() );
-        }
-      }
+    List<Node> verbalStm = this._model.getStm(Modality.VERBAL).getContents(time);
+    List<Node> visualStm = this._model.getStm(Modality.VISUAL).getContents(time);
+
+    for(Node verbalStmNode : verbalStm){
+      _verbalStmView.addElement(verbalStmNode);
     }
-    else{
-      Iterator<Node> verbalStm = _model.getVerbalStm().iterator();
-      Iterator<Node> visualStm = _model.getVisualStm().iterator();
-      
-      while(verbalStm.hasNext()){
-        _verbalStmView.addElement(verbalStm.next());
-      }
-      
-      while(visualStm.hasNext()){
-        _visualStmView.addElement (visualStm.next());
-      }
+
+    for(Node visualStmNode : visualStm){
+      _visualStmView.addElement(visualStmNode);
     }
     
     _verbalStmList.setModel (_verbalStmView);

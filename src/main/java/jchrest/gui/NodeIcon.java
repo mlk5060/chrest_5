@@ -12,8 +12,8 @@ public class NodeIcon implements Icon {
   private Component _parent;
 //  private JList _stmList
 
-  public NodeIcon (Node node, Component parent) {
-    _node = new NodeDisplay (node);
+  public NodeIcon (Node node, Component parent, int time) {
+    _node = new NodeDisplay (node, time);
     _parent = parent;
 //    _stmList = stmList;
   }

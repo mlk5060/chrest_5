@@ -330,7 +330,9 @@ public class PairedAssociateExperiment extends Observable{
           PairedPattern stimulusResponseToLearn = this._auditoryLoop.get(0);
           ListPattern stimulus = stimulusResponseToLearn.getFirst();
           ListPattern response = stimulusResponseToLearn.getSecond();
-          this._model.associateAndLearn(stimulus, response, _exptClock);
+          
+          //TODO: fix after associations creation refactored.
+          //this._model.associateAndLearn(stimulus, response, _exptClock);
         }
         _exptClock += 1;
       }
@@ -465,7 +467,10 @@ public class PairedAssociateExperiment extends Observable{
     //Ostensibly, test the model.  This is actually the model testing itself to
     //determine if it knows the correct response i.e. it isn't saying to the
     //experimentor "I think the response is...", yet.
-    ListPattern response = _model.associatedPattern (stimulusResponsePair.getFirst (), _exptClock);
+    
+    //TODO: fix after associations refactored.
+    //ListPattern response = _model.associatedPattern (stimulusResponsePair.getFirst (), _exptClock);
+    ListPattern response = null;
     
     if(response == null || response.isEmpty() ){
       response = Pattern.makeVerbalList (new String[]{"NONE"});

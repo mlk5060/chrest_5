@@ -3,7 +3,6 @@
 
 package jchrest.architecture;
 
-import jchrest.lib.FileUtilities;
 import jchrest.lib.ListPattern;
 
 /**
@@ -19,48 +18,45 @@ public class Link {
   private final String _createdInExperiment; //Used for drawing LTM.
 
   /**
-   * Constructor sets the link's test and child node.
+   * Constructor.
+   * 
+   * @param test The test that must be passed for the child {@link 
+   * jchrest.architecture.Node} of {@link #this} to be reached during LTM
+   * retrieval.
+   * @param child 
+   * @param currentExperimentName 
+   * @param time
    */
-  public Link (ListPattern test, Node child, int domainTime, String currentExperimentName) {
+  public Link (ListPattern test, Node child, int time, String currentExperimentName) {
     _test = test;
     _child = child;
-    _creationTime = domainTime;
+    _creationTime = time;
     _createdInExperiment = currentExperimentName;
   }
 
-  /**
-   * Accessor to the link's child node.
-   */
   public Node getChildNode () {
     return _child;
   }
 
-  /**
-   * Accessor to the link's test.
-   */
   public ListPattern getTest () {
     return _test;
   }
   
-  /**
-   * Accessor to the time this link was created.
-   * @return 
-   */
   public int getCreationTime(){
     return _creationTime;
   }
   
-  /**
-   * Accessor to the name of the experiment this link was created in.
-   * @return 
-   */
   public String getExperimentCreatedIn(){
     return this._createdInExperiment;
   }
 
   /**
-   * Test if the given pattern can be sorted through this test link.
-   * A test passes if the test matches the given pattern.
+   * Check if the {@link jchrest.lib.ListPattern} specified {@link 
+   * jchrest.lib.ListPattern#matches(jchrest.lib.Pattern)} the {@link 
+   * jchrest.lib.ListPattern}
+   * 
+   * @param pattern
+   * @return 
    */
   public boolean passes (ListPattern pattern) {
     return _test.matches (pattern);

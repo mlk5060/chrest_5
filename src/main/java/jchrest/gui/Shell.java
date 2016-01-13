@@ -3,6 +3,7 @@
 
 package jchrest.gui;
 
+import jchrest.gui.experiments.*;
 import jchrest.architecture.Chrest;
 import jchrest.lib.FileUtilities;
 import jchrest.lib.ListPattern;
@@ -37,6 +38,7 @@ import javax.swing.table.AbstractTableModel;
 import javax.swing.table.TableModel;
 import javax.swing.text.DefaultFormatter;
 import jchrest.lib.InputOutput;
+import jchrest.lib.Modality;
 import jchrest.lib.PairedAssociateExperiment;
 
 import org.jfree.chart.*;
@@ -59,12 +61,15 @@ public class Shell extends JFrame implements Observer {
   private JTable _executionHistoryTable;
   
   public Shell () {
+    new Shell(new Chrest (0, null));
+  }
+  
+  public Shell(Chrest model){
     super ("CHREST 4");
-
-    _model = new Chrest ();
+    this._model = model;
 
     setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-    createMenuBar ();
+    createMenuBar (0);
     
     JLabel startupInfo = new JLabel (
       "<html>Load data by clicking on the 'Data' toolbar option.  Two types of data<br>"
@@ -88,19 +93,19 @@ public class Shell extends JFrame implements Observer {
     setSize(800, 600);
     setLocationRelativeTo (null);
     setTheme ("Nimbus");
-    
+        
     _model.addObserver(this);
-    _model.setNotLoadedIntoExperiment();
-    _model.setNotEngagedInExperiment();
+    //_model.setNotLoadedIntoExperiment();
+    //_model.setNotEngagedInExperiment();
     
     this._executionHistoryOperations.add("");
   }
 
-  private void createMenuBar () {
+  private void createMenuBar (int time) {
     JMenuBar mb = new JMenuBar ();
     mb.add (createShellMenu ());
     mb.add (createDataMenu ());
-    mb.add (createModelMenu ());
+    mb.add (createModelMenu (time));
     setJMenuBar (mb);
   }
   
@@ -437,23 +442,27 @@ public class Shell extends JFrame implements Observer {
             _model.addExperimentsLocatedInName(Chrest.getPreExperimentPrepend() + _experimentName);
           }
 
+          JPanel experimentInterface = null;
+          
           if (_task.equals ("recognise-and-learn") && _items != null) {
-            _parent.setContentPane (new RecogniseAndLearnDemo (_model, _items));
+            experimentInterface = new RecogniseAndLearnDemo (_model, _items);
           } else if (_task.equals ("serial-anticipation") && _items != null) {
-            _parent.setContentPane (new PairedAssociateInterface (_model, PairedAssociateExperiment.makePairs(_items)));
+            experimentInterface = new PairedAssociateInterface (_model, PairedAssociateExperiment.makePairs(_items));
           } else if (_task.equals ("paired-associate") && _pairs != null) {
-            _parent.setContentPane (new PairedAssociateInterface (_model, _pairs));
+            experimentInterface = new PairedAssociateInterface (_model, _pairs);
           } else if (_task.equals ("categorisation") && _pairs != null) {
-            _parent.setContentPane (new CategorisationExperiment (_model, _pairs));
+            experimentInterface = new CategorisationExperiment (_model, _pairs);
           } else if (_task.equals ("visual-search") && _scenes != null) {
-            _parent.setContentPane (new VisualSearchPane (_model, _scenes));
+            experimentInterface = new VisualSearchPane (_model, _scenes);
           } else {
             JOptionPane.showMessageDialog (_parent,
                 "Invalid task on first line of file",
                 "File error",
                 JOptionPane.ERROR_MESSAGE);
           }
+          _parent.setContentPane(experimentInterface);
           _parent.validate ();
+          _model.setCurrentExperiment((Experiment)experimentInterface);
 
           break;
       }
@@ -509,23 +518,31 @@ public class Shell extends JFrame implements Observer {
     }
 
     public void actionPerformed (ActionEvent e) {
-      if (JOptionPane.OK_OPTION == JOptionPane.showOptionDialog (_parent, 
-            properties(), 
-            "CHREST: Model properties", 
-            JOptionPane.OK_CANCEL_OPTION,
-            JOptionPane.PLAIN_MESSAGE,
-            null, null, 0)) {
-        _model.setAddLinkTime (((SpinnerNumberModel)_addLinkTime.getModel()).getNumber().intValue ());
+      if(
+        JOptionPane.OK_OPTION == JOptionPane.showOptionDialog (_parent, 
+          properties(), 
+          "CHREST: Model properties", 
+          JOptionPane.OK_CANCEL_OPTION,
+          JOptionPane.PLAIN_MESSAGE,
+          null, 
+          null, 
+          0
+        )
+      ) {
+        Experiment currentExperiment = _model.getCurrentExperiment();
+        int currentExperimentTime = currentExperiment == null ? 0 : currentExperiment.getCurrentTime();
+        
+        _model.setAddProductionTime (((SpinnerNumberModel)_addLinkTime.getModel()).getNumber().intValue ());
         _model.setDiscriminationTime (((SpinnerNumberModel)_discriminationTime.getModel()).getNumber().intValue ());
         _model.setFamiliarisationTime (((SpinnerNumberModel)_familiarisationTime.getModel()).getNumber().intValue ());
         _model.setRho (((SpinnerNumberModel)_rhoEntry.getModel()).getNumber().floatValue ());
-        _model.setVisualStmSize (((SpinnerNumberModel)_visualStmSize.getModel()).getNumber().intValue ());
-        _model.setVerbalStmSize (((SpinnerNumberModel)_verbalStmSize.getModel()).getNumber().intValue ());
+        _model.getStm(Modality.VISUAL).setCapacity(((SpinnerNumberModel)_visualStmSize.getModel()).getNumber().intValue(), currentExperimentTime);
+        _model.getStm(Modality.VERBAL).setCapacity(((SpinnerNumberModel)_verbalStmSize.getModel()).getNumber().intValue(), currentExperimentTime);
         _model.getPerceiver().setFieldOfView (((SpinnerNumberModel)_fieldOfView.getModel()).getNumber().intValue ());
         _model.setCreateSemanticLinks (_createSemanticLinks.isSelected ());
         _model.setCreateTemplates(_createTemplates.isSelected ());
         _model.setRecordHistory(_recordHistory.isSelected());
-        _model.setSimilarityThreshold(((SpinnerNumberModel)_similarityThreshold.getModel()).getNumber().intValue ());
+        _model.setNodeImageSimilarityThreshold(((SpinnerNumberModel)_similarityThreshold.getModel()).getNumber().intValue ());
       }
     }
 
@@ -542,17 +559,21 @@ public class Shell extends JFrame implements Observer {
     private JCheckBox _recordHistory;
 
     private JPanel properties () {
+      
+      Experiment currentExperiment = _model.getCurrentExperiment();
+      int currentExperimentTime = currentExperiment == null ? 0 : currentExperiment.getCurrentTime();
+      
       // -- create entry widgets
-      _addLinkTime = new JSpinner (new SpinnerNumberModel (_model.getAddLinkTime (), 1, 100000, 1));
+      _addLinkTime = new JSpinner (new SpinnerNumberModel (_model.getAddProductionTime (), 1, 100000, 1));
       _discriminationTime = new JSpinner (new SpinnerNumberModel (_model.getDiscriminationTime (), 1, 100000, 1));
       _familiarisationTime = new JSpinner (new SpinnerNumberModel (_model.getFamiliarisationTime (), 1, 100000, 1));
       _rhoEntry = new JSpinner (new SpinnerNumberModel (_model.getRho (), 0.0, 1.0, 0.1));
-      _visualStmSize = new JSpinner (new SpinnerNumberModel (_model.getVisualStmSize (), 1, 10, 1));
-      _verbalStmSize = new JSpinner (new SpinnerNumberModel (_model.getVerbalStmSize (), 1, 10, 1));
+      _visualStmSize = new JSpinner (new SpinnerNumberModel ((int)_model.getStm(Modality.VISUAL).getCapacity(currentExperimentTime), (int)1, (int)10, (int)1));
+      _verbalStmSize = new JSpinner (new SpinnerNumberModel ((int)_model.getStm(Modality.VERBAL).getCapacity(currentExperimentTime), (int)1, (int)10, (int)1));
       _fieldOfView = new JSpinner (new SpinnerNumberModel (_model.getPerceiver().getFieldOfView (), 1, 100, 1));
-      _similarityThreshold = new JSpinner (new SpinnerNumberModel (_model.getSimilarityThreshold (), 1, 100, 1));
-      _createSemanticLinks = new JCheckBox ("Use semantic links", _model.getCreateSemanticLinks ());
-      _createTemplates = new JCheckBox ("Use templates", _model.getCreateTemplates ());
+      _similarityThreshold = new JSpinner (new SpinnerNumberModel (_model.getNodeImageSimilarityThreshold(), 1, 100, 1));
+      _createSemanticLinks = new JCheckBox ("Use semantic links", _model.canCreateSemanticLinks ());
+      _createTemplates = new JCheckBox ("Use templates", _model.canCreateTemplates ());
       _recordHistory = new JCheckBox ("Record history", _model.canRecordHistory());
 
       JPanel panel = new JPanel ();
@@ -581,11 +602,13 @@ public class Shell extends JFrame implements Observer {
    */
   class SaveModelAsVnaAction extends AbstractAction implements ActionListener {
     private Shell _parent;
+    private int _time;
 
-    SaveModelAsVnaAction (Shell parent) {
+    SaveModelAsVnaAction (Shell parent, int time) {
       super ("Save visual network (.VNA)"); 
 
       _parent = parent;
+      _time = time;
     }
 
     public void actionPerformed (ActionEvent e) {
@@ -593,7 +616,7 @@ public class Shell extends JFrame implements Observer {
       if (file == null) return;
       try {
         FileWriter writer = new FileWriter (file);
-        _model.writeModelAsVna (writer);
+        _model.writeModelAsVna (writer, _time);
         writer.close ();
       } catch (IOException ioe) {
         JOptionPane.showMessageDialog (_parent,
@@ -610,11 +633,13 @@ public class Shell extends JFrame implements Observer {
    */
   class SaveModelSemanticLinksAsVnaAction extends AbstractAction implements ActionListener {
     private Shell _parent;
+    private int _time;
 
-    SaveModelSemanticLinksAsVnaAction (Shell parent) {
+    SaveModelSemanticLinksAsVnaAction (Shell parent, int time) {
       super ("Save visual semantic links (.VNA)"); 
 
       _parent = parent;
+      _time = time;
     }
 
     public void actionPerformed (ActionEvent e) {
@@ -622,7 +647,7 @@ public class Shell extends JFrame implements Observer {
       if (file == null) return;
       try {
         FileWriter writer = new FileWriter (file);
-        _model.writeModelSemanticLinksAsVna (writer);
+        _model.writeModelSemanticLinksAsVna (writer, _time);
         writer.close ();
       } catch (IOException ioe) {
         JOptionPane.showMessageDialog (_parent,
@@ -638,9 +663,11 @@ public class Shell extends JFrame implements Observer {
    * Action to display information about the current model.
    */
   class ModelInformationAction extends AbstractAction implements ActionListener {
+    private int _time;
 
-    ModelInformationAction (Shell parent) {
+    ModelInformationAction (Shell parent, int time) {
       super ("Information", new ImageIcon (Shell.class.getResource("icons/Information16.gif")));
+      _time = time;
     }
 
     public void actionPerformed (ActionEvent e) {
@@ -654,10 +681,10 @@ public class Shell extends JFrame implements Observer {
       base.setLayout (new GridLayout(1,1));
 
       JTabbedPane jtb = new JTabbedPane ();
-      jtb.addTab ("Info", getInfoPane ());
-      jtb.addTab ("Contents", getHistogramPane (_model.getContentCounts(), "contents", "Histogram of Contents Sizes", "Contents size"));
-      jtb.addTab ("Images", getHistogramPane (_model.getImageCounts(), "images", "Histogram of Image Sizes", "Image size"));
-      jtb.addTab ("Semantic links", getHistogramPane (_model.getSemanticLinkCounts(), "semantic", "Histogram of Number of Semantic Links", "Number of semantic links"));
+      jtb.addTab ("Info", getInfoPane (_time));
+      jtb.addTab ("Contents", getHistogramPane (_model.getContentSizeCounts(_time), "contents", "Histogram of Contents Sizes", "Contents size"));
+      jtb.addTab ("Images", getHistogramPane (_model.getImageSizeCounts(_time), "images", "Histogram of Image Sizes", "Image size"));
+      jtb.addTab ("Semantic links", getHistogramPane (_model.getSemanticLinkCounts(_time), "semantic", "Histogram of Number of Semantic Links", "Number of semantic links"));
       jtb.addTab("Exec. History", getExecutionHistoryPanel());
       base.add (jtb);
 
@@ -668,19 +695,19 @@ public class Shell extends JFrame implements Observer {
     }
   }
 
-  private JLabel getInfoPane () {
+  private JLabel getInfoPane (int time) {
     DecimalFormat twoPlaces = new DecimalFormat("0.00");
     return new JLabel (
         "<html><p>" + 
-        "Total nodes in LTM: " + _model.getTotalLtmNodes () +
+        "Total nodes in LTM: " + _model.getLtmSize(time) +
         "<hr>" + 
-        "Visual nodes: " + _model.getVisualLtmSize () + 
-        " Average depth: " + twoPlaces.format (_model.getVisualLtmAverageDepth ()) +
-        "<br>Verbal nodes: " + _model.getVerbalLtmSize () + 
-        " Average depth: " + twoPlaces.format (_model.getVerbalLtmAverageDepth ()) +
-        "<br>Action nodes: " + _model.getActionLtmSize () + 
-        " Average depth: " + twoPlaces.format (_model.getActionLtmAverageDepth ()) +
-        "<br>Number of templates: " + _model.countTemplates () +
+        "Visual nodes: " + _model.getLtmModalitySize(Modality.VISUAL, time) + 
+        " Average depth: " + twoPlaces.format (_model.getLtmAverageDepth (Modality.VISUAL, time)) +
+        "<br>Verbal nodes: " + _model.getLtmModalitySize (Modality.VERBAL, time) + 
+        " Average depth: " + twoPlaces.format (_model.getLtmAverageDepth (Modality.VERBAL, time)) +
+        "<br>Action nodes: " + _model.getLtmModalitySize (Modality.ACTION, time) + 
+        " Average depth: " + twoPlaces.format (_model.getLtmAverageDepth (Modality.ACTION, time)) +
+        "<br>Number of templates: " + _model.countTemplatesInVisualLtm(time) +
         "</p></html>"
         );
   }
@@ -990,7 +1017,7 @@ public class Shell extends JFrame implements Observer {
     }
 
     public void actionPerformed (ActionEvent e) {
-      new ChrestView (_parent, _model);
+      new ChrestView (_parent, _model, _model.getMaximumTimeForExperiment(_model.getCurrentExperimentName()));
     }
   }
 
@@ -1030,7 +1057,7 @@ public class Shell extends JFrame implements Observer {
     return this._dataMenu;
   }
 
-  private JMenu createModelMenu () {
+  private JMenu createModelMenu (int time) {
     JMenu menu = new JMenu ("Model");
     menu.setMnemonic (KeyEvent.VK_M);
     menu.add (new ClearModelAction (this));
@@ -1038,16 +1065,16 @@ public class Shell extends JFrame implements Observer {
 
     JMenu submenu = new JMenu ("Save");
     submenu.setMnemonic (KeyEvent.VK_S);
-    submenu.add (new SaveModelAsVnaAction (this));
+    submenu.add (new SaveModelAsVnaAction (this, time));
     submenu.getItem(0).setMnemonic (KeyEvent.VK_N);
-    submenu.add (new SaveModelSemanticLinksAsVnaAction (this));
+    submenu.add (new SaveModelSemanticLinksAsVnaAction (this, time));
     submenu.getItem(1).setMnemonic (KeyEvent.VK_L);
     menu.add (submenu);
 
     menu.add (new ModelPropertiesAction (this));
     menu.getItem(2).setMnemonic (KeyEvent.VK_P);
     menu.add (new JSeparator ());
-    menu.add (new ModelInformationAction (this));
+    menu.add (new ModelInformationAction (this, time));
     menu.getItem(4).setMnemonic (KeyEvent.VK_I);
     menu.add (new ViewModelAction (this));
     menu.getItem(5).setMnemonic (KeyEvent.VK_V);

@@ -5,8 +5,11 @@
 package jchrest.architecture;
 
 import java.io.IOException;
+import java.io.PrintStream;
 import java.io.Writer;
 import java.lang.reflect.Field;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -19,26 +22,150 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.TreeMap;
 import jchrest.database.DatabaseInterface;
+import jchrest.gui.experiments.Experiment;
 import jchrest.lib.*;
 import jchrest.lib.ReinforcementLearning.ReinforcementLearningTheories;
 
 /**
- * The parent class for an instance of a Chrest model.
+ * A CHREST model.
+ * 
+ * All times are specified in milliseconds.
  * 
  * @author Peter C. R. Lane
+ * @author Martyn Lloyd-Kelly <martynlk@liverpool.ac.uk>
  */
 public class Chrest extends Observable {
   
-  private DomainSpecifics _domainSpecifics;
+  /****************************************************************************/
+  /****************************************************************************/
+  /**************************** INSTANCE VARIABLES ****************************/
+  /****************************************************************************/
+  /****************************************************************************/
   
-  //Indicates whether CHREST is currently engaged in an experiment.  Has 
-  //implications in execution history recording, Node history updates and 
-  //CHREST model state drawing.  By default, a new CHREST instance will be 
-  //loaded into and engaged with an experiment.  The difference between the 
-  //concepts of "loaded into" and "engaged in" concern whether the model has
-  //done something in an experiment.
+  /**************************/
+  /**** Simple variables ****/
+  /**************************/
+  
+  private final int _creationTime;
+  private DomainSpecifics _domainSpecifics;
+  private String[] _publiclyExecutableMethods = {
+    "learn",
+    "recognise"
+  };
+  
+  /*************************/
+  /**** Debug variables ****/
+  /*************************/
+  
+  private boolean _debug = false;
+  private PrintStream _debugOutput = System.out;
+  
+  /*************************/
+  /**** Clock variables ****/
+  /*************************/
+  
+  /** 
+   * When declaring a new clock, please ensure that its instance variable name 
+   * ends with "Clock".  This will ensure that automated operations using Java 
+   * reflection will work with new variables without having to implement new 
+   * code.
+   */
+  
+  // Attention parameters
+  private int _attentionClock;
+  
+  private int _ltmLinkTraversalTime = 10; //From "Perception and Memory in Chess" by deGroot and Gobet
+  private int _timeToUpdateStm = 50; //From "Perception and Memory in Chess" by deGroot and Gobet
+  private int _timeToRetrieveItemFromStm = 10;
+  private int _salientSquareSelectionTime = 150; //From "Perception and Memory in Chess" by deGroot and Gobet
+  private int _randomSquareSelectionTime = 150; //From "Perception and Memory in Chess" by deGroot and Gobet
+  private int _fillTemplateSlotTime = 250;
+  private int _visualSpatialFieldPhysicalObjectEncodingTime = 25; 
+  private int _visualSpatialFieldEmptySquareEncodingTime = 10; 
+  private int _visualSpatialFieldAccessTime = 100; //From "Mental Imagery and Chunks" by Gobet and Waters
+  private int _visualSpatialFieldObjectMovementTime = 50;  //From "Mental Imagery and Chunks" by Gobet and Waters
+  private int _recognisedVisualSpatialObjectLifespan = 10000; 
+  private int _unrecognisedVisualSpatialObjectLifespan = 8000;
+  
+  // Cognitive parameters
+  private int _cognitionClock;
+  
+  private int _addProductionTime = 10000;
+  private int _nodeComparisonTime = 50;
+  private int _discriminationTime = 10000;
+  private int _familiarisationTime = 2000;
+  private int _reinforceProductionTime = 50;
+  private int _namingLinkCreationTime = 10000;
+  private int _semanticLinkCreationTime = 10000;
+  
+  // Perceiver parameters
+  private int _perceiverClock;
+  
+  private int _saccadeTime = 30;
+  
+  /********************************/
+  /**** Architecture variables ****/
+  /********************************/
+  
+  // Most of these variables are instantiated when a 
+  // jchrest.acrchitecture.Chrest instance is constructed since their 
+  // constructors require times of creation or a jchrest.architecture.Chrest
+  // instance.
+  
+  /**
+   * When creating a new long-term memory modality, please ensure that its
+   * instance variable name adheres to the following pattern: "_modalityLtm".
+   * This will ensure that generic operations using Java reflection will work
+   * with new long-term memory modalities.
+   */
+  private Node _visualLtm;
+  private Node _verbalLtm;
+  private Node _actionLtm;
+  
+  private HistoryTreeMap _totalNumberVisualLtmNodes = new HistoryTreeMap();
+  private HistoryTreeMap _totalNumberVerbalLtmNodes = new HistoryTreeMap();
+  private HistoryTreeMap _totalNumberActionLtmNodes = new HistoryTreeMap();
+  private int _nextLtmNodeReference = 0;
+  
+  /**
+   * When declaring a new short-term memory modality, please ensure that its
+   * instance variable name adheres to the following pattern: "_modalityStm". 
+   * This will ensure that generic operations using Java reflection will work
+   * with new short-term memory modalities.
+   */
+  private Stm _visualStm;
+  private Stm _verbalStm;
+  private Stm _actionStm; // TODO: Incorporate into displays
+  
+  private final Perceiver _perceiver;
+  private final TreeMap<Integer, VisualSpatialField> _visualSpatialFields = new TreeMap();
+  private final EmotionAssociator _emotionAssociator = new EmotionAssociator();
+  
+  /****************************/
+  /**** Learning variables ****/
+  /****************************/
+  
+  // The probability that discrimination or familiarisation will occur when 
+  // requested (if the learning resource is free).
+  private float _rho = 1.0f; 
+  
+  private boolean _canCreateSemanticLinks = true;
+  private int _nodeImageSimilarityThreshold = 4;
+  private int _maximumSemanticLinkSearchDistance = 1;
+  
+  private boolean _canCreateTemplates = true;
+  private int _minNodeDepthInNetworkToBeTemplate = 3;
+  private int _minItemOrPositionOccurrencesInNodeImagesToBeSlotValue = 2;
+  
+  private ReinforcementLearningTheories _reinforcementLearningTheory = null; //Must be set explicitly using Chrest.setReinforcementLearningTheory();
+  
+  /******************************************/
+  /**** Experiment information variables ****/
+  /******************************************/
+  
   private boolean _loadedIntoExperiment = true;
   private boolean _engagedInExperiment = true;
+  private Experiment _currentExperiment = null;
   
   //Stores the names of the experiments that this model has been loaded into.
   //Used primarily for rendering the model's state graphically.
@@ -90,94 +217,79 @@ public class Chrest extends Observable {
   //for the "TIME" column, for instance).
   private final HashMap<String, Object> _lastHistoryRowInserted = new HashMap<>();
   
-  /************************************/
-  /***** Internal clock variables *****/
-  /************************************/
+  /*************************/
+  /***** GUI variables *****/
+  /*************************/
   
-  // =====================
-  // ===== IMPORTANT =====
-  // =====================
-  //
-  // When declaraing a new clock, please ensure that its instance variable name 
-  // ends with "Clock".  This will ensure that automated operations using Java 
-  // refelection will work with new variables without having to implement 
-  // specific code for the new variable.
+  private final int _nodeDrawingThreshold = 5000;
   
-  //Used to control access to the "attention" resource by comparing the time in 
-  //the environment this model is situated in against the value of this 
-  //variable.
-  private int _attentionClock;
+  // use to freeze/unfreeze updates to the model to prevent GUI
+  // seizing up during training
+  private boolean _frozen = false;
   
-  //Used to control access to the "learning" resource by comparing the time in 
-  //the environment this model is situated in against the value of this 
-  //variable.
-  private int _learningClock;
-  
-  //LTM-related time parameters.
-  private int _addLinkTime;
-  private int _discriminationTime;
-  private int _familiarisationTime;
-  
-  // rho is the probability that a given learning operation will occur
-  private float _rho;
-  
-  // parameter for construction of semantic link
-  private boolean _createSemanticLinks;
-  
-  // - determines number of overlapping items in node images
-  private int _similarityThreshold;
-  
-  // - determines maximum distance to search semantic links
-  private int _maximumSemanticDistance = 1;
-  
-  // template construction parameters
-  private boolean _createTemplates;
-  private int _minTemplateLevel = 3;
-  private int _minTemplateOccurrences = 2;
-  
-  //Long-term-memory (LTM) holds information within the model permanently and
-  //can be cloned.
-  private int _totalNodes;
-  private final int _drawingThreshold = 5000; //How many nodes in LTM is too 
-                                              //many for LTM drawing to occur.
-  private Node _visualLtm;
-  private Node _verbalLtm;
-  private Node _actionLtm;
-  
-  // short-term-memory holds information within the model temporarily, usually within one experiment
-  private final Stm _visualStm;
-  private final Stm _verbalStm;
-  private final Stm _actionStm; // TODO: Incorporate into displays
-  
-  // Perception module
-  private final Perceiver _perceiver;
-  
-  //Stores domain times as keys and VisualSpatialField instances as values.  
-  //Since a VisualSpatialField can only encode one Scene instance, multiple 
-  //instances may be required throughout the lifespan of one CHREST model.  Also
-  //enables correct visualisation of a VisualSpatialField at any point in 
-  //time.
-  private final TreeMap<Integer, VisualSpatialField> _visualSpatialFields = new TreeMap<>();
-  
-  // Emotions module
-  private EmotionAssociator _emotionAssociator;
-  
-  //Reinforcement learning module
-  private ReinforcementLearningTheories _reinforcementLearningTheory;
+  /****************************************************************************/
+  /****************************************************************************/
+  /******************************** FUNCTIONS *********************************/
+  /****************************************************************************/
+  /****************************************************************************/
 
-  public Chrest () {
+  /**
+   * Constructor.
+   * 
+   * @param time 
+   * @param domain 
+   */
+  public Chrest (int time, Class domain) {
     
-    //TODO: Pass DomainSpecifics sub-class in constructor to make it explicitly 
-    //clear that the domain in which CHREST is located is important.  If the 
-    //parameter passed is null, don't alter the CHREST model's _domainSpecifics
-    //variable (its set to GenericDomain by default).
-    this._domainSpecifics = new GenericDomain(this);
+    /*******************************/
+    /**** Simple variable setup ****/
+    /*******************************/
     
-    this._databaseInterface = new DatabaseInterface(null);
+    //Set creation time and resource clocks.
+    this._creationTime = time;
+    
+    //Set domain.
+    if(domain == null){
+      domain = GenericDomain.class;
+    }
+    
+    try {
+      this._domainSpecifics = (DomainSpecifics)domain.getConstructor(new Class[]{Chrest.class}).newInstance(this);
+    } catch (NoSuchMethodException | SecurityException | InstantiationException | IllegalAccessException | IllegalArgumentException | InvocationTargetException ex) {
+      Logger.getLogger(Chrest.class.getName()).log(Level.SEVERE, null, ex);
+    }
+    
+    /******************************/
+    /**** Clock variable setup ****/
+    /******************************/
+    
+    //Clocks should be set to 1 less than the time of model creation so that
+    //checks on resource availability will pass when first requested.
+    this.setClocks(time - 1);
+    
+    /*************************************/
+    /**** Architecture variable setup ****/
+    /*************************************/
+    
+    //Setup long-term memory.
+    _visualLtm = new Node (this, Modality.VISUAL, time);
+    _verbalLtm = new Node (this, Modality.VERBAL, time);
+    _actionLtm = new Node (this, Modality.ACTION, time);
+    
+    //Setup short-term memory
+    _visualStm = new Stm (this, Modality.VISUAL, 4, time);
+    _verbalStm = new Stm (this, Modality.VERBAL, 2, time);
+    _actionStm = new Stm (this, Modality.ACTION, 4, time);
+    
+    //Setup remaining architecture variables.
+    this._perceiver = new Perceiver (this, 2);
+    this._visualSpatialFields.put(time, null);
     
     /*********************************************/
     /***** Execution history DB table set-up *****/
     /*********************************************/
+    
+    this._databaseInterface = new DatabaseInterface(null);
     
     //Set-up the execution history table column metadata. The first column will 
     //be specified as the primary key for the table when the table is created. 
@@ -197,49 +309,737 @@ public class Chrest extends Observable {
     
     this.createExecutionHistoryTable();
     
-    //TODO: All remaining parameters could be set in their declarations above 
-    //rather than in the constructor since they are being assigned "simply" (no
-    //logic changes the assignment value) and they do not require access to any
-    //other instance variables (as above).
-    
-    /***********************************/
-    /***** Set learning parameters *****/
-    /***********************************/
-    _addLinkTime = 10000;
-    _discriminationTime = 10000;
-    _familiarisationTime = 2000;
-    _rho = 1.0f;
-    _similarityThreshold = 4;
-
-    /******************************/
-    /***** Set LTM parameters *****/
-    /******************************/
-    
-    this.setClocks(0);
-    _totalNodes = 0;
-    _visualLtm = new Node (this, 0, jchrest.lib.Pattern.makeVisualList (new String[]{"Root"}), 0);
-    _verbalLtm = new Node (this, 0, jchrest.lib.Pattern.makeVerbalList (new String[]{"Root"}), 0);
-    _actionLtm = new Node (this, 0, jchrest.lib.Pattern.makeActionList (new String[]{"Root"}), 0);
-    _totalNodes = 0; // Node constructor will have incremented _totalNodes, so reset to 0
-    _visualStm = new Stm (4, this.getLearningClock());
-    _verbalStm = new Stm (2, this.getLearningClock());
-    _actionStm = new Stm (4, this.getLearningClock());
-    _emotionAssociator = new EmotionAssociator ();
-    _reinforcementLearningTheory = null; //Must be set explicitly using Chrest.setReinforcementLearningTheory()
-    _perceiver = new Perceiver (this, 2);
-            
-    /***************************************/
-    /***** Set boolean learning values *****/
-    /***************************************/
-    _createTemplates = true;
-    _createSemanticLinks = true;
+    //Initialise total node counters to 0 for all modalities. 
+    for(Modality modality : Modality.values()){
+      String modalityString = modality.toString();
+      modalityString = modalityString.substring(0, 1).toUpperCase() + modalityString.substring(1).toLowerCase();
+      
+      try {
+        HistoryTreeMap modalityNodeCountVariable = (HistoryTreeMap)Chrest.class.getDeclaredField("_totalNumber" + modalityString + "LtmNodes").get(this);
+        modalityNodeCountVariable.put(time, 0);
+      } catch (NoSuchFieldException | SecurityException | IllegalArgumentException | IllegalAccessException ex) {
+        Logger.getLogger(Chrest.class.getName()).log(Level.SEVERE, null, ex);
+      }
+    }
   }
   
-  /****************************************************************************/
-  /****************************************************************************/
-  /**************************** EXECUTION HISTORY *****************************/
-  /****************************************************************************/
-  /****************************************************************************/
+  /**
+   * Typical execution cycle for agent:
+   * 
+   * 1. Is attention/cognition/perceiver free?
+   *  1.1. Yes: execute some action that requires attention/cognition/perceiver.
+   *  1.2. No: Go back to 1
+   * 
+   * @param methodName
+   * @param parameters
+   * @return 
+   */
+  public Object execute(String methodName, Object[] parameters){
+    
+    boolean validExecutableMethodName = false;
+    for(int i = 0; i < _publiclyExecutableMethods.length; i++){
+      if(_publiclyExecutableMethods[i].equals(methodName)){
+        validExecutableMethodName = true;
+      }
+    }
+    
+    if(validExecutableMethodName){
+      Class[] parameterTypes = new Class[parameters.length];
+      for(int i = 0; i < parameters.length; i++){
+        parameterTypes[i] = parameters[i].getClass();
+      }
+
+      try {
+        return Chrest.class.getDeclaredMethod(methodName, parameterTypes).invoke(this, parameters);
+      } catch (NoSuchMethodException | SecurityException | IllegalAccessException | IllegalArgumentException | InvocationTargetException ex) {
+        throw new RuntimeException(ex);
+      }
+    }
+    else{
+      throw new RuntimeException(
+        "The method name specified (" + methodName + ") is not a publicly " +
+        "executable method."
+      );
+    }
+  }
+  
+  void printDebugStatement(String statement){
+    if(this._debug) this._debugOutput.println(statement);
+  }
+    
+  public void turnOnDebugging(){
+    this._debug = true;
+  }
+  
+  public void turnOffDebugging(){
+    this._debug = false;
+  }
+  
+  /**
+   * Set to {@link java.lang.System#out} by default.
+   * 
+   * @param printStream 
+   */
+  public void setDebugPrintStream(PrintStream printStream){
+    this._debugOutput = printStream;
+  }
+  
+  /************************************/
+  /**** SIMPLE GETTERS AND SETTERS ****/
+  /************************************/
+  
+  public boolean canCreateSemanticLinks(){
+    return _canCreateSemanticLinks;
+  }
+  
+  public boolean canCreateTemplates(){
+    return _canCreateTemplates;
+  }
+  
+  public int getAddProductionTime(){
+    return this._addProductionTime;
+  }
+  
+  public int getAttentionClock(){
+    return _attentionClock;
+  }
+  
+  public int getCreationTime(){
+    return this._creationTime;
+  }
+  
+  public int getDiscriminationTime(){
+    return _discriminationTime;
+  }
+  
+  public DomainSpecifics getDomainSpecifics(){
+    return _domainSpecifics;
+  }
+  
+  public int getFamiliarisationTime(){
+    return _familiarisationTime;
+  }
+  
+  public int getLtmLinkTraversalTime(){
+    return this._ltmLinkTraversalTime;
+  }
+  
+  protected int getMinItemOrPositionOccurrencesToBeSlotValue(){
+    return this._minItemOrPositionOccurrencesInNodeImagesToBeSlotValue;
+  }
+  
+  protected int getMinNodeDepthInNetworkToBeTemplate(){
+    return this._minNodeDepthInNetworkToBeTemplate;
+  }
+  
+  int getNextLtmNodeReference(){
+    return this._nextLtmNodeReference;
+  }
+  
+  public int getNodeComparisonTime(){
+    return this._nodeComparisonTime;
+  }
+  
+  public float getNodeImageSimilarityThreshold() {
+    return _nodeImageSimilarityThreshold;
+  }
+  
+  public Perceiver getPerceiver () {
+    return _perceiver;
+  }
+  
+  public int getPerceiverClock(){
+    return this._perceiverClock;
+  }
+  
+  public int getReinforceProductionTime(){
+    return _reinforceProductionTime;
+  }
+  
+  public float getRho(){
+    return _rho;
+  }
+  
+  public int getTimeToCreateNamingLink(){
+    return this._namingLinkCreationTime;
+  }
+  
+  public int getTimeToCreateSemanticLink(){
+    return this._semanticLinkCreationTime;
+  }
+  
+  public int getTimeToRetrieveItemFromStm(){
+    return this._timeToRetrieveItemFromStm;
+  }
+  
+  void incrementNextNodeReference(){
+    this._nextLtmNodeReference++;
+  }
+  
+  public boolean attentionFree(int time){
+    return this._attentionClock <= time;
+  }
+    
+  public boolean cognitionFree(int time){
+    return this._cognitionClock <= time;
+  }
+  
+  public boolean perceiverFree(int time){
+    return this._perceiverClock <= time;
+  }
+  
+  public void setDomain (DomainSpecifics domain) {
+    _domainSpecifics = domain;
+  }
+  
+  public void setAddProductionTime (int time) {
+    this._addProductionTime = time;
+  }
+  
+  public void setDiscriminationTime (int time) {
+    _discriminationTime = time;
+  }
+  
+  public void setFamiliarisationTime (int time) {
+    _familiarisationTime = time;
+  }
+  
+  public void setReinforceProductionTime(int time){
+    this._reinforceProductionTime = time;
+  }
+
+  public void setRho (float rho) {
+    _rho = rho;
+  }
+  
+  public void setNodeImageSimilarityThreshold (int threshold) {
+    _nodeImageSimilarityThreshold = threshold;
+  }
+
+  public void setCreateSemanticLinks (boolean value) {
+    _canCreateSemanticLinks = value;
+  }
+
+  public void setCreateTemplates (boolean value) {
+    _canCreateTemplates = value;
+  }
+
+  public void setLtmLinkTraversalTime(int ltmLinkTraversalTime) {
+    this._ltmLinkTraversalTime = ltmLinkTraversalTime;
+  }
+  
+  public void setNodeComparisonTime(int nodeComparisonTime){
+    this._nodeComparisonTime = nodeComparisonTime;
+  }
+  
+  public void setTemplateConstructionParameters (int minNodeDepthInNetworkToBeTemplate, int minItemOrPositionOccurrencesInNodeImagesToBeSlotValue) {
+    if(minNodeDepthInNetworkToBeTemplate >= 1 && minItemOrPositionOccurrencesInNodeImagesToBeSlotValue >= 1){
+      this._minNodeDepthInNetworkToBeTemplate = minNodeDepthInNetworkToBeTemplate;
+      this._minItemOrPositionOccurrencesInNodeImagesToBeSlotValue = minItemOrPositionOccurrencesInNodeImagesToBeSlotValue;
+    }
+    else{
+      throw new RuntimeException("Template construction parameters not valid, " +
+        "should both be >= 1 (min. depth specified = " + minNodeDepthInNetworkToBeTemplate + ", min. " +
+        "occurrences specified = " + minItemOrPositionOccurrencesInNodeImagesToBeSlotValue + ")");
+    }
+  }
+  
+  public void setTimeToCreateNamingLink(int timeToCreateNamingLink) {
+    this._namingLinkCreationTime = timeToCreateNamingLink;
+  }
+
+  public void setTimeToCreateSemanticLink(int timeToCreateSemanticLink) {
+    this._semanticLinkCreationTime = timeToCreateSemanticLink;
+  }
+  
+  public void setTimeToUpdateStm(int timeToUpdateStm){
+    this._timeToUpdateStm = timeToUpdateStm;
+  }
+  
+  public void setTimeToRetrieveItemFromStm(int timeToRetrieveItemFromStm){
+    this._timeToRetrieveItemFromStm = timeToRetrieveItemFromStm;
+  }
+
+  /**************************************/
+  /**** ADVANCED GETTERS AND SETTERS ****/
+  /**************************************/
+  
+  /**
+   * @param modality
+   * @return The root {@link jchrest.architecture.Node} of the long-term memory 
+   * {@link jchrest.lib.Modality} specified.
+   */
+  public Node getLtmModalityRootNode(Modality modality){
+    Node result = null;
+    
+    String fieldNameIntermediate = modality.toString().toLowerCase();
+    for(Field field : Chrest.class.getDeclaredFields()){
+      if(field.getName().equals("_" + fieldNameIntermediate + "Ltm")){
+        try {
+          Object value = field.get(this);
+          if(value instanceof Node){
+            result = (Node)value;
+          }
+        } catch (IllegalArgumentException | IllegalAccessException ex) {
+          Logger.getLogger(Chrest.class.getName()).log(Level.SEVERE, null, ex);
+        }
+      }
+    }
+    
+    return result;
+  }
+  
+  /**
+   * @param pattern
+   * @return The root {@link jchrest.architecture.Node} of a long-term memory 
+   * {@link jchrest.lib.Modality} specified using the {@link 
+   * jchrest.lib.ListPattern} passed.
+   */
+  public Node getLtmModalityRootNode (ListPattern pattern) {
+    return this.getLtmModalityRootNode(pattern.getModality());
+  }
+
+  /** 
+   * @param modality 
+   * @param time 
+   *
+   * @return A count of the number of {@link jchrest.architecture.Node}s in the 
+   * long-term memory {@link jchrest.lib.Modality} specified at the time 
+   * requested.  If this {@link #this} model was not created at the time 
+   * specified, null is returned.
+   */
+  public Integer getLtmModalitySize (Modality modality, int time) {
+    if(this._creationTime <= time){
+      
+      String modalityString = modality.toString();
+      modalityString = modalityString.substring(0, 1).toUpperCase() + modalityString.substring(1).toLowerCase();
+      
+      try {
+        HistoryTreeMap modalityNodeCountVariable = (HistoryTreeMap)Chrest.class.getDeclaredField("_totalNumber" + modalityString + "LtmNodes").get(this);
+        Entry<Integer, Object> entry= modalityNodeCountVariable.floorEntry(time);
+        if(entry != null){
+          return (Integer)entry.getValue();
+        }
+      } catch (NoSuchFieldException | SecurityException | IllegalArgumentException | IllegalAccessException ex) {
+        Logger.getLogger(Chrest.class.getName()).log(Level.SEVERE, null, ex);
+      }
+    }
+    
+    return null;
+  }
+  
+  /**
+   * Gets the total number of {@link jchrest.architecture.Node}s contained in 
+   * the long-term memory of {@link #this}, irrespective of {@link 
+   * jchrest.lib.Modality}, at the time specified.
+   * 
+   * @param time
+   * @return 
+   */
+  public Integer getLtmSize(int time){
+    int size = 0;
+    
+    for(Modality modality : Modality.values()){
+      size += this.getLtmModalitySize(modality, time);
+    }
+    
+    return size;
+  }
+  
+  /**
+   * @param modality
+   * @return The {@link jchrest.architecture.Stm} associated with this {@link 
+   * #this} model with the {@link jchrest.lib.Modality} specified.
+   */
+  public Stm getStm (Modality modality) {
+    try {
+      Field stmField = Chrest.class.getDeclaredField("_" + modality.toString().toLowerCase() + "Stm");
+      stmField.setAccessible(true);
+      return (Stm)stmField.get(this);
+    } catch (NoSuchFieldException | SecurityException | IllegalArgumentException | IllegalAccessException ex) {
+      Logger.getLogger(Chrest.class.getName()).log(Level.SEVERE, null, ex);
+    }
+    
+    return null;
+  }
+  
+  void incrementLtmModalityNodeCount(Modality modality, int time){
+    try {
+      String modalityString = modality.toString();
+      modalityString = modalityString.substring(0, 1).toUpperCase() + modalityString.substring(1).toLowerCase();
+      
+      HistoryTreeMap modalityNodeCountVariable = (HistoryTreeMap)Chrest.class.getDeclaredField("_totalNumber" + modalityString + "LtmNodes").get(this);
+      Entry<Integer, Object> entry= modalityNodeCountVariable.floorEntry(time);
+      if(entry != null){
+        Integer currentCount = (Integer)entry.getValue();
+        modalityNodeCountVariable.put(time, currentCount + 1);
+      }
+    } catch (NoSuchFieldException | SecurityException | IllegalArgumentException | IllegalAccessException ex) {
+      Logger.getLogger(Chrest.class.getName()).log(Level.SEVERE, null, ex);
+    }
+  }
+  
+  /**
+   * @param time
+   * @return {@link java.lang.Boolean} if this {@link #this} model has more than
+   * 2000 nodes (taken from de Groot and Gobet's book "Perception 
+   * and Memory in Chess" to indicate the point at which master-level eye 
+   * heuristics are used instead of novice ones) in the entirety of its LTM at 
+   * the time specified.  If this {@link #this} model was not created at the 
+   * time specified, null is returned.
+   */
+  public Boolean isExperienced (int time) {
+    if(this._creationTime <= time){
+      return this.getLtmSize(time) > 2000;
+    }
+    return null;
+  }
+  
+  /**
+   * @param modality 
+   * @param time
+   * 
+   * @return The average depth of the long-term memory {@link 
+   * jchrest.lib.Modality} specified at the time passed.  If this {@link #this}
+   * model was not created at the time specified, null is returned.
+   */
+  public Double getLtmAverageDepth (Modality modality, int time) {
+    if(this._creationTime <= time){
+      return this.averageDepthBelowNode(this.getLtmModalityRootNode(modality), time);
+    }
+    
+    return null;
+  }
+  
+  /**
+   * @param node
+   * @param time
+   * @return The average depth below the {@link jchrest.architecture.Node} 
+   * passed at the time specified.
+   */
+  public Double averageDepthBelowNode(Node node, int time) {
+    if(this._creationTime <= time){
+      List<Integer> depths = new ArrayList ();
+
+      // -- find every depth
+      for (Link link : node.getChildren(time)) {
+        this.findDepth(link.getChildNode(), 1, depths, time);
+      }
+
+      // -- compute the average of the depths
+      int sum = 0;
+      for (Integer depth : depths) {
+        sum += depth;
+      }
+      if (depths.isEmpty ()) {
+        return 0.0;
+      } else {
+        return (double)sum / (double)depths.size ();
+      }
+    }
+    
+    return null;
+  }
+  
+  /**
+   * If this {@link #this} is a child node, then add its depth to depths 
+   * otherwise, continue searching through children for the depth.
+   */
+  private void findDepth (Node node, int currentDepth, List<Integer> depths, int time) {
+    List<Link> children = node.getChildren(time);
+    
+    if (children.isEmpty ()) {
+      depths.add (currentDepth);
+    } else {
+      for (Link link : children) {
+        this.findDepth (link.getChildNode(), currentDepth + 1, depths, time);
+      }
+    }
+  }
+  
+  /**
+   * Attempts to add a new {@link jchrest.architecture.Node} to the modality 
+   * root {@link jchrest.architecture.Node} identified using the modality of the
+   * {@link jchrest.lib.ListPattern} passed at the time specified.  
+   * 
+   * The new {@link jchrest.architecture.Node}'s image will be empty but its 
+   * contents are set to the {@link jchrest.lib.ListPattern} passed.
+   * 
+   * @param pattern Assumed to contain one "finished" {@link 
+   * jchrest.lib.PrimitivePattern}.
+   * @param time The time the primitive should be added to LTM.
+   * @return An {@link java.util.ArrayList} whose first element contains a
+   * {@link jchrest.architecture.Node} and whose second element contains a 
+   * {@link java.lang.Boolean} value indicating if a primitive was learned.  
+   * Possible values for these elements and the conditions that produce them are 
+   * as follows:
+   * <ul>
+   *  <li>
+   *    This {@link #this} doesn't exist at the time specified.
+   *    <ul>
+   *      <li>Element 1: null</li>
+   *      <li>Element 2: {@link java.lang.Boolean#FALSE}</li>
+   *    </ul>
+   *  </li>
+   *  <li>
+   *    This {@link #this} does exist at the time specified.
+   *    <ul>
+   *      <li>
+   *        See return values for {@link jchrest.architecture.Node#addChild(
+   *        jchrest.lib.ListPattern, jchrest.architecture.Node, int, 
+   *        java.lang.String)}. 
+   *      </li>
+   *    </ul>
+   *  </li>
+   * </ul>
+   */
+  private boolean learnPrimitive (ListPattern pattern, int time) {
+    assert(pattern.isFinished () && pattern.size () == 1);
+    String func = "- learnPrimitive: ";
+    
+    this.printDebugStatement(
+      func + "Attemtping to learn " + pattern.toString() + " as a primitive " + 
+      "at time " + time + ". Checking if model exists at this time"
+    );
+    
+    if(this.getCreationTime() <= time){
+    
+      ListPattern contents = pattern.clone ();
+      contents.setNotFinished ();
+      
+      Node child = new Node (
+        this, 
+        contents, 
+        new ListPattern (pattern.getModality ()), 
+        time
+      );
+      
+      this.printDebugStatement(
+        func + "Model exists at time specified, appending new child node with ref: " + 
+        child.getReference() + " and image '" + child.getImage(time) + "' to the " + 
+        pattern.getModalityString() + " root node by a link containing test: " + 
+        contents.toString() + "."
+      );
+
+      return this.getLtmModalityRootNode(pattern).addChild(
+        contents, 
+        child, 
+        time, 
+        this.getCurrentExperimentName()
+      );
+    }
+    else{
+      this.printDebugStatement(func + "Model does not exist at this time, returning false.");
+      this.printDebugStatement(func + "RETURN");
+    }
+    
+    return false;
+  }
+  
+  /**
+   * @param time
+   * @return A count of the number of {@link jchrest.architecture.Node}s in 
+   * visual LTM that are templates at the time specified.
+   */
+  public int countTemplatesInVisualLtm(int time) {
+    return this.countTemplatesBelowNode(this.getLtmModalityRootNode(Modality.VISUAL), 0, time);
+  }
+  
+  /**
+   * @param node
+   * @param time
+   * @return The number of template {@link jchrest.architecture.Node}s below the
+   * {@link jchrest.architecture.Node} passed at the time specified.
+   */
+  private int countTemplatesBelowNode (Node node, int count, int time) {
+    Boolean nodeIsTemplate = node.isTemplate (time);
+    if (nodeIsTemplate) count += 1;
+
+    for (Link link : node.getChildren(time)) {
+      count += this.countTemplatesBelowNode(link.getChildNode(), count, time);
+    }
+
+    return count;
+  }
+  
+  /**
+   * @param time
+   * @return A map of content sizes to frequencies for this {@link #this} 
+   * model's LTM at the time specified.
+   */ 
+  public Map<Integer, Integer> getContentSizeCounts(int time) {
+    Map<Integer, Integer> size = new HashMap();
+
+    for(Modality modality : Modality.values()){
+      this.getContentSizeCounts(this.getLtmModalityRootNode(modality), size, time);
+    }
+
+    return size;
+  }
+  
+  /**
+   * Add a map of content sizes to node counts for this {@link #this} and its 
+   * children.
+   * 
+   * @param node
+   * @param contentSizeCountsAndFrequencies
+   * @param time
+   */
+  protected void getContentSizeCounts (Node node, Map<Integer, Integer> contentSizeCountsAndFrequencies, int time) {
+    int contentsSize = node.getContents().size ();
+    
+    if (contentSizeCountsAndFrequencies.containsKey (contentsSize)) {
+      contentSizeCountsAndFrequencies.put (contentsSize, contentSizeCountsAndFrequencies.get(contentsSize) + 1);
+    } else {
+      contentSizeCountsAndFrequencies.put (contentsSize, 1);
+    }
+
+    for (Link child : node.getChildren(time)) {
+      this.getContentSizeCounts(child.getChildNode(), contentSizeCountsAndFrequencies, time);
+    }
+  }
+
+  /**
+   * @param time 
+   * @return A map of image sizes to frequencies across the entirety of this 
+   * {@link #this} model's LTM at the time specified.
+   */ 
+  public Map<Integer, Integer> getImageSizeCounts(int time) {
+    Map<Integer, Integer> sizesToFrequencies = new HashMap();
+
+    for(Modality modality : Modality.values()){
+      this.getImageSizeCounts(this.getLtmModalityRootNode(modality), sizesToFrequencies, time);
+    }
+
+    return sizesToFrequencies;
+  }
+  
+  /**
+   * Populates the {@link java.util.Map} passed with how many {@link 
+   * jchrest.architecture.Node}s have an image of a particular size at the time
+   * specified.
+   * 
+   * @param node The {@link jchrest.architecture.Node} to take counts from.
+   * @param sizesToFrequencies Should be empty when invoking this function.
+   * @param time
+   */
+  public void getImageSizeCounts (Node node, Map<Integer, Integer> sizesToFrequencies, int time) {
+    int size = node.getImage(time).size();
+    
+    if (sizesToFrequencies.containsKey (size)) {
+      sizesToFrequencies.put (size, sizesToFrequencies.get(size) + 1);
+    } else {
+      sizesToFrequencies.put (size, 1);
+    }
+
+    for (Link child : node.getChildren(time)) {
+      this.getImageSizeCounts(child.getChildNode(), sizesToFrequencies, time);
+    }
+  }
+  
+  /**
+   * @return The sum of image sizes of the child {@link 
+   * jchrest.architecture.Node}s and their child's {@link 
+   * jchrest.architecture.Node}s etc. below the {@link 
+   * jchrest.architecture.Node} specified at the time specified.
+   */
+  private int totalImageSize (Node node, int time) {
+    int size = node.getImage(time).size();
+    
+    for (Link link : node.getChildren(time)) {
+      size += this.totalImageSize(link.getChildNode(), time);
+    }
+
+    return size;
+  }
+  
+  /**
+   * @param node
+   * @param time
+   * @return The average image size of the child {@link 
+   * jchrest.architecture.Node}s and their child's {@link 
+   * jchrest.architecture.Node}s etc. below the {@link 
+   * jchrest.architecture.Node} specified at the time specified.
+   */
+  public double averageImageSize (Node node, int time) {
+    return (double)this.totalImageSize(node, time) / node.size(time);
+  }
+  
+  /**
+   * @param time
+   * @return The total number of productions for this {@link #this} model's
+   * {@link jchrest.lib.Modality#VISUAL} LTM at the time specified.
+   */
+  public int getProductionCount(int time){
+    return this.getProductionCount(_visualLtm, true, time);
+  }
+  
+  /**
+   * @param node The {@link jchrest.architecture.Node} to count from.
+   * @param recurse Set to {@link java.lang.Boolean#TRUE} to apply function 
+   * recursively, returning the number of productions in the {@link 
+   * jchrest.architecture.Node}'s children, its children's children etc. at the 
+   * time specified.  Set to {@link java.lang.Boolean#FALSE} to just return the 
+   * number of productions in the {@link jchrest.architecture.Node} specified at 
+   * the time specified.
+   * @param time
+   * 
+   * @return See parameter documentation.
+   */
+  protected int getProductionCount(Node node, boolean recurse, int time){
+    int count = node.getProductions(time).size();
+    
+    if(recurse){
+      for(Link link : node.getChildren(time)){
+        count += this.getProductionCount(link.getChildNode(), true, time);
+      }
+    }
+    
+    return count;
+  }
+  
+  /**
+   * @param time
+   * @return A map of the number of semantic links to frequencies for this 
+   * {@link #this} model's LTM at the time specified.
+   */ 
+  public Map<Integer, Integer> getSemanticLinkCounts(int time) {
+    Map<Integer, Integer> semanticLinkCountsAndFrequencies = new HashMap();
+
+    for(Modality modality : Modality.values()){
+      this.getSemanticLinkCounts(this.getLtmModalityRootNode(modality), semanticLinkCountsAndFrequencies, time);
+    }
+
+    return semanticLinkCountsAndFrequencies;
+  }
+  
+  /**
+   * Add to a map from number of semantic links to frequency, for this {@link 
+   * #this} and its children.
+   * 
+   * @param node The {@link to start counting frequencies from.
+   * @param semanticLinkCountsAndFrequencies 
+   * @param time
+   */
+  public void getSemanticLinkCounts (Node node, Map<Integer, Integer> semanticLinkCountsAndFrequencies, int time) {
+    int semanticLinkCount = node.getSemanticLinks(time).size ();
+    
+    if (semanticLinkCount > 0) { // do not count nodes with no semantic links
+      if (semanticLinkCountsAndFrequencies.containsKey (semanticLinkCount)) {
+        semanticLinkCountsAndFrequencies.put (semanticLinkCount, semanticLinkCountsAndFrequencies.get(semanticLinkCount) + 1);
+      } else {
+        semanticLinkCountsAndFrequencies.put (semanticLinkCount, 1);
+      }
+    }
+
+    for (Link child : node.getChildren(time)) {
+      this.getSemanticLinkCounts(child.getChildNode(), semanticLinkCountsAndFrequencies, time);
+    }
+  }
+  
+  /*************************************/
+  /**** EXECUTION HISTORY FUNCTIONS ****/
+  /*************************************/
   
   /**
    * Returns the metadata stored in the relevant data structure in this model
@@ -594,6 +1394,14 @@ public class Chrest extends Observable {
     notifyObservers();
   }
   
+  public Experiment getCurrentExperiment(){
+    return this._currentExperiment;
+  }
+  
+  public void setCurrentExperiment(Experiment experiment){
+    this._currentExperiment = experiment;
+  }
+  
   /**
    * Returns all experiment names that the model has been located in so far 
    * since its creation/last time it was cleared.
@@ -670,510 +1478,19 @@ public class Chrest extends Observable {
    * 
    * @return 
    */
-  public boolean canDrawLtmState(){
-    return this.getTotalLtmNodes() < this._drawingThreshold;
-  }
-  
-  /**
-   * Clones the state of all LTM modalities at the time specified for the 
-   * experiment specified.
-   * 
-   * @param time The time that the cloned LTM should reflect.  If you specify 
-   * 10000 then the cloned LTM state will reflect the state of original LTM
-   * modality specified at time 10000. 
-   * @param experimentName 
-   */
-  public void cloneLtm(int time){
+  public boolean canDrawLtmState(int time){
+    int ltmSize = 0;
     
-    for(Field field1 : Chrest.class.getDeclaredFields()){
-      
-      //Store the name of the field since it may be used twice.
-      String fieldName = field1.getName();
-      
-      //Check for LTM instance variable.
-      if(fieldName.endsWith("Ltm")){
-        
-        //This field is a LTM instance variable so get its current value and
-        //check to see if the value's type is Node.  If so, continue.
-        try {
-          Object ltmObject = field1.get(this);
-          if(ltmObject instanceof Node){
-            
-            //Safely cast the field value to be a Node and clone it.  Since this
-            //is a LTM modality root node, the entirety of LTM will be cloned.
-            Node ltm = (Node)ltmObject;
-            ltm.deepClone(time);
-          }
-        } catch (IllegalArgumentException | IllegalAccessException ex) {
-          Logger.getLogger(Chrest.class.getName()).log(Level.SEVERE, null, ex);
-        }
-      }
-    }
-  }
-  
-  /**
-   * Retrieves the cloned version of the specified LTM modality.
-   * 
-   * @param modality The {@link jchrest.lib.Modality} of the LTM to retrieve.
-   * 
-   * @return The root node for the LTM clone specified or null if the LTM 
-   * modality specified has not been cloned yet.
-   */
-  public Node getClonedLtm(Modality modality){
-    Node result = null;
-    
-    String modalityString = modality.toString().toLowerCase();
-    for(Field field : Chrest.class.getDeclaredFields()){
-      if(field.getName().endsWith("_" + modalityString + "Ltm")){
-        try {
-          Object value = field.get(this);
-          if(value instanceof Node){
-            result = (Node)value;
-            result = result.getClone();
-          }
-        } catch (IllegalArgumentException | IllegalAccessException ex) {
-          Logger.getLogger(Chrest.class.getName()).log(Level.SEVERE, null, ex);
-        }
-      }
-    }
-    
-    return result;
-  }
-  
-  /**
-   * Clears all LTM clones currently associated with this model.
-   */
-  public void clearClonedLtm(){
     for(Modality modality : Modality.values()){
-      Node clonedModalityRootNode = this.getClonedLtm(modality);
-      if(clonedModalityRootNode != null){
-        this.clearClonedLtm(clonedModalityRootNode);
-      }
-    }
-  }
-  
-  /**
-   * Actually implements the LTM clone clearing referenced in {@link 
-   * jchrest.architecture.Chrest#clearClonedLtm()}.
-   * 
-   * @param node The node whose clone is to be cleared. 
-   */
-  private void clearClonedLtm(Node node){
-    for(Link childLink : node.getChildren()){
-      this.clearClonedLtm(childLink.getChildNode());
-    }
-    node.clearClone();
-  }
-
-  /**
-   * Retrieve the model's current domain specification.
-   */
-  public DomainSpecifics getDomainSpecifics () {
-    HashMap<String, Object> historyRow = new HashMap<>();
-    
-    //Generic operation name setter for current method.  Ensures for the row to 
-    //be added that, if this method's name is changed, the entry for the 
-    //"Operation" column in the execution history table will be updated without 
-    //manual intervention and "Filter By Operation" queries run on the execution 
-    //history DB table will still work.
-    class Local{};
-    historyRow.put(Chrest._executionHistoryTableOperationColumnName, 
-      ExecutionHistoryOperations.getOperationString(this.getClass(), Local.class.getEnclosingMethod())
-    );
-    historyRow.put(Chrest._executionHistoryTableOutputColumnName, this._domainSpecifics.getClass().getSimpleName());
-    this.addEpisodeToExecutionHistory(historyRow);
-    
-    return _domainSpecifics;
-  }
-
-  /**
-   * Set the domain specification.
-   */
-  public void setDomain (DomainSpecifics domain) {
-    _domainSpecifics = domain;
-  }
-
-  /**
-   * Accessor to retrieve time to add a new link.
-   */
-  public int getAddLinkTime () {
-    return _addLinkTime;
-  }
-
-  /**
-   * Modify time to add a new link.
-   */
-  public void setAddLinkTime (int time) {
-    _addLinkTime = time;
-  }
-
-  /**
-   * Accessor to retrieve time to discriminate a new node.
-   */
-  public int getDiscriminationTime () {
-    return _discriminationTime;
-  }
-
-  /**
-   * Modify time to discriminate a new node.
-   */
-  public void setDiscriminationTime (int time) {
-    _discriminationTime = time;
-  }
-
-  /**
-   * Accessor to retrieve time to familiarise image of a node.
-   */
-  public int getFamiliarisationTime () {
-    return _familiarisationTime;
-  }
-
-  /**
-   * Modify time to familiarise image of a node.
-   */
-  public void setFamiliarisationTime (int time) {
-    _familiarisationTime = time;
-  }
-
-  /**
-   * Accessor to retrieve value of rho, the probability of learning an item.
-   */
-  public float getRho () {
-    return _rho;
-  }
-
-  /**
-   * Modify value of rho, the probability of learning an item.
-   */
-  public void setRho (float rho) {
-    _rho = rho;
-  }
-
-  /**
-   * Accessor to retrieve value of similarity threshold, the number of items 
-   * which must be shared between two images for a semantic link to be formed.
-   */
-  public float getSimilarityThreshold () {
-    return _similarityThreshold;
-  }
-
-  /**
-   * Modify value of similarity threshold.
-   */
-  public void setSimilarityThreshold (int threshold) {
-    _similarityThreshold = threshold;
-  }
-
-  /**
-   * Modify option to create semantic links.
-   */
-  public void setCreateSemanticLinks (boolean value) {
-    _createSemanticLinks = value;
-  }
-
-  /**
-   * Accessor to option of whether to create semantic links.
-   */
-  public boolean getCreateSemanticLinks () {
-    return _createSemanticLinks;
-  }
-
-  /**
-   * Modify option to create templates.
-   */
-  public void setCreateTemplates (boolean value) {
-    _createTemplates = value;
-  }
-
-  /**
-   * Accessor to option of whether to create templates.
-   */
-  public boolean getCreateTemplates () {
-    return _createTemplates;
-  }
-
-  /**
-   * Accessor to value of minimum template level.
-   */
-  protected int getMinTemplateLevel () {
-    return _minTemplateLevel;
-  }
-
-  /**
-   * Accessor to minimum require occurrences for forming template.
-   */
-  protected int getMinTemplateOccurrences () {
-    return _minTemplateOccurrences;
-  }
-
-  /**
-   * Modify values for template construction.
-   */
-  public void setTemplateConstructionParameters (int minLevel, int minOccurrences) {
-    _minTemplateLevel = minLevel;
-    _minTemplateOccurrences = minOccurrences;
-  }
-
-  /**
-   * Accessor to retrieve the size of visual short-term memory.
-   */
-  public int getVisualStmSize () {
-    return _visualStm.getSize ();
-  }
-
-  /**
-   * Modify size of visual short-term memory.
-   */
-  public void setVisualStmSize (int size) {
-    _visualStm.setSize (size);
-    setChanged ();
-    if (!_frozen) notifyObservers ();
-  }
-  
-  /**
-   * Accessor to retrieve the number of nodes currently in the visual short-term
-   * memory. 
-   */
-  public int getVisualStmNodeCount(){
-    return _visualStm.getCount();
-  }
-
-  /**
-   * Accessor to retrieve the size of verbal short-term memory.
-   */
-  public int getVerbalStmSize () {
-    return _verbalStm.getSize ();
-  }
-
-  /**
-   * Modify size of verbal short-term memory.
-   */
-  public void setVerbalStmSize (int size) {
-    _verbalStm.setSize (size);
-    setChanged ();
-    if (!_frozen) notifyObservers ();
-  }
-  
-  /**
-   * Accessor to retrieve the number of nodes currently in the verbal short-term
-   * memory. 
-   */
-  public int getVerbalStmNodeCount(){
-    return _verbalStm.getCount();
-  }
-  
-  /**
-   * Resets this model's learning clock to 0.
-   */
-  public void resetAttentionClock(){
-    this._attentionClock = 0;
-    this.setChanged();
-    this.notifyObservers();
-  }
-
-  /**
-   * Retrieve the next available node number.
-   * Package access only, as should only be used by Node.java.
-   */
-  int getNextNodeNumber () {
-    _totalNodes += 1;
-    return _totalNodes;
-  }
-
-  /**
-   * Accessor to retrieve the total number of nodes within LTM.
-   */
-  public int getTotalLtmNodes () {
-    return _totalNodes;
-  }
-
-  /**
-   * Accessor to retrieve visual short-term memory of model.
-   */
-  public Stm getVisualStm () {
-    return _visualStm;
-  }
-
-  /**
-   * Accessor to retrieve verbal short-term memory of model.
-   */
-  public Stm getVerbalStm () {
-    return _verbalStm;
-  }
-  
-  /**
-   * Accessor to retrieve verbal long-term memory of model.
-   */
-  public Node getVerbalLtm () {
-    return _visualLtm;
-  }
-
-  /**
-   * Accessor to retrieve visual long-term memory of model.
-   */
-  public Node getVisualLtm () {
-    return _visualLtm;
-  }
-
-  /** 
-   * Return a count of the number of nodes in visual long-term memory.
-   */
-  public int getVisualLtmSize () {
-    return _visualLtm.size ();
-  }
-
-  /**
-   * Return the average depth of nodes in visual long-term memory.
-   */
-  public double getVisualLtmAverageDepth () {
-    return _visualLtm.averageDepth ();
-  }
-
-  /**
-   * Return the average image size of nodes in visual long-term memory.
-   */
-  public double getVisualLtmAverageImageSize () {
-    return _visualLtm.averageImageSize ();
-  }
-
-  /**
-   * Return a count of the number of nodes in verbal long-term memory.
-   */
-  public int getVerbalLtmSize () {
-    return _verbalLtm.size ();
-  }
-
-  /**
-   * Return the average depth of nodes in verbal long-term memory.
-   */
-  public double getVerbalLtmAverageDepth () {
-    return _verbalLtm.averageDepth ();
-  }
-
-  /**
-   * Return a count of the number of nodes in action long-term memory.
-   */
-  public int getActionLtmSize () {
-    return _actionLtm.size ();
-  }
-
-  /**
-   * Return the average depth of nodes in action long-term memory.
-   */
-  public double getActionLtmAverageDepth () {
-    return _actionLtm.averageDepth ();
-  }
-  
-  /**
-   * Accessor to retrieve action long-term memory of model.
-   */
-  public Node getActionLtm () {
-    return _actionLtm;
-  }
-  
-  /**
-   * Accessor to retrieve action short-term memory of model.
-   */
-  public Stm getActionStm(){
-    return _actionStm;
-  }
-  
-  /**
-   * Accessor to retrieve the size of action short-term memory.
-   */
-  public int getActionStmSize(){
-    return _actionStm.getSize();
-  }
-  
-  /**
-   * Accessor to retrieve the number of nodes currently in the action short-term
-   * memory. 
-   */
-  public int getActionStmNodeCount(){
-    return _actionStm.getCount();
-  }
-
-  /**
-   * Model is 'experienced' if it has at least 2000 nodes in LTM.
-   * This parameter is taken from de Groot and Gobet (1996) to indicate 
-   * point when master-level eye heuristics are used instead of novice 
-   * ones.
-   */
-  public boolean isExperienced () {
-    if (!_experienced) {
-      if (getVisualLtmSize()+getVerbalLtmSize()+getActionLtmSize() > 2000)
-        _experienced = true;
-    }
-    return _experienced;
-  }
-  private boolean _experienced = false; // for caching experience level
-
-  /**
-   * Instruct model to construct templates, if the 'constructTemplates' flag is true.  
-   * This method should be called at the end of the learning process.
-   * Note, the template construction process only currently works for visual patterns 
-   * using the ItemSquarePattern primitive.
-   */
-  public void constructTemplates (int time) {
-    if (_createTemplates) {
-      _visualLtm.constructTemplates (time);
-    }
-  }
-
-  /**
-   * Return a count of the number of templates in the model's visual LTM.
-   */
-  public int countTemplates () {
-    return _visualLtm.countTemplates ();
-  }
-
-  /**
-   * Return the root node of the long-term memory which the given pattern
-   * would be sorted through, based on its modality.
-   */
-  public Node getLtmByModality (ListPattern pattern) {
-    if (pattern.isVisual ()) {
-      return _visualLtm;
-    } else if (pattern.isVerbal ()) {
-      return _verbalLtm;
-    } else { // if (pattern.isAction ()) 
-      return _actionLtm;
-    }
-  }
-  
-  public Node getLtmByModality(Modality modality){
-    Node result = null;
-    
-    String fieldNameIntermediate = modality.toString().toLowerCase();
-    for(Field field : Chrest.class.getDeclaredFields()){
-      if(field.getName().equals("_" + fieldNameIntermediate + "Ltm")){
-        try {
-          Object value = field.get(this);
-          if(value instanceof Node){
-            result = (Node)value;
-          }
-        } catch (IllegalArgumentException | IllegalAccessException ex) {
-          Logger.getLogger(Chrest.class.getName()).log(Level.SEVERE, null, ex);
-        }
-      }
+      ltmSize += this.getLtmModalitySize(modality, time);
     }
     
-    return result;
+    return ltmSize < this._nodeDrawingThreshold;
   }
-
-  private Stm getStmByModality (ListPattern pattern) {
-    if (pattern.isVisual ()) {
-      return _visualStm;
-    } else if (pattern.isVerbal ()) {
-      return _verbalStm;
-    } else { // if (pattern.isAction ()) 
-      return _actionStm;
-    }
-  }
-
-  // use to freeze/unfreeze updates to the model to prevent GUI
-  // seizing up during training
-  private boolean _frozen = false;
+  
+  /***********************/
+  /**** GUI functions ****/
+  /***********************/
   
   /**
    * Instruct model not to update observers.
@@ -1191,454 +1508,1449 @@ public class Chrest extends Observable {
     setChanged ();
     notifyObservers ();
   }
-
-  /**
-   * Return a map from content sizes to frequencies for the model's LTM.
-   */ 
-  public Map<Integer, Integer> getContentCounts () {
-    Map<Integer, Integer> size = new HashMap<Integer, Integer> ();
-
-    _visualLtm.getContentCounts (size);
-    _verbalLtm.getContentCounts (size);
-    _actionLtm.getContentCounts (size);
-
-    return size;
-  }
-
-  /**
-   * Return a map from image sizes to frequencies for the model's LTM.
-   */ 
-  public Map<Integer, Integer> getImageCounts () {
-    Map<Integer, Integer> size = new HashMap<Integer, Integer> ();
-
-    _visualLtm.getImageCounts (size);
-    _verbalLtm.getImageCounts (size);
-    _actionLtm.getImageCounts (size);
-
-    return size;
+  
+  /****************************************************************************/
+  /****************************************************************************/
+  /***************************** TIMED FUNCTIONS ******************************/
+  /****************************************************************************/
+  /****************************************************************************/
+  
+  //TODO: Write tests to check functions in this section and check for correct
+  //      operation.
+  
+  /**************************/
+  /**** Long-term memory ****/
+  /**************************/
+  
+  /** 
+   * @param pattern
+   * @param time
+   * @return The image of the {@link jchrest.architecture.Node} associated with
+   * the {@link jchrest.architecture.Node} recognised after sorting the 
+   * {@link jchrest.lib.ListPattern} specified through the long-term memory of 
+   * {@link #this} at the time specified.  If cognition is busy at the time
+   * specified or there is no {@link jchrest.architecture.Node} associated with
+   * the {@link jchrest.architecture.Node} recognised then null is returned.
+   */
+  public ListPattern getAssociatedPattern (ListPattern pattern, int time) {
+    Node recognisedNode = recognise(pattern, time, true);
+    
+    if(recognisedNode != null){
+      
+      //Cognition must be free at this point otherwise the recognised node would
+      //be null so try to get the node associated with the one recognised.  If 
+      //such a node exists, set the cognition clock to the time its set to after 
+      //recognition plus the time taken to traverse a long term memory link 
+      //(time to get to the associated node from the recognised node).
+      Node associatedNode = recognisedNode.getAssociatedNode(time);
+      if (associatedNode != null) {
+        time += this._ltmLinkTraversalTime;
+        this._cognitionClock = time;
+        return associatedNode.getImage(time);
+      }
+    }
+    
+    return null;
   }
   
   /**
-   * @return The total number of productions in LTM.
+   * @param pattern
+   * @param time
+   * @return The image of the {@link jchrest.architecture.Node} that names the
+   * {@link jchrest.architecture.Node} recognised by sorting the {@link 
+   * jchrest.lib.ListPattern} specified through the long-term memory of {@link 
+   * #this} at the time specified.  If cognition is busy at the time specified 
+   * or there is no {@link jchrest.architecture.Node} that names the {@link 
+   * jchrest.architecture.Node} recognised then null is returned.
    */
-  public int getProductionCount(){
-    return this._visualLtm.getProductionCount(true);
-  }
-
-  /**
-   * Return a map from number of semantic links to frequencies for the model's LTM.
-   */ 
-  public Map<Integer, Integer> getSemanticLinkCounts () {
-    Map<Integer, Integer> size = new HashMap<Integer, Integer> ();
-
-    _visualLtm.getSemanticLinkCounts (size);
-    _verbalLtm.getSemanticLinkCounts (size);
-    _actionLtm.getSemanticLinkCounts (size);
-
-    return size;
-  }
-
-  /**
-   * Add given node to STM.  Check for formation of semantic links by
-   * comparing incoming node with the hypothesis, or 'largest', node.
-   */
-  private void addToStm (Node node, int time) {
-    Stm stm = getStmByModality (node.getImage ());
-
-    if (stm.getCount () > 0) {
-      Node check = stm.getItem (0); // TODO: make this the hypothesis node
-      if (check.getContents().isVisual () && // only add semantic links for visual
-          check != node && 
-          node.getImage().isSimilarTo (check.getImage (), _similarityThreshold)) {
-        node.addSemanticLink (check, time); 
-        check.addSemanticLink (node, time); // two-way semantic link
-      }
-    }
-
-    // TODO: Check if this is the best place
-    // Idea is that node's filled slots are cleared when put into STM, 
-    // are filled whilst in STM, and forgotten when it leaves.
-    node.clearFilledSlots (); 
-    stm.add (node, time);
-
-    // inform observers of a change in model's state
-    setChanged ();
-    if (!_frozen) notifyObservers ();
-  }
-
-  /**
-   * Accessor to retrieve the model's perceiver object.
-   */
-  public Perceiver getPerceiver () {
-    return _perceiver;
-  }
-
-  /** 
-   * Retrieve a node in long-term memory using the given ListPattern.
-   * The sorting process works through the children of the currentNode.
-   * If the link's test matches the remaining part of the pattern, then 
-   * the current node is updated, and searching continues through the 
-   * children of the new node.
-   */
-  public Node recognise (ListPattern pattern, int domainTime) {
-    Node currentNode = getLtmByModality (pattern);
+  public ListPattern getNamedBy (ListPattern pattern, int time) {
+    Node recognisedNode = recognise(pattern, time, true);
     
-    List<Link> children = currentNode.getChildren ();
-    ListPattern sortedPattern = pattern;
-    int nextLink = 0;
-
-    while (nextLink < children.size ()) {
-      Link link = children.get (nextLink);
-      if (link.passes (sortedPattern)) { // descend a test link in network
-        // reset the current node, list of children and link index
-        currentNode = link.getChildNode ();
-        children = link.getChildNode ().getChildren ();
-        nextLink = 0;
-        // remove the matched test from the sorted pattern
-        sortedPattern = sortedPattern.remove (link.getTest ());
-      } else { // move on to the next link on same level
-        nextLink += 1;
+    if(recognisedNode != null){
+      
+      //Cognition must be free at this point otherwise the recognised node would
+      //be null so try to get the node that names the one recognised.  If such
+      //a node exists, set the cognition clock to the time its set to after 
+      //recognition plus the time taken to traverse a long term memory link 
+      //(time to get to the naming node from the recognised node).
+      Node namedBy = recognisedNode.getNamedBy(time);
+      if (namedBy != null) {
+        time += this._ltmLinkTraversalTime;
+        this._cognitionClock = time;
+        return namedBy.getImage(time);
       }
     }
-
-    // try to retrieve a more informative node in semantic links
-    currentNode = currentNode.searchSemanticLinks (_maximumSemanticDistance);
     
-    // add retrieved node to STM
-    addToStm (currentNode, domainTime);
-
-    // return retrieved node
-    return currentNode;
+    return null;
   }
-
-  /** 
-   * Use given ListPattern to perform a step of learning within the network.
-   * First, the pattern is sorted.  Then, if the retrieved node is the 
-   * root node or its image mismatches the pattern, discrimination is 
-   * used to extend the network.  Otherwise, new information will be added 
-   * to the image using the pattern.
-   */
-  public Node recogniseAndLearn (ListPattern pattern, int time) {
-    Node currentNode = recognise (pattern, time);
-    if (this.getLearningClock() <= time) { // only try to learn if the learning resource is free at the time of the call
-      if (Math.random () < _rho) { // depending on _rho, may refuse to learn some random times
-        this.setLearningClock(time); // bring learning clock up to date
-        if (!currentNode.getImage().equals (pattern)) { // only try any learning if image differs from pattern
-          if (currentNode == getLtmByModality (pattern) || // if is rootnode
-            !currentNode.getImage().matches (pattern) || // or mismatch on image
-            currentNode.getImage().isFinished () // or image finished
-          ) {
-            currentNode = currentNode.discriminate (pattern, time); // then discriminate
-          } else  { // else familiarise
-            currentNode = currentNode.familiarise (pattern, time);
-          }
-          addToStm (currentNode, time); // add to stm, as node may have changed during learning
-        }
-      }
-    }
-    return currentNode;
-  }
-
+  
   /**
-   * Used to learn about a new pattern.  Returns the node learnt.
+   * Learns the two {@link jchrest.lib.ListPattern}s provided completely 
+   * (ensures that the {@link jchrest.lib.ListPattern} is an image in a 
+   * long-term memory {@link jchrest.architecture.Node}) before associating the 
+   * respective long-term memory {@link jchrest.architecture.Node}s.
+   * 
+   * The association created is determined by the {@link jchrest.lib.Modality}
+   * of the {@link jchrest.lib.ListPattern}s provided:
+   * 
+   * <ul>
+   *  <li>
+   *    If pattern1 and pattern2 have the same {@link jchrest.lib.Modality}, a
+   *    semantic link is created between them.
+   *  </li>
+   *  <li>
+   *    If pattern2 has {@link jchrest.lib.Modality#ACTION} and pattern1 does
+   *    not, a production is created between them. 
+   *  </li>
+   * </ul>
+   * 
+   * @param pattern1
+   * @param pattern2
+   * @param time
+   * 
+   * @return The {@link jchrest.architecture.Node} recognised for pattern1.
    */
-  public Node recogniseAndLearn (ListPattern pattern) {
-    return recogniseAndLearn (pattern, this._learningClock);
-  }
-
-  /**
-   * Used to learn an association between two patterns.  The two patterns may be 
-   * of the same or different modality.  Returns the node learnt for the first pattern.
-   */
-  public Node associateAndLearn (ListPattern pattern1, ListPattern pattern2, int time) {
-    if (ListPattern.isSameModality (pattern1, pattern2)) {
-      return learnAndLinkPatterns(pattern1, pattern2, time);
-    }
-    // TODO: Handle differing modalities.
-    else if(pattern2.getModalityString().equalsIgnoreCase(Modality.ACTION.toString())){
-      return learnPatternsAndCreateProduction(pattern1, pattern2, time);
-    }
-    else{
-      return null;
-    }
-  }
-
-  public Node associateAndLearn (ListPattern pattern1, ListPattern pattern2) {
-    return associateAndLearn (pattern1, pattern2, this.getLearningClock());
-  }
-
-  /**
-   * Asks Chrest to return the image of the node obtained by sorting given 
-   * pattern through the network.
-   */
-  public ListPattern recallPattern (ListPattern pattern, int domainTime) {
-    return recognise(pattern, domainTime).getImage ();
-  }
-
-  /** 
-   * Asks Chrest to return the image of the node which is associated 
-   * with the node obtained by sorting given pattern through the network.
-   */
-  public ListPattern associatedPattern (ListPattern pattern, int domainTime) {
-    Node retrievedNode = recognise (pattern, domainTime);
-    if (retrievedNode.getAssociatedNode () != null) {
-      return retrievedNode.getAssociatedNode().getImage ();
-    } else {
-      return null;
-    }
-  }
-
-  /**
-   * Asks Chrest to return the image of the node which names the node 
-   * obtained by sorting given pattern through the network.
-   */
-  public ListPattern namePattern (ListPattern pattern, int domainTime) {
-    Node retrievedNode = recognise (pattern, domainTime);
-    if (retrievedNode.getNamedBy () != null) {
-      return retrievedNode.getNamedBy().getImage ();
-    } else {
-      return null;
-    }
-  }
+//  private ExecutionRequestResponse associate (ListPattern pattern1, ListPattern pattern2, int time) {
+//    
+//    ArrayList<ListPattern> stm1Contents = new ArrayList();
+//    ArrayList<ListPattern> stm2Contents = new ArrayList();
+//    
+//    this.getStm(pattern1.getModality()).getContents(time).forEach(Node -> stm1Contents.add(Node.getImage(time)));
+//    this.getStm(pattern2.getModality()).getContents(time).forEach(Node -> stm2Contents.add(Node.getImage(time)));
+//    
+//    if(stm1Contents.contains(pattern1) && stm2Contents.contains(pattern2)){
+//    
+//    if (ListPattern.isSameModality (pattern1, pattern2)) {
+//      
+//      return learnAndCreateSemanticLink(pattern1, pattern2, time);
+//    }
+//    else if(pattern2.getModalityString().equalsIgnoreCase(Modality.ACTION.toString())){
+//      return learnAndCreateProduction(pattern1, pattern2, time);
+//    }
+//    else if(pattern1.isVisual() && pattern2.isVerbal()){
+//      return createNamedByLink(pattern1, pattern2, time);
+//    }
+//  }
   
   /**
    * Learns first pattern (which can be of any modality) and a second pattern 
-   * (whose modality must be "action") and creates a production between the 
-   * first pattern and the second pattern pattern
+   * (whose {@link jchrest.lib.Modality} is assumed to be {@link 
+   * jchrest.lib.Modality#ACTION}) and creates a production between them.
    */
-  private Node learnPatternsAndCreateProduction(ListPattern pattern1, ListPattern actionPattern, int time) {
-    Node pat1Retrieved = recognise (pattern1, time);
-    Boolean actionPatternMatched = false;
+  private Node learnAndCreateProduction(ListPattern pattern, ListPattern actionPattern, int time) {
+    Node recognisedNode = recognise (pattern, time, false);
     
-    // 1. is retrieved node image a match for pattern1?
-    if (pat1Retrieved.getImage().matches (pattern1)) {
+    //Was cognition free?
+    if(recognisedNode != null){
+    
+      //Set the time in this function to the value of the cognition clock which
+      //will have been incremented during recognition + 1.  This ensures that 
+      //any subsequent cognitive functions will occur when invoked.
+      time = this._cognitionClock + 1;
+    
+      //If the test below passes, it may be that the node retrieved is not equal
+      //to the first pattern so some overgeneralisation may occur.
+      if(recognisedNode.getImage(time).matches(pattern)){
       
-      // 2. does retrieved node have any action links?  If so, check each one to
-      // see if it matches actionPattern.
-      if (pat1Retrieved.getProductions() != null) {
-        HashMap<Node, Double> pattern1ActionLinks = pat1Retrieved.getProductions();
-        for (Node currentActionNode : pattern1ActionLinks.keySet()) {
-          
-          // 3. is linked node image match pattern2? if not, learn pattern2
-          if (currentActionNode.getImage().matches (actionPattern)) {
-            actionPatternMatched = true;
- 
-            //   4. if linked node image == pattern2, learn pattern1, else learn pattern2
-            if (currentActionNode.getImage().equals (actionPattern)) {
-              recogniseAndLearn (pattern1, time); // TODO: this is overlearning?
-            }
-            else {
-              recogniseAndLearn (actionPattern, time);
-            } 
-          }
-        }
-        if(!actionPatternMatched){
-          recogniseAndLearn (actionPattern, time);
-          // force it to correct a mistake
-          recogniseAndLearn (pattern1, time);
-
-          if (this.getLearningClock() <= time) {
-            Node actionNodeRetrieved = recognise (actionPattern, time);
-
-            // 6. if the action node retrieved's image matches action pattern, learn link, else learn action pattern
-            if (actionNodeRetrieved.getImage().matches (actionPattern)) {
-              associatePatterns(pat1Retrieved, actionNodeRetrieved, Modality.ACTION.toString(), time);
-            }
-          }
-        }
-      }
-      else {
-        // 5. sort action pattern
-        Node actionNodeRetrieved = recognise (actionPattern, time);
+        HashMap<Node, Double> recognisedNodeProductions = recognisedNode.getProductions(time);
+        if(recognisedNodeProductions != null) {
         
-        // 6. if action node retrieved's image matches action pattern, learn link, else learn action pattern
-        if (actionNodeRetrieved.getImage().matches (actionPattern)) {  
-          associatePatterns(pat1Retrieved, actionNodeRetrieved, Modality.ACTION.toString(), time);
-        } else { // image not a match, so we need to learn action pattern
-          recogniseAndLearn (actionPattern, time);
+          //Check each production to see if it matches the action pattern 
+          //passed.
+          boolean actionPatternAlreadyProduction = false;
+          for(Node productionNode : recognisedNodeProductions.keySet()){
           
-          // 5. sort action pattern.
-          actionNodeRetrieved = recognise (actionPattern, time);
+            //Increment time since a production is being traversed to.
+            time += this._ltmLinkTraversalTime;
           
-          // 6. if the action node retrieved's image matches action pattern, learn link, else learn action pattern
-          if (actionNodeRetrieved.getImage().matches (actionPattern)) {
-            associatePatterns(pat1Retrieved, actionNodeRetrieved, Modality.ACTION.toString(), time);
+            if (productionNode.getImage(time).matches (actionPattern)) {
+              
+              //TODO: this is overlearning the first pattern?
+              if (productionNode.getImage(time).equals(actionPattern)) {
+                actionPatternAlreadyProduction = true;
+                learn (pattern, time); 
+              }
+              else {
+                learn (actionPattern, time);
+              }
+              
+              //Set the time to the value of the cognition clock since this 
+              //will have been incremented due to the learn() calls
+              //above + 1.  Will ensure that any further cognitive functions are 
+              //not blocked due to the cognition resource being blocked.
+              time = this._cognitionClock + 1;
+            }
+          }
+        
+          //If the action pattern isn't already a production learn the 
+          //actionPattern and the first pattern again to force correction of 
+          //any mistakes and attempt to recognise the action pattern again.
+          //
+          //Martyn: This comment was lifted from the learnAndCreateSemanticLink() function in 
+          //        this class and I think the mistake alluded to is an 
+          //        over-generalisation mistake for the node recognised when the
+          //        first pattern is presented.  In other words, it may be the
+          //        case that instead of the production being "If I see an
+          //        unprotected Queen, q, on a chess board and I can take with 
+          //        my Queen, q*, then I should take the q with q*" it is "If I 
+          //        see a Queen, q, on a chess board and I can take with my 
+          //        Queen, q*, then I should take the q with q*".
+          //
+          //TODO: check if the mistake is that thought of (see Martyn's comment)
+          //      or if it is something else entirely.
+          //TODO: this may be overlearning since the pattern or actionPattern
+          //      may have been learned above when checking if the actionPattern
+          //      matches and equals any of the productions contained in the 
+          //      Node recognised when the first pattern is presented?
+          if(!actionPatternAlreadyProduction){
+            
+            learn (actionPattern, time);
+            time = this._cognitionClock + 1;
+          
+            learn (pattern, time);
+            time = this._cognitionClock + 1;
+          
+            Node actionNodeRetrieved = recognise (actionPattern, time, false);
+            time = this._cognitionClock + 1;
+
+            //This may introduce a non-precise production since only part of the
+            //action pattern needs to be learned before a production is created.
+            //
+            //TODO: check with Fernand if this is OK.
+            if (actionNodeRetrieved.getImage(time).matches (actionPattern)) {
+              time += this._addProductionTime;
+              recognisedNode.addProduction(actionNodeRetrieved, 0.0, time);
+              setChanged ();
+              if (!_frozen) notifyObservers ();
+            }
+          }
+        }
+        else {
+
+          Node actionNodeRetrieved = recognise (actionPattern, time, false);
+          time = this._cognitionClock + 1;
+        
+          //If the conditional is passed here, an overgeneralisation may occur 
+          //with regards to production creation.
+          //
+          //TODO: check with Fernand if this is OK.
+          if (actionNodeRetrieved.getImage(time).matches (actionPattern)) {
+            time += this._addProductionTime;
+            recognisedNode.addProduction(actionNodeRetrieved, 0.0, time);
+            setChanged ();
+            if (!_frozen) notifyObservers ();
+          } 
+          else { 
+            learn (actionPattern, time);
+            time = this._cognitionClock + 1;
+          
+            actionNodeRetrieved = recognise (actionPattern, time, false);
+            time = this._cognitionClock + 1;
+          
+            //If the conditional is passed here, an overgeneralisation may occur 
+            //with regards to production creation.
+            //
+            //TODO: check with Fernand if this is OK.
+            if (actionNodeRetrieved.getImage(time).matches (actionPattern)) {
+              time += this._addProductionTime;
+              recognisedNode.addProduction(actionNodeRetrieved, 0.0, time);
+              setChanged ();
+              if (!_frozen) notifyObservers ();
+            }
           }
         }
       }
+      else { 
+        learn (pattern, time);
+      }
     }
-    else { // image not a match, so we need to learn pattern 1
-      recogniseAndLearn (pattern1, time);
-    }
-      
-    return pat1Retrieved;
+    
+    this._cognitionClock = time;
+    return recognisedNode;
   }
   
-  public void reinforceProduction(ListPattern visualPattern, ListPattern actionPattern, Double[] variables, int time){
-    
-    Node recognisedVisualNode = this.recognise(visualPattern, time);
-    Node recognisedActionNode = this.recognise(actionPattern, time);
-    
-    if(
-      visualPattern.getModality().equals(Modality.VISUAL) &&
-      actionPattern.getModality().equals(Modality.ACTION) &&
-      recognisedVisualNode.getImage().equals(visualPattern) &&
-      recognisedActionNode.getImage().equals(actionPattern) 
-    ){
-      recognisedVisualNode.reinforceProduction(recognisedActionNode, variables, time);
-    }
-  }
-
   /**
    * Presents Chrest with a pair of patterns, which it should learn and 
-   * then attempt to learn a link.  Assumes the two patterns are of the same 
+ then attempt to learn a link.  Assumes the two patterns are of the same 
    * modality.
    */
-  private Node learnAndLinkPatterns (ListPattern pattern1, ListPattern pattern2, int time) {
-    Node pat1Retrieved = recognise (pattern1, time);
+  private Node learnAndCreateSemanticLink (ListPattern pattern1, ListPattern pattern2, int time) {
+    Node pat1RecognisedNode = recognise (pattern1, time, false);
+    time = this._cognitionClock + 1;
     
    // 1. is retrieved node image a match for pattern1?
-    if (pat1Retrieved.getImage().matches (pattern1)) {
+    if (pat1RecognisedNode.getImage(time).matches (pattern1)) {
       
       // 2. does retrieved node have a lateral link?
-      if (pat1Retrieved.getAssociatedNode() != null) {
+      Node associatedNode = pat1RecognisedNode.getAssociatedNode(time);
+      time += this._ltmLinkTraversalTime;
+      
+      if (associatedNode != null) {
+        
         // if yes
         //   3. is linked node image match pattern2? if not, learn pattern2
-        if (pat1Retrieved.getAssociatedNode().getImage().matches (pattern2)) {
+        if (associatedNode.getImage(time).matches (pattern2)) {
           
           //   if yes
           //   4. if linked node image == pattern2, learn pattern1, else learn pattern2
-          if (pat1Retrieved.getAssociatedNode().getImage().equals (pattern2)) {  
-            recogniseAndLearn (pattern1, time); // TODO: this is overlearning?
+          if (associatedNode.getImage(time).equals (pattern2)) {  
+            learn (pattern1, time); // TODO: this is overlearning?
           } else {
-            recogniseAndLearn (pattern2, time);
+            learn (pattern2, time);
           }
         } else {
-          recogniseAndLearn (pattern2, time);
-          recogniseAndLearn (pattern1, time);
+          learn (pattern2, time);
+          time = this._cognitionClock + 1;
           
-          if (this.getLearningClock() <= time) {
-            Node pat2Retrieved = recognise (pattern2, time);
-            
-            // 6. if pattern2 retrieved node image match for pattern2, learn link, else learn pattern2
-            if (pat2Retrieved.getImage().matches (pattern2)) {
-              associatePatterns(pat1Retrieved, pat2Retrieved, "", time);
-            }
+          learn (pattern1, time);
+          time = this._cognitionClock + 1;
+          
+          Node pat2RecognisedNode = recognise (pattern2, time, false);
+          time = this._cognitionClock + 1;
+
+          // 6. if pattern2 retrieved node image match for pattern2, learn link, else learn pattern2
+          if (pat2RecognisedNode.getImage(time).matches (pattern2)) {
+            time += this._semanticLinkCreationTime;
+            pat1RecognisedNode.addSemanticLink(pat2RecognisedNode, time);
+            setChanged ();
+            if (!_frozen) notifyObservers ();
           }
         } 
       } else {
         // if not
         // 5. sort pattern2
-        Node pat2Retrieved = recognise (pattern2, time);
+        Node pat2RecognisedNode = recognise (pattern2, time, false);
+        time = this._cognitionClock + 1;
         
         // 6. if pattern2 retrieved node image match for pattern2, learn link, else learn pattern2
-        if (pat2Retrieved.getImage().matches (pattern2)) {  
-          associatePatterns(pat1Retrieved, pat2Retrieved, "", time);
+        if (pat2RecognisedNode.getImage(time).matches (pattern2)) {  
+          time += this._semanticLinkCreationTime;
+          pat1RecognisedNode.addSemanticLink(pat2RecognisedNode, time);
+          setChanged ();
+          if (!_frozen) notifyObservers ();
         } 
         else { // image not a match, so we need to learn pattern 2
-          recogniseAndLearn (pattern2, time);
+          learn (pattern2, time);
+          time = this._cognitionClock + 1;
+          
           // 5. sort pattern2
-          pat2Retrieved = recognise (pattern2, time);
+          pat2RecognisedNode = recognise (pattern2, time, false);
+          time = this._cognitionClock + 1;
+          
           // 6. if pattern2 retrieved node image match for pattern2, learn link, else learn pattern2
-          if (pat2Retrieved.getImage().matches (pattern2)) {
-            associatePatterns(pat1Retrieved, pat2Retrieved, "", time);
+          if (pat2RecognisedNode.getImage(time).matches (pattern2)) {
+            time += this._semanticLinkCreationTime;
+            pat1RecognisedNode.addSemanticLink(pat2RecognisedNode, time);
+            setChanged ();
+            if (!_frozen) notifyObservers ();
           }
         }
       }
     } else { // image not a match, so we need to learn pattern 1
-      recogniseAndLearn (pattern1, time);
+      learn (pattern1, time);
     }
-    return pat1Retrieved;
+    
+    this._cognitionClock = time;
+    return pat1RecognisedNode;
   }
-
-  /**
-   * Learns the two patterns assuming the time of presentation is the current 
-   * Chrest clock time.
+  
+  /** 
+   * Sort the {@link jchrest.lib.ListPattern} provided through the long-term 
+   * memory network of {@link #this} (see {@link #recognise(
+   * jchrest.lib.ListPattern, int)), add the {@link jchrest.architecture.Node}
+   * recognised to the relevant {@link jchrest.architecture.Stm} {@link 
+   * jchrest.lib.Modality} and learn the {@link jchrest.lib.ListPattern} if 
+   * the image of the {@link jchrest.architecture.Node} recognised does not 
+   * exactly match the {@link jchrest.lib.ListPattern} provided.
+   * 
+   * @param pattern
+   * @param time
+   * @return Whether the pattern will be learned.
    */
-  private void learnAndLinkPatterns (ListPattern pattern1, ListPattern pattern2) {
-    learnAndLinkPatterns (pattern1, pattern2, this._attentionClock);
+  public void learn (ListPattern pattern, Integer time) {
+    String func = "- learn: ";
+    
+    this.printDebugStatement(func + "START");
+    this.printDebugStatement(
+      func + "Recognising and learning " + pattern.toString() + " at time " + 
+      time + "."
+    );
+    
+    //Try to recognise the pattern specified; will return null if the cognition
+    //resource is not free.
+    Node node = recognise (pattern, time, true);
+    
+    this.printDebugStatement(
+      func + "Recognition returned " + (node == null ? 
+        "null" : 
+        "node with reference " + node.getReference()
+      )
+    );
+    
+    // If the node recognised is != null, i.e. the cognition resource is free, 
+    // continue.
+    if (node != null ) { 
+      
+      //Set current time to be equal to the attention clock since lerning should 
+      //only continue after the recognised node has been placed into STM.
+      this.printDebugStatement(
+        func + "Node recognised, the current time will be " +
+        "set to the current value of the attention clock (" + 
+        this._attentionClock + ") since the node recognised can only be " +
+        "used after it has been placed into STM."
+      );
+      
+      time = this._attentionClock;
+      
+      //The model should only try to learn if the image of the recognised node
+      //differs from pattern provided.
+      ListPattern recognisedNodeImage = node.getImage(time);
+      
+      this.printDebugStatement(
+        func + "Checking if recognised node image (" + 
+        recognisedNodeImage.toString() + ") differs from the pattern passed " + 
+        "to this function (" + pattern.toString() + ") and whether the model " +
+        "doesn't randomly refuse to learn.  If both conditions are true, " + 
+        "learning will occur."
+      );
+      
+      if (!recognisedNodeImage.equals (pattern) && Math.random() < _rho) {
+        
+        this.printDebugStatement(
+          func + "Conditions both evaluate to true so learning will be " +
+          "performed"
+        );
+
+        //NOTE: discrimination and familiarisation return boolean values but 
+        //      they aren't assigned to a variable since they should never 
+        //      return false if program execution gets to this stage.
+        if (
+          node == this.getLtmModalityRootNode(pattern) || //i.e. pattern not recognised at all
+          !recognisedNodeImage.matches(pattern) || //pattern recognised but image mismatched
+          recognisedNodeImage.isFinished() //can't add to image (familiarisation not allowed)
+        ){
+          this.discriminate(node, pattern, time);
+        } else  { 
+          this.familiarise(node, pattern, time);
+        }
+      }
+      else{
+        this.printDebugStatement(
+          func + "Either the input pattern and image of the node recognised " +
+          "are exactly the same (" + recognisedNodeImage.equals(pattern) + ") " + 
+          "or they differ but the model randomly refused to learn."
+        );
+      }
+    }
+    else{
+      this.printDebugStatement(
+        func + "Cognitive resource isn't free neither recognition or learning " +
+        "performed."
+      );
+    }
+    
+    this.printDebugStatement(func + "RETURN");
+  }
+  
+  /**  
+   * Retrieves the {@link jchrest.architecture.Node} reached after sorting the 
+   * {@link jchrest.lib.ListPattern} provided through the long-term memory of
+   * {@link #this} and places it into the relevant {@link 
+   * jchrest.architecture.Stm} (the {@link jchrest.lib.ListPattern} is sorted 
+   * vertically at first, then horizontally).
+   * 
+   * Modifies the cognition and attention clocks.
+   * 
+   * @param pattern
+   * @param time 
+   * @param considerTimeAndAddRecognisedNodeToStm
+   * 
+   * @return 
+   */
+  public Node recognise (ListPattern pattern, Integer time, Boolean considerTimeAndAddRecognisedNodeToStm) {
+    String func = "- recognise: ";
+    
+    this.printDebugStatement(func + "START");
+    this.printDebugStatement(func + "Time " + (considerTimeAndAddRecognisedNodeToStm ? 
+      "will" : "will not") + " be considered and the node returned by the " +
+      "recognition process performed to ascertain if learning should occur " + 
+      (considerTimeAndAddRecognisedNodeToStm ? "will" : "will not") + " be " +
+      "added to STM."
+    );
+
+    if(considerTimeAndAddRecognisedNodeToStm){
+      this.printDebugStatement(
+        func + "Checking if cognition resource free (is the current value " + 
+        "of the cognition clock (" + this._cognitionClock + ") <= the time " + 
+        "this function was invoked (" + time + ")?"
+      );
+    }
+    
+    if(this.cognitionFree(time) || !considerTimeAndAddRecognisedNodeToStm){
+      
+      if(considerTimeAndAddRecognisedNodeToStm) this.printDebugStatement(func + "Cognition resource free.");
+      this.printDebugStatement(func + "Attempting to recognise " + pattern.toString() + ".");
+      
+      //Get root node for modality.
+      Node currentNode = getLtmModalityRootNode (pattern);
+      
+      this.printDebugStatement(
+        func + "Retrieved " + currentNode.getImage(time).getModalityString() + 
+        " modality root node"
+      );
+      
+      if(considerTimeAndAddRecognisedNodeToStm){
+        this.printDebugStatement(
+          func + "Incrementing current time (" + time + ") by the time taken " +
+          "to traverse a LTM link (" + this._ltmLinkTraversalTime + ")"
+        );
+        
+        time += this._ltmLinkTraversalTime;
+      }
+      
+      List<Link> currentNodeTestLinks = currentNode.getChildren(time);
+      ListPattern sortedPattern = pattern;
+      int linkToCheck = 0;
+
+      while (linkToCheck < currentNodeTestLinks.size()) {
+        Link currentNodeTestLink = currentNodeTestLinks.get(linkToCheck);
+        
+        this.printDebugStatement(
+          func + "Checking if " + pattern.toString() + " passes test (" + 
+          currentNodeTestLink.getTest().toString() + ") on link " + 
+          linkToCheck + " from node " + currentNode.getReference() + "."
+        );
+        
+        if (currentNodeTestLink.passes (sortedPattern)) { // descend a test link in network
+          this.printDebugStatement(func + "Test passed, descending the link to its child node");
+          
+          if(considerTimeAndAddRecognisedNodeToStm){
+            this.printDebugStatement(
+              func + "Incrementing the current time (" + time + ") by the time " +
+              "taken to traverse a LTM link (" + this._ltmLinkTraversalTime + ")."
+            );
+            
+            time += this._ltmLinkTraversalTime;
+          }
+          
+          // reset the current node, list of children and link index
+          currentNode = currentNodeTestLink.getChildNode ();
+          currentNodeTestLinks = currentNode.getChildren(time);
+          linkToCheck = 0;
+          
+          // remove the matched test from the sorted pattern
+          sortedPattern = sortedPattern.remove (currentNodeTestLink.getTest ());
+        } 
+        else { // move on to the next link on same level
+          
+          this.printDebugStatement(
+            func + "Test not passed, checking the next test link of node " +
+            currentNode.getReference() + "."
+          );
+          
+          linkToCheck += 1;
+        }
+      }
+      
+      this.printDebugStatement(
+        func + "Descended vertically through long-term memory network as far " + 
+        "as possible.  Searching horizontally through long-term memory network for " +
+        "a more informative node by searching the semantic links of node " + 
+        currentNode.getReference()
+      );
+      
+      if(considerTimeAndAddRecognisedNodeToStm){
+        this.printDebugStatement(func + "Cognition clock will be set to the current time (" + time + ").");
+        this._cognitionClock = time;
+      }
+      
+      // try to retrieve a more informative node in semantic links
+      currentNode = this.searchSemanticLinks(currentNode, this._maximumSemanticLinkSearchDistance, time, false);
+      this.printDebugStatement(
+        func + "Semantic link search retrieved node with reference " + 
+        currentNode.getReference() + "."
+      );
+      
+      if(considerTimeAndAddRecognisedNodeToStm){
+        
+        this.printDebugStatement(
+          func + "Current time will now be set to the value of the cognition " +
+          "clock, i.e. the time semantic link search completed: " + 
+          this._cognitionClock + ".  Adding node " + currentNode.getReference() + 
+          " to STM."
+        );
+        
+        time = this._cognitionClock;
+        this.addToStm (currentNode, time);
+      }
+      
+      // return retrieved node
+      this.printDebugStatement(func + "Returning node " + currentNode.getReference());
+      this.printDebugStatement(func + "RETURN");
+      return currentNode;
+    }
+    else{
+      if(considerTimeAndAddRecognisedNodeToStm){
+        this.printDebugStatement(func + "Cognition resource not free, returning null");
+      }
+
+      this.printDebugStatement(func + "RETURN");
+      
+      return null;
+    }
   }
   
   /**
-   * Associates two patterns of any modality accordingly.  
+   * Retrieves the {@link jchrest.architecture.Node} with the greatest 
+   * information rating (see {@link jchrest.architecture.Node#information(int)} 
+   * by following the semantic links from the {@link jchrest.architecture.Node}
+   * specified.  If a semantic link is traversed, this {@link #this} model's
+   * attention clock is incremented by the time taken to traverse a {@link 
+   * jchrest.architecture.Link} in long-term memory.
    * 
-   * @param firstNode The node that the association comes from.
-   * @param secondNode The node that the association goes to.
-   * @param modalityOfSecondNode The modality of the second node. 
+   * Modifies the cognition clock only.
+   * 
+   * @param node The {@link jchrest.architecture.Node} to start the search from.
+   * @param semanticSearchDistanceRemaining
+   * @param time
+   * 
+   * @return 
    */
-  private void associatePatterns(Node firstNode, Node secondNode, String modalityOfSecondNode, int time){
-    if(modalityOfSecondNode.equalsIgnoreCase(Modality.ACTION.toString())){
-      firstNode.addProduction(secondNode, time);
+  private Node searchSemanticLinks (Node node, int semanticSearchDistanceRemaining, int time, boolean considerTime) {
+    String func = "- searchSemanticLinks: ";
+    
+    this.printDebugStatement(func + "START");
+    this.printDebugStatement(
+      func + "Time " + (considerTime ? "will" : "will not") + " be considered."
+    );
+      
+    String debugStatement = func + "Checking if the maximum semantic search " +
+      "distance has been reached";
+      
+    if(considerTime){
+      debugStatement += "or if the cognition resource is busy at the time this " +
+        "function is invoked (cognition clock = " + this._cognitionClock + ", " +
+        "time function invoked = " + time + ")";
     }
-    //TODO: Handle verbal and visual patterns differently (if required).
+
+    debugStatement += ".";
+    this.printDebugStatement(debugStatement);
+    
+    //If time costs are to be incurred and the cognition resource is busy or the 
+    //limit of semantic search has been reached, return the current node.
+    if(
+      (considerTime && !this.cognitionFree(time)) ||
+      semanticSearchDistanceRemaining <= 0
+    ){
+      debugStatement = func + "Maximum semantic search distance has been reached (" + 
+        (semanticSearchDistanceRemaining <= 0) + ")";
+        
+      if(considerTime){
+        debugStatement += "or cognitive resource is not free (" + !this.cognitionFree(time) + ")";
+      }
+        
+      debugStatement += ". Returning current node (ref: " + node.getReference() + ").";
+      this.printDebugStatement(debugStatement);
+      this.printDebugStatement(func + "RETURN");
+      
+      return node;
+    }
     else{
-      firstNode.setAssociatedNode(secondNode, time);
+      
+      this.printDebugStatement(
+        func + "Checks passed.  Comparing information count of nodes " + 
+        "semantically linked to current node " + node.getReference() + "."
+      );
+      
+      Node bestNode = node;
+      for (Node comparisonNode : node.getSemanticLinks(time)) {
+
+        this.printDebugStatement(
+          func + "Checking semantically linked to node (ref: " + 
+          comparisonNode.getReference() + ")."
+        );
+        
+        if(considerTime){
+          this.printDebugStatement(
+            "Incrementing current time (" + time + ") by the time taken to " +
+            "traverse a long-term memory link (" + this._ltmLinkTraversalTime + 
+            ") and setting the cognition clock to this value."
+          );
+          
+          this._cognitionClock = time + this._ltmLinkTraversalTime;
+        }
+
+        this.printDebugStatement(
+          "Searching semantic links of node semantically linked to node " +
+          "with ref: " + comparisonNode.getReference() + "."
+        );
+        
+        Node bestChild = this.searchSemanticLinks(comparisonNode, semanticSearchDistanceRemaining - 1, this._cognitionClock, considerTime);
+
+        this.printDebugStatement(
+          func + "Checking if most informative semantic child node (" + 
+          bestChild.getReference() + ") is more informative than this node (" + 
+          bestNode.getReference() + ")."
+        );
+        
+        if(considerTime){
+          
+          this.printDebugStatement(
+            "Since a node comparison is occurring, the current time will be " +
+            "incremented by the time taken to perform a node comparison (" + 
+            this._nodeComparisonTime + ") and the cognition clock will be set " +
+            "to this value."
+          );
+          
+          this._cognitionClock += this._nodeComparisonTime;
+        }
+
+        if(
+          bestChild.information(considerTime ? this._cognitionClock : time) > 
+          bestNode.information (considerTime ? this._cognitionClock : time)
+        ) {
+          
+          this.printDebugStatement(
+            func + "Most informative semantic child node (" + bestChild.getReference() + 
+            ") is more informative than this node " + bestNode.getReference() + 
+            " so node " + bestChild.getReference() + " will be returned"
+          );
+
+          bestNode = bestChild;
+        }
+      }
+
+      this.printDebugStatement(func + "Returning node " + bestNode.getReference());
+      this.printDebugStatement(func + "RETURN");
+      
+      return bestNode;
+    }
+  }
+  
+  /******************/
+  /**** Learning ****/
+  /******************/
+
+  /**
+   * Attempts to increase the total number of {@link jchrest.architecture.Node}s 
+   * in the LTM network of this {@link #this} model by adding a new "child" to
+   * the {@link jchrest.architecture.Node} specified.
+   * 
+   * If successful, discrimination will set the cognition clock of {@link #this}
+   * to the time the new {@link jchrest.architecture.Node} is added to the 
+   * long-term memory network of {@link #this}.
+   * 
+   * <b>NOTE:</b> It is assumed that the cognition resource is free at the time 
+   * that discrimination is requested.  Therefore, this function should only be 
+   * called as part of a public function that should ensure that the time 
+   * specified is one where the cognition resource is free.  If this is not the
+   * case, a {@link java.lang.NullPointerException} will be thrown when 
+   * determination of what is new in the {@link jchrest.lib.ListPattern} 
+   * specified.
+   * 
+   * Note: in CHREST 2 tests are pointers to nodes.  This can be 
+   * implemented using a Link interface, and having a LinkNode class, 
+   * so that checking if test passed is done through the interface.
+   * This may be needed later for semantic/template learning.
+   * 
+   * @param nodeToDiscriminateFrom The {@link jchrest.architecture.Node} that 
+   * this function will be applied to.
+   * @param pattern The information that should be used to discriminate.
+   * @param time
+   * 
+   * @return {@link java.lang.Boolean#TRUE} if discrimination is successful,
+   * {@link java.lang.Boolean#FALSE} if not.
+   */
+  private boolean discriminate (Node nodeToDiscriminateFrom, ListPattern pattern, int time) {
+    String func = "- discriminate: ";
+    
+    //Set-up history variables.
+    HashMap<String, Object> historyRowToInsert = new HashMap<>();
+    historyRowToInsert.put(Chrest._executionHistoryTableTimeColumnName, time);
+
+    //Generic operation name setter for current method.  Ensures for the row to 
+    //be added that, if this method's name is changed, the entry for the 
+    //"Operation" column in the execution history table will be updated without 
+    //manual intervention and "Filter By Operation" queries run on the execution 
+    //history DB table will still work.
+    class Local{};
+    historyRowToInsert.put(Chrest._executionHistoryTableOperationColumnName, 
+      ExecutionHistoryOperations.getOperationString(this.getClass(), Local.class.getEnclosingMethod())
+    );
+    
+    ListPattern newInformation = pattern.remove (nodeToDiscriminateFrom.getContents());
+
+    this.printDebugStatement(
+      func + "Reference of node to discriminate from: " + 
+      nodeToDiscriminateFrom.getReference() + ", pattern that triggered " + 
+      "discrimination: " + pattern.toString() + ", time discrimination " +
+      "invoked: " + time + ".  New information in pattern that triggered " +
+      "discrimination: " + newInformation + "."
+    );
+
+    historyRowToInsert.put(Chrest._executionHistoryTableInputColumnName, pattern.toString() + "(" + pattern.getModalityString() + ")");
+    String description = "New info to learn: '" + newInformation.toString() + "'. Checking if empty...";
+
+    //If the new information is empty it must be handled differently to the way
+    //it would be handled if it were not empty.  Unfortunately, it is not 
+    //therefore possible to combine how the new information is ultimately added
+    //to LTM.
+    time += this._discriminationTime;
+    boolean discriminationSuccessful = false;
+    
+    if (newInformation.isEmpty()) {
+
+      // Convert new information so that is is no longer empty but rather, an 
+      // end chunk delimeter.
+      newInformation.setFinished();
+      
+      this.printDebugStatement(
+        func + "New information is empty so the model will now check if " +
+        newInformation.toString() + " has been learned."
+      );
+      
+      boolean endChunkDelimiterKnown = this.recognise(newInformation, time, false).getContents().equals (newInformation);
+      
+      // 1. < $ > known
+      if(endChunkDelimiterKnown){
+
+        // 2. if so, use as test
+        description += "New info encoded in LTM, add as test to node " + nodeToDiscriminateFrom.getReference() + ".";
+        historyRowToInsert.put(Chrest._executionHistoryTableDescriptionColumnName, description);
+        this.addEpisodeToExecutionHistory(historyRowToInsert);
+        this.printDebugStatement(
+          func +  newInformation.toString() + " has been learned so it will " +
+          "be added as a test on a new link from " + 
+          nodeToDiscriminateFrom.getReference() + "."
+        );
+
+        discriminationSuccessful = nodeToDiscriminateFrom.addChild(newInformation, time);
+      }
+      // 2. < $ > not known
+      else {
+
+        description += "New info not encoded in LTM, add as test to " + newInformation.getModalityString() + " root node.";
+        historyRowToInsert.put(Chrest._executionHistoryTableDescriptionColumnName, description);
+        this.addEpisodeToExecutionHistory(historyRowToInsert);
+        this.printDebugStatement(
+          func +  newInformation.toString() + " has not been learned so it will " +
+          "be learned as a primitive."
+        );
+
+        //Can't use this.learnPrimitive() here since that function sets the 
+        //pattern passed to not finished so the end chunk delimiter would be
+        //lost.
+        Node child = new Node (this, newInformation, newInformation, time);
+        discriminationSuccessful = this.getLtmModalityRootNode(newInformation)
+          .addChild(newInformation, child, time, this.getCurrentExperimentName());
+      }
+    }
+    //Cases 3, 4 or 5 if new information isn't empty.
+    else{
+      
+      this.printDebugStatement(
+        func + "New information is not empty so the model will now check if " +
+        newInformation.toString() + " has been learned."
+      );
+      Node recognisedNode = this.recognise (newInformation, time, false);
+      
+      description += "Recognised '" + recognisedNode.getImage(time).toString() + "', node ref: " + recognisedNode.getReference() + "). ";
+
+      // 3. if root node is recognised, then the primitive must be learnt
+      if (recognisedNode == this.getLtmModalityRootNode(pattern)) {
+        description += "Modality root node, add first item of new info as test to this root node.";
+        historyRowToInsert.put(Chrest._executionHistoryTableDescriptionColumnName, description);
+        this.addEpisodeToExecutionHistory(historyRowToInsert);
+        this.printDebugStatement(
+          func +  newInformation.toString() + " has not been learned so it will " +
+          "be learned as a primitive."
+        );
+        
+        discriminationSuccessful = this.learnPrimitive(newInformation.getFirstItem(), time);
+      } 
+      // 4. recognised node can be used as a test
+      else if (recognisedNode.getContents().matches (newInformation)) {
+        ListPattern testPattern = recognisedNode.getContents().clone ();
+        
+        description += "Contents of rec. node matches new info. Add " + recognisedNode.getContents().toString() + " as test to node " + nodeToDiscriminateFrom.getReference() + ".";
+        historyRowToInsert.put(Chrest._executionHistoryTableDescriptionColumnName, description);
+        this.addEpisodeToExecutionHistory(historyRowToInsert);
+        
+        this.printDebugStatement(
+          func +  newInformation.toString() + " has been learned and " +
+          testPattern.toString() + " will be used as a test on a new link " +
+          "from node " + nodeToDiscriminateFrom.getReference() + "."
+        );
+        
+        discriminationSuccessful = nodeToDiscriminateFrom.addChild (testPattern, time);
+      }
+      // 5. mismatch, so use only the first item for test
+      // NB: first-item must be in network as node was not the root 
+      //     node
+      else {
+        ListPattern firstItem = newInformation.getFirstItem ();
+        firstItem.setNotFinished ();
+        
+        description += "but image does not match new info. Add " + firstItem.toString() + " as test to node " + nodeToDiscriminateFrom.getReference() + ".";
+        historyRowToInsert.put(Chrest._executionHistoryTableDescriptionColumnName, description);
+        this.addEpisodeToExecutionHistory(historyRowToInsert);
+        
+        this.printDebugStatement(
+          func +  newInformation.toString() + " has been learned but only " +
+          "the first item from the new information (" + firstItem.toString() + 
+          ") will be used on a new link from node " + 
+          nodeToDiscriminateFrom.getReference() + "."
+        );
+
+        discriminationSuccessful = nodeToDiscriminateFrom.addChild (firstItem, time);
+      }
     }
     
-    setChanged ();
-    if (!_frozen) notifyObservers ();
+    this.printDebugStatement(
+      func + "Discrimination " + (discriminationSuccessful ? "was" : 
+      "was not") + " successful so the cognition clock " + 
+      (discriminationSuccessful ? "will be set to the time discrimination " + 
+      "ends (" + time + ")" : "will not be altered") + "."
+    );
+    
+    if(discriminationSuccessful){
+      this._cognitionClock = time;
+    }
+    
+    this.printDebugStatement(func + "RETURN");
+    return discriminationSuccessful;
   }
-
+  
   /**
-   * Learn and link a visual and verbal pattern with a naming link.
+   * Attempts to extend the image for a {@link jchrest.architecture.Node} by 
+   * adding new information from the {@link jchrest.lib.ListPattern} provided at 
+   * the time specified.
+   * 
+   * If successful, familiarisation will set the cognition clock of {@link 
+   * #this} to the time specified.
+   * 
+   * <b>NOTE:</b> If the new information to add to the image hasn't been learned
+   * as a primitive then the primitive will be learned via. discrimination (see 
+   * {@link #this#discriminate(jchrest.architecture.Node, 
+   * jchrest.lib.ListPattern, int)}).
+   * 
+   * @param nodeToFamiliarise
+   * @param pattern New information to be added to the {@link 
+   * jchrest.architecture.Node} to familiarise's image.
+   * @param time The time the new information should be added to the
+   * {@link jchrest.architecture.Node} to familiarise's image.
+   * 
+   * @return {@link java.lang.Boolean#TRUE} if familiarisation is successful,
+   * {@link java.lang.Boolean#FALSE} if not.
    */
-  public void learnAndNamePatterns (ListPattern pattern1, ListPattern pattern2, int time) {
-    recogniseAndLearn (pattern1, time);
-    recogniseAndLearn (pattern2, time);
-    if (this.getLearningClock() <= time) {
-      if (pattern1.isVisual () && pattern2.isVerbal () && _visualStm.getCount () > 0 && _verbalStm.getCount () > 0) {
-        _visualStm.getItem(0).setNamedBy (_verbalStm.getItem (0), time);
-        this.advanceLearningClock (getAddLinkTime ());
+  private boolean familiarise (Node nodeToFamiliarise, ListPattern pattern, int time) {
+    String func = "- familiarise: ";
+    
+    //Set-up history variables.
+    HashMap<String, Object> historyRowToInsert= new HashMap<>();
+    historyRowToInsert.put(Chrest._executionHistoryTableTimeColumnName, time);
+    
+    //Generic operation name setter for current method.  Ensures for the row to 
+    //be added that, if this method's name is changed, the entry for the 
+    //"Operation" column in the execution history table will be updated without 
+    //manual intervention and "Filter By Operation" queries run on the execution 
+    //history DB table will still work.
+    class Local{};
+    historyRowToInsert.put(Chrest._executionHistoryTableOperationColumnName, 
+      ExecutionHistoryOperations.getOperationString(this.getClass(), Local.class.getEnclosingMethod())
+    );
+    
+    ListPattern newInformation = pattern.remove(nodeToFamiliarise.getImage(time)).getFirstItem();
+    newInformation.setNotFinished ();
+
+    historyRowToInsert.put(Chrest._executionHistoryTableInputColumnName, pattern.toString() + "(" + pattern.getModalityString() + ")");
+    String description = "New info in input: " + newInformation.toString();
+    
+    this.printDebugStatement(
+      func + "Reference of node to attempt familiarisation on: " + 
+      nodeToFamiliarise.getReference() + ", pattern that triggered " + 
+      "familiarisation: " + pattern.toString() + ", time familiarisation " +
+      "invoked: " + time + ".  New information in pattern that triggered " +
+      "familiarisation: " + newInformation + "."
+    );
+
+    // EXIT if nothing new to learn
+    if (newInformation.isEmpty ()) {  
+      description += ", empty.";
+      historyRowToInsert.put(Chrest._executionHistoryTableDescriptionColumnName, description);
+      this.addEpisodeToExecutionHistory(historyRowToInsert);
+      
+      this.printDebugStatement(func + "No new information in pattern that triggered familiarisation.");
+      this.printDebugStatement(func + "RETURN");
+      
+      return false;
+    }
+
+    // Note: CHREST 2 had the idea of not familiarising if image size exceeds 
+    // the max of 5 and 2*contents-size.  This avoids overly large images.
+    // This idea is not implemented here.
+    //
+    Node recognisedNode = this.recognise (newInformation, time, false);
+    description += ", not empty, node " + recognisedNode.getReference() + " recognised.  ";
+
+    if (recognisedNode == this.getLtmModalityRootNode (pattern)) {
+
+      // primitive not known, so learn it
+      description += "New information not recognised, learning as primitive.";
+      historyRowToInsert.put(Chrest._executionHistoryTableDescriptionColumnName, description);
+      this.addEpisodeToExecutionHistory(historyRowToInsert);
+      this.printDebugStatement(func + "New information unrecognised, learning via. discrimination.");
+
+      return this.discriminate(recognisedNode, newInformation, time);
+
+    } else {
+
+      // extend image with new item
+      description += "New information recognised, extending Node " + nodeToFamiliarise.getReference() + "'s image.";
+      historyRowToInsert.put(Chrest._executionHistoryTableDescriptionColumnName, description);
+      this.addEpisodeToExecutionHistory(historyRowToInsert);
+      
+      this.printDebugStatement(
+        func + "New information recognised, attempting to add new information " +
+        "to image of node " +  nodeToFamiliarise.getReference() + " at current " + 
+        "time (" + time + ") plus the time taken to familiarise (" +
+         this._familiarisationTime+ ")."
+      );
+
+      time += this._familiarisationTime;
+      Node familiarisationResult = nodeToFamiliarise.extendImage (newInformation, time);
+      
+      if(familiarisationResult != null){
+        this.printDebugStatement(
+          func + "Familiarisation successful, setting cognition clock to the " +
+          "time node " + nodeToFamiliarise.getReference() + " is familiarised (" + 
+          time + ") and returning true."
+        );
+        this.printDebugStatement(func + "RETURN");
+        
+        this._cognitionClock = time;
+        return true;
       }
-      setChanged ();
-      if (!_frozen) notifyObservers ();
-    }
-  }
-
-  public void learnAndNamePatterns (ListPattern pattern1, ListPattern pattern2) {
-    learnAndNamePatterns (pattern1, pattern2, this.getLearningClock());
-  }
-
-  /**
-   * Learns the {@link jchrest.lib.Scene} specified.
-   * 
-   * @param scene The {@link jchrest.lib.Scene} to learn.
-   * @param numFixations The number of fixations to make on the 
-   * {@link jchrest.lib.Scene} to be learned.
-   * @param time The current domain time (in milliseconds).
-   */
-  public void learnScene (Scene scene, int numFixations, int time) {
-    _perceiver.setScene (scene);
-    _perceiver.start (numFixations);
-    for (int i = 0; i < numFixations; i++) {
-      _perceiver.moveEyeAndLearn (time);
-    }
-  }
-
-  /**
-   * Learn the {@link jchrest.lib.Scene} specified with an attached next move.  
-   * The move is linked to any chunks in visual STM.
-   * 
-   * TODO: think about if there should be limitations on this.
-   * 
-   * @param scene
-   * @param move
-   * @param numFixations
-   * @param time The current domain time (in milliseconds).
-   */
-  public void learnSceneAndMove (Scene scene, Move move, int numFixations, int time) {
-    learnScene (scene, numFixations, time);
-    recogniseAndLearn (move.asListPattern ());
-    // attempt to link action with each perceived chunk
-    if (_visualStm.getCount () > 0 && _actionStm.getCount () > 0) {
-      for (Node node : _visualStm) {
-        node.addProduction (_actionStm.getItem (0), time);
+      else{
+        this.printDebugStatement(func + "Familiarisation unsuccessful, returning false.");
+        this.printDebugStatement(func + "RETURN");
+        
+        return false;
       }
     }
-    setChanged ();
-    if (!_frozen) notifyObservers ();
+  }
+  
+  /**
+   * Attempts to reinforce the specified production if this {@link #this} model
+ is free to learn.
+   * 
+   * @param visualPattern
+   * @param actionPattern
+   * @param variables
+   * @param time 
+   */
+  public void reinforceProduction(ListPattern visualPattern, ListPattern actionPattern, Double[] variables, int time){
+    
+    Node recognisedNode = this.recognise(visualPattern, time, true);
+    
+    if(recognisedNode != null){
+      
+      //The cognition clock will have been incremented by recognition and if 
+      //program operation reaches this point, its safe to assume that the 
+      //cognition resource is free otherwise the recognised node would have been
+      //equal to null.  So, attempt to recognise the action pattern at the time 
+      //when the visual pattern is retrieved.
+      Node recognisedActionNode = this.recognise(actionPattern, this._cognitionClock, true);
+
+      if(recognisedActionNode != null){
+        
+        //If program operation reaches this point, its safe to assume that the 
+        //cognition resource is free otherwise the recognised node would have 
+        //been equal to null.  So, reinforce the production at the cognition 
+        //clock time (will have been incremented during recognition)
+        int timeReinforcementShouldOccur = this._cognitionClock + this._reinforceProductionTime;
+        if(recognisedNode.reinforceProduction(recognisedActionNode, variables, timeReinforcementShouldOccur)){
+          
+          this._cognitionClock = timeReinforcementShouldOccur;
+          this.setChanged ();
+          if (!_frozen) notifyObservers ();
+        }
+      }
+    }
+  }
+  
+  /***************************/
+  /**** Short-term memory ****/
+  /***************************/
+  
+  /**
+   * @param pattern
+   * @param time
+   * 
+   * @return {@link java.lang.Boolean#TRUE} if the {@link 
+   * jchrest.lib.ListPattern} passed is present as an image of a {@link 
+   * jchrest.architecture.Node} in the {@link jchrest.architecture.Stm} whose 
+   * {@link jchrest.lib.Modality} matches that of the {@link 
+   * jchrest.lib.ListPattern} passed at the time specified.
+   */
+  public boolean presentInStm(ListPattern pattern, int time){
+    List<Node> contents = this.getStm(pattern.getModality()).getContents(time);
+    
+    if(contents!= null){
+      ArrayList<ListPattern> stmNodeImages = new ArrayList();
+      contents.forEach(Node -> stmNodeImages.add(Node.getImage(time)));
+      if(stmNodeImages.contains(pattern)) return true;
+    }
+    
+    return false;
+  }
+  
+  /**
+   * Attempts to add the {@link jchrest.architecture.Node} specified to the 
+   * relevant {@link jchrest.architecture.Stm} modality associated with {@link 
+   * #this} at the time passed.
+   * 
+   * Also, create a bidirectional semantic link between the {@link 
+   * jchrest.architecture.Node} to add and the current hypothesisBeforeNodeAdded of the 
+ relevant {@link jchrest.architecture.Stm} if applicable, i.e. all of the 
+   * following must evaluate to true:
+   * 
+   * <ol type="1">
+   *  <li>
+   *    The cognition resource of {@link #this} is free after the {@link 
+   *    jchrest.architecture.Node} has been added to the relevant {@link 
+   *    jchrest.architecture.Stm}.
+   *  </li>
+   *  <li>
+   *    The {@link jchrest.lib.Modality} of the {@link 
+   *    jchrest.architecture.Node} added is {@link jchrest.lib.Modality#VISUAL}.
+   *  </li>
+   *  <li>
+   *    The image of the {@link jchrest.architecture.Node} added is sufficiently 
+    "similar" to the hypothesisBeforeNodeAdded' image (see {@link 
+   *    jchrest.lib.ListPattern#isSimilarTo(jchrest.lib.ListPattern, int)}).
+   *  </li>
+   *  
+   * </ol>
+   * 
+   * If the {@link jchrest.architecture.Node} is added to a {@link 
+   * jchrest.architecture.Stm}, the attention clock will be incremented.  If the
+   * bidirectional semantic link is created, the cognition clock will also be
+   * incremented.
+   * 
+   * @param nodeToAdd
+   * @param time
+   * 
+   * @return {@link java.lang.Boolean#TRUE} if the {@link 
+   * jchrest.architecture.Node} was added to the relevant {@link 
+   * jchrest.architecture.Stm} successfully, {@link java.lang.Boolean#FALSE} if 
+   * not.
+   */
+  private boolean addToStm (Node nodeToAdd, int time) {
+    String func = "- addToStm: ";
+    this.printDebugStatement(func + "START");
+    
+    this.printDebugStatement(
+      func + "Attempting to add node " + nodeToAdd.getReference() + " to " +
+      nodeToAdd.getImage(time).getModalityString() + " STM.  Checking if " + 
+      "attention resource is free at time function invoked i.e. is the " +
+      "current attention clock value (" + this._attentionClock + ") <= the " + 
+      "time this function is invoked (" + time + ")?"
+    );
+    
+    if(this.attentionFree(time)){
+      
+      this.printDebugStatement(
+        func + "Attention resource is free so node " + 
+        nodeToAdd.getReference() + " will be added to STM at time " + 
+        (time + this._timeToUpdateStm) + " (the current time, " +
+        time + ", plus the time it takes to update STM (" + 
+        this._timeToUpdateStm + ")."
+      );
+      
+      Stm stm = this.getStm(nodeToAdd.getImage(time).getModality());
+      
+      // TODO: Check if this is the best place
+      // Idea is that nodeToAdd's filled slots are cleared when put into STM, 
+      // are filled whilst in STM, and forgotten when it leaves.
+      nodeToAdd.clearFilledSlots (time); 
+      
+      if(stm.add (nodeToAdd, time + this._timeToUpdateStm)){
+        
+        this.printDebugStatement(
+          func + "STM addition successful, setting the current time to the " +
+          "time node " + nodeToAdd.getReference() + " was added to STM (" + 
+          (time + this._timeToUpdateStm) + ") and setting the attention clock " +
+          "to this value."
+        );
+        time += this._timeToUpdateStm;
+        this._attentionClock = time;
+        setChanged ();
+        if (!_frozen) notifyObservers ();
+
+        //Try to create two-way semantic link
+        //TODO: Reimplement this but with a call to a more abstract "associate"
+        //      function that will create any type of link possible depending
+        //      on the modality of the node just added and the contents of other
+        //      STM structures.
+        //      Will have implications for production creation for Tileworld
+        //      agents, speak to Fernand about this.
+//        System.out.println(
+//          func + "Attempting to create a semantic link between the node that " +
+//          "was the STM hypothesis node before node " + 
+//          nodeToAdd.getReference() + " was added and the node just " +
+//          "added.  To do this, the cognition resource must be free at the time " +
+//          "the node is added to STM.  If it is, the modality of the STM that " + 
+//          "the node was added to will also be checked to see is of visual " +
+//          "modality and if it is, are there at least two nodes in it since the " +
+//          "node just addded may have been the hypothesis previous to the addition."
+//        );
+        
+        
+      
+//        if (
+//          this.cognitionFree(time) &&
+//          stm.getModality() == Modality.VISUAL &&
+//          stm.getCount(time) > 1
+//        ) {
+//          
+//          //No need to check the result of stm.getItem() below; null will never 
+//          //be returned since there will be a node in visual STM (one was just 
+//          //added) and STM must exist otherwise the addition above would not 
+//          //have occurred.
+//          Node hypothesisBeforeNodeAdded = stm.getItem(0, time - 1);
+//          time += this._timeToRetrieveItemFromStm;
+//          this._attentionClock = time;
+//          
+//          System.out.println(
+//            func + "Cognition is free, the node was added to visual STM " +
+//            "and there are at least 2 nodes in visual STM.  Retrieved the " +
+//            "visual STM hypothesis that existed before node " + 
+//            nodeToAdd.getReference() + " was added (hypothesis ref: " + 
+//            hypothesisBeforeNodeAdded.getReference() + ") and have set both " +
+//            "the current time and attention clock to the time when STM addition " +
+//            "completed plus the time it takes to retrive a STM item (" + 
+//            time + ")."
+//          );
+//        
+//          System.out.println(
+//            func + "Checking if node " + nodeToAdd.getReference() + "'s image (" + 
+//            nodeToAdd.getImage(time) + ") is similar enough to the hypothesis' " + 
+//            "image (" + hypothesisBeforeNodeAdded.getImage(time) + ") for a " +
+//            "semantic link to be made."
+//          );
+//          boolean nodeAddedToStmSimilarEnoughToHypothesis = nodeToAdd.getImage(time).isSimilarTo(hypothesisBeforeNodeAdded.getImage(time), this._nodeImageSimilarityThreshold);
+//          
+//          time += this._nodeComparisonTime;
+//          this._cognitionClock = time;
+//          System.out.println(
+//            func + "Node image comparison complete.  Incremented current " +
+//            "time by the time required to compare two nodes (" + time + 
+//            ") and set the cognition clock to this value." 
+//          );
+//          
+//          if(nodeAddedToStmSimilarEnoughToHypothesis){
+//          
+//            System.out.println(
+//              func + "Node images are similar enough to create a bilateral " +
+//              "semantic link between them.  Attempting to create a semantic " +
+//              "link from from node " + nodeToAdd.getReference() + " to " + 
+//              hypothesisBeforeNodeAdded.getReference() + "."
+//            );
+//            if(nodeToAdd.addSemanticLink (hypothesisBeforeNodeAdded, time + this._semanticLinkCreationTime)){
+//            
+//              time += this._semanticLinkCreationTime;
+//              this._cognitionClock = time;
+//              System.out.println(
+//                func + "Semantic link creation from node " + 
+//                nodeToAdd.getReference() + " to " + 
+//                hypothesisBeforeNodeAdded.getReference() + " achieved.  Current " +
+//                "time and attention clock set to " + time + "."
+//              );
+//              
+//              System.out.println(
+//                func + "Attempting to create a semantic link from the " +
+//                "visual STM hypothesis to the node added to STM at the " + 
+//                "current time, i.e. when the cognition resource is free (" + 
+//                this._cognitionClock + ")."
+//              );
+//              if(hypothesisBeforeNodeAdded.addSemanticLink (nodeToAdd, time)){
+//              
+//                time += this._semanticLinkCreationTime;
+//                this._cognitionClock = time;
+//                System.out.println(
+//                  func + "Semantic link creation from node " + 
+//                  hypothesisBeforeNodeAdded.getReference() + " to " + 
+//                  nodeToAdd.getReference() + " achieved.  Current " +
+//                  "time and attention clock set to " + time + "."
+//                );
+//              }
+//              else{
+//                System.out.println(
+//                  func + "Semantic link creation from node " + 
+//                  hypothesisBeforeNodeAdded.getReference() + " to " + 
+//                  nodeToAdd.getReference() + " failed."
+//                );
+//              }
+//            }
+//            else{
+//              System.out.println(
+//                func + "Semantic link creation from node " + 
+//                nodeToAdd.getReference() + " to " + 
+//                hypothesisBeforeNodeAdded.getReference() + " failed."
+//              );
+//            }
+//          }
+//          else{
+//            System.out.println(
+//              func + "Semantic link creation denied; images of node added to " + 
+//              "visual STM and visual STM hypothesis before addition not " +
+//              "similar enough."
+//            );
+//          }
+//        }
+//        else{
+//          System.out.println(
+//            func + "Semantic link creation denied.  Either cognition isn't " +
+//            "free (" + (!this.cognitionFree(time)) + "), the STM modality " + 
+//            "that the node was added to isn't visual (" + 
+//            (stm.getModality() != Modality.VISUAL) + ") or the number of " +
+//            "items in visual STM is < 2 (" + (stm.getCount(time) < 2) + ")."
+//          );
+//        }
+        
+        this.printDebugStatement(func + "RETURN");
+        return true;
+      }
+      else{
+        this.printDebugStatement(func + "STM addition unsuccessful.");
+      }
+    }
+    else{
+      this.printDebugStatement(func + "Attention resource isn't free");
+    }
+    
+    this.printDebugStatement(func + "RETURN");
+    return false;
+  }
+  
+  /**
+   * Modifies the attention clock of {@link #this}.
+   * 
+   * If the attention resource is free at the time this function is requested, 
+ the hypothesisBeforeNodeAdded (the first {@link jchrest.architecture.Node} in a {@link 
+   * jchrest.architecture.Stm} modality) in the relevant {@link 
+   * jchrest.architecture.Stm} modality associated with {@link #this} is 
+   * replaced with the {@link jchrest.architecture.Node} specified.
+ 
+ The time the new hypothesisBeforeNodeAdded is added to the relevant {@link 
+   * jchrest.architecture.Stm}, <i>t</i>, is equal to the time this function is 
+   * invoked plus the time specified to add update short-term memory (see {@link 
+   * #getTimeToUpdateStm()}). The attention clock of {@link #this} will also be
+   * set to <i>t</i>.
+   * 
+   * @param replacement
+   * @param time 
+   */
+  public void replaceStmHypothesis(Node replacement, int time){
+    if(this._attentionClock < time){
+      time += this._timeToUpdateStm;
+      Stm stmToReplaceHypothesisIn = this.getStm(replacement.getImage(time).getModality());
+      if(stmToReplaceHypothesisIn.replaceHypothesis(replacement, time)){
+        this._attentionClock = time;
+      }
+    }
+  }
+  
+  /*******************/
+  /**** TEMPLATES ****/
+  /*******************/
+  
+  /**
+   * Instruct {@link #this} to make templates throughout the entirety of its 
+   * visual long-term memory modality at the time specified.
+   * 
+   * Templates will only be created if all the following statements are true:
+   * 
+   * <ul>
+   *  <li>{@link #this} is "alive" at the time specified.</li> 
+   *  <li>{@link #this} can make templates.</li>
+   *  <li>
+   *    The cognition resource of {@link #this} is free at the time specified.
+   *  </li>
+   * </ul>
+   * 
+   * This function is usually called at the end of a training session that 
+   * {@link #this} has been engaged in but can be called as {@link #this} is
+   * interacting with the external domain.
+   * 
+   * <b>NOTE:</b> currently, the template construction process only works for 
+   * {@link jchrest.lib.Modality#VISUAL} {@link jchrest.architecture.Node}s that
+   * have {@link jchrest.lib.ItemSquarePattern} images.
+   * 
+   * @param time
+   */
+  public void makeTemplates (int time) {
+    if(
+      this._creationTime <= time && 
+      this._canCreateTemplates &&
+      this._cognitionClock < time
+    ){
+      this.makeTemplates (this._visualLtm, time);
+    }
+  }
+  
+  /**
+   * 
+   * @param node
+   * @param time 
+   * 
+   * @author Martyn Lloyd-Kelly <martynlk@liverpool.ac.uk>
+   */
+  
+  //TODO: timings need to be implemented here.  In an e-mail to me on the 15th
+  //      Dec 2015 regarding this, Fernand says: "It's supposed to be a slow 
+  //      process, but we never put a parameter on this. Roughly, I would say 
+  //      10 seconds for each slot created. Another possibility, a bit 
+  //      speculative, is that it's an even slower process, which occurs for 
+  //      example during sleep (e.g. during dreaming). There is a literature 
+  //      on consolidation of LTM during sleep that we could use. We'll think 
+  //      about this when we'll have submitted a few papers!".
+  //      
+  //      Personally, I think there should be an access time cost (time taken 
+  //      to traverse LTM as per this.recognise()) and then a time cost for
+  //      each slot.  This means that the Node.makeTemplate() procedure should
+  //      return how many slots were created and then the cognition clock 
+  //      should be incremented accordingly.
+  private void makeTemplates(Node node, int time){
+    
+    if(!node.isRootNode()){
+      node.makeTemplate(time);
+    }
+    
+    for (Link link : node.getChildren(time)) {
+      this.makeTemplates (link.getChildNode(), time);
+    }
   }
 
+  //TODO: Organise and check all code below this point.
+  
+  /******************************/
+  /**** PERCEPTION FUNCTIONS ****/
+  /******************************/
+  
+  private boolean isPerceiverFree(int time){
+    return this._perceiverClock < time;
+  }
+  
+  public int getSaccadeTime() {
+    return _saccadeTime;
+  }
+
+  public void setSaccadeTime(int saccadeTime) {
+    this._saccadeTime = saccadeTime;
+  }
+  
   private boolean sameColour (ListPattern move, String colour) {
     if (colour == null) return true;
     if ((move.size () == 1) && (move.getItem(0) instanceof ItemSquarePattern)) {
@@ -1648,147 +2960,191 @@ public class Chrest extends Observable {
       return false;
     }
   }
-
+  
   /**
-   * Return a map of moves vs frequencies.
+   * Learns the {@link jchrest.lib.Scene} specified using the {@link 
+   * jchrest.architecture.Perceiver} associated with this {@link #this} model
+   * if its perceptual resources aren't busy at the time this function is 
+   * requested.
    * 
-   * @param scene
-   * @param numFixations
-   * @param colour
-   * @param time
+   * This will populate the visual {@link jchrest.architecture.Stm} of this
+   * {@link #this} model with recognised information and various other instance
+   * variables of the {@link jchrest.architecture.Perceiver} associated with
+   * this {@link #this} model.  The function will also cause this {@link #this}
+ model to learn any information "seen".
    * 
-   * @return 
+   * @param scene The {@link jchrest.lib.Scene} to learn from.
+   * @param numFixations Number of fixations this {@link #this} model's {@link
+   * jchrest.architecture.Perceiver} should make on the {@link 
+   * jchrest.lib.Scene}.
+   * @param time The time this function is invoked.
+   * @param timeSceneSeenUntil The time that this {@link #this} model can no 
+   * longer "see" the {@link jchrest.lib.Scene} to be learned from.  If there is
+   * no time limit on how long the {@link jchrest.lib.Scene} can be "seen" for 
+   * then pass null.
+   * @return A {@link java.lang.Boolean} value indicating whether the {@link 
+   * jchrest.lib.Scene} specified was "looked at" or not.  {@link 
+   * java.lang.Boolean#TRUE} will be returned if this {@link #this} model's 
+   * perceptual resources are not busy at the time this function is invoked.
+   * {@link java.lang.Boolean#FALSE} will be returned if this {@link #this} 
+   * model's perceptual resources are busy at the time this function is invoked.
    */
-  public Map<ListPattern, Integer> getMovePredictions (Scene scene, int numFixations, String colour, int time) {
-    scanScene (scene, numFixations, time, false);
-    // create a map of moves to their frequency of occurrence in nodes of STM
-    Map<ListPattern, Integer> moveFrequencies = new HashMap<ListPattern, Integer> ();
-    for (Node node : _visualStm) {
-      for (Node action : node.getProductions ().keySet()) {
-        if (sameColour(action.getImage(), colour)) {
-          if (moveFrequencies.containsKey(action.getImage ())) {
-            moveFrequencies.put (
-                action.getImage (), 
-                moveFrequencies.get(action.getImage ()) + 1
-                );
-          } else {
-            moveFrequencies.put (action.getImage (), 1);
-          }
+  public boolean learnScene (Scene scene, int numFixations, int time, Integer timeSceneSeenUntil) {
+    if(this.perceiverFree(time)){
+      
+      _perceiver.setScene (scene);
+      _perceiver.start (numFixations, time);
+      
+      if(timeSceneSeenUntil == null){
+        for(int i = 0; i < numFixations; i++, time += this.getSaccadeTime()) {
+          _perceiver.moveEyeAndLearn (time);
         }
       }
+      else{
+        for(int i = 0; i < numFixations || time <= timeSceneSeenUntil; i++, time += this.getSaccadeTime()) {
+          _perceiver.moveEyeAndLearn (time);
+        }
+      }
+      
+      this._perceiverClock = time;
+      return true;
     }
-    return moveFrequencies;
+    
+    return false;
   }
-
+  
   /**
-   * Predict a move using a CHUMP-like mechanism.
+   * Scans the {@link jchrest.lib.Scene} specified using the {@link 
+   * jchrest.architecture.Perceiver} associated with this {@link #this} model
+   * if its perceptual resources aren't busy at the time this function is 
+   * requested.
    * 
-   * TODO: Improve the heuristics here.
+   * This will populate the visual {@link jchrest.architecture.Stm} of this
+   * {@link #this} model with recognised information and various other instance
+   * variables of the {@link jchrest.architecture.Perceiver} associated with
+   * this {@link #this} model.
    * 
-   * @param scene
-   * @param numFixations
-   * @param time
-   * 
-   * @return 
+   * @param scene The {@link jchrest.lib.Scene} to scan.
+   * @param numFixations Number of fixations this {@link #this} model's {@link
+   * jchrest.architecture.Perceiver} should make on the {@link 
+   * jchrest.lib.Scene}.
+   * @param time The time this function is invoked.
+   * @param timeSceneSeenUntil The time that this {@link #this} model can no 
+   * longer "see" the {@link jchrest.lib.Scene} to be scanned.  If there is no
+   * time limit on how long the {@link jchrest.lib.Scene} can be "seen" for then
+   * pass null. 
+   * @param debug 
+   * @return A {@link java.lang.Boolean} value indicating whether the {@link 
+   * jchrest.lib.Scene} specified was "looked at" or not.  {@link 
+   * java.lang.Boolean#TRUE} will be returned if this {@link #this} model's 
+   * perceptual resources are not busy at the time this function is invoked.
+   * {@link java.lang.Boolean#FALSE} will be returned if this {@link #this} 
+   * model's perceptual resources are busy at the time this function is invoked.
    */
-  public Move predictMove (Scene scene, int numFixations, int time) {
-    Map<ListPattern, Integer> moveFrequencies = getMovePredictions (scene, numFixations, null, time);
-    // find the most frequent pattern
-    ListPattern best = null;
-    int bestFrequency = 0;
-    for (ListPattern key : moveFrequencies.keySet ()) {
-      if (moveFrequencies.get (key) > bestFrequency) {
-        best = key;
-        bestFrequency = moveFrequencies.get (key);
-      }
-    }
-    // create a move to return
-    if (best == null) {
-      return new Move ("UNKNOWN", 0, 0);
-    } else {
-      // list pattern should be one item long, with the first item being an ItemSquarePattern
-      if ((best.size () == 1) && (best.getItem(0) instanceof ItemSquarePattern)) {
-        ItemSquarePattern move = (ItemSquarePattern)best.getItem (0);
-        return new Move (move.getItem (), move.getRow (), move.getColumn ());
-      } else {
-        return new Move ("UNKNOWN", 0, 0);
-      }
-    }
-  }
+  public boolean scanScene(Scene scene, int numFixations, int time, Integer timeSceneSeenUntil, boolean debug){
+    if(debug) System.out.println("\n=== Chrest.scanScene() ===");
+    if(debug) System.out.println("- Checking if perceiver resource is free @ time " + time);
+    
+    if(this.perceiverFree(time)){
+      if(debug) System.out.println("   - Perceiver resource free, setting scene for perceiver");
+      _perceiver.setScene (scene); //Also clears any previous fixations
 
-  /**
-   * Predict a move using a CHUMP-like mechanism.
-   * 
-   * TODO: Improve the heuristics here.
-   * 
-   * @param scene
-   * @param numFixations
-   * @param colour
-   * @param time
-   * 
-   * @return 
-   */
-  public Move predictMove (Scene scene, int numFixations, String colour, int time) {
-    Map<ListPattern, Integer> moveFrequencies = getMovePredictions (scene, numFixations, colour, time);
-    // find the most frequent pattern
-    ListPattern best = null;
-    int bestFrequency = 0;
-    for (ListPattern key : moveFrequencies.keySet ()) {
-      if (moveFrequencies.get (key) > bestFrequency) {
-        best = key;
-        bestFrequency = moveFrequencies.get (key);
+      if(debug) System.out.println("   - Starting fixations (setting perceiver to initial fixation)");
+      _perceiver.start (numFixations, time);
+      
+      if(timeSceneSeenUntil == null){
+        if(debug) System.out.println("   - Making fixations until I've fixated " + numFixations + " times");
+        for (int i = 0; i < numFixations; i++, time += this.getSaccadeTime()) {
+          if(debug) System.out.println("   - Making " + (i+1) + " of " + numFixations + " fixations @ time " + time);
+          _perceiver.moveEye (time, debug);
+        }
       }
-    }
-    // create a move to return
-    if (best == null) {
-      return new Move ("UNKNOWN", 0, 0);
-    } else {
-      // list pattern should be one item long, with the first item being an ItemSquarePattern
-      if ((best.size () == 1) && (best.getItem(0) instanceof ItemSquarePattern)) {
-        ItemSquarePattern move = (ItemSquarePattern)best.getItem (0);
-        return new Move (move.getItem (), move.getRow (), move.getColumn ());
-      } else {
-        return new Move ("UNKNOWN", 0, 0);
+      else{
+        if(debug) System.out.println("   - Making fixations until I've fixated " + numFixations + " times or time > the time the scene can be seen until (" + timeSceneSeenUntil + ")");
+        for (int i = 0; i < numFixations || time <= timeSceneSeenUntil; i++, time += this.getSaccadeTime()) {
+          if(debug) System.out.println("   - Making " + (i+1) + " of " + numFixations + " fixations @ time " + time);
+          _perceiver.moveEye (time, debug);
+        }
       }
+      
+      this._perceiverClock = time;
+      if(debug) System.out.println("   - Finished fixations, perceiver resource will be busy until " + this._perceiverClock);
+      if(debug) System.out.println("   - Returning true");
+      return true;
     }
-  }
-
-  /** 
-   * Scan given scene, then return a scene which would be recalled.
-   * Default behaviour is to clear STM before scanning a scene.
-   * @param scene
-   * @param numFixations
-   * @param time
-   * @return 
-   */
-  public Scene scanScene (Scene scene, int numFixations, int time, boolean debug) {  
-    return scanScene (scene, numFixations, true, time, debug);
+    
+    if(debug) System.out.println("   - Perceiver resource not free, returning false");
+    return false;
   }
   
   /** 
-   * Scan given {@link jchrest.lib.Scene} and return a 
-   * {@link jchrest.lib.Scene} that would be recalled.
+   * Scan given {@link jchrest.lib.Scene}, <i>s</i>, at the time specified and 
+   * create a new {@link jchrest.lib.Scene}, <i>s*</i>, that contains 
+   * information recognised in <i>s</i>.
    * 
-   * @param scene
-   * @param numFixations
-   * @param clearStm
-   * @param time The current domain time (in milliseconds).
+   * Default behaviour is to clear the visual {@link jchrest.architecture.Stm}
+   * associated with this {@link #this} before scanning the 
+   * {@link jchrest.lib.Scene} specified and to not print debugging information.
+   * Use {@link jchrest.architecture.Chrest#scanScene(jchrest.lib.Scene, int, 
+   * boolean, int, boolean) if control over clearing visual {@link 
+   * jchrest.architecture.Stm} and debugging is required.
    * 
-   * @return A {@link jchrest.lib.Scene} instance composed of objects from the 
-   * {@link jchrest.lib.Scene} instance passed as a parameter that this 
-   * {@link jchrest.architecture.Chrest} instance recognises.
+   * @param scene The {@link jchrest.lib.Scene} to scan and recall.
+   * @param numFixations Number of fixations this {@link #this} model's {@link
+   * jchrest.architecture.Perceiver} should make on the {@link 
+   * jchrest.lib.Scene}.
+   * @param time The time this function is invoked.
+   * @param timeSceneSeenUntil The time that this {@link #this} model can no 
+   * longer "see" the {@link jchrest.lib.Scene} to scan and recall.  If there is
+   * no time limit on how long the {@link jchrest.lib.Scene} can be "seen" for 
+   * then pass null.
+   * 
+   * @return A {@link jchrest.lib.Scene} containing {@link 
+   * jchrest.lib.SceneObject}s that this {@link #this} model recognises in the 
+   * {@link jchrest.lib.Scene} passed or null if this {@link #this} model's 
+   * perceptual resources are busy. 
    */
-  public Scene scanScene (Scene scene, int numFixations, boolean clearStm, int time, boolean debug) {
+  public Scene scanAndRecallScene (Scene scene, int numFixations, int time, Integer timeSceneSeenUntil) {  
+    return scanAndRecallScene (scene, numFixations, true, time, timeSceneSeenUntil, false);
+  }
+  
+  /** 
+   * Scan given {@link jchrest.lib.Scene}, <i>s</i>, at the time specified and 
+   * create a new {@link jchrest.lib.Scene}, <i>s*</i>, that contains 
+   * information recognised in <i>s</i>.
+   * 
+   * @param scene The {@link jchrest.lib.Scene} to scan and recall.
+   * @param numFixations Number of fixations this {@link #this} model's {@link
+   * jchrest.architecture.Perceiver} should make on the {@link 
+   * jchrest.lib.Scene}.
+   * @param clearVisualStm Set to {@link java.lang.Boolean#TRUE} to clear the
+   * visual {@link jchrest.architecture.Stm} associated with this {@link #this}
+   * model before scanning the {@link jchrest.lib.Scene}.  Set to {@link 
+   * java.lang.Boolean#FALSE} to not clear visual {@link 
+   * jchrest.architecture.Stm}.
+   * @param time The time this function is invoked.
+   * @param timeSceneSeenUntil The time that this {@link #this} model can no 
+   * longer "see" the {@link jchrest.lib.Scene} to scan and recall.  If there is
+   * no time limit on how long the {@link jchrest.lib.Scene} can be "seen" for 
+   * then pass null.
+   * @param debug
+   * 
+   * @return A {@link jchrest.lib.Scene} containing {@link 
+   * jchrest.lib.SceneObject}s that this {@link #this} model recognises in the 
+   * {@link jchrest.lib.Scene} passed or null if this {@link #this} model's 
+   * perceptual resources are busy.  
+   */
+  public Scene scanAndRecallScene(Scene scene, int numFixations, boolean clearVisualStm, int time, Integer timeSceneSeenUntil, boolean debug) {
     
     if(debug) System.out.println("=== Chrest.scanScene() ===");
     if(debug) System.out.println("- Requested to scan scene with name '" + scene.getName() + "' at time " + time);
     
     // only clear STM if flag is set
-    if (clearStm) {
+    if (clearVisualStm) {
       if(debug) System.out.println("- Clearing STM");
       _visualStm.clear (time);
     }
-    
+
     //Get the VisualSpatialField associated with the Scene to be scanned.  If
     //there is an associated VisualSpatialField, SceneObjects that are 
     //recognised when scanning the Scene below will have their corresponding
@@ -1797,12 +3153,12 @@ public class Chrest extends Observable {
     //scanned is associated with one.
     VisualSpatialField associatedVisualSpatialField = scene.getVisualSpatialFieldGeneratedFrom();
     if(debug) System.out.println("- Does the Scene to be scanned represent a VisualSpatialField? " + (associatedVisualSpatialField  != null));
-    
+
     //Create a data structure to the identifiers of objects that are recognised
     //when scanning the Scene.  This will be used to determine what objects are
     //unrecognised if the Scene represents a VisualSpatialField.
     ArrayList<String> recognisedObjectIdentifiers = new ArrayList<>();
-    
+
     //Instantiate recalled Scene, this will be a "blind" canvas initially.
     Scene recalledScene = new Scene (
       "Recalled scene of " + scene.getName (), 
@@ -1810,166 +3166,317 @@ public class Chrest extends Observable {
       scene.getHeight (),
       scene.getVisualSpatialFieldGeneratedFrom()
     );
-    
+
     //Scan the scene.
-    if(debug) System.out.println("- Scanning scene");
-    _perceiver.setScene (scene);
-    _perceiver.start (numFixations);
-    for (int i = 0; i < numFixations; i++) {
-      if(debug) System.out.println("   - Moving eye " + (i+1) + " of " + numFixations + " times");
-      _perceiver.moveEye (time, debug);
-    }
-    
-    // -- get items from image in STM, and optionally template slots
-    // TODO: use frequency count in recall
-    if(debug) System.out.println("- Processing recognised chunks");
-    for (Node node : _visualStm) {
-      
-      //If the node isn't the visual LTM root node (nothing recognised) then,
-      //continue.
-      if(this.getVisualLtm() != node && !node.getImage().isEmpty()){
-        ListPattern recalledInformation = node.getImage();
+    if(this.scanScene(scene, numFixations, time, timeSceneSeenUntil, debug)){
 
-        if (_createTemplates) { // check if templates needed
-          recalledInformation = recalledInformation.append(node.getFilledSlots ());
-        }
-        
-        if(debug) System.out.println("   - Processing chunk with image: '" + recalledInformation.toString() + "'");
-        
-        recalledInformation = this.getDomainSpecifics().convertDomainSpecificCoordinatesToSceneSpecificCoordinates(recalledInformation, scene);
-        if(debug) System.out.println("      - Image with scene-specific coordinates: '" + recalledInformation.toString() + "'");
-        
-        //Add all recognised items to the scene to be returned and flag the 
-        //corresponding VisualSpatialFieldObjects as being recognised.
-        for (int i = 0; i < recalledInformation.size(); i++){
-          PrimitivePattern item = recalledInformation.getItem(i);
-          
-          if (item instanceof ItemSquarePattern) {
-            ItemSquarePattern ios = (ItemSquarePattern)item;
-            int col = ios.getColumn ();
-            int row = ios.getRow ();
-            
-            if(debug) System.out.println("      - Processing object " + ios.toString() );
-            
-            //Get the SceneObject that represents the recalled object
-            SceneObject recognisedObject = scene.getSquareContents(col, row);
-            //TODO: Write a test that checks for the null check below preventing
-            //      this function from erroring-out when the recognisedObject is 
-            //      set to null (picked up in Netlogo where a turtle learned a
-            //      ListPattern like <[H 0 -2][T -2 -1]> and recognised this 
-            //      when it was at the edge of a Scene and a hole was in the
-            //      location specified in the ListPattern but the tile wasn't
-            //      since that location was not represented since the "self" was
-            //      on the western-most point of the Scene scanned).
-            if(debug) System.out.println("         ~ Equivalent of object in scene scanned");
+      // -- get items from image in STM, and optionally template slots
+      // TODO: use frequency count in recall
+      if(debug) System.out.println("- Processing recognised chunks");
+      for (Node node : _visualStm) {
 
-            //The recalled object may be a ghost (part of a LTM chunk but doesn't exist in the
-            //scene being scanned) so check for this here lest a NullPointerException be thrown.
-            if(recognisedObject != null){
-              
-              if(debug){
-                System.out.println("            = ID: " + recognisedObject.getIdentifier());
-                System.out.println("            = Class: " + recognisedObject.getObjectClass());
-                System.out.println("         ~ Adding object to col " + col + ", row " + row + " in the Scene recalled");
-              }
+        ListPattern nodeImage = node.getImage(time);
 
-              recalledScene.addItemToSquare(col, row, recognisedObject.getIdentifier(), recognisedObject.getObjectClass());
-            
-              if(associatedVisualSpatialField != null){
-                if(debug) System.out.println("         ~ Updating object in associated visual-spatial field");
-                for(VisualSpatialFieldObject objectOnVisualSpatialSquare : associatedVisualSpatialField.getSquareContents(col, row, time)){
-                  if(objectOnVisualSpatialSquare.getIdentifier().equals(recognisedObject.getIdentifier())){
-                    objectOnVisualSpatialSquare.setRecognised(time, true);
-                    recognisedObjectIdentifiers.add(objectOnVisualSpatialSquare.getIdentifier());
-                  
-                    if(debug){
-                      System.out.println("            ID: " + objectOnVisualSpatialSquare.getIdentifier());
-                      System.out.println("            Class: " + objectOnVisualSpatialSquare.getObjectClass());
-                      System.out.println("            Created at: " + objectOnVisualSpatialSquare.getTimeCreated());
-                      System.out.println("            Terminus: " + objectOnVisualSpatialSquare.getTerminus());
-                      System.out.println("            Recognised: " + objectOnVisualSpatialSquare.recognised(time));
-                      System.out.println("            Ghost: " + objectOnVisualSpatialSquare.isGhost());
+        //If the node isn't the visual LTM root node (nothing recognised) then,
+        //continue.
+        if(this.getLtmModalityRootNode(Modality.VISUAL) != node && !nodeImage.isEmpty()){
+
+          if(debug) System.out.println("   - Processing chunk: " + nodeImage.toString());
+          if (_canCreateTemplates) { // check if templates needed
+            if(debug) System.out.println("   - Templates are enabled, so append any filled slot information to the chunk");
+            nodeImage = nodeImage.append(node.getFilledSlots (time));
+          }
+
+          if(debug) System.out.println("   - Processing chunk with image: '" + nodeImage.toString() + "'");
+
+          nodeImage = this.getDomainSpecifics().convertDomainSpecificCoordinatesToSceneSpecificCoordinates(nodeImage, scene);
+          if(debug) System.out.println("      - Image with scene-specific coordinates: '" + nodeImage.toString() + "'");
+
+          //Add all recognised items to the scene to be returned and flag the 
+          //corresponding VisualSpatialFieldObjects as being recognised.
+          for (int i = 0; i < nodeImage.size(); i++){
+            PrimitivePattern item = nodeImage.getItem(i);
+
+            if (item instanceof ItemSquarePattern) {
+              ItemSquarePattern ios = (ItemSquarePattern)item;
+              int col = ios.getColumn ();
+              int row = ios.getRow ();
+
+              if(debug) System.out.println("      - Processing object " + ios.toString() );
+
+              //Get the SceneObject that represents the recalled object
+              SceneObject recognisedObject = scene.getSquareContents(col, row);
+              //TODO: Write a test that checks for the null check below preventing
+              //      this function from erroring-out when the recognisedObject is 
+              //      set to null (picked up in Netlogo where a turtle learned a
+              //      ListPattern like <[H 0 -2][T -2 -1]> and recognised this 
+              //      when it was at the edge of a Scene and a hole was in the
+              //      location specified in the ListPattern but the tile wasn't
+              //      since that location was not represented since the "self" was
+              //      on the western-most point of the Scene scanned).
+              if(debug) System.out.println("         ~ Equivalent of object in scene scanned");
+
+              //The recalled object may be a ghost (part of a LTM chunk but doesn't exist in the
+              //scene being scanned) so check for this here lest a NullPointerException be thrown.
+              if(recognisedObject != null){
+
+                if(debug){
+                  System.out.println("            = ID: " + recognisedObject.getIdentifier());
+                  System.out.println("            = Class: " + recognisedObject.getObjectClass());
+                  System.out.println("         ~ Adding object to col " + col + ", row " + row + " in the Scene recalled");
+                }
+
+                recalledScene.addItemToSquare(col, row, recognisedObject.getIdentifier(), recognisedObject.getObjectClass());
+
+                if(associatedVisualSpatialField != null){
+                  if(debug) System.out.println("         ~ Updating object in associated visual-spatial field");
+                  for(VisualSpatialFieldObject objectOnVisualSpatialSquare : associatedVisualSpatialField.getSquareContents(col, row, time)){
+                    if(objectOnVisualSpatialSquare.getIdentifier().equals(recognisedObject.getIdentifier())){
+                      objectOnVisualSpatialSquare.setRecognised(time, true);
+                      recognisedObjectIdentifiers.add(objectOnVisualSpatialSquare.getIdentifier());
+
+                      if(debug){
+                        System.out.println("            ID: " + objectOnVisualSpatialSquare.getIdentifier());
+                        System.out.println("            Class: " + objectOnVisualSpatialSquare.getObjectClass());
+                        System.out.println("            Created at: " + objectOnVisualSpatialSquare.getTimeCreated());
+                        System.out.println("            Terminus: " + objectOnVisualSpatialSquare.getTerminus());
+                        System.out.println("            Recognised: " + objectOnVisualSpatialSquare.recognised(time));
+                        System.out.println("            Ghost: " + objectOnVisualSpatialSquare.isGhost());
+                      }
                     }
                   }
                 }
               }
-            }
-            else if(debug){
-              System.out.println("            = There is no equivalent object (recognised object must be a ghost)");
-            }
-          }
-        }
-      }
-    }
-    
-    //Process unrecognised objects in the associated visual-spatial field.
-    if(associatedVisualSpatialField != null){
-      if(debug) System.out.println("- Processing unrecognised objects in associated visual-spatial field");
-      for(int row = 0; row < associatedVisualSpatialField.getHeight(); row++){
-        for(int col = 0; col < associatedVisualSpatialField.getWidth(); col++){
-          if(debug) System.out.println("   - Processing objects on col " + col + ", row " + row);
-          
-          for(VisualSpatialFieldObject object : associatedVisualSpatialField.getSquareContents(col, row, time)){  
-            if(!recognisedObjectIdentifiers.contains(object.getIdentifier())){
-              if(debug){
-                System.out.println("      - Object unrecognised.  Current status:");
-                System.out.println("         ID: " + object.getIdentifier());
-                System.out.println("         Class: " + object.getObjectClass());
-                System.out.println("         Created at: " + object.getTimeCreated());
-                System.out.println("         Terminus: " + object.getTerminus());
-                System.out.println("         Recognised: " + object.recognised(time));
-                System.out.println("         Ghost: " + object.isGhost());
-              }
-              
-              //Squares that contain blind objects and the creator's avatar will 
-              //have null termini so do not overwrite these.
-              if(object.getTerminus() == null){
-                object.setUnrecognised(time, false);
-              }else{
-                object.setUnrecognised(time, true);
-              }
-              
-              if(debug){
-                System.out.println("         - After processing:");
-                System.out.println("            ID: " + object.getIdentifier());
-                System.out.println("            Class: " + object.getObjectClass());
-                System.out.println("            Created at: " + object.getTimeCreated());
-                System.out.println("            Terminus: " + object.getTerminus());
-                System.out.println("            Recognised: " + object.recognised(time));
-                System.out.println("            Ghost: " + object.isGhost());
+              else if(debug){
+                System.out.println("            = There is no equivalent object (recognised object must be a ghost)");
               }
             }
           }
         }
       }
-    }
-    
-    //If the creator of the scene was identified in the original scene then add
-    //it into the recalled scene.
-    Square creatorLocation = scene.getLocationOfCreator();
-    if(creatorLocation != null){
-      SceneObject self = scene.getSquareContents(creatorLocation.getColumn(), creatorLocation.getRow());
-      recalledScene.addItemToSquare(creatorLocation.getColumn(), creatorLocation.getRow(), self.getIdentifier(), self.getObjectClass());
-    }
 
-    return recalledScene;
+      //Process unrecognised objects in the associated visual-spatial field.
+      if(associatedVisualSpatialField != null){
+        if(debug) System.out.println("- Processing unrecognised objects in associated visual-spatial field");
+        for(int row = 0; row < associatedVisualSpatialField.getHeight(); row++){
+          for(int col = 0; col < associatedVisualSpatialField.getWidth(); col++){
+            if(debug) System.out.println("   - Processing objects on col " + col + ", row " + row);
+
+            for(VisualSpatialFieldObject object : associatedVisualSpatialField.getSquareContents(col, row, time)){  
+              if(!recognisedObjectIdentifiers.contains(object.getIdentifier())){
+                if(debug){
+                  System.out.println("      - Object unrecognised.  Current status:");
+                  System.out.println("         ID: " + object.getIdentifier());
+                  System.out.println("         Class: " + object.getObjectClass());
+                  System.out.println("         Created at: " + object.getTimeCreated());
+                  System.out.println("         Terminus: " + object.getTerminus());
+                  System.out.println("         Recognised: " + object.recognised(time));
+                  System.out.println("         Ghost: " + object.isGhost());
+                }
+
+                //Squares that contain blind objects and the creator's avatar will 
+                //have null termini so do not overwrite these.
+                if(object.getTerminus() == null){
+                  object.setUnrecognised(time, false);
+                }else{
+                  object.setUnrecognised(time, true);
+                }
+
+                if(debug){
+                  System.out.println("         - After processing:");
+                  System.out.println("            ID: " + object.getIdentifier());
+                  System.out.println("            Class: " + object.getObjectClass());
+                  System.out.println("            Created at: " + object.getTimeCreated());
+                  System.out.println("            Terminus: " + object.getTerminus());
+                  System.out.println("            Recognised: " + object.recognised(time));
+                  System.out.println("            Ghost: " + object.isGhost());
+                }
+              }
+            }
+          }
+        }
+      }
+
+      //If the creator of the scene was identified in the original scene then add
+      //it into the recalled scene.
+      Square creatorLocation = scene.getLocationOfCreator();
+      if(creatorLocation != null){
+        SceneObject self = scene.getSquareContents(creatorLocation.getColumn(), creatorLocation.getRow());
+        recalledScene.addItemToSquare(creatorLocation.getColumn(), creatorLocation.getRow(), self.getIdentifier(), self.getObjectClass());
+      }
+      
+      return recalledScene;
+    }
+    
+    return null;
+  }
+  
+  /**
+   * A predicted move is defined as being a production associated with a visual 
+   * {@link jchrest.architecture.Node} recognised after scanning the {@link 
+   * jchrest.lib.Scene} passed.  A move is the image of the action {@link 
+   * jchrest.architecture.Node} that forms a production.
+   * 
+   * @param scene
+   * @param numFixations
+   * @param colour
+   * @param time
+   * @param timeSceneSeenUntil The time that this {@link #this} model can no 
+   * longer "see" the {@link jchrest.lib.Scene} to predict moves in context of.  
+   * If there is no time limit on how long the {@link jchrest.lib.Scene} can be 
+   * "seen" for then pass null.
+   * 
+   * @return If this {@link jchrest.architecture.Chrest} model's {@link 
+   * jchrest.architecture.Perceiver} is free, a map of predicted moves vs their 
+   * frequency of occurrence in visual {@link jchrest.architecture.Stm} after 
+   * scanning the {@link jchrest.lib.Scene} passed using {@link 
+   * jchrest.architecture.Chrest#scanScene(jchrest.lib.Scene, int, int, int, 
+   * boolean)} is returned.  If the {@link jchrest.architecture.Perceiver} is 
+   * not free, null is returned.
+   */
+  public Map<ListPattern, Integer> getMovePredictions (Scene scene, int numFixations, String colour, int time, int timeSceneSeenUntil) {
+    
+    if(this.scanScene (scene, numFixations, time, timeSceneSeenUntil, false)){
+      
+      Map<ListPattern, Integer> moveFrequencies = new HashMap<ListPattern, Integer> ();
+      for (Node node : _visualStm) {
+        for (Node action : node.getProductions (time).keySet()) {
+          if (sameColour(action.getImage(time), colour)) {
+            if (moveFrequencies.containsKey(action.getImage (time))) {
+              moveFrequencies.put (
+                  action.getImage (time), 
+                  moveFrequencies.get(action.getImage (time)) + 1
+                  );
+            } else {
+              moveFrequencies.put (action.getImage (time), 1);
+            }
+          }
+        }
+      }
+      return moveFrequencies;
+    }
+    
+    return null;
   }
 
-  /** 
-   * Clear the STM and LTM of the model.
+  /**
+   * Predict a move using a CHUMP-like mechanism.
+   * 
+   * TODO: Improve the heuristics here.
+   * 
+   * @param scene
+   * @param numFixations
+   * @param time
+   * @param timeSceneSeenUntil The time that this {@link #this} model can no 
+   * longer "see" the {@link jchrest.lib.Scene} to predict moves in context of.  
+   * If there is no time limit on how long the {@link jchrest.lib.Scene} can be 
+   * "seen" for then pass null.
+   * 
+   * @return 
    */
+  public Move predictMove (Scene scene, int numFixations, int time, Integer timeSceneSeenUntil) {
+    Map<ListPattern, Integer> moveFrequencies = getMovePredictions (scene, numFixations, null, time, timeSceneSeenUntil);
+    
+    if(moveFrequencies != null){
+      // find the most frequent pattern
+      ListPattern best = null;
+      int bestFrequency = 0;
+      for (ListPattern key : moveFrequencies.keySet ()) {
+        if (moveFrequencies.get (key) > bestFrequency) {
+          best = key;
+          bestFrequency = moveFrequencies.get (key);
+        }
+      }
+      // create a move to return
+      // list pattern should be one item long, with the first item being an ItemSquarePattern
+      if (best != null && (best.size () == 1) && (best.getItem(0) instanceof ItemSquarePattern)) {
+        ItemSquarePattern move = (ItemSquarePattern)best.getItem (0);
+        return new Move (move.getItem (), move.getRow (), move.getColumn ());
+      }
+    }
+    
+    return new Move ("UNKNOWN", 0, 0);
+  }
+
+  /**
+   * Predict a move using a CHUMP-like mechanism.
+   * 
+   * TODO: Improve the heuristics here.
+   * 
+   * @param scene
+   * @param numFixations
+   * @param colour
+   * @param time
+   * @param timeSceneSeenUntil The time that this {@link #this} model can no 
+   * longer "see" the {@link jchrest.lib.Scene} to predict moves in context of.  
+   * If there is no time limit on how long the {@link jchrest.lib.Scene} can be 
+   * "seen" for then pass null.
+   * 
+   * @return
+   */
+  public Move predictMove (Scene scene, int numFixations, String colour, int time, Integer timeSceneSeenUntil) {
+    Map<ListPattern, Integer> moveFrequencies = getMovePredictions (scene, numFixations, colour, time, timeSceneSeenUntil);
+    
+    if(moveFrequencies != null){
+      // find the most frequent pattern
+      ListPattern best = null;
+      int bestFrequency = 0;
+      for (ListPattern key : moveFrequencies.keySet ()) {
+        if (moveFrequencies.get (key) > bestFrequency) {
+          best = key;
+          bestFrequency = moveFrequencies.get (key);
+        }
+      }
+      // create a move to return
+      // list pattern should be one item long, with the first item being an ItemSquarePattern
+      if (best != null && (best.size () == 1) && (best.getItem(0) instanceof ItemSquarePattern)) {
+        ItemSquarePattern move = (ItemSquarePattern)best.getItem (0);
+        return new Move (move.getItem (), move.getRow (), move.getColumn ());
+      }
+    }
+    
+    return new Move ("UNKNOWN", 0, 0);
+  }
+  
+  
+
+  
+
+  /** 
+   * Clear the STM and LTM of this {@link #this} model.
+   */
+  //TODO: Time needs to be passed here however, there is a problem: when a new 
+  //      experiment begins, it should have an initial time of 0 and if STM is 
+  //      cleared (for example) a new empty list will be added at time 0.  
+  //      However, since items in STM are handled using 
+  //      jchrest.lib.HistoryTreeMap instances, the "put" method will fail since 
+  //      adding the empty list at time 0 would be rewriting history (there will 
+  //      be entries from the previous experiment at times >= 0).  The same is 
+  //      true for other architecture components.  The best solution would be to 
+  //      "carry-over" the current experiment time when a CHREST instance is 
+  //      moved from one experiment to the other.  Essentially, a CHREST model 
+  //      should have its own clock that starts when it is placed in the first 
+  //      experiment and is never reset.  Alternatively, a CHREST model should 
+  //      only ever exist in one experiment and this function should be removed.
   public void clear () {
     this.clearHistory(); 
     this.setClocks(0);
-    _visualLtm.clear ();
-    _verbalLtm.clear ();
-    _actionLtm.clear ();
-    _visualLtm = new Node (this, 0, jchrest.lib.Pattern.makeVisualList (new String[]{"Root"}), 0);
-    _verbalLtm = new Node (this, 0, jchrest.lib.Pattern.makeVerbalList (new String[]{"Root"}), 0);
-    _actionLtm = new Node (this, 0, jchrest.lib.Pattern.makeActionList (new String[]{"Root"}), 0);
-    _totalNodes = 0;
-    _visualStm.clear (0);
-    _verbalStm.clear (0);
+    
+    for(Modality modality : Modality.values()){
+      try {
+        Field ltmModalityRoot = Chrest.class.getDeclaredField("_" + modality.toString().toLowerCase() + "Ltm");
+        Node ltmModalityRootNode = (Node)ltmModalityRoot.get(this);
+        ltmModalityRootNode.clear();
+        ltmModalityRoot.set(this, new Node(this, modality, 0));
+        
+        Stm stmModality = (Stm)Chrest.class.getDeclaredField("_" + modality.toString().toLowerCase() + "Stm").get(this);
+        stmModality.clear(0);
+      } catch (NoSuchFieldException | SecurityException | IllegalArgumentException | IllegalAccessException ex) {
+        Logger.getLogger(Chrest.class.getName()).log(Level.SEVERE, null, ex);
+      }
+    }
+    
+    this._nextLtmNodeReference = 0;
     _experimentsLocatedInNames.clear();
     this._engagedInExperiment = false;
     setChanged ();
@@ -1979,21 +3486,21 @@ public class Chrest extends Observable {
   /** 
    * Write model to given Writer object in VNA format
    */
-  public void writeModelAsVna (Writer writer) throws IOException {
+  public void writeModelAsVna (Writer writer, int time) throws IOException {
     writer.write ("*Node data\n\"ID\", \"contents\"\n");
-    _visualLtm.writeNodeAsVna (writer);
+    _visualLtm.writeNodeAsVna (writer, time);
     writer.write ("*Tie data\nFROM TO\n");
-    _visualLtm.writeLinksAsVna (writer);
+    _visualLtm.writeLinksAsVna (writer, time);
   }
 
   /** 
    * Write model semantic links to given Writer object in VNA format
    */
-  public void writeModelSemanticLinksAsVna (Writer writer) throws IOException {
+  public void writeModelSemanticLinksAsVna (Writer writer, int time) throws IOException {
     writer.write ("*Node data\n\"ID\", \"contents\"\n");
-    _visualLtm.writeNodeAsVna (writer);
+    _visualLtm.writeNodeAsVna (writer, time);
     writer.write ("*Tie data\nFROM TO\n");
-    _visualLtm.writeSemanticLinksAsVna (writer);
+    _visualLtm.writeSemanticLinksAsVna (writer, time);
   }
 
   public void setDefaultAlpha (double alpha) {
@@ -2018,29 +3525,29 @@ public class Chrest extends Observable {
   /**
    * Attach given emotion to top item in STM, if present.
    */
-  public void assignEmotionToCurrentItem (Stm stm, Emotion emotion) {
-    if (stm.getCount () == 0) {
+  public void assignEmotionToCurrentItem (Stm stm, Emotion emotion, int time) {
+    if (stm.getCount(time) == 0) {
       return;  // STM empty, so nothing to be done
     }
-    _emotionAssociator.setRWEmotion (stm.getItem(0), emotion);
+    _emotionAssociator.setRWEmotion (stm.getItem(0, time), emotion);
   }
 
   /** 
    * Accessor for the emotion associated with the topmost item in STM.
    */
-  public Emotion getCurrentEmotion (Stm stm) {
-    if (stm.getCount () == 0) {
+  public Emotion getCurrentEmotion (Stm stm, int time) {
+    if (stm.getCount (time) == 0) {
       return null;
     } else {
-      return _emotionAssociator.getRWEmotion (stm.getItem (0));
+      return _emotionAssociator.getRWEmotion (stm.getItem (0, time));
     }
   }
 
-  public Emotion getCurrentFollowedByEmotion (Stm stm) {
-    if (stm.getCount () == 0) {
+  public Emotion getCurrentFollowedByEmotion (Stm stm, int time) {
+    if (stm.getCount (time) == 0) {
       return null;
     } else {
-      Node followed_by = stm.getItem(0).getAssociatedNode ();
+      Node followed_by = stm.getItem(0, time).getAssociatedNode (time);
       if (followed_by == null) {
         return null;
       } else {
@@ -2086,63 +3593,10 @@ public class Chrest extends Observable {
     }
   }
   
-  /**
-   * Advances the value of "_attentionClock" by the time specified.
-   * @param timeToAdvanceBy 
-   */
-  public void advanceAttentionClock(int timeToAdvanceBy){
-    this._attentionClock += timeToAdvanceBy;
-    this.setChanged();
-  }
-  
-  /**
-   * Sets the value of the "_attentionClock" instance variable to the time 
-   * passed.
-   * 
-   * @param time The time to set the "_attentionClock" instance variable value
-   * to.  This time is domain-specific.
-   */
-  public void setAttentionClock(int time){
-    this._attentionClock = time;
-    setChanged();
-  }
-  
-  /**
-   * Accessor to retrieve the value of the model's "_attentionClock" instance 
-   * variable value.
-   * 
-   * @return The value of the model's "_attentionClock" instance variable value.
-   */
-  public int getAttentionClock () {
-    return _attentionClock;
-  }
-  
-  /**
-   * Determines if the CHREST model's attention is currently free or not.
-   * 
-   * @param domainTime  The current time (in milliseconds) in the domain where 
-   * this Chrest instance is located. 
-   * 
-   * @return True if the value passed is greater than the value of the 
-   * "_attentionClock" instance variable, false if not.
-   */
-  public boolean attentionFree(int domainTime){
-    return domainTime >= this.getAttentionClock(); 
-  }
   
   
-  public void advanceLearningClock(int timeToAdvanceBy){
-    this._learningClock += timeToAdvanceBy;
-    this.setChanged();
-  }
-    
-  public int getLearningClock(){
-    return this._learningClock;
-  }
-  
-  public void setLearningClock(int time){
-    this._learningClock = time;
-    setChanged();
+  public int getCognitionClock(){
+    return this._cognitionClock;
   }
   
   /**
@@ -2207,6 +3661,10 @@ public class Chrest extends Observable {
     }
   }
   
+  public int getTimeToUpdateStm() {
+    return _timeToUpdateStm;
+  }
+  
   /****************************************************************************/
   /****************************************************************************/
   /*********************** VISUAL-SPATIAL FIELD METHODS ***********************/
@@ -2214,30 +3672,215 @@ public class Chrest extends Observable {
   /****************************************************************************/
   
   /**
-   * Creates a new {@link jchrest.architecture.VisualSpatialField} and registers 
-   * it as a value in the {@link java.util.TreeMap} database of 
-   * {@link jchrest.architecture.VisualSpatialField}s associated with this 
-   * CHREST instance against a key that is the time specified.
-   * 
-   * Description of parameters are provided here: {@link 
-   * jchrest.architecture.VisualSpatialField#VisualSpatialField(
-   * jchrest.architecture.Chrest, jchrest.lib.Scene, int, int, int, int, int, 
-   * int, int, int, boolean, boolean).
-   * 
-   * @param sceneToTranspose
-   * @param objectEncodingTime
-   * @param emptySquareEncodingTime
-   * @param accessTime
-   * @param objectMovementTime
-   * @param lifespanForRecognisedObjects
-   * @param lifespanForUnrecognisedObjects
-   * @param numberFixations
-   * @param domainTime
-   * @param encodeGhostObjects
-   * @param debug
+   * @param time
+   * @return
    */
-  public void createNewVisualSpatialField(
-    Scene sceneToTranspose, 
+  public Integer getRecognisedVisualSpatialObjectLifespan(int time){
+    return this._recognisedVisualSpatialObjectLifespan;
+  }
+  
+  /**
+   * @param time
+   * @return 
+   */
+  public Integer getUnrecognisedVisualSpatialObjectLifespan(int time){
+    return this._unrecognisedVisualSpatialObjectLifespan;
+  }
+  
+  /**
+   * @param time
+   * @return
+   */
+  public Integer getVisualSpatialFieldPhysicalObjectEncodingTime(int time){
+    return this._visualSpatialFieldPhysicalObjectEncodingTime;
+  }
+  
+  /**
+   * @param time
+   * @return 
+   */
+  public Integer getVisualSpatialFieldEmptySquareEncodingTime(int time){
+    return this._visualSpatialFieldEmptySquareEncodingTime;
+  }
+  
+  /**
+   * @param time
+   * @return 
+   */
+  public Integer getVisualSpatialFieldAccessTime(int time){
+    return this._visualSpatialFieldAccessTime;
+  }
+  
+  /**
+   * @param time
+   * @return
+   */
+  public Integer getVisualSpatialFieldObjectMovementTime(int time){
+    return this._visualSpatialFieldObjectMovementTime;
+  }
+  
+  /**
+   * Sets the lifespan for any new, recognised {@link 
+   * jchrest.architecture.VisualSpatialFieldObject}s.
+   * 
+   * @param lifespan
+   */
+  public void setLifespanForRecognisedVisualSpatialObjects(int lifespan){
+    this._recognisedVisualSpatialObjectLifespan = lifespan;
+  }
+  
+  /**
+   * Sets the lifespan for any new, unrecognised {@link 
+   * jchrest.architecture.VisualSpatialFieldObject}s.
+   * 
+   * @param lifespan
+   */
+  public void setLifespanForUnrecognisedVisualSpatialObjects(int lifespan){
+    this._unrecognisedVisualSpatialObjectLifespan = lifespan;
+  }
+  
+  /**
+   * Sets the encoding time for any new {@link 
+   * jchrest.lib.VisualSpatialFieldObject}s that represent physical {@link 
+   * jchrest.lib.SceneObject}s, i.e. non-empty and non-blind {@link 
+   * jchrest.lib.VisualSpatialFieldObject}s.
+   * 
+   * @param encodingTime
+   */
+  public void setVisualSpatialFieldPhysicalObjectEncodingTime(int encodingTime){
+    this._visualSpatialFieldPhysicalObjectEncodingTime = encodingTime;
+  }
+  
+  /**
+   * Sets the encoding time for any new {@link 
+   * jchrest.lib.VisualSpatialFieldObject}s that represent empty squares in a 
+   * {@link jchrest.lib.Scene}.
+   * 
+   * @param encodingTime
+   */
+  public void setVisualSpatialFieldEmptySquareEncodingTime(int encodingTime){
+    this._visualSpatialFieldEmptySquareEncodingTime = encodingTime;
+  }
+  
+  /**
+   * Sets the base time for accessing a {@link 
+   * jchrest.architecture.VisualSpatialField} associated with {@link #this}.
+   * 
+   * @param accessTime
+   */
+  public void setVisualSpatialFieldAccessTime(int accessTime){
+    this._visualSpatialFieldAccessTime = accessTime;
+  }
+  
+  /**
+   * Set the time to move a {@link 
+   * jchrest.architecture.VisualSpatialFieldObject} on a {@link 
+   * jchrest.architecture.VisualSpatialField} associated with {@link #this}.
+   * 
+   * @param movementTime
+   */
+  public void setVisualSpatialFieldObjectMovementTime(int movementTime){
+    this._visualSpatialFieldObjectMovementTime = movementTime;
+  }
+  
+  
+  /**
+   * Attempts to create and associate a new {@link 
+   * jchrest.architecture.VisualSpatialField} with this {@link #this} model.
+   * If the {@link jchrest.architecture.VisualSpatialField} is successfully
+   * created, it will be added to the database of {@link 
+   * jchrest.architecture.VisualSpatialField}s associated with this {@link 
+   * #this} model at the time its instantiation is complete i.e. the sum of:
+   * <ul>
+   *  <li>The time this function is invoked</li>
+   *  <li>
+   *    The time taken to scan the {@link jchrest.lib.Scene} to encode into
+   *    the {@link jchrest.architecture.VisualSpatialField} to be created.
+   *  </li>
+   *  <li>
+   *    The time taken to access the {@link 
+   *    jchrest.architecture.VisualSpatialField} so it can be instantiated.
+   *  </li>
+   *  <li>
+   *    The time taken to encode any empty squares and {@link 
+   *    jchrest.lib.SceneObject}s in the {@link jchrest.lib.Scene} to encode 
+   *    into the {@link jchrest.architecture.VisualSpatialField} to be created.
+   *  </li>
+   * </ul>
+   * 
+   * @param sceneToEncode
+   * 
+   * @param timeSceneToEncodeCanBeSeenUntil  The time that this {@link #this} 
+   * model can no longer "see" the {@link jchrest.lib.Scene} to be encoded into
+   * the {@link jchrest.architecture.VisualSpatialField} to be created.  If 
+   * there is no time limit on how long the {@link jchrest.lib.Scene} can be 
+   * "seen" for then pass null. 
+   * 
+   * @param objectEncodingTime How long it takes to encode an object in the 
+   * {@link jchrest.architecture.VisualSpatialField} to be created.
+   * 
+   * @param emptySquareEncodingTime How long it takes to encode an empty square
+   * in the {@link jchrest.architecture.VisualSpatialField} to be created.
+   * 
+   * @param accessTime How long it takes to access the {@link 
+   * jchrest.architecture.VisualSpatialField} to be created.
+   * 
+   * @param objectMovementTime How long it takes to move a {@link 
+   * jchrest.architecture.VisualSpatialFieldObject} irrespective of the 
+   * "distance" moved in the {@link jchrest.architecture.VisualSpatialField} to 
+   * be created.
+   * 
+   * @param lifespanForRecognisedObjects How long {@link 
+   * jchrest.architecture.VisualSpatialFieldObject}s will exist for after being
+   * recognised in the {@link jchrest.architecture.VisualSpatialField} to be 
+   * created.
+   * 
+   * @param lifespanForUnrecognisedObjects How long {@link 
+   * jchrest.architecture.VisualSpatialFieldObject}s will exist for if they are
+   * not recognised in the {@link jchrest.architecture.VisualSpatialField} to be 
+   * created.
+   * 
+   * @param numberFixations The number of fixations to be made by the {@link 
+   * jchrest.architecture.Perceiver} associated with this {@link #this} model
+   * when scanning the {@link jchrest.lib.Scene} to encode into the {@link 
+   * jchrest.architecture.VisualSpatialField} to be created.
+   * 
+   * @param time The time this function is invoked.
+   * 
+   * @param encodeGhostObjects Whether or not to encode {@link 
+   * jchrest.architecture.SceneObject}s that do not exist in the
+   * {@link jchrest.lib.Scene} to encode into the {@link 
+   * jchrest.architecture.VisualSpatialField} to be created but are recognised 
+   * by virtue of other {@link jchrest.architecture.SceneObject}s that exist and 
+   * are recognised in the {@link jchrest.lib.Scene} to encode when the {@link 
+   * jchrest.lib.Scene} to encode is scanned during creation of the {@link 
+   * jchrest.architecture.VisualSpatialField} to be created.
+   * 
+   * @param debug Set to true to output debug messages to 
+   * {@link java.lang.System#out}.
+   * 
+   * @return {@link java.lang.Boolean#FALSE} if any of the following conditions
+   * are true, {@link java.lang.Boolean#TRUE} otherwise:
+   * <ul>
+   *  <li>
+   *    This {@link #this} model's perceptual resources are not free at the time 
+   *    this function is invoked.
+   *  </li>
+   *  <li>
+   *    The {@link jchrest.lib.Scene} passed is entirely blind.
+   *  </li>
+   *  <li>
+   *    Two {@link jchrest.lib.SceneObject}s in the {@link jchrest.lib.Scene}  
+   *    passed have the same identifier.  This means that it will be impossible
+   *    to identify either {@link jchrest.lib.SceneObject} in the {@link 
+   *    jchrest.architecture.VisualSpatialField} to be created if they are to be 
+   *    moved at any point in the future.
+   *  </li>
+   * </ul>
+   */
+  public boolean createNewVisualSpatialField(
+    Scene sceneToEncode,
+    Integer timeSceneToEncodeCanBeSeenUntil,
     int objectEncodingTime, 
     int emptySquareEncodingTime, 
     int accessTime, 
@@ -2245,28 +3888,181 @@ public class Chrest extends Observable {
     int lifespanForRecognisedObjects, 
     int lifespanForUnrecognisedObjects, 
     int numberFixations, 
-    int domainTime,
+    int time,
     boolean encodeGhostObjects,
     boolean debug
   ){
-    try {
-      this._visualSpatialFields.put(domainTime, new VisualSpatialField(
-        this,
-        sceneToTranspose,
-        objectEncodingTime,
-        emptySquareEncodingTime,
-        accessTime,
-        objectMovementTime,
-        lifespanForRecognisedObjects,
-        lifespanForUnrecognisedObjects,
-        numberFixations,
-        domainTime,
-        encodeGhostObjects,
-        debug
-      ));
-    } catch (VisualSpatialFieldException ex) {
-      Logger.getLogger(Chrest.class.getName()).log(Level.SEVERE, null, ex);
+    
+    //Attention and perceptual resources must be free to start constructing a 
+    //visual-spatial field.
+    if(this._attentionClock < time && this._perceiverClock < time){
+        
+      /******************************************/
+      /***** CHECK FOR ENTIRELY BLIND SCENE *****/
+      /******************************************/
+
+      //If the scene to encode is entirely blind, the constructor will hang when 
+      //the scene to encode is scanned for recognised chunks below so this check 
+      //prevents this from happening.
+      if(debug) System.out.println("- Checking if the scene to encode is entirely blind...");
+
+      //Create a boolean variable that is only set to true if a non-blind object
+      //exists in the scene to encode.
+      boolean realityIsBlind = true;
+
+      //Check sceneToEncode for a non-blind object that is not the scene creator.
+      for(int col = 0; col < sceneToEncode.getWidth() && realityIsBlind; col++){
+        for(int row = 0; row < sceneToEncode.getHeight() && realityIsBlind; row++){
+          String objectClass = sceneToEncode.getSquareContents(col, row).getObjectClass();
+          if(
+            !objectClass.equals(Scene.getBlindSquareToken()) &&
+            !objectClass.equals(Scene.getCreatorToken())
+          ){
+            if(debug) System.out.println("   - Col " + col + ", row " + row + " contains an object with class '" + objectClass + "'.");
+            realityIsBlind = false;
+            break;
+          }
+        }
+      }
+
+      if(!realityIsBlind){
+        if(debug) if(debug) System.out.println("- Scene to encode isn't entirely blind");
+
+        VisualSpatialField visualSpatialField = new VisualSpatialField(this, sceneToEncode, time);
+
+        //Encode the objects here since getting and setting STM info needs to
+        //be interspersed.
+        
+
+      }
+        
+////        VisualSpatialField visualSpatialField = new VisualSpatialField(
+////          this,
+////          sceneToEncode,
+////          timeSceneToEncodeCanBeSeenUntil,
+////          objectEncodingTime,
+////          emptySquareEncodingTime,
+////          accessTime,
+////          objectMovementTime,
+////          lifespanForRecognisedObjects,
+////          lifespanForUnrecognisedObjects,
+////          numberFixations,
+////          time,
+////          encodeGhostObjects,
+////          debug
+////        );
+////      
+////        int instantiationCompleteTime = visualSpatialField.getTimeInstantiationComplete();
+//        this._attentionClock = instantiationCompleteTime;
+//        this._visualSpatialFields.put(instantiationCompleteTime, visualSpatialField);
+//        return true;
+//      }
+//      
+//      //Perceptual resources not free
+//      return false;
+//    } catch (VisualSpatialFieldException ex) {
+//      Logger.getLogger(Chrest.class.getName()).log(Level.SEVERE, null, ex);
+//      return false;
     }
+    
+    return false;
+  }
+  
+  /**
+   * Moves {@link jchrest.lib.VisualSpatialFieldObject}s on the relevant 
+   * {@link jchrest.architecture.VisualSpatialField} according to the sequence 
+   * of moves specified.  {@link jchrest.lib.VisualSpatialFieldObject} movement 
+   * can only occur if the attention of this {@link #this} model is free.  
+   * 
+   * If all moves are successful, the attention clock of this {@link #this} 
+   * model will be set to the time this function is invoked plus the time taken
+   * to access the relevant {@link jchrest.architecture.VisualSpatialField} plus 
+   * the product of the number of moves performed multiplied by the time 
+   * specified to move an object in the relevant {@link 
+   * jchrest.architecture.VisualSpatialField}.
+   * 
+   * This method does not constrain the number of squares moved by a {@link 
+   * jchrest.lib.VisualSpatialFieldObject} in a {@link 
+   * jchrest.architecture.VisualSpatialField}.  Essentially, it takes the same 
+   * amount of time to move a {@link jchrest.lib.VisualSpatialFieldObject} 
+   * across 5 squares in a {@link jchrest.architecture.VisualSpatialField} as it 
+   * does to move it across one.  If movements need to be time-constrained in 
+   * this way then these constraints should be reflected in the moves specified.
+   * 
+   * Note that if a {@link jchrest.lib.VisualSpatialFieldObject} is moved to 
+   * coordinates in the {@link jchrest.architecture.VisualSpatialField} 
+   * that are already occupied then the two {@link 
+   * jchrest.lib.VisualSpatialFieldObject}s will co-exist on the coordinates.
+   * 
+   * @param moveSequences A 2D {@link java.util.ArrayList} whose first dimension 
+   * elements should contain {@link java.util.ArrayList}s of {@link 
+   * jchrest.lib.ItemSquarePattern} instances that prescribe a sequence of moves 
+   * for one {@link jchrest.lib.VisualSpatialFieldObject} using zero-indexed,
+   * {@link jchrest.architecture.VisualSpatialField} coordinates rather than 
+   * coordinates used in the external domain or relative to the "mover".  It is 
+   * <b>imperative</b> that {@link jchrest.lib.VisualSpatialFieldObject}s to be 
+   * moved are identified using their unique identifier (see {@link 
+   * jchrest.lib.VisualSpatialFieldObject#getIdentifier()}) rather than their 
+   * object class (see {@link 
+   * jchrest.lib.VisualSpatialFieldObject#getObjectClass()}). For example, if 
+   * two {@link jchrest.lib.VisualSpatialFieldObject}s have the same object 
+   * class, A, but have unique identifiers, 0 and 1, and both are to be moved, 0 
+   * before 1, then the {@link java.util.ArrayList} passed should specify: 
+   * <pre>
+   * [ <i>First dimension {@link java.util.ArrayList}</i>
+   *    [ <i>Second dimension {@link java.util.ArrayList}</i>
+   *      [0 sourceX sourceY], <i>{@link jchrest.lib.ItemSquarePattern}</i>
+   *      [0 destinationX desitinationY] <i>{@link jchrest.lib.ItemSquarePattern}</i>
+   *    ],
+   *    [ <i>Second dimension {@link java.util.ArrayList}</i>
+   *      [1 sourceX sourceY], <i>{@link jchrest.lib.ItemSquarePattern}</i>
+   *      [1 desitinationX destinationY] <i>{@link jchrest.lib.ItemSquarePattern}</i>
+   *    ]
+   * ]
+   * <pre/>
+   * 
+   * @param time The time (in milliseconds) when this function is invoked.
+   * @param debug
+   * 
+   * @return {@link java.lang.Boolean#TRUE} if the attention resource of this
+   * {@link #this} model is free at the time the function is invoked and a 
+   * {@link jchrest.lib.VisualSpatialFieldException} is not thrown, {@link 
+   * java.lang.Boolean#FALSE} otherwise.
+   * 
+   * @throws jchrest.lib.VisualSpatialFieldException If any of the moves 
+   * specified cause any of the following apply to the moves specified:
+   * <ol type="1">
+   *  <li>
+   *    More than one object is moved within the same sequence; object movement 
+   *    should be strictly serial.
+   *  </li>
+   *  <li>
+   *    The initial {@link jchrest.lib.ItemSquarePattern} in a move sequence 
+   *    does not correctly identify where the 
+   *    {@link jchrest.lib.VisualSpatialFieldObject} is located in this 
+   *    {@link #this}.  If the {@link jchrest.lib.VisualSpatialFieldObject} has 
+   *    previously been moved in this {@link #this}, the initial location should 
+   *    be its current location in this {@link #this}.
+   *  </li>
+   *  <li>
+   *    Only the initial location of a 
+   *    {@link jchrest.lib.VisualSpatialFieldObject} is specified.
+   *  </li>
+   * </ol>
+   */
+  public boolean moveVisualSpatialFieldObjects(ArrayList<ArrayList<ItemSquarePattern>> moveSequences, int time, boolean debug) throws VisualSpatialFieldException{
+//    if(this._attentionClock < time){
+//      
+//      try{
+//        this._attentionClock = this.getVisualSpatialFields().floorEntry(time).getValue().moveObjects(moveSequences, time, debug);
+//        return true;
+//      }
+//      catch(VisualSpatialFieldException e){
+//        return false;
+//      }
+//    }
+    
+    return false;
   }
   
   /**

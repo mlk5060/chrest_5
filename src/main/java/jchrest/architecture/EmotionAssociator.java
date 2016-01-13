@@ -65,9 +65,9 @@ public class EmotionAssociator{
 
       for(Stm stm : stms){
         List<Node> cues = new ArrayList<Node>();
-        int stm_size = stm.getCount();
+        int stm_size = stm.getCount(time);
         if (stm_size !=0){
-          Node topnode = stm.getItem(0);
+          Node topnode = stm.getItem(0, time);
           EmotionalTrace trace = _associations.get(topnode);
           if (trace == null){return;}
           Emotion current_emotion = trace.getRescorlaWagnerEmotion();
@@ -76,8 +76,8 @@ public class EmotionAssociator{
             for (int i=0; i < stms.length; i++){
               Stm target_stm = stms[i];
               // loop for target stm items, should include all (including top item)
-              for (int j=0; j < target_stm.getCount(); j++ ){
-                Node node = target_stm.getItem(j);
+              for (int j=0; j < target_stm.getCount(time); j++ ){
+                Node node = target_stm.getItem(j, time);
                 if (!(stm == stms[i] && j==0) && !(node.getReference()==0)) // exclude the item from propagating to itself, and exclude the root node (assumed to carry reference number 0). 
                 {
                   cues.add(node);

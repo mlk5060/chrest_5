@@ -109,8 +109,8 @@ public class ChessDomain extends DomainSpecifics {
    * @return 
    */
   @Override
-  public Set<Square> proposeSalientSquareFixations (Scene scene, Chrest model) {
-    return (model.isExperienced () ? getOffensivePieces (scene) : getBigPieces (scene));
+  public Set<Square> proposeSalientSquareFixations (Scene scene, Chrest model, int time) {
+    return (model.isExperienced (time) ? getOffensivePieces (scene) : getBigPieces (scene));
   }
 
   /**

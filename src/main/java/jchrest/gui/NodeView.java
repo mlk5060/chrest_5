@@ -15,6 +15,7 @@ import jchrest.architecture.Node;
 public class NodeView extends JFrame implements java.util.Observer {
   private final Chrest _model;
   private final Node _node;
+  private final int _time;
   private final JLabel _contentsLabel;
   private final JLabel _imageLabel;
   private final JLabel _associatedNode;
@@ -22,7 +23,7 @@ public class NodeView extends JFrame implements java.util.Observer {
   private final DefaultListModel _childLinksView, _similarityLinksView;
   private final JList _childLinks, _similarityLinks;
 
-  public NodeView (Chrest model, Node node) {
+  public NodeView (Chrest model, Node node, int time) {
     _model = model;
     _node = node;
     _node.addObserver (this);
@@ -32,6 +33,7 @@ public class NodeView extends JFrame implements java.util.Observer {
         ((NodeView)e.getWindow()).close ();
       }
     });
+    _time = time;
 
     // create and add the widgets
     _contentsLabel = new JLabel (_node.getContents().toString ());
@@ -46,23 +48,23 @@ public class NodeView extends JFrame implements java.util.Observer {
     
     _associatedNode = new JLabel ("");
     _associatedNode.setBorder (new CompoundBorder (new EmptyBorder (3, 3, 3, 3), new EtchedBorder ()));
-    if (_node.getAssociatedNode () != null) {
-      _associatedNode.setIcon (new NodeIcon (_node.getAssociatedNode (), _associatedNode));
+    if (_node.getAssociatedNode (_time) != null) {
+      _associatedNode.setIcon (new NodeIcon (_node.getAssociatedNode (_time), _associatedNode, _time));
     }
     fields.add (new JLabel ("Assocated node: ", SwingConstants.RIGHT));
     fields.add (_associatedNode);
 
     _namedBy = new JLabel ("");
     _namedBy.setBorder (new CompoundBorder (new EmptyBorder (3, 3, 3, 3), new EtchedBorder ()));
-    if (_node.getNamedBy () != null) {
-      _namedBy.setIcon (new NodeIcon (_node.getNamedBy (), _namedBy));
+    if (_node.getNamedBy (_time) != null) {
+      _namedBy.setIcon (new NodeIcon (_node.getNamedBy (_time), _namedBy, _time));
     }
     fields.add (new JLabel ("Named by: ", SwingConstants.RIGHT));
     fields.add (_namedBy);
 
     _childLinksView = new DefaultListModel ();
     _childLinks = new JList (_childLinksView);
-    _childLinks.setCellRenderer (new ListNodeRenderer (_model));
+    _childLinks.setCellRenderer (new ListNodeRenderer (_model, _time));
     _childLinks.setLayoutOrientation (JList.HORIZONTAL_WRAP);
     _childLinks.setVisibleRowCount (1);
     _childLinks.addMouseListener(new MouseAdapter () {
@@ -70,14 +72,14 @@ public class NodeView extends JFrame implements java.util.Observer {
         JList list = (JList)evt.getSource();
         if (evt.getClickCount() == 2) { 
           int index = list.locationToIndex(evt.getPoint());
-          new NodeView (_model, (Node)_childLinksView.getElementAt (index));
+          new NodeView (_model, (Node)_childLinksView.getElementAt (index), _time);
         }
       }
     });
 
     _similarityLinksView = new DefaultListModel ();
     _similarityLinks = new JList (_childLinksView);
-    _similarityLinks.setCellRenderer (new ListNodeRenderer (_model));
+    _similarityLinks.setCellRenderer (new ListNodeRenderer (_model, _time));
     _similarityLinks.setLayoutOrientation (JList.HORIZONTAL_WRAP);
     _childLinks.setVisibleRowCount (1);
     _similarityLinks.addMouseListener(new MouseAdapter () {
@@ -85,7 +87,7 @@ public class NodeView extends JFrame implements java.util.Observer {
         JList list = (JList)evt.getSource();
         if (evt.getClickCount() == 2) { 
           int index = list.locationToIndex(evt.getPoint());
-          new NodeView (_model, (Node)_similarityLinksView.getElementAt (index));
+          new NodeView (_model, (Node)_similarityLinksView.getElementAt (index), _time);
         }
       }
     });
@@ -103,16 +105,16 @@ public class NodeView extends JFrame implements java.util.Observer {
 
   void close () {
     _node.deleteObserver (this);
-    if (_node.getAssociatedNode () != null) {
-      _node.getAssociatedNode ().deleteObserver (this);
+    if (_node.getAssociatedNode (_time) != null) {
+      _node.getAssociatedNode (_time).deleteObserver (this);
     }
-    if (_node.getNamedBy () != null) {
-      _node.getNamedBy().deleteObserver (this);
+    if (_node.getNamedBy (_time) != null) {
+      _node.getNamedBy(_time).deleteObserver (this);
     }
-    for (Link link : _node.getChildren ()) {
+    for (Link link : _node.getChildren (_time)) {
       link.getChildNode().deleteObserver (this);
     }
-    for (Node node : _node.getSemanticLinks ()) {
+    for (Node node : _node.getSemanticLinks (_time)) {
       node.deleteObserver (this);
     }
     setVisible (false);
@@ -121,13 +123,13 @@ public class NodeView extends JFrame implements java.util.Observer {
 
   private void updateDisplays () {
     _imageLabel.setText (_node.getImage().toString ());
-    if (_node.getAssociatedNode () != null) {
-      _associatedNode.setIcon (new NodeIcon (_node.getAssociatedNode (), _associatedNode));
-      _node.getAssociatedNode().addObserver (this);
+    if (_node.getAssociatedNode (_time) != null) {
+      _associatedNode.setIcon (new NodeIcon (_node.getAssociatedNode (_time), _associatedNode, _time));
+      _node.getAssociatedNode(_time).addObserver (this);
     }
-    if (_node.getNamedBy () != null) {
-      _namedBy.setIcon (new NodeIcon (_node.getNamedBy (), _namedBy));
-      _node.getNamedBy().addObserver (this);
+    if (_node.getNamedBy (_time) != null) {
+      _namedBy.setIcon (new NodeIcon (_node.getNamedBy (_time), _namedBy, _time));
+      _node.getNamedBy(_time).addObserver (this);
     }
 
     _childLinksView.clear ();
@@ -138,7 +140,7 @@ public class NodeView extends JFrame implements java.util.Observer {
     _childLinks.setModel (_childLinksView);
 
     _similarityLinksView.clear ();
-    for (Node node : _node.getSemanticLinks ()) {
+    for (Node node : _node.getSemanticLinks (_time)) {
       _similarityLinksView.addElement (node);
       node.addObserver (this);
     }

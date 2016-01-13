@@ -225,25 +225,25 @@ public class VisualSearchPane extends JPanel {
         int positionsSeen = 0;
         while (
             (cycle < _maxCycles) && 
-            (_model.getTotalLtmNodes () < _maxSize) &&
+            (_model.getLtmSize(_time) < _maxSize) &&
             !isCancelled ()) {
           for (int i = 0, lastSceneIndex = _scenes.size (); 
-              i < lastSceneIndex && (_model.getTotalLtmNodes () < _maxSize) && !isCancelled (); 
+              i < lastSceneIndex && (_model.getLtmSize(_time) < _maxSize) && !isCancelled (); 
               i++) {
-            _model.learnScene (_scenes.get (i), _numFixations, _time);
+            _model.learnScene (_scenes.get (i), _numFixations, _time, null);
             positionsSeen += 1;
             if (positionsSeen % stepSize == 0) {
-              result = new Pair (positionsSeen, _model.getTotalLtmNodes ());
+              result = new Pair (positionsSeen, _model.getLtmSize(_time));
               publish (result);
-              setProgress (100 * _model.getTotalLtmNodes () / _maxSize);
+              setProgress (100 * _model.getLtmSize(_time) / _maxSize);
               results.add (result);
             }
           }
           cycle += 1;
             }
-        _model.constructTemplates (_model.getMaximumClockValue());
+        _model.makeTemplates (_model.getMaximumClockValue());
         
-        result = new Pair (positionsSeen, _model.getTotalLtmNodes ());
+        result = new Pair (positionsSeen, _model.getLtmSize(_time));
         results.add (result);
         publish (result);
 
@@ -459,7 +459,7 @@ public class VisualSearchPane extends JPanel {
         // loop through each scene, doing recall
         for (int i = 0; i < _scenes.size () && !isCancelled (); i++) {
           Scene scene = _scenes.get (i);
-          _model.scanScene (scene, ((SpinnerNumberModel)(_numFixations.getModel())).getNumber().intValue (), 0, false);
+          _model.scanScene (scene, ((SpinnerNumberModel)(_numFixations.getModel())).getNumber().intValue (), 0, null, false);
           for (Node node : _model.getPerceiver().getRecognisedNodes ()) {
             int id = node.getReference ();
             if (_recallFrequencies.containsKey (id)) {
@@ -496,11 +496,11 @@ public class VisualSearchPane extends JPanel {
 
     public void actionPerformed (ActionEvent e) {
       Scene scene =  _scenes.get(_sceneSelector.getSelectedIndex ());
-      Scene recalledScene = _model.scanScene (
+      Scene recalledScene = _model.scanAndRecallScene (
         scene, 
         ((SpinnerNumberModel)(_numFixations.getModel())).getNumber().intValue (),
         _model.getDomainSpecifics().getCurrentTime(), //TODO: this is probably wrong but inserted to get S/LTM history views working.
-        false
+        null
       );
 
       _recallSceneLabel.setText (recalledScene.getName ());
@@ -517,16 +517,16 @@ public class VisualSearchPane extends JPanel {
         addLog ("   " + fixation.toString ());
       }
       addLog ("Chunks used: ");
-      for (Node node : _model.getVisualStm()) {
-        addLog ("   " + "Node: " + node.getReference() + " " + node.getImage().toString ());
-        if (_model.getCreateTemplates() && node.isTemplate ()) {
+      for (Node node : _model.getStm(Modality.VISUAL).getContents(_model.getCurrentExperiment().getCurrentTime())) {
+        addLog ("   " + "Node: " + node.getReference() + " " + node.getImage(VisualSearchPane.this._time).toString ());
+        if (_model.canCreateTemplates() && node.isTemplate (VisualSearchPane.this._time)) {
           addLog ("     Template:");
           addLog ("        filled item slots: ");
-          for (ItemSquarePattern isp : node.getFilledItemSlots ()) {
+          for (ItemSquarePattern isp : node.getFilledItemSlots (VisualSearchPane.this._time)) {
             addLog ("         " + isp.toString ());
           }
           addLog ("        filled position slots: ");
-          for (ItemSquarePattern isp : node.getFilledPositionSlots ()) {
+          for (ItemSquarePattern isp : node.getFilledPositionSlots (VisualSearchPane.this._time)) {
             addLog ("         " + isp.toString ());
           }
 

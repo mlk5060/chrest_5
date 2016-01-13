@@ -40,12 +40,12 @@ public class ChrestLtmView extends JPanel {
     setLayout (new BorderLayout ());
 
     // -- the treeview pane
-    if (!this._model.canDrawLtmState()) {
+    if (!this._model.canDrawLtmState(stateAtTimeValue)) {
       _ltmView = null;
       add (new JLabel ("Sorry - LTM too large to display"));
     } else {
       _stateAtTimeValue = stateAtTimeValue; //This must be set before the LTM view is constructed since construction depends on the value being set correctly.
-      _ltmView = new TreeViewPane (new TreeViewNode (new NodeDisplay (null)));
+      _ltmView = new TreeViewPane (new TreeViewNode (new NodeDisplay (null, stateAtTimeValue)));
       _constructingTreeThread = new ConstructTreeThread ();
       _constructingTreeThread.execute ();
       add (new JScrollPane (_ltmView));
@@ -75,7 +75,7 @@ public class ChrestLtmView extends JPanel {
       this._stateAtTimeValue = stateAtTimeValue;
       this._experimentToVisualise = experimentName;
       
-      if (!this._model.canDrawLtmState()) {
+      if (!this._model.canDrawLtmState(stateAtTimeValue)) {
         // TODO : change display if number of nodes is too large
         //        this.add (new JLabel ("Sorry - LTM too large to display"));
       } else {
@@ -178,25 +178,25 @@ public class ChrestLtmView extends JPanel {
    * joining the three types of LTM into a single tree.
    */
   private LtmTreeViewNode constructTree () {
-    LtmTreeViewNode baseTreeViewNode = new NodeDisplay (null);
-    baseTreeViewNode.add( constructTree(_model.getClonedLtm(Modality.ACTION)) );
-    baseTreeViewNode.add( constructTree(_model.getClonedLtm(Modality.VERBAL)) );
-    baseTreeViewNode.add( constructTree(_model.getClonedLtm(Modality.VISUAL)) );
+    LtmTreeViewNode baseTreeViewNode = new NodeDisplay (null, this._stateAtTimeValue);
+//    baseTreeViewNode.add( constructTree(_model.getClonedLtm(Modality.ACTION)) );
+//    baseTreeViewNode.add( constructTree(_model.getClonedLtm(Modality.VERBAL)) );
+//    baseTreeViewNode.add( constructTree(_model.getClonedLtm(Modality.VISUAL)) );
     return baseTreeViewNode;
   }
 
   /** 
    * Clone and wrap the model's LTM as a set of LtmTreeViewNode objects.
    */
-  private LtmTreeViewNode constructTree (Node baseNode) {
-    NodeDisplay baseTreeViewNode = new NodeDisplay (baseNode);
-    for (Link link : baseNode.getChildren ()) {
+  private LtmTreeViewNode constructTree (Node baseNode, int time) {
+    NodeDisplay baseTreeViewNode = new NodeDisplay (baseNode, this._stateAtTimeValue);
+    for (Link link : baseNode.getChildren(time)) {
       if(
         (link.getCreationTime() <= this._stateAtTimeValue) &&
         (link.getExperimentCreatedIn().equals(this._experimentToVisualise))
       ){
         LtmTreeViewNode linkNode = new LinkDisplay (link);
-        linkNode.add (constructTree (link.getChildNode ()));
+        linkNode.add (constructTree (link.getChildNode (), time));
         baseTreeViewNode.add (linkNode);
       }
     }

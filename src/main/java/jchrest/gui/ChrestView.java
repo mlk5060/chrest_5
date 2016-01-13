@@ -22,13 +22,13 @@ public class ChrestView extends JFrame implements Observer {
   private ChrestTimeView _timeView;
   
   //Required so that views can be updated correctly.
-  private String _experimentToVisualise;
+  private String _experimentToVisualise = "";
   private Integer _timeToVisualise;
   
   //Required so that experiment being visualised can have its name displayed 
   //acccordingly in the view.
   private TitledBorder _titleBorder;
-  private final String _selectExperimentText = "No data to display.  Load data into CHREST to visualise state.";
+  private final String _selectExperimentText = this._experimentToVisualise;
   
   //Required so that 'Experiment' sub-menu can be updated as CHREST is placed 
   //into new experiments.
@@ -40,11 +40,11 @@ public class ChrestView extends JFrame implements Observer {
   private JToolBar _stateAtTimeToolbar;
   private JTextField _stateAtTimeTextField; 
 
-  public ChrestView (Chrest model) {
-    this (new Shell (), model);
+  public ChrestView (Chrest model, int timeToVisualise) {
+    this (new Shell (), model, timeToVisualise);
   }
 
-  public ChrestView (Shell shell, Chrest model) {
+  public ChrestView (Shell shell, Chrest model, int timeToVisualise) {
     super ("CHREST Model View");
     
     this._shell = shell;
@@ -55,17 +55,17 @@ public class ChrestView extends JFrame implements Observer {
     this._model.addObserver (this);
     
     //Set the experiment and time to visualise to be the current experiment and 
-    //the current time within this experiment.
+    //the time passed to the constructor.
     this._experimentToVisualise = this._model.getCurrentExperimentName();
-    this._timeToVisualise = this._model.getMaximumTimeForExperiment(this._experimentToVisualise);
+    this._timeToVisualise = timeToVisualise;
     
     //Create a clone of LTM at the current time so that all nodes required for 
     //S/LTM rendering are available to the relevant methods in ChrestLtmView and
     //ChrestStmView.
-    this._model.cloneLtm(this._timeToVisualise);
+//    this._model.cloneLtm(this._timeToVisualise);
     this._timeView = new ChrestTimeView (this._timeToVisualise);
     this._ltmView = new ChrestLtmView (this._model, this._timeToVisualise, this._experimentToVisualise);
-    this._stmView = new ChrestStmView (this._model);    
+    this._stmView = new ChrestStmView (this._model, this._timeToVisualise);    
 
     //Add a window listener so that close-window events can be caught and
     //additional processing performed.
@@ -271,10 +271,9 @@ public class ChrestView extends JFrame implements Observer {
         String stateAtTimeTextFieldCurrentContents = ((JTextField)e.getComponent()).getText();
         
         if(stateAtTimeTextFieldCurrentContents.matches("[0-9]+")){
-          Integer stateAtTimeValue = Integer.valueOf( stateAtTimeTextFieldCurrentContents );
-          _model.cloneLtm(stateAtTimeValue);
-          _ltmView.update (stateAtTimeValue, true, ChrestView.this._experimentToVisualise);
-          _stmView.update (stateAtTimeValue, true);
+          _timeToVisualise = Integer.valueOf( stateAtTimeTextFieldCurrentContents );
+          _ltmView.update (_timeToVisualise, true, ChrestView.this._experimentToVisualise);
+          _stmView.update (_timeToVisualise);
           _timeView.update (ChrestView.this._model.getMaximumTimeForExperiment(ChrestView.this._experimentToVisualise));
         }
         else{
@@ -320,9 +319,9 @@ public class ChrestView extends JFrame implements Observer {
     ChrestView.this._titleBorder.setTitle(this._experimentToVisualise);
     ChrestView.this.setTitleColour();
     ChrestView.this.repaint();
-    _model.cloneLtm(this._timeToVisualise);
+//    _model.cloneLtm(this._timeToVisualise);
     _ltmView.update (this._timeToVisualise, false, this._experimentToVisualise);
-    _stmView.update (this._timeToVisualise, false);
+    _stmView.update (this._timeToVisualise);
     _timeView.update (this._timeToVisualise);
     this._stateAtTimeTextField.setText(this._timeToVisualise.toString());
   }
@@ -332,7 +331,7 @@ public class ChrestView extends JFrame implements Observer {
    * and that cloned LTM's are cleared.
    */
   private void closeView () {
-    _model.clearClonedLtm();
+//    _model.clearClonedLtm();
     _model.deleteObserver (this);
     setVisible (false);
     dispose ();

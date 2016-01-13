@@ -5,1593 +5,1580 @@ package jchrest.architecture;
 
 import java.io.IOException;
 import java.io.Writer;
-import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Observable;
-import java.util.TreeMap;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 import jchrest.lib.ExecutionHistoryOperations;
-
+import jchrest.lib.HistoryTreeMap;
 import jchrest.lib.ItemSquarePattern;
 import jchrest.lib.ListPattern;
 import jchrest.lib.Modality;
+import jchrest.lib.Pattern;
 import jchrest.lib.PrimitivePattern;
 import jchrest.lib.ReinforcementLearning;
+import jchrest.lib.Square;
 
 /**
- * Represents a node within the model's long-term memory discrimination network.
- * Methods support learning and also display.
+ * Represents a node within a {@link jchrest.architecture.Chrest} model's 
+ * long-term memory (LTM) discrimination network.
  * 
- * Nodes maintain a history of themselves to support CHREST's operation in 
- * simulations where an external clock to CHREST is used.
+ * Each {@link #this} has a unique reference with respect to the LTM network of 
+ * the {@link jchrest.architecture.Chrest} model it is located in and a time of 
+ * creation.  A {@link #this} usually has "children" that are composed of a
+ * {@link jchrest.architecture.Link} that terminates with another {@link 
+ * jchrest.architecture.Node}.  
+ * 
+ * Each {@link jchrest.architecture.Node} maintains a non-mutable <i>contents
+ * </i> instance variable that is the aggregation of all {@link 
+ * jchrest.lib.ListPattern}s found on the tests of {@link 
+ * jchrest.architecture.Link}s that must be passed to reach {@link #this} in the 
+ * LTM of the {@link jchrest.architecture.Chrest} this {@link #this} is 
+ * associated with.
+ * 
+ * Each {@link jchrest.architecture.Node} also contains an <i>image</i> that may
+ * change over the {@link jchrest.architecture.Node}'s lifespan.  The image of
+ * a {@link jchrest.architecture.Node} is also referred to as being a <i>chunk
+ * </i> and may be empty.  Note that a {@link jchrest.architecture.Node}'s 
+ * contents and image are two distinct concepts.
+ * 
+ * As well as the vertical {@link jchrest.architecture.Link}s described, a 
+ * {@link jchrest.architecture.Node} may also contain horizontal associations
+ * with other {@link jchrest.architecture.Node}s:
+ * 
+ * <ul>
+ *  <li>
+ *    General: an association between two {@link jchrest.architecture.Node}s of 
+ *    any {@link jchrest.lib.Modality}; does not represent any particular 
+ *    concept.  A {@link jchrest.architecture.Node} may only have one general 
+ *    association.
+ *  </li>
+ *  <li>
+ *    Naming: an association between a {@link jchrest.lib.Modality#VISUAL} 
+ *    {@link jchrest.architecture.Node} and a {@link 
+ *    jchrest.lib.Modality#VERBAL} {@link jchrest.architecture.Node} that 
+ *    represents a concept where something that is seen has a verbal identifier.  
+ *    A {@link jchrest.lib.Modality#VISUAL} {@link jchrest.architecture.Node} 
+ *    may only have one naming association and the association is unilateral 
+ *    (from {@link jchrest.lib.Modality#VISUAL} to {@link 
+ *    jchrest.lib.Modality#VERBAL}).
+ *  </li>
+ *  <li>
+ *    Production: an association between a {@link jchrest.lib.Modality#VISUAL} 
+ *    {@link jchrest.architecture.Node} and an {@link 
+ *    jchrest.lib.Modality#ACTION} {@link jchrest.architecture.Node} that 
+ *    represents a concept where, given a visual state of the environment, some 
+ *    action is performed.  A production also has a <i>value</i> that may serve
+ *    to represent a concept such as the optimality of the production (this is
+ *    where {@link jchrest.lib.ReinforcementLearning} becomes useful).  A {@link 
+ *    jchrest.lib.Modality#VISUAL} or {@link jchrest.lib.Modality#ACTION}
+ *    {@link jchrest.architecture.Node} is not limited to how many production
+ *    associations it may have and the associations are unilateral (from {@link 
+ *    jchrest.lib.Modality#VISUAL} to {@link jchrest.lib.Modality#ACTION}).
+ *  </li>
+ *  <li>
+ *    Semantic: an association between two {@link jchrest.architecture.Node}s of
+ *    the same {@link jchrest.lib.Modality} that represents a concept whereby 
+ *    information that occurs with a high temporal proximity is likely to be
+ *    related.  A {@link jchrest.architecture.Node} is not limited to how many 
+ *    semantic associations it may have and the associations can be bilateral.
+ *  </li>
+ * </ul>
+ * 
+ * A {@link jchrest.architecture.Node} may also become a template whereby it 
+ * stores the images of other {@link jchrest.architecture.Node}s in a data
+ * structure (slots) that can be accessed when the template {@link 
+ * jchrest.architecture.Node} is accessed (links and associations to this
+ * information do not have to be traversed).
+ * 
+ * A {@link jchrest.architecture.Node} may be a "root" modality node, i.e. it is 
+ * at the "top" level of LTM and classifies the modality of all its children.
+ * A modality root node contains no information about the external environment 
+ * and the image and contents it is initialised with will not be modified during 
+ * its lifetime.  Furthermore, a root node contains no horizontal associations 
+ * with other {@link jchrest.architecture.Node}s and can not become a template.
+ * 
+ * Methods support learning and also display.
  *
  * @author Peter C. R. Lane
+ * @author Martyn Lloyd-Kelly <martynlk@liverpool.ac.uk>
  */
 public class Node extends Observable {
-
-  /****************************************************************************/
-  /****************************************************************************/
-  /*********************** CONSTANT INSTANCE VARIABLES  ***********************/
-  /****************************************************************************/
-  /****************************************************************************/
   
-  //The variables listed in this section stay consistent throughout the Node's
-  //life-cycle.
-  private final ListPattern _contents; //The test-link trail that leads to this 
-                                       //Node in LTM.
+  /****************************/
+  /**** INSTANCE VARIABLES ****/
+  /****************************/
+
+  //The variables listed below stay consistent throughout the Node's life-cycle.
+  private final ListPattern _contents;
   private final int _creationTime;
   private final Chrest _model;
   private final int _reference;
+  private boolean _rootNode;
+  private Modality _modality;
   
-  /****************************************************************************/
-  /****************************************************************************/
-  /************************ DYNAMIC INSTANCE VARIABLES ************************/
-  /****************************************************************************/
-  /****************************************************************************/
-  
-  //The variables listed in this section can change throughout the Node's 
+  //The variables listed below do not stay consistent throughout the Node's
   //life-cycle.
-  private HashMap<Node, Double> _productions;
-  private Node _associatedNode;
-  private List<Link> _children;
-  private List<ItemSquarePattern> _filledItemSlots;
-  private List<ItemSquarePattern> _filledPositionSlots;
-  private ListPattern _image;
-  private List<ItemSquarePattern> _itemSlots;
-  private Node _namedBy;
-  private List<ItemSquarePattern> _positionSlots;
-  private List<Node> _semanticLinks;
-  private Node _clone;
+  private HistoryTreeMap _childHistory = new HistoryTreeMap();
+  private HistoryTreeMap _productionHistory = new HistoryTreeMap();
+  private HistoryTreeMap _associatedNodeHistory = new HistoryTreeMap();
+  private HistoryTreeMap _namedByHistory = new HistoryTreeMap();
+  private HistoryTreeMap _semanticLinksHistory = new HistoryTreeMap();
+  private HistoryTreeMap _imageHistory = new HistoryTreeMap();
+  private HistoryTreeMap _templateHistory = new HistoryTreeMap();
   
-  /****************************************************************************/
-  /****************************************************************************/
-  /************************ HISTORY INSTANCE VARIABLES ************************/
-  /****************************************************************************/
-  /****************************************************************************/
- 
-  // ===========================================================================
-  // ================================ IMPORTANT ================================
-  // ===========================================================================
-  //
-  // When declaraing a new history variable, please ensure that its instance
-  // variable name ends with "History".  This will ensure that automated 
-  // operations on history variables using Java refelection will work with new
-  // variables without having to implement specific code for the new variable.
-  //
-  // ===========================================================================
-  // ===========================================================================
-  // ===========================================================================
-  //
-  //All of the history variables have keys that are timestamps (domain time) 
-  //hence the use of TreeMap since it is possible to sort and retrieve keys 
-  //in some order.  These  variables are used by Node.deepClone() to instantiate 
-  //cloned Node instances if a historical clone is requested.
-  //
-  //The keys for all instance variable history variables are domainTimes that 
-  //indicate the contents of the history variable at the time indicated by the
-  //key until the next entry in the history variable.  
-  //
-  //The values for the following history variables are either individual or 
-  //multiple Node references.  These are used to indicate what Nodes were 
-  //present in the instance variable they keep a history for from the domain 
-  //time indicated by the respective key.
-  private TreeMap<Integer, HashMap<Integer, Double>> _productionHistory = new TreeMap<>();
-  private TreeMap<Integer, Integer> _associatedNodeHistory = new TreeMap<>();
-  private TreeMap<Integer, Integer> _namedByHistory = new TreeMap<>();
-  private TreeMap<Integer, List<Integer>> _semanticLinksHistory = new TreeMap<>();
+  // Template slot history variables: only instantiated when needed since most 
+  // Node instances will never become templates so they don't need to waste the 
+  // storage space.
+  private HistoryTreeMap _itemSlotsHistory;
+  private HistoryTreeMap _positionSlotsHistory;
+  private HistoryTreeMap _filledItemSlotsHistory;
+  private HistoryTreeMap _filledPositionSlotsHistory;
   
-  //The values for the following history variables are single or multiple 
-  //instances of ListPattern or ItemSquarePattern objects.  These are used to 
-  //indicate what instances were present in the instance variable they keep a 
-  //history for from the domain time indicated by the respective key.
-  private TreeMap<Integer, ListPattern> _imageHistory = new TreeMap<>();
-  private TreeMap<Integer, List<ItemSquarePattern>> _itemSlotsHistory = new TreeMap<>();
-  private TreeMap<Integer, List<ItemSquarePattern>> _positionSlotsHistory = new TreeMap<>();
-  
-  //The childrenHistory variable stores the information required to construct a
-  //link instance since it is most efficient to clone a link and its child node
-  //when required otherwise, many similar Node objects would be cloned, wasting
-  //memory.
-  private TreeMap<Integer, List<List<Object>>> _childrenHistory = new TreeMap<>();
-  
-  /****************************************************************************/
-  /****************************************************************************/
-  /******************************** FUNCTIONS *********************************/
-  /****************************************************************************/
-  /****************************************************************************/
+  /**********************/
+  /**** CONSTRUCTORS ****/
+  /**********************/
 
   /**
-   * Constructor to construct a new root node for the model.  
+   * Constructs a new root {@link jchrest.architecture.Node}.
+   * 
+   * Package access only: should only be used by {@link 
+   * jchrest.architecture.Chrest}.
+   * 
+   * @param model
+   * @param modality
+   * @param creationTime
    */
-  public Node (Chrest model, int reference, ListPattern type, int domainTime) {
-    this (model, reference, type, type, domainTime);
+  Node (Chrest model, Modality modality, int creationTime) {
+    this(
+      model, 
+      true,
+      Pattern.makeList(new String[]{"Root"}, modality),
+      Pattern.makeList(new String[]{"Root"}, modality), 
+      creationTime
+    );
   }
  
   /**
-   * When constructing non-root nodes in the network, the new contents and image 
-   * must be defined.  Assume that the image always starts empty.
+   * Constructs a new, non-root {@link jchrest.architecture.Node}.
+   * 
+   * TODO: This is public since making it package-access only causes testing to 
+   *       become nearly impossible; try to circumvent this.  
+   * 
+   * @param model
+   * @param contents
+   * @param image
+   * @param creationTime
    */
-  public Node (Chrest model, ListPattern contents, ListPattern image, int domainTime) {
-    this (model, model.getNextNodeNumber (), contents, image, domainTime);
+  public Node (Chrest model, ListPattern contents, ListPattern image, int creationTime) {
+    this (model, false, contents, image, creationTime);
   }
 
   /**
-   * Constructor to build a new Chrest node with given reference, contents and image.
-   * Package access only, as should only be used by Chrest.java.
+   * Constructs a new {@link jchrest.architecture.Node} (root/non-root).
+   * 
+   * Package access only: should only be used by {@link 
+   * jchrest.architecture.Chrest}.
    */
-  Node (Chrest model, int reference, ListPattern contents, ListPattern image, int creationTime) {
-    _model = model;
-    _reference = reference;
-    _contents = contents.clone ();
-    _image = image; //The contents of the chunk inside the node.
-    _children = new ArrayList<Link> ();
-    _semanticLinks = new ArrayList<Node> ();
-    _associatedNode = null;
-    _namedBy = null;
-    _productions = new HashMap<>();
-    _creationTime = creationTime;
-    
-    
-    //Set-up history variables except for STM history since this should only be
-    //modified when the Node is input/output of STM and this happens 
-    //independently of Node creation.
-    this.updateProductionHistory(creationTime);
-    this.updateAssociatedNodeHistory(creationTime);
-    this.updateChildHistory(creationTime);
-    this.updateImageHistory(creationTime);
-    this.updateItemSlotHistory(creationTime);
-    this.updatePositionSlotHistory(creationTime);
-    this.updateSemanticLinkHistory(creationTime);
-  }
-  
-  /**
-   * @return The productions that existed for this {@link #this} at the time 
-   * specified.  If no productions were present at the time specified then null 
-   * is returned. 
-   */
-  private HashMap<Integer, Double> getProductionsAtTime(int time){
-    return this._productionHistory.floorEntry(time).getValue();
-  }
-  
-  /**
-   * Returns the reference of the Node that was set as this Node instance's 
-   * associated node at the time specified.
-   * 
-   * @param time
-   * 
-   * @return An Integer representing the reference of the Node that this Node
-   * was associated with at the time specified.  If no Node was associated with
-   * this Node at the time specified then null is returned. 
-   */
-  private Integer getAssociatedNodeAtTime(int time){
-    return this._associatedNodeHistory.floorEntry(time).getValue();
-  }
-  
-  /**
-   * Returns the information required to construct a child of this Node at the 
-   * time specified.
-   * 
-   * @param time
-   * 
-   * @return A List of Object instances containing the information required to
-   * construct a Link instance i.e. test pattern, child node reference, link 
-   * creation time. If this Node had no children at the time specified then null 
-   * is returned. 
-   */
-  private List<List<Object>> getChildrenAtTime(int time){
-    return this._childrenHistory.floorEntry(time).getValue();
-  }
-  
-  /**
-   * Returns the image of this Node at the time specified.
-   * 
-   * @param time
-   * 
-   * @return A ListPattern representing the state of this Node's image at the
-   * time specified.  If this Node did not have an image at the time specified 
-   * then null is returned. 
-   */
-  private ListPattern getImageAtTime(int time){
-    return this._imageHistory.floorEntry(time).getValue();
-  }
-  
-  /**
-   * Returns the contents of this Node's item slots at the time specified.
-   * 
-   * @param time
-   * 
-   * @return A List of ItemSquarePattern instances representing this Node's item
-   * slot contents at the time specified.  If this Node had no item slots at the 
-   * time specified then null is returned. 
-   */
-  private List<ItemSquarePattern> getItemSlotsAtTime(int time){
-    return this._itemSlotsHistory.floorEntry(time).getValue();
-  }
-  
-  /**
-   * Returns the reference of the Node that was set as this Node instance's 
-   * named by node at the time specified. 
-   * 
-   * @param time
-   * 
-   * @return An Integer representing the reference of the Node that this Node
-   * was named by at the time specified.  If this Node had no named by value at 
-   * the time specified then null is returned. 
-   */
-  private Integer getNamedByAtTime(int time){
-    return this._namedByHistory.floorKey(time);
-  }
-  
-  /**
-   * Returns the contents of this Node's position slots at the time specified.
-   * 
-   * @param time
-   * 
-   * @return A List of ItemSquarePattern instances representing this Node's 
-   * position slot contents at the time specified.  If this Node had no position 
-   * slots at the time specified then null is returned. 
-   */
-  private List<ItemSquarePattern> getPositionSlotsAtTime(int time){
-    return this._positionSlotsHistory.floorEntry(time).getValue();
-  }
-  
-  /**
-   * Returns the references of the Nodes that were semantically linked to this
-   * Node at the time specified.
-   * 
-   * @param time
-   * 
-   * @return A List of Integers representing the Nodes that were semantically
-   * linked to this Node at the time specified.  If this Node had no semantic
-   * links at the time specified then null is returned.
-   */
-  private List<Integer> getSemanticLinksAtTime(int time){
-    return this._semanticLinksHistory.floorEntry(time).getValue();
-  }
-  
-  /**
-   * @param time 
-   */
-  private void updateProductionHistory(int time){
-    if(this._productions.isEmpty()){
-      this._productionHistory.put(time, null);
-    }
-    else{
-      HashMap<Integer, Double> newActionLinkHistoryEntry = new HashMap<>();
-      for(Entry<Node, Double> actionLink : this.getProductions().entrySet()){
-        newActionLinkHistoryEntry.put(actionLink.getKey().getReference(), actionLink.getValue());
+  private Node (Chrest model, boolean rootNode, ListPattern contents, ListPattern image, int creationTime) {
+    if(model.getCreationTime() <= creationTime){
+      this._creationTime = creationTime;
+      this._model = model;
+      this._rootNode = rootNode;
+      this._reference = this._model.getNextLtmNodeReference();
+      this._contents = contents.clone();
+      this._modality = image.getModality();
+      
+      this._childHistory.put(creationTime, new ArrayList<Link>());
+      this._productionHistory.put(creationTime, new HashMap<Node, Double>());
+      this._associatedNodeHistory.put(creationTime, null);
+      this._namedByHistory.put(creationTime, null);
+      this._semanticLinksHistory.put(creationTime, new ArrayList<Node>());
+      this._imageHistory.put(creationTime, image);
+      this._templateHistory.put(creationTime, false);
+      
+      this._model.incrementNextNodeReference();
+      
+      if(!rootNode){
+        this._model.incrementLtmModalityNodeCount(contents.getModality(), creationTime);
       }
-      this._productionHistory.put(time, newActionLinkHistoryEntry);
+    }
+    else{
+      throw new RuntimeException("Creation time specified for new Node instance ("
+        + creationTime + ") is earlier than the creation time of the CHREST model "
+        + "it will be associated with (" + model.getCreationTime() + ")"
+      );
     }
   }
   
-  /**
-   * Updates the Node's associated node history.
-   * @param time 
-   */
-  private void updateAssociatedNodeHistory(int time){
-    if(this._associatedNode == null){
-      this._associatedNodeHistory.put(time, null);
-    }
-    else{
-      this._associatedNodeHistory.put(time, this._associatedNode.getReference());
-    }
-  }
+  /**************************/
+  /**** SIMPLE FUNCTIONS ****/
+  /**************************/
   
   /**
-   * Updates the Node's child history.
-   * @param time 
-   */
-  private void updateChildHistory(int time){
-    if(this._children.isEmpty()){
-      this._childrenHistory.put(time, null);
-    }
-    else{
-      List<List<Object>> copiedChildrenDetails = new ArrayList<>();
-      Iterator<Link> childrenIterator = this._children.iterator();
-
-      while(childrenIterator.hasNext()){
-        Link childToProcess = childrenIterator.next();
-        ArrayList<Object> copiedChildDetails = new ArrayList<>();
-        copiedChildDetails.add(childToProcess.getTest().clone());
-        copiedChildDetails.add(childToProcess.getChildNode().getReference());
-        copiedChildDetails.add(childToProcess.getCreationTime());
-        copiedChildDetails.add(childToProcess.getExperimentCreatedIn());
-
-        copiedChildrenDetails.add(copiedChildDetails);
-      }
-
-      this._childrenHistory.put(time, copiedChildrenDetails);
-    }
-  }
-  
-  /**
-   * Updates the Node's image history.
-   * @param time 
-   */
-  private void updateImageHistory(int time){
-    if(this._image.isEmpty()){
-      this._imageHistory.put(time, null);
-    }
-    else{
-      this._imageHistory.put(time, this._image.clone());
-    }
-  }
-  
-  /**
-   * Updates the Node's item slot history.
-   * @param time 
-   */
-  private void updateItemSlotHistory(int time){
-    if(this._itemSlots == null){
-      this._itemSlotsHistory.put(time, null);
-    }
-    else if(this._itemSlots.isEmpty()){
-      this._itemSlotsHistory.put(time, null);
-    }
-    else{
-      Iterator<ItemSquarePattern> itemSlotIterator = this._itemSlots.iterator();
-      List<ItemSquarePattern> itemSlotsCopy = new ArrayList<>();
-
-      while(itemSlotIterator.hasNext()){
-        ItemSquarePattern itemSlotContents = itemSlotIterator.next();
-        itemSlotsCopy.add(new ItemSquarePattern(itemSlotContents.getItem(), itemSlotContents.getColumn(), itemSlotContents.getRow()));
-      }
-
-      this._itemSlotsHistory.put(time, itemSlotsCopy);
-    }
-  }
-  
-  /**
-   * Updates the Node's named by history.
-   * 
-   * @param time 
-   */
-  private void updateNamedByHistory(int time){
-    if(this._namedBy == null){
-      this._namedByHistory.put(time, null);
-    }
-    else{
-      this._namedByHistory.put(time, this._namedBy._reference);
-    }
-  }
-  
-  /**
-   * Updates the Node's position slot history.
-   * @param time 
-   */
-  private void updatePositionSlotHistory(int time){
-    if(this._positionSlots == null){
-      this._positionSlotsHistory.put(time, null);
-    }
-    else if(this._positionSlots.isEmpty()){
-      this._positionSlotsHistory.put(time, null);
-    }
-    else{
-      Iterator<ItemSquarePattern> positionSlotIterator = this._positionSlots.iterator();
-      List<ItemSquarePattern> positionSlotsCopy = new ArrayList<>();
-
-      while(positionSlotIterator.hasNext()){
-          ItemSquarePattern positionSlotContents = positionSlotIterator.next();
-          positionSlotsCopy.add(new ItemSquarePattern(positionSlotContents.getItem(), positionSlotContents.getColumn(), positionSlotContents.getRow()));
-        }
-
-      this._positionSlotsHistory.put(time, positionSlotsCopy);
-    }
-  }
-  
-  /**
-   * Updates the Node's semantic link history.
-   * @param time 
-   */
-  private void updateSemanticLinkHistory(int time){
-    if(this._semanticLinks.isEmpty()){
-      this._semanticLinksHistory.put(time, null);
-    }
-    else{
-      Iterator<Node> semanticLinksIterator = this._semanticLinks.iterator();
-      List<Integer> semanticLinkCopy = new ArrayList<>();
-
-      while(semanticLinksIterator.hasNext()){
-        semanticLinkCopy.add(semanticLinksIterator.next()._reference);
-      }
-
-      this._semanticLinksHistory.put(time, semanticLinkCopy);
-    }
-  }
-
-  /**
-   * When the model is reset, all observers of individual nodes must be closed.
-   * This method notifies observers to close themselves, and then 
-   * requests child nodes to do the same.
+   * Notifies observers of {@link #this} to close themselves, and then requests 
+   * {@link #this}'s child nodes to do the same.
    */
   void clear () {
     setChanged ();
     notifyObservers ("close");
-    for (Link child : _children) {
-      child.getChildNode().clear ();
-    }
-     
-    //Clear all instance variables that end with "History".
-    for(Field field : Node.class.getDeclaredFields()){
-      if(field.getName().endsWith("History")){
-        try {
-          
-          //Get the object reference by the field for this Node instance.
-          Object historyObject = (TreeMap)field.get(this);
-          
-          //If the object reference is an instance of a TreeMap, call the 
-          //TreeMap.clear() function on it.
-          if(historyObject instanceof TreeMap){
-            TreeMap historyTreeMap = (TreeMap)historyObject;
-            historyTreeMap.clear();
-          }
-        } catch (IllegalArgumentException | IllegalAccessException ex) {
-          Logger.getLogger(Node.class.getName()).log(Level.SEVERE, null, ex);
-        }
-      }
-    }
-  }
-
-  /**
-   * Accessor to reference number of node.
-   */
-  public int getReference () {
-    return _reference;
-  }
-
-  /**
-   * Accessor to contents of node.
-   */
-  public ListPattern getContents () {
-    return _contents;
-  }
-
-  /**
-   * Accessor to image of node.
-   */
-  public ListPattern getImage () {
-    return _image;
-  }
-
-  /**
-   * Change the node's image.  Also notifies any observers.
-   */
-  public void setImage (ListPattern image, int time) {
-    _image = image;
-    this.updateImageHistory(time);
-    setChanged ();
-    notifyObservers ();
-  }
-
-  /**
-   * Accessor to children of node.
-   */
-  public List<Link> getChildren () {
-    return _children;
-  }
-
-  /**
-   * Add a new test link with given test pattern and child node.
-   */
-  void addTestLink (ListPattern test, Node child, int time, String currentExperimentName) {
-    _children.add (0, new Link (test, child, time, currentExperimentName));
-    this.updateChildHistory(time);
-    setChanged ();
-    notifyObservers ();
-  }
-
-  /**
-   * Make a semantic link between this node and given node.  Do not add duplicates.
-   */
-  void addSemanticLink (Node node, int time) {
-    if (!_semanticLinks.contains (node)) {
-      _semanticLinks.add (node);
-      this.updateSemanticLinkHistory(time);
-      setChanged ();
-      notifyObservers ();
-    }
-  }
-
-  /**
-   * Accessor to list of semantic links.
-   */
-  public List<Node> getSemanticLinks () {
-    return _semanticLinks;
-  }
-
-  /**
-   * Accessor to node that is associated with this node.
-   */
-  public Node getAssociatedNode () {
-    return _associatedNode;
-  }
-
-  /**
-   * Modify node that is associated with this node.
-   */
-  public void setAssociatedNode (Node node, int time) {
-    _associatedNode = node;
-    this.updateAssociatedNodeHistory(time);
-    setChanged ();
-    notifyObservers ();
-  }
-
-  /**
-   * Accessor to node that names this node.
-   */
-  public Node getNamedBy () {
-    return _namedBy;
-  }
-
-  /**
-   * Modify node that names this node.
-   */
-  public void setNamedBy (Node node, int time) {
-    _namedBy = node;
-    this.updateNamedByHistory(time);
-    setChanged ();
-    notifyObservers ();
-  }
-
-  /**
-   * Add the node specified by the parameter passed to this function to the list 
-   * of productions for the current node if the following are true. 
-   * <ul>
-   *  <li>
-   *    The node specified by the parameter passed to the function has action 
-   *    modality.
-   *  </li>
-   *  <li>
-   *    The node specified by the parameter passed to the function is not 
-   *    already a key in the current node's _productions variable.
-   *  </li>
-   * </ul>
-   * 
-   * @param node The node that the production will terminate with.
-   * @param time
-   */
-  public void addProduction (Node node, int time) {
-    if (node.getImage().getModality().equals(Modality.ACTION) && !_productions.containsKey(node)) { 
-      _productions.put(node, 0.00);
-    }
-    
-    this.updateProductionHistory(time);
-  }
-
-  /**
-   * Accessor to return the action nodes that this node is linked to.
-   * 
-   * @return 
-   */
-  public HashMap<Node, Double> getProductions () {
-    return _productions;
-  }
-  
-  /**
-   * Reinforces the link between the current node and the action node specified 
-   * using the reinforcement learning theory that the node's containing model
-   * is set to.
-   * 
-   * @param actionNode The action node whose link from this Node will be 
-   * reinforced.
-   * @param variables The variables that need to be passed for the Reinforcement
-   * Learning Theory that will be used to calculate the reinforcement value 
-   * {@link jchrest.lib.ReinforcementLearning}
-   * @param time The time that the reinforcement is requested.
-   */
-  public void reinforceProduction (Node actionNode, Double[] variables, int time){
-    String reinforcementLearningTheory = _model.getReinforcementLearningTheory();
-    if (
-      !reinforcementLearningTheory.equals("null") && 
-      _productions.containsKey(actionNode) && 
-      actionNode.getContents().getModality().equals(Modality.ACTION)
-    ){
-      _productions.put(actionNode, (_productions.get(actionNode) + ReinforcementLearning.ReinforcementLearningTheories.valueOf(reinforcementLearningTheory).calculateReinforcementValue(variables)));
-      this.updateProductionHistory(time);
+    for (Link child : (List<Link>)this._childHistory.lastEntry().getValue()) {
+      child.getChildNode().clear();
     }
   }
   
   /**
-   * @param recurse Set to {@link java.lang.Boolean#TRUE} to apply function 
-   * recursively, returning the number of productions in this {@link #this}
-   * and its children, its children's children etc.  Set to {@link 
-   * java.lang.Boolean#FALSE} to just return the number of productions in this
-   * {@link #this} only.
-   * 
-   * @return See parameter documentation.
-   */
-  protected int getProductionCount(boolean recurse){
-    int count = this._productions.size();
-    
-    if(recurse){
-      for(Link child : this._children){
-        count += child.getChildNode().getProductionCount(true);
-      }
-    }
-    
-    return count;
-  }
-
-  /** 
-   * Compute the size of the network below the current node.
-   */
-  public int size () {
-    int count = 1; // for self
-    for (Link link : _children) {
-      count += link.getChildNode().size ();
-    }
-
-    return count;
-  }
-
-  /**
-   * Compute the amount of information in current node.  
-   * Information is based on the size of the image + the number of slots.
-   */
-  public int information () {
-    if (_reference == 0) return 0; // root node has 0 information
-    int information = _image.size ();
-    if (_itemSlots != null) {
-      information += _itemSlots.size ();
-    }
-    if (_positionSlots != null) {
-      information += _positionSlots.size ();
-    }
-
-    return information;
-  }
-
-  /**
-   * Add to a map of content sizes to node counts for this node and its children.
-   */
-  protected void getContentCounts (Map<Integer, Integer> size) {
-    int csize = _contents.size ();
-    if (size.containsKey (csize)) {
-      size.put (csize, size.get(csize) + 1);
-    } else {
-      size.put (csize, 1);
-    }
-
-    for (Link child : _children) {
-      child.getChildNode().getContentCounts (size);
-    }
-  }
-
-  /**
-   * Add to a map of image sizes to node counts for this node and its children.
-   */
-  protected void getImageCounts (Map<Integer, Integer> size) {
-    int csize = _image.size ();
-    if (size.containsKey (csize)) {
-      size.put (csize, size.get(csize) + 1);
-    } else {
-      size.put (csize, 1);
-    }
-
-    for (Link child : _children) {
-      child.getChildNode().getImageCounts (size);
-    }
-  }
-
-  /**
-   * Add to a map from number of semantic links to frequency, for this node and its children.
-   */
-  protected void getSemanticLinkCounts (Map<Integer, Integer> size) {
-    int csize = _semanticLinks.size ();
-    if (csize > 0) { // do not count nodes with no semantic links
-      if (size.containsKey (csize)) {
-        size.put (csize, size.get(csize) + 1);
-      } else {
-        size.put (csize, 1);
-      }
-    }
-
-    for (Link child : _children) {
-      child.getChildNode().getSemanticLinkCounts (size);
-    }
-  }
-  
-  
-
-  /**
-   * Compute the total size of images below the current node.
-   */
-  private int totalImageSize () {
-    int size = _image.size ();
-    for (Link link : _children) {
-      size += link.getChildNode().totalImageSize ();
-    }
-
-    return size;
-  }
-
-  /**
-   * If this node is a child node, then add its depth to depths.  
-   * Otherwise, continue searching through children for the depth.
-   */
-  private void findDepth (int currentDepth, List<Integer> depths) {
-    if (_children.isEmpty ()) {
-      depths.add (currentDepth);
-    } else {
-      for (Link link : _children) {
-        link.getChildNode().findDepth (currentDepth + 1, depths);
-      }
-    }
-  }
-
-  /**
-   * Compute the average depth of nodes below this point.
-   */
-  public double averageDepth () {
-    List<Integer> depths = new ArrayList<Integer> ();
-    // -- find every depth
-    for (Link link : _children) {
-      link.getChildNode().findDepth(1, depths);
-    }
-
-    // -- compute the average of the depths
-    int sum = 0;
-    for (Integer depth : depths) {
-      sum += depth;
-    }
-    if (depths.isEmpty ()) {
-      return 0.0;
-    } else {
-      return (double)sum / (double)depths.size ();
-    }
-  }
-
-  /**
-   * Compute the average size of the images in nodes below this point.
-   */
-  public double averageImageSize () {
-    return (double)totalImageSize() / size();
-  }
-
-  /**
-   * Count templates in part of network rooted at this node.
-   */
-  public int countTemplates () {
-    int count = 0;
-    if (isTemplate ()) count += 1;
-
-    for (Link link : _children) {
-      count += link.getChildNode().countTemplates ();
-    }
-
-    return count;
-  }
-
-  
-
-  public List<ItemSquarePattern> getFilledItemSlots () {
-    return _filledItemSlots;
-  }
-
-  public List<ItemSquarePattern> getFilledPositionSlots () {
-    return _filledPositionSlots;
-  }
-
-  /**
-   * Returns true if this node is a template.  To be a template, the node 
-   * must have at least one slot of any kind.
-   */
-  public boolean isTemplate () {
-    if (_itemSlots == null || _positionSlots == null) {
-      return false;
-    }
-
-    // is a template if there is at least one slot
-    if (_itemSlots.size () > 0) return true;
-    if (_positionSlots.size () > 0) return true;
-
-    return false;
-  }
-
-  /**
-   * Clear out the template slots.
-   */
-  public void clearTemplate (int time) {
-    if (_itemSlots != null){
-      _itemSlots.clear ();
-      this.updateItemSlotHistory(time);
-    }
-    if (_positionSlots != null){
-      _positionSlots.clear ();
-      this.updatePositionSlotHistory(time);
-    }
-  }
-
-  /**
-   * Attempt to fill some of the slots using the items in the given pattern.
-   */
-  public void fillSlots (ListPattern pattern) {
-    // create arraylists only when required, as most nodes do not need to 
-    // waste the storage space.
-    if (_itemSlots == null) {
-      _itemSlots = new ArrayList<ItemSquarePattern> ();
-    }
-    if (_positionSlots == null) {
-      _positionSlots = new ArrayList<ItemSquarePattern> ();
-    }
-    if (_filledItemSlots == null) {
-      _filledItemSlots = new ArrayList<ItemSquarePattern> ();
-    }
-    if (_filledPositionSlots == null) {
-      _filledPositionSlots = new ArrayList<ItemSquarePattern> ();
-    }
-    for (int index = 0; index < pattern.size (); index++) {
-      boolean slotFilled = false;
-      if (pattern.getItem(index) instanceof ItemSquarePattern) {
-        ItemSquarePattern item = (ItemSquarePattern)(pattern.getItem (index));
-        // only try to fill a slot if item is not already in image or slot
-        if (!_image.contains (item) && 
-            !_filledItemSlots.contains (item) && 
-            !_filledPositionSlots.contains (item)) { 
-          // 1. check the item slots
-          for (ItemSquarePattern slot : _itemSlots) {
-            if (!slotFilled) {
-              if (slot.getItem().equals(item.getItem ())) {
-                _filledItemSlots.add (item);
-                slotFilled = true;
-              }
-            }
-          }
-
-          // 2. check the position slots
-          for (ItemSquarePattern slot : _positionSlots) {
-            if (!slotFilled) {
-              if (slot.getRow () == item.getRow () &&
-                  slot.getColumn () == item.getColumn ()) {
-                _filledPositionSlots.add (item);
-                slotFilled = true;
-                  }
-            }
-          }
-        }
-      }
-    }
-  }
-
-  public void clearFilledSlots () {
-    if (_filledItemSlots == null) _filledItemSlots = new ArrayList<ItemSquarePattern> ();
-    if (_filledPositionSlots == null) _filledPositionSlots = new ArrayList<ItemSquarePattern> ();
-
-    _filledItemSlots.clear ();
-    _filledPositionSlots.clear ();
-  }
-
-  /**
-   * Retrieve all primitive items stored in slots of template as a ListPattern.
-   * The retrieved pattern may contain duplicate primitive items, but will be 
-   * untangled in Chrest#scanScene.
-   */
-  ListPattern getFilledSlots () {
-    ListPattern filledSlots = new ListPattern ();
-    for (ItemSquarePattern filledSlot : _filledItemSlots) {
-      filledSlots.add (filledSlot);
-    }
-    for (ItemSquarePattern filledSlot : _filledPositionSlots) {
-      filledSlots.add (filledSlot);
-    }
-    return filledSlots;
-  }
-
-  /**
-   * Converts this node into a template, if appropriate, and repeats for 
-   * all child nodes.
-   * Note: usually, this process is done as a whole at the end of training, but 
-   * can also be done on a node-by-node basis, during training.
-   */
-  public void constructTemplates (int time) {
-    _itemSlots = new ArrayList<ItemSquarePattern> ();
-    _positionSlots = new ArrayList<ItemSquarePattern> ();
-
-    if (canFormTemplate ()) {
-      // gather images of current node, test links and similar nodes together, 
-      // removing the contents from them
-      List<ListPattern> patterns = new ArrayList<ListPattern> ();
-      patterns.add (_image.remove (_contents));
-      for (Link link : _children) {
-        patterns.add (link.getChildNode().getImage().remove (_contents));
-      }
-      for (Node node : _semanticLinks) {
-        patterns.add (node.getImage().remove (_contents));
-      }
-      // create a hashmap of counts of occurrences of items and of squares
-      Map<String,Integer> countItems = new HashMap<String,Integer> ();
-      Map<Integer,Integer> countPositions = new HashMap<Integer,Integer> ();
-      for (ListPattern pattern : patterns) {
-        for (PrimitivePattern pattern_item : pattern) {
-          if (pattern_item instanceof ItemSquarePattern) {
-            ItemSquarePattern item = (ItemSquarePattern)pattern_item;
-            if (countItems.containsKey (item.getItem ())) {
-              countItems.put (item.getItem (), countItems.get(item.getItem ()) + 1);
-            } else {
-              countItems.put (item.getItem (), 1);
-            }
-            // TODO: Check construction of 'posn_key', try 1000 = scene.getWidth ?
-            Integer posn_key = item.getRow () + 1000 * item.getColumn ();
-            if (countPositions.containsKey (posn_key)) {
-              countPositions.put (posn_key, countPositions.get(posn_key) + 1);
-            } else {
-              countPositions.put (posn_key, 1);
-            }
-          }
-        }
-      }
-
-      // make slots
-      // 1. from items which repeat more than minimumNumberOccurrences
-      for (String itemKey : countItems.keySet ()) {
-        if (countItems.get(itemKey) >= _model.getMinTemplateOccurrences ()) {
-          _itemSlots.add (new ItemSquarePattern (itemKey, -1, -1));
-        }
-      }
-      // 2. from locations which repeat more than minimumNumberOccurrences
-      for (Integer posnKey : countPositions.keySet ()) {
-        if (countPositions.get(posnKey) >= _model.getMinTemplateOccurrences ()) {
-          _positionSlots.add (new ItemSquarePattern ("slot", posnKey / 1000, posnKey - (1000 * (posnKey/1000))));
-        }
-      }
-      
-      this.updateItemSlotHistory(time);
-      this.updatePositionSlotHistory(time);
-    }
-
-    // continue conversion for children of this node
-    for (Link link : _children) {
-      link.getChildNode().constructTemplates (time);
-    }
-
-  }
-
-  /** Return true if template conditions are met:
-   * 1. contents size > _model.getMinTemplateLevel ()
-   * then:
-   * 2. gather together current node image and images of all nodes 
-   * linked by the test and semantic links
-   *    remove the contents of current node from those images
-   *    see if any piece or square repeats more than once
-   */
-  public boolean canFormTemplate () {
-    // return false if node is too shallow in network
-    if (_contents.size () <= _model.getMinTemplateLevel ()) return false;
-    // gather images of current node and test links together, removing the contents from them
-    List<ListPattern> patterns = new ArrayList<ListPattern> ();
-    patterns.add (_image.remove (_contents));
-    for (Link link : _children) {
-      patterns.add (link.getChildNode().getImage().remove (_contents));
-    }
-    for (Node node : _semanticLinks) {
-      patterns.add (node.getImage().remove (_contents));
-    }
-    // create a hashmap of counts of occurrences of items and of squares
-    Map<String,Integer> countItems = new HashMap<String,Integer> ();
-    Map<Integer,Integer> countPositions = new HashMap<Integer,Integer> ();
-    for (ListPattern pattern : patterns) {
-      for (PrimitivePattern pattern_item : pattern) {
-        if (pattern_item instanceof ItemSquarePattern) {
-          ItemSquarePattern item = (ItemSquarePattern)pattern_item;
-          if (countItems.containsKey (item.getItem ())) {
-            countItems.put (item.getItem (), countItems.get(item.getItem ()) + 1);
-          } else {
-            countItems.put (item.getItem (), 1);
-          }
-          Integer posn_key = item.getRow () + 1000 * item.getColumn ();
-          if (countPositions.containsKey (posn_key)) {
-            countPositions.put (posn_key, countPositions.get(posn_key) + 1);
-          } else {
-            countPositions.put (posn_key, 1);
-          }
-        }
-      }
-    }
-
-    // make slots
-    // 1. from items which repeat more than minimumNumberOccurrences
-    for (String itemKey : countItems.keySet ()) {
-      if (countItems.get(itemKey) >= _model.getMinTemplateOccurrences ()) {
-        return true;
-      }
-    }
-    // 2. from locations which repeat more than minimumNumberOccurrences
-    for (Integer posnKey : countPositions.keySet ()) {
-      if (countPositions.get(posnKey) >= _model.getMinTemplateOccurrences ()) {
-        return true;
-      }
-    }
-    return false;
-  }
-
-  /**
-   * LearnPrimitive is used to construct a test link and node containing 
-   * precisely the given pattern.  It is assumed the given pattern contains 
-   * a single primitive item, and is finished.
-   * TODO: CLEAN UP CODE AND DESCRIPTION
-   */
-  public Node learnPrimitive (ListPattern pattern, int domainTime) {
-    assert (pattern.isFinished () && pattern.size () == 1);
-    ListPattern contents = pattern.clone ();
-    contents.setNotFinished ();
-    Node child = new Node (_model, contents, new ListPattern (pattern.getModality ()), domainTime);
-    addTestLink (contents, child, domainTime, _model.getCurrentExperimentName());
-    _model.advanceLearningClock (_model.getDiscriminationTime ());
-
-    return child;
-  }
-
-  /**
-   * addTest is used to construct a test link using the given pattern, 
-   * with a new empty child node.  It is assumed the given pattern is 
-   * non-empty and constitutes a valid, new test for the current Node.
-   */
-  private Node addTest (ListPattern pattern, int domainTime) {
-    
-    //Set-up history variables
-    HashMap<String, Object> historyRowToInsert = new HashMap<>();
-    historyRowToInsert.put(Chrest._executionHistoryTableTimeColumnName, domainTime);
-    
-    //Generic operation name setter for current method.  Ensures for the row to 
-    //be added that, if this method's name is changed, the entry for the 
-    //"Operation" column in the execution history table will be updated without 
-    //manual intervention and "Filter By Operation" queries run on the execution 
-    //history DB table will still work.
-    class Local{};
-    historyRowToInsert.put(Chrest._executionHistoryTableOperationColumnName, 
-      ExecutionHistoryOperations.getOperationString(this.getClass(), Local.class.getEnclosingMethod())
-    );
-    historyRowToInsert.put(Chrest._executionHistoryTableInputColumnName, pattern.toString());
-    
-    // ignore if already a test
-    for (Link child : this._children) {
-      if (child.getTest().equals (pattern)) {
-        historyRowToInsert.put(Chrest._executionHistoryTableDescriptionColumnName, "Input already a test for node " + this.getReference() + ", exiting.");
-        historyRowToInsert.put(Chrest._executionHistoryTableOutputColumnName, "Node (ref: " + this.getReference() + ", image: " + this.getImage().toString() + ")");
-        this._model.addEpisodeToExecutionHistory(historyRowToInsert);
-        return this;
-      }
-    }
-    
-    historyRowToInsert.put(Chrest._executionHistoryTableDescriptionColumnName, "Using input to create new test & child from node " + this.getReference() + ".");
-    this._model.addEpisodeToExecutionHistory(historyRowToInsert);
-    
-    Node child = new Node (
-      _model, 
-      ( (_reference == 0) ? pattern : _model.getDomainSpecifics().normalise (_contents.append(pattern))), // don't append to 'Root'
-      ( (_reference == 0) ? pattern : _model.getDomainSpecifics().normalise (_contents.append(pattern))), // make same as contents vs Chrest 2
-      domainTime
-    );
-
-    this.addTestLink (pattern, child, domainTime, _model.getCurrentExperimentName());
-    _model.advanceLearningClock (_model.getDiscriminationTime ());
-    return child;
-  }
-
-  /**
-   * extendImage is used to add new information to the node's image.
-   * It is assumed the given pattern is non-empty and is a valid extension.
-   */
-  private Node extendImage (ListPattern newInformation, int time) {
-    this.setImage (_model.getDomainSpecifics().normalise (_image.append (newInformation)), time);
-    this.updateImageHistory(time);
-    _model.advanceLearningClock (_model.getFamiliarisationTime ());
-
-    return this;
-  }
-
-  /**
-   * Discrimination learning extends the LTM network by adding new 
-   * nodes.
-   * Note: in CHREST 2 tests are pointers to nodes.  This can be 
-   * implemented using a Link interface, and having a LinkNode class, 
-   * so that checking if test passed is done through the interface.
-   * This may be needed later for semantic/template learning.
-   */
-  Node discriminate (ListPattern pattern, int time) {
-    
-    ListPattern newInformation = pattern.remove (_contents);
-    
-    //Set-up history variables.
-    HashMap<String, Object> historyRowToInsert = new HashMap<>();
-    historyRowToInsert.put(Chrest._executionHistoryTableTimeColumnName, time);
-    
-    //Generic operation name setter for current method.  Ensures for the row to 
-    //be added that, if this method's name is changed, the entry for the 
-    //"Operation" column in the execution history table will be updated without 
-    //manual intervention and "Filter By Operation" queries run on the execution 
-    //history DB table will still work.
-    class Local{};
-    historyRowToInsert.put(Chrest._executionHistoryTableOperationColumnName, 
-      ExecutionHistoryOperations.getOperationString(this.getClass(), Local.class.getEnclosingMethod())
-    );
-    historyRowToInsert.put(Chrest._executionHistoryTableInputColumnName, pattern.toString() + "(" + pattern.getModalityString() + ")");
-    String description = "New info in input: '" + newInformation.toString() + "'. ";
-
-    // cases 1 & 2 if newInformation is empty
-    if (newInformation.isEmpty ()) {
-      
-      // change for conformance
-      newInformation.setFinished ();
-      
-      // 1. < $ > known
-      if (_model.recognise (newInformation, time).getContents ().equals (newInformation) ) {
-        
-        // 2. if so, use as test
-        description += "New info encoded in LTM, add as test to node " + this._reference + ".";
-        historyRowToInsert.put(Chrest._executionHistoryTableDescriptionColumnName, description);
-        this._model.addEpisodeToExecutionHistory(historyRowToInsert);
-        return this.addTest(newInformation, time);
-      
-      }
-      // 2. < $ > not known
-      else {
-        
-        description += "New info not encoded in LTM, add as test to " + newInformation.getModalityString() + " root node.";
-        historyRowToInsert.put(Chrest._executionHistoryTableDescriptionColumnName, description);
-        this._model.addEpisodeToExecutionHistory(historyRowToInsert);
-        
-        Node child = new Node (_model, newInformation, newInformation, time);
-        _model.getLtmByModality(newInformation).addTestLink (newInformation, child, time, _model.getCurrentExperimentName());
-        return child;
-      }
-    }
-
-    Node retrievedChunk = _model.recognise (newInformation, time);
-    description += "Recognised '" + retrievedChunk.getImage().toString() + "', node ref: " + retrievedChunk.getReference() + "). ";
-
-    if (retrievedChunk == _model.getLtmByModality (pattern)) {
-
-      // 3. if root node is retrieved, then the primitive must be learnt
-      description += "Modality root node, add first item of new info as test to this root node.";
-      historyRowToInsert.put(Chrest._executionHistoryTableDescriptionColumnName, description);
-      this._model.addEpisodeToExecutionHistory(historyRowToInsert);
-      return _model.getLtmByModality(newInformation).learnPrimitive (newInformation.getFirstItem (), time);
-
-    } else if (retrievedChunk.getContents().matches (newInformation)) {
-
-      // 4. retrieved chunk can be used as a test
-      description += "Image of rec. node matches new info. Add " + retrievedChunk.getContents().toString() + " as test to node " + this.getReference() + ".";
-      historyRowToInsert.put(Chrest._executionHistoryTableDescriptionColumnName, description);
-      this._model.addEpisodeToExecutionHistory(historyRowToInsert);
-      
-      ListPattern testPattern = retrievedChunk.getContents().clone ();
-      return this.addTest (testPattern, time);
-
-    } else {
-
-      // 5. mismatch, so use only the first item for test
-      // NB: first-item must be in network as retrievedChunk was not the root 
-      //     node
-      ListPattern firstItem = newInformation.getFirstItem ();
-      firstItem.setNotFinished ();
-      description += "but image does not match new info. Add " + firstItem.toString() + " as test to node " + this.getReference() + ".";
-      historyRowToInsert.put(Chrest._executionHistoryTableDescriptionColumnName, description);
-      this._model.addEpisodeToExecutionHistory(historyRowToInsert);
-      
-      return this.addTest (firstItem, time);
-    }
-  }
-
-  /**
-   * Familiarisation learning extends the image in a node by adding new 
-   * information from the given pattern.
-   */
-  Node familiarise (ListPattern pattern, int domainTime) {
-    
-    ListPattern newInformation = pattern.remove(_image).getFirstItem();
-    newInformation.setNotFinished ();
-    
-    //Set-up history variables.
-    HashMap<String, Object> historyRowToInsert= new HashMap<>();
-    historyRowToInsert.put(Chrest._executionHistoryTableTimeColumnName, domainTime);
-    
-    //Generic operation name setter for current method.  Ensures for the row to 
-    //be added that, if this method's name is changed, the entry for the 
-    //"Operation" column in the execution history table will be updated without 
-    //manual intervention and "Filter By Operation" queries run on the execution 
-    //history DB table will still work.
-    class Local{};
-    historyRowToInsert.put(Chrest._executionHistoryTableOperationColumnName, 
-      ExecutionHistoryOperations.getOperationString(this.getClass(), Local.class.getEnclosingMethod())
-    );
-    historyRowToInsert.put(Chrest._executionHistoryTableInputColumnName, pattern.toString() + "(" + pattern.getModalityString() + ")");
-    String description = "New info in input: " + newInformation.toString();
-    
-    // EXIT if nothing to learn
-    if (newInformation.isEmpty ()) {  
-      description += ", empty.";
-      historyRowToInsert.put(Chrest._executionHistoryTableDescriptionColumnName, description);
-      this._model.addEpisodeToExecutionHistory(historyRowToInsert);
-      return this;
-    }
-
-    // Note: CHREST 2 had the idea of not familiarising if image size exceeds 
-    // the max of 5 and 2*contents-size.  This avoids overly large images.
-    // This idea is not implemented here.
-    //
-    Node retrievedChunk = _model.recognise (newInformation, domainTime);
-    description += ", not empty, node " + retrievedChunk.getReference() + " retrieved";
-
-    if (retrievedChunk == _model.getLtmByModality (pattern)) {
-
-      // primitive not known, so learn it
-      historyRowToInsert.put(Chrest._executionHistoryTableDescriptionColumnName, description);
-      this._model.addEpisodeToExecutionHistory(historyRowToInsert);
-      return _model.getLtmByModality(newInformation).learnPrimitive (newInformation, domainTime);
-
-    } else {
-
-      // extend image with new item
-      historyRowToInsert.put(Chrest._executionHistoryTableDescriptionColumnName, description);
-      this._model.addEpisodeToExecutionHistory(historyRowToInsert);
-      return this.extendImage (newInformation, domainTime);
-    }
-  }
-
-  /**
-   * Search this node's semantic links for a more informative node, and return one if 
-   * found.
-   */
-  public Node searchSemanticLinks (int maximumSemanticDistance) {
-    if (maximumSemanticDistance <= 0) return this; // reached limit of search
-    Node bestNode = this;
-    for (Node compare : _semanticLinks) {
-      Node bestChild = compare.searchSemanticLinks (maximumSemanticDistance - 1);
-      if (bestChild.information () > bestNode.information ()) {
-        bestNode = bestChild;
-      }
-    }
-
-    return bestNode;
-  }
-
-  /**
-   * Write node information in VNA format.
-   */
-  public void writeNodeAsVna (Writer writer) throws IOException {
-    writer.write ("" + _reference + " \"" + _contents.toString() + "\"\n");
-    for (Link link : _children) {
-      link.getChildNode().writeNodeAsVna (writer);
-    }
-  }
-
-  public void writeLinksAsVna (Writer writer) throws IOException {
-    // write my links
-    for (Link link : _children) {
-      writer.write ("" + _reference + " " + link.getChildNode().getReference () + "\n");
-    }
-    // repeat for children
-    for (Link link : _children) {
-      link.getChildNode().writeLinksAsVna (writer);
-    }
-  }
-
-  public void writeSemanticLinksAsVna (Writer writer) throws IOException {
-    // write my links
-    for (Node node : _semanticLinks) {
-      writer.write ("" + _reference + " " + node.getReference () + "\n");
-    }
-    // repeat for children
-    for (Link link : _children) {
-      link.getChildNode().writeSemanticLinksAsVna (writer);
-    }
-  }
-  
-  /**
-   * Returns the domain time that this Node instance was created.
-   * 
-   * @return 
+   * @return The time this {@link #this} was created.
    */
   public int getCreationTime(){
     return this._creationTime;
   }
   
   /**
-   * Clones this Node deeply by cloning all Node instances referenced by this
-   * Node and so on.
-   * 
-   * @param time
-   * @return 
+   * @return The contents of this {@link #this}, i.e. the aggregation of {@link 
+   * jchrest.lib.ListPattern}s that are tests on the {@link 
+   * jchrest.architecture.Links} that must be passed to arrive at this {@link 
+   * #this} from the relevant modality root {@link jchrest.architecture.Node} 
+   * (the contents of the relevant modality root {@link 
+   * jchrest.architecture.Node} are excluded from the {@link 
+   * jchrest.lib.ListPattern} returned).
    */
-  public Node deepClone(int time){
-    this.deepClone(time, new ArrayList<>());
-    return this._clone;
+  public ListPattern getContents () {
+    return _contents;
+  }
+  
+  public Modality getModality(){
+    return _modality;
   }
   
   /**
-   * Deeply clones the Node's current or historical state so any Node instances
-   * referenced by the current Node and any Node instances they reference are
-   * cloned too, recursively.  
+   * @return The unique, immutable reference for this {@link #this}.
+   */
+  public int getReference () {
+    return _reference;
+  }
+  
+  /**
+   * @return {@link java.lang.Boolean#TRUE} if this {@link #this} is a root
+   * modality {@link jchrest.architecture.Node}, {@link java.lang.Boolean#FALSE}
+   * if not.
+   */
+  public boolean isRootNode(){
+    return this._rootNode;
+  }
+  
+  /**************************/
+  /**** METRIC FUNCTIONS ****/
+  /**************************/
+  
+  /**
+   * @param time
+   * @return The number of {@link jchrest.architecture.Node}s below this {@link 
+   * #this} including itself at the time specified.
+   */
+  public int size (int time) {
+    int count = 0;
+    if(this.getCreationTime() <= time){
+      count = 1; // for self
+      for (Link link : this.getChildren(time)) {
+        count += link.getChildNode().size (time);
+      }
+    }
+
+    return count;
+  }
+
+  /**
+   * @param time
+   * @return Compute the amount of information (the size of the image plus the 
+   * number of item and position slots) in this {@link #this} at the time 
+   * specified.
+   */
+  public int information (int time) {
+    if (this.isRootNode()) return 0; // root node has 0 information
+    
+    int information = 0;
+    
+    ListPattern image = this.getImage(time);
+    List<String> itemSlots = this.getItemSlots(time);
+    List<Square> positionSlots = this.getPositionSlots(time);
+    
+    if(image != null) information += image.size();
+    if(itemSlots != null) information += itemSlots.size();
+    if(positionSlots != null) information += positionSlots.size();
+
+    return information;
+  }
+  
+  /*************************/
+  /**** CHILD FUNCTIONS ****/
+  /*************************/
+  
+  public List<Link> getChildren(){
+    Entry entry = this._childHistory.lastEntry();
+    return entry == null ? null : (List<Link>)entry.getValue();
+  }
+  
+  
+  /**
+   * @param time
+   * 
+   * @return The {@link jchrest.architecture.Link}s that were present in this
+   * {@link #this} at the time specified.  If this {@link #this} was not created 
+   * at the time specified, null is returned.
+   */
+  public List<Link> getChildren(int time){
+    Entry entry = this._childHistory.floorEntry(time);
+    return entry == null ? null : (List<Link>)entry.getValue();
+  }
+  
+  /**
+   * Attempt to add a new {@link jchrest.architecture.Link} to this {@link 
+   * #this} whose test and child {@link jchrest.architecture.Node} is equal to 
+   * that specified; notifies observers if successful.
+   * 
+   * @param test The test for the new {@link jchrest.architecture.Link} to be
+   * added.
+   * @param child The {@link jchrest.architecture.Node} that the new {@link 
+   * jchrest.architecture.Link} should terminate with.
+   * @param time The time that the new {@link jchrest.architecture.Link} should
+   * be added.
+   * @param currentExperimentName
+   * 
+   * @return If any of the following are true, {@link java.lang.Boolean#FALSE}
+   * is returned:
    * <ul>
    *  <li>
-   *    If a historical clone is requested then the state of the Node instances 
-   *    returned will be as they were at the time closest to the time specified.
+   *    This {@link #this} and the {@link jchrest.architecture.Node} to add
+   *    as a child are the same {@link jchrest.architecture.Node}.
    *  </li>
+   *  <li>
+   *    This {@link #this} does not exist at the time passed.
+   *  </li>
+   *  <li>
+   *    The {@link jchrest.architecture.Node} to add as a child does not 
+   *    exist at the time passed.
+   *  </li>
+   *  <li>
+   *    The modality{@link jchrest.lib.Modality} of this {@link #this}'s 
+   *    image and the image of the child {@link jchrest.architecture.Node} 
+   *    are not the same.
+   *   </li>
+   *   <li>
+   *    The child history of this {@link #this} is being rewritten (see
+   *    {@link jchrest.lib.HistoryTreeMap#put(java.lang.Integer, 
+   *    java.lang.Object)). 
+   *   </li>
+   *   <li>
+   *    The {@link jchrest.lib.ListPattern} specified already 
+   *    exists as a test for {@link #this}.
+   *   </li>
    * </ul>
    * 
-   * @param time Set this to -1 if the creation time of nodes is not of interest.
-   * 
-   * @param setOfClonedNodes The set of currently cloned nodes.  Since this 
-   * mechanism creates deep clones exact duplicate clones should
-   * not be created (this will cause problems with Node instance variable 
-   * references to other Nodes).  Usually an empty set should be passed when 
-   * this function is invoked, the function itself will pass an instantiated set 
-   * as it recurses itself.
-   * 
-   * @return 
+   * Otherwise, {@link java.lang.Boolean#TRUE} is returned.
    */
-  private ArrayList<Integer> deepClone(int time, ArrayList<Integer> setOfClonedNodeReferences){
-    if( this.getCreationTime() <= time || time == -1 ){
+  boolean addChild(ListPattern test, Node child, int time, String currentExperimentName) {
+    
+    //Set-up history variables
+    HashMap<String, Object> historyRowToInsert = new HashMap<>();
+    historyRowToInsert.put(Chrest._executionHistoryTableTimeColumnName, time);
 
-      //Check that the node to be cloned doesn't already exist in the set of 
-      //cloned nodes.
-      boolean nodeAlreadyCloned = false;
-      for(Integer cloneReference : setOfClonedNodeReferences){
-        if(cloneReference == this._reference){
-          nodeAlreadyCloned = true;
-          break;
+    //Generic operation name setter for current method.  Ensures for the row to 
+    //be added that, if this method's name is changed, the entry for the 
+    //"Operation" column in the execution history table will be updated without 
+    //manual intervention and "Filter By Operation" queries run on the execution 
+    //history DB table will still work.
+    class Local{};
+    historyRowToInsert.put(Chrest._executionHistoryTableOperationColumnName, 
+      ExecutionHistoryOperations.getOperationString(this.getClass(), Local.class.getEnclosingMethod())
+    );
+    historyRowToInsert.put(Chrest._executionHistoryTableInputColumnName, "Test: " + test.toString() + "\nChild node ref: " + child.getReference());
+    historyRowToInsert.put(Chrest._executionHistoryTableDescriptionColumnName, "Using input to create new test & child from node " + this.getReference() + ".");
+    
+    String func = "- " + Local.class.getEnclosingMethod().getName() + ": ";
+    
+    this._model.printDebugStatement(func + "START");
+    this._model.printDebugStatement(
+      func + "Node " + child.getReference() + " is to be added as a child to " +
+      "node " + this.getReference() + " at time " + time + ".  Checking if " + 
+      "the parent and child nodes aren't the same, both exist at the time the " + 
+      "child is to be added, and whether the modality of the nodes are the same."
+    );
+    
+    if(
+      this != child &&
+      this.getCreationTime() <= time &&
+      child.getCreationTime() <= time &&
+      this.getModality() == child.getModality()
+    ){
+      
+      this._model.printDebugStatement(
+        func + "Checks passed, checking if test that will exist on the " +
+        "link from parent to child node is already present on an link from " +
+        "the parent to the child."
+      );
+        
+      // ignore if the same test already exists
+      // NOTE: this.getChildren() can return null however, this will only happen
+      //       if it is passed a time that the Node does not exist.  Since this
+      //       is checked for in the conditional above, this.getChildren() will 
+      //       not, at this point, return null so no null check is performed.
+      for (Link testLink : this.getChildren(time)) {
+        if (testLink.getTest().equals (test)) {
+          historyRowToInsert.put(Chrest._executionHistoryTableDescriptionColumnName, "Test pattern specified (" + test.toString() + ") is already a test for node " + this.getReference() + ", exiting.");
+          historyRowToInsert.put(Chrest._executionHistoryTableOutputColumnName, "Node (ref: " + this.getReference() + ")");
+          this._model.addEpisodeToExecutionHistory(historyRowToInsert);
+          
+          this._model.printDebugStatement(
+            func + "Test is already present on a link from parent to child " +
+            "node, returning false"
+          );
+          this._model.printDebugStatement(func + "RETURN");
+          
+          return false;
         }
       }
-      if(!nodeAlreadyCloned){
+      
+      this._model.printDebugStatement(
+        func + "Test does not already exist on a link from parent to child so " +
+        "an attempt will be made to add the child to the parent at time " + 
+        time + "."
+      );
 
-        /**********************************/
-        /**** CONSTRUCT CLONE INSTANCE ****/
-        /**********************************/
-        
-        Node clone = new Node(this._model, this._reference, this._contents.clone(), this._image.clone(), this._creationTime);
-        this._clone = clone;
-        setOfClonedNodeReferences.add(clone._reference);
-        
-        /*********************************************/
-        /**** CLONE NODES REFERENCED BY THIS NODE ****/
-        /*********************************************/
-         
-        //Clone Node instances in instance variables that contain one node.
-        if(this._associatedNode != null){
-          this._associatedNode.deepClone(time, setOfClonedNodeReferences);
-        }
-        
-        if(this._namedBy != null){
-          this._namedBy.deepClone(time, setOfClonedNodeReferences);
-        }
-        
-        //Clone Node instances in instance variables that contain multiple nodes.
-        for(Node node : this._productions.keySet()){
-          if(node != null){
-            node.deepClone(time, setOfClonedNodeReferences);
-          }
-        }
-        
-        for(Link childLink : this._children){
-          Node childNode = childLink.getChildNode();
-          if(childNode != null){
-            childNode.deepClone(time, setOfClonedNodeReferences);
-          }
-        }
-        
-        for(Node node : this._semanticLinks){
-          if(node != null){
-            node.deepClone(time, setOfClonedNodeReferences);
-          }
-        }
-        
-        /**********************************************************************/
-        /**** INSTANTIATE INSTANCE VARIABLES AS THEY WERE @ TIME SPECIFIED ****/
-        /**********************************************************************/
-        
-        HashMap<Integer, Double> historicalProductions = this.getProductionsAtTime(time);
-        if(historicalProductions != null){
-          for(Entry<Integer, Double> historicalActionLink : historicalProductions.entrySet()){
-            //An action link can only every be in action LTM so just search the
-            //Node instances in this LTM modality for the relevant clone.
-            clone._productions.put( Node.searchForNodeFromBaseNode(historicalActionLink.getKey(), this._model.getLtmByModality(Modality.ACTION))._clone, historicalActionLink.getValue() );
-          }
-        }
-        
-        Integer historicalAssociatedNodeReference = this.getAssociatedNodeAtTime(time);
-        if(historicalAssociatedNodeReference != null){
-          //An associated Node may be of any modality in LTM so a general 
-          //modality search must be performed to retrieve the relevant clone.
-          Node result = Node.searchForNodeInLtm(historicalAssociatedNodeReference, this._model);
-          clone._associatedNode = result._clone;
-        }
-        
-        List<List<Object>> historicalChildLinkDetails = this.getChildrenAtTime(time);
-        if(historicalChildLinkDetails != null){
-          for(List<Object> historicalChildDetail : historicalChildLinkDetails){
-            
-            ListPattern testPattern = (ListPattern)historicalChildDetail.get(0);
-            Integer childNodeReference = (Integer)historicalChildDetail.get(1);
-            Integer creationTime = (Integer)historicalChildDetail.get(2);
-            String createdInExperiment = (String)historicalChildDetail.get(3);
-            
-            //A child node will only ever be a descendent of this node so use 
-            //this Node as the starting point for the clone search.
-            Node clonedChild = Node.searchForNodeFromBaseNode( childNodeReference, this)._clone;
-            
-            clone._children.add(new Link(testPattern, clonedChild, creationTime, createdInExperiment));
-          }
-        }
-        
-        if(this._filledItemSlots!= null){
-          if(!this._filledItemSlots.isEmpty()){
-            for(ItemSquarePattern itemInSlot : this._filledItemSlots){
-              clone._filledItemSlots.add(new ItemSquarePattern(itemInSlot.getItem(), itemInSlot.getColumn(), itemInSlot.getRow()));
-            }
-          }
-        }
-        
-        if(this._filledPositionSlots != null){
-          if(!this._filledPositionSlots.isEmpty()){
-            for(ItemSquarePattern itemInSlot : this._filledPositionSlots){
-              clone._filledPositionSlots.add(new ItemSquarePattern(itemInSlot.getItem(), itemInSlot.getColumn(), itemInSlot.getRow()));
-            }
-          }
-        }
-        
-        ListPattern historicalImage = this.getImageAtTime(time);
-        if(historicalImage != null){
-          clone._image = historicalImage.clone();
-        }
-        
-        List<ItemSquarePattern> historicalItemSlots = this.getItemSlotsAtTime(time);
-        if(historicalItemSlots != null){
-          for(ItemSquarePattern historicalItemSlot: historicalItemSlots){
-            clone._itemSlots.add(new ItemSquarePattern(historicalItemSlot.getItem(), historicalItemSlot.getColumn(), historicalItemSlot.getRow()));
-          }
-        }
-        
-        Integer historicalNamedBy = this.getNamedByAtTime(time);
-        if(historicalNamedBy != null){
-          //The Node in _namedBy will only ever be a verbal Node.
-          clone._namedBy = Node.searchForNodeFromBaseNode(historicalNamedBy, this._model.getLtmByModality(Modality.VERBAL))._clone;
-        }
-        
-        List<ItemSquarePattern> historicalPositionSlots = this.getItemSlotsAtTime(time);
-        if(historicalPositionSlots != null){
-          for(ItemSquarePattern historicalPositionSlot: historicalItemSlots){
-            clone._positionSlots.add(new ItemSquarePattern(historicalPositionSlot.getItem(), historicalPositionSlot.getColumn(), historicalPositionSlot.getRow()));
-          }
-        }
-        
-        List<Integer> historicalSemanticLinks = this.getSemanticLinksAtTime(time);
-        if(historicalSemanticLinks != null){
-          for(Integer historicalSemanticLink : historicalSemanticLinks){
-            //Semantic links will only ever be visual.
-            clone._semanticLinks.add( Node.searchForNodeFromBaseNode(historicalSemanticLink, this._model.getLtmByModality(Modality.VISUAL))._clone );
-          }
-        }
+      List<Link> testLinksToAdd = new ArrayList<>();
+      testLinksToAdd.add(new Link (test, child, time, currentExperimentName));
+      testLinksToAdd.addAll(this.getChildren(time));
+      boolean updateChildHistorySuccessful = (boolean)this._childHistory.put(time, testLinksToAdd);
+      
+      if(updateChildHistorySuccessful){
+        historyRowToInsert.put(Chrest._executionHistoryTableDescriptionColumnName, "New test link with test " + test + " and child with ref " + child.getReference() + " added to node " + this.getReference() + " at time specified.");
+        historyRowToInsert.put(Chrest._executionHistoryTableOutputColumnName, "Array: Node (ref: " + child.getReference() +", true");     
+        this._model.addEpisodeToExecutionHistory(historyRowToInsert);
+
+        this.setChanged();
+        this.notifyObservers();
+
+        this._model.printDebugStatement(func + "Addition of child to parent successful, returning true");
+        this._model.printDebugStatement(func + "RETURN");
+        return true;
       }
-    }
-    
-    return setOfClonedNodeReferences;
-  }
-  
-  /**
-   * Searches through all LTM modalities in the model specified for the Node
-   * reference specified and returns that Node instance.
-   * 
-   * @param reference The Node instance to search for and retrieve.
-   * @param model The CHREST model whose LTM is to be searched.
-   * 
-   * @return The matching Node reference from LTM or null if no Node instance
-   * in LTM has a reference that matches that supplied.
-   */
-  public static Node searchForNodeInLtm(int reference, Chrest model){
-    
-    Node result = null;
-    
-    breakpoint:
-    for(Field field : model.getClass().getDeclaredFields()){
-      field.setAccessible(true);
-      for(Modality modality : Modality.values()){
-        if(field.getName().endsWith("_" + modality.toString().toLowerCase() + "Ltm")){
-          Object ltmObject;
-        
-          try {
-            ltmObject = field.get(model);
-            if(ltmObject instanceof Node){
-              Node ltmRootNode = (Node)ltmObject;
-              ArrayList<Node> searchResult = Node.searchForNodeFromBaseNode(reference, ltmRootNode, new ArrayList<>());
-              if(searchResult.size() > 0){
-                result = searchResult.get(0);
-                field.setAccessible(false);
-                break breakpoint;
-              }
-            }
-          } catch (IllegalArgumentException | IllegalAccessException ex) {
-            Logger.getLogger(Node.class.getName()).log(Level.SEVERE, null, ex);
-          }
-        }
-      }
-      field.setAccessible(false);
-    }
-    
-    return result;
-  }
-  
-  /**
-   * Searches recursively from the Node instance provided, n, for a Node 
-   * instance whose reference, r, is equal to the reference provided.  If r != 
-   * reference provided then then the references of n's children are checked and
-   * so on until either a Node instance's reference matches that provided or not.
-   * 
-   * @param reference The reference of the Node instance to find and retrieve.
-   * @param node The Node to search from, n.
-   * 
-   * @return The Node instance whose reference is equal to the reference 
-   * provided or null if the references of n or n's descendents do not equal the 
-   * reference provided.
-   */
-  public static Node searchForNodeFromBaseNode(int reference, Node node){
-    ArrayList<Node> result = Node.searchForNodeFromBaseNode(reference, node, new ArrayList<>());
-    return result.get(0);
-  }
-  
-  /**
-   * Performs the actual search described in the public 
-   * {@link jchrest.architecture.Node#searchForNodeFromBaseNode} method.  This
-   * method accepts a stack data structure that has a Node instance added to it
-   * if the reference for the Node instance being searched is equal to the 
-   * reference provided.
-   * 
-   * @param reference The reference of the Node instance to find and retrieve.
-   * @param node The Node instance to be searched.
-   * @param result The result of the search, this should be set to null at first 
-   * but is updated if a Node whose reference is equal to the reference provided
-   * is found.
-   * 
-   * @return Either null if the reference for the Node being searched !=
-   * the reference provided or the Node whose reference does match the reference
-   * provided in the first position of the stack.
-   */
-  private static ArrayList<Node> searchForNodeFromBaseNode(int reference, Node node, ArrayList<Node> result){
-    if(node._reference != reference){
-      for(Link nodeLink : node._children){
-        Node.searchForNodeFromBaseNode(reference, nodeLink.getChildNode(), result);
+      else{
+        this._model.printDebugStatement(func + "Addition of child to parent unsuccessful, returning false");
       }
     }
     else{
-      result.add(node);
+    
+      historyRowToInsert.put(Chrest._executionHistoryTableDescriptionColumnName, "Creation time for node " + this.getReference() + " or the child node is later than the time this operation is requested, exiting.");
+      historyRowToInsert.put(Chrest._executionHistoryTableOutputColumnName, "Array: null, false");     
+      this._model.addEpisodeToExecutionHistory(historyRowToInsert);
+
+      this._model.printDebugStatement(
+        func + "Checks not passed, either the parent and child are the same (" +
+        (this == child) + "), the parent does not exist at the time the child " + 
+        "is to be added (" + (this.getCreationTime() > time) + ", the child " +
+        "does not exist at the time it is to be added to the parent " +
+        (child.getCreationTime() > time) + " or the modalities of the parent " +
+        "and child are not equal (" + (this.getModality() != 
+        child.getModality()) + "), returning false."
+      );
     }
     
-    return result;
+    this._model.printDebugStatement(func + "RETURN");
+    return false;
   }
   
-  public Node getClone(){
-    return this._clone;
+  /**
+   * Attempts to add a new {@link jchrest.architecture.Link} that terminates 
+   * with a new {@link jchrest.architecture.Node} that contains an empty image
+   * to this {@link #this} at the time specified using the {@link 
+   * jchrest.lib.ListPattern} provided.
+   * 
+   * @param pattern Assumed to be non-empty and constitutes a valid, new test 
+   * for this {@link #this}, i.e. this will be used as the new {@link 
+   * jchrest.architecture.Link}'s test.
+   * 
+   * @param time The time the new {@link jchrest.architecture.Link} and 
+   * {@link jchrest.architecture.Node} should be created.
+   * 
+   * @return See {@link jchrest.architecture.Node#addChild(
+   * jchrest.lib.ListPattern, jchrest.architecture.Node, int, java.lang.String)}. 
+   */
+  boolean addChild (ListPattern pattern, int time) {
+
+    Node child = new Node (
+      _model, 
+      ( (_reference == 0) ? pattern : _model.getDomainSpecifics().normalise (_contents.append(pattern))), // don't append to 'Root'
+      ( (_reference == 0) ? pattern : _model.getDomainSpecifics().normalise (_contents.append(pattern))), // make same as contents vs Chrest 2
+      time
+    );
+
+    return this.addChild(
+      pattern, 
+      child, 
+      time, 
+      this._model.getCurrentExperimentName()
+    );
   }
   
-  public void clearClone(){
-    this._clone = null;
+  /*************************/
+  /**** IMAGE FUNCTIONS ****/
+  /*************************/
+  
+  /**
+   * @return The most recent image for {@link #this}
+   */
+  public ListPattern getImage(){
+    Entry entry = this._imageHistory.lastEntry();
+    return entry == null ? null : (ListPattern)entry.getValue();
+  }
+  
+  /**
+   * @param time
+   * 
+   * @return The image of this {@link #this} at the time specified.  If this 
+   * {@link #this} did not exist at the time specified, null is returned.
+   */
+  public ListPattern getImage(int time){
+    Entry entry = this._imageHistory.floorEntry(time);
+    return entry == null ? null : (ListPattern)entry.getValue();
+  }
+  
+  /**
+   * Set this {@link #this}'s image to that specified at the time passed and 
+   * notifies observers if the following statements are all true:
+   * <ul>
+   *  <li>This {@link #this} exists at the time specified</li>
+   *  <li>
+   *    This {@link #this} is not a modality root {@link 
+   *    jchrest.architecture.Node}</li> 
+   *  <li>
+   *    The new {@link jchrest.lib.ListPattern} is the same modality as this 
+   *    {@link #this}
+   *  </li>
+   *  <li>
+   *    The time specified will not rewrite this {@link #this}'s image history
+   *  </li>
+   * </ul>
+   * 
+   * @param image
+   * @param time
+   * @return {@link java.lang.Boolean#TRUE} if the image of this {@link #this} 
+   * is set successfully, {@link java.lang.Boolean#FALSE} if not.
+   */
+  private boolean setImage (ListPattern image, int time) {
+    String func = "- setImage: ";
+    this._model.printDebugStatement(
+      func + "Attempting to set image of node " + this.getReference() + " to " +
+      image.toString() + " at time " + time + ".  This will be done if this " +
+      "node was created before or at time " + time + " (creation time of node = " + 
+      this.getCreationTime() + "), this node is not a root node and the " + 
+      "new image's modality is equal to the modality of this node (modality " + 
+      "of this node = " + this.getImage(time).getModality() + ", modality of " +
+      "new image = " + image.getModalityString() + ")."
+    );
+    
+    if(
+      this._creationTime <= time &&
+      !this.isRootNode() &&
+      image.getModality() == this.getImage(time).getModality()
+    ){
+      boolean updateImageHistoryResult = (boolean)this._imageHistory.put(time, image);
+      
+      if(updateImageHistoryResult){
+        this.setChanged();
+        this.notifyObservers();
+        
+        this._model.printDebugStatement(func + "Set image successful, returning true");
+        this._model.printDebugStatement(func + "RETURN");
+        
+        return true;
+      }
+      else{
+        this._model.printDebugStatement(func + "Set image unsuccessful, returning false");
+      }
+    }
+    else{
+      this._model.printDebugStatement(func + "Checks failed, returning false");
+    }
+    
+    this._model.printDebugStatement(func + "RETURN");
+    return false;
+  }
+  
+  /**
+   * Attempts to append new information in the {@link jchrest.lib.ListPattern} 
+   * provided to this {@link #this}'s image at the time specified.
+   * 
+   * @param extension Assumed to be non-empty.
+   * @param time The time at which this {@link #this}'s image will be extended
+   * with the new information.
+   * 
+   * @return If the {@link jchrest.lib.ListPattern} extension is not the same 
+   * modality as {@link #this}, {@link #this} does not exist at the time the 
+   * image is to be extended, or the result of {@link #this#setImage(
+   * jchrest.lib.ListPattern, int) is {@link java.lang.Boolean#FALSE} then null
+   * is returned.  Otherwise, {@link #this} is returned.
+   */
+  Node extendImage (ListPattern extension, int time) {
+    String func = "- extendImage: ";
+    
+    this._model.printDebugStatement(func + "START");
+    this._model.printDebugStatement(
+      func + "Image of node " + this.getReference() + " is to be extended " + 
+      "with pattern " + extension.toString() + " at time " + time + ". " +
+      "Checking if this node exists at the time specified and the modality " + 
+      "of the pattern to extend node " + this.getReference() + "'s image with " +
+      "(" + extension.getModalityString() + ") is the same modality as " +
+      "node " + this.getReference() + "'s image (" + 
+      this.getModality() + ")."
+    );
+    
+    if(
+      this._creationTime <= time &&
+      this.getModality() == extension.getModality()
+    ){
+      ListPattern newImage = this._model.getDomainSpecifics().normalise(this.getImage(time).append(extension));
+      
+      this._model.printDebugStatement(
+        func + "Checks passed, extending node " + this.getReference() + "'s "+
+        "image to: " + newImage.toString() + " (normalised using domain " + 
+        "specifics i.e. " + 
+        this._model.getDomainSpecifics().getClass().getSimpleName() + 
+        ".normalise())."
+      );
+
+      boolean imageSetSuccessfully = this.setImage (
+        newImage, 
+        time
+      );
+
+      if(imageSetSuccessfully){
+        this._model.printDebugStatement(
+          func + "Image extended successfully, returning node " + 
+          this.getReference() + "."
+        );
+        this._model.printDebugStatement(func + "RETURN");
+        
+        return this;
+      }
+      else {
+        this._model.printDebugStatement(func + "Image extended unsuccessfully, returning null");
+      }
+    }
+    else {
+      this._model.printDebugStatement(func + "Checks failed, returning null");
+    }
+    
+    this._model.printDebugStatement(func + "RETURN");
+    return null;
+  }
+  
+  /********************************/
+  /**** PRODUCTION FUNCTIONS ******/
+  /********************************/
+  
+  /**
+   * @param time
+   * @return The productions that exist for this {@link #this} at the time 
+   * specified.  If this {@link #this} did not exist at the time specified, 
+   * null is returned.
+   */
+  HashMap<Node, Double> getProductions(int time){
+    Entry entry = this._productionHistory.floorEntry(time);
+    return entry == null ? null : (HashMap<Node, Double>)entry.getValue();
+  }
+  
+  /**
+   * Add the new production specified to this {@link #this}'s productions at the 
+   * time specified so long as the following conditions all evaluate to true:
+   * 
+   * <ul>
+   *  <li>
+   *    This {@link #this}'s creation time is less than or equal to the time 
+   *    specified
+   *  </li>
+   *  <li>
+   *    The creation time of the action {@link jchrest.architecture.Node} to add
+   *    as a production is less than or equal to the time specified
+   *  </li>
+   *  <li>
+   *    This {@link #this}'s {@link jchrest.lib.Modality} is {@link 
+   *    jchrest.lib.Modality#VISUAL}
+   *  </li>
+   *  <li>
+   *    The {@link jchrest.lib.Modality} of the {@link 
+   *    jchrest.architecture.Node} to add as a production is {@link 
+   *    jchrest.lib.Modality#ACTION}
+   *  </li>
+   *  <li>
+   *    This {@link #this} is not a root {@link jchrest.architecture.Node}
+   *  </li>
+   *  <li>
+   *    The {@link jchrest.architecture.Node} to add as a production is not a 
+   *    root {@link jchrest.architecture.Node}
+   *  </li>
+   *  <li>
+   *    This function is not attempting to rewrite the production history of 
+   *    this {@link #this}
+   *  </li>
+   * </ul>
+   * 
+   * @param time The time the production should be created.
+   * @param node
+   * @param productionValue
+   * @return True if a production was added, false if not.
+   */
+  boolean addProduction(Node node, Double productionValue, int time){
+    
+    //No need to check if this node and the node to create a production between
+    //are the same since they must have different modalities.  The implication
+    //is that the same node cannot belong to two modalities and since the 
+    //modality of the nodes to create a production between are checked below, 
+    //this will ensure that this node cannot creation a production to itself. 
+    if(
+      this.getCreationTime() <= time &&
+      node.getCreationTime() <= time &&
+      this.getImage(time).getModality() == Modality.VISUAL &&
+      node.getImage(time).getModality() == Modality.ACTION &&
+      !this.isRootNode() &&
+      !node.isRootNode()
+    ){
+      HashMap<Node, Double> productionsToAdd = new HashMap();
+      productionsToAdd.putAll(this.getProductions(time));
+      productionsToAdd.put(node, productionValue);
+      boolean updateProductionResult = (boolean)this._productionHistory.put(time, productionsToAdd);
+
+      if(updateProductionResult){
+        this.setChanged();
+        this.notifyObservers();
+
+        return true;
+      }
+    }
+    
+    return false;
+  }
+  
+  /**
+   * Reinforces the production specified using the reinforcement learning theory 
+   * that this {@link #this}'s {@link jchrest.architecture.Chrest} model is set 
+   * to if the following statements all evaluate to true:
+   * 
+   * <ol type="1">
+   *  <li>
+   *    This {@link #this}'s creation time is less than or equal to the time 
+   *    specified
+   *  </li>
+   *  <li>
+   *    The creation time of the action {@link jchrest.architecture.Node} that 
+   *    constitutes the production to be reinforced is less than or equal to the 
+   *    time specified
+   *  </li>
+   *  <li>
+   *    This {@link #this}'s {@link jchrest.lib.Modality} is {@link 
+   *    jchrest.lib.Modality#VISUAL}
+   *  </li>
+   *  <li>
+   *    The {@link jchrest.lib.Modality} of the action {@link 
+   *    jchrest.architecture.Node} that constitutes the production to be 
+   *    reinforced is {@link jchrest.lib.Modality#ACTION}
+   *  </li>
+   *  <li>
+   *    This function is not attempting to rewrite the production history of 
+   *    this {@link #this}
+   *  </li>
+   *  <li>
+   *    The {@link jchrest.architecture.Chrest} model that this {@link #this} is
+   *    associated with has had its reinforcement learning theory set to one of
+   *    those specified in {@link jchrest.lib.ReinforcementLearning}
+   *  </li>
+   *  <li>
+   *    The productions of this {@link #this} contains the action {@link 
+   *    jchrest.architecture.Node} provided at the time specified specified
+   *  </li>
+   * </ol>
+   * 
+   * @param node The action {@link jchrest.architecture.Node} that constitutes 
+   * the production to be reinforced.
+   * @param variables The variables that need to be passed for the Reinforcement
+   * Learning Theory that will be used to calculate the reinforcement value (see
+   * {@link jchrest.lib.ReinforcementLearning}).
+   * @param time The time that the reinforcement should occur.
+   * 
+   * @return True if the production specified is reinforced successfully, false 
+   * otherwise.
+   */
+  boolean reinforceProduction (Node node, Double[] variables, int time){
+    
+    //No need to check if this or the node specified is a root Node since 
+    //root nodes can not be the source or terminus of a production (see 
+    //Node.addProduction()). So, when the existence of the production is checked
+    //in the minor conditional below, the function will block production 
+    //reinforcement if this or the node specified is a root node.
+    //
+    //There is also no need to check if this node and the node passed are the
+    //same node for the reasons explained in the comment above the major 
+    //conditional in the Node.addProduction() function.
+    if(
+      this.getCreationTime() <= time &&
+      node.getCreationTime() <= time &&
+      this.getImage(time).getModality() == Modality.VISUAL &&
+      node.getImage(time).getModality() == Modality.ACTION
+    ){
+      
+      //These could go in the conditional above but their results are used again
+      //so, for efficiency, store the results and check them independently.
+      String rlt = this._model.getReinforcementLearningTheory();
+      HashMap<Node, Double> currentProductions = this.getProductions(time);
+        
+      if(
+        !rlt.equals("null") &&
+        currentProductions.containsKey(node)
+      ){
+
+        //Use this.addProduction() to update the production's value since this
+        //method uses "TreeMap.put()".  Consequently, the old value for the 
+        //production will be overwritten (a new entry won't actually be added; 
+        //this would be undesirable).
+        boolean modifyProductionSuccessful = this.addProduction(
+          node, 
+          currentProductions.get(node) + ReinforcementLearning.ReinforcementLearningTheories.valueOf(rlt).calculateReinforcementValue(variables),
+          time
+        );
+
+        if(modifyProductionSuccessful){
+          this.setChanged();
+          this.notifyObservers();
+          return true;
+        }
+      }
+    }
+    
+    return false;
+  }
+  
+  /*********************************/
+  /**** SEMANTIC LINK FUNCTIONS ****/
+  /*********************************/
+  
+  /**
+   * @param time
+   * 
+   * @return The {@link jchrest.architecture.Node}s that this {@link #this} is
+   * semantically linked to at the time specified.  If this {@link #this} was 
+   * not created at the time specified, null is returned.
+   */
+  public List<Node> getSemanticLinks(int time){
+    Entry entry = this._semanticLinksHistory.floorEntry(time);
+    return entry == null ? null : (List<Node>)entry.getValue();
+  }
+  
+  /**
+   * Adds a new semantic link to this {@link #this}'s semantic links at the time
+   * specified if the following conditions are all true:
+   * 
+   * <ul>
+   *  <li>
+   *    This {@link #this} and the {@link jchrest.architecture.Node} passed are
+   *    not the same {@link jchrest.architecture.Node}
+   *  </li>
+   *  <li>
+   *    This {@link #this}'s creation time is less than or equal to the time 
+   *    specified
+   *  </li>
+   *  <li>
+   *    The creation time of the {@link jchrest.architecture.Node} to add a 
+   *    semantic link to is less than or equal to the time specified
+   *  </li>
+   *  <li>
+   *    This {@link #this} is not a root node
+   *  </li>
+   *  <li>
+   *    The {@link jchrest.architecture.Node} to add a semantic link to is not
+   *    a root node
+   *  </li>
+   *  <li>
+   *    This function is not attempting to rewrite the semantic link history of 
+   *    this {@link #this}
+   *  </li>
+   *  <li>
+   *    This {@link #this}'s semantic links does not already contain the {@link 
+   *    jchrest.architecture.Node} specified
+   *  </li>
+   * </ul>
+   * 
+   * @param node
+   * @param time 
+   * @return {@link java.lang.Boolean#TRUE} if the semantic link is added, 
+   * {@link java.lang.Boolean#FALSE} if not.
+   */
+  boolean addSemanticLink(Node node, int time){
+    if(
+      this != node &&
+      this.getCreationTime() <= time &&
+      node.getCreationTime() <= time &&
+      !this.isRootNode() &&
+      !node.isRootNode() &&
+      !this.getSemanticLinks(time).contains(node)
+    ){
+      List<Node> semanticLinksToAdd = new ArrayList();
+      semanticLinksToAdd.add(node);
+      semanticLinksToAdd.addAll(this.getSemanticLinks(time));
+      boolean updateSemanticLinksResult = (boolean)this._semanticLinksHistory.put(time, semanticLinksToAdd);
+
+      if(updateSemanticLinksResult){
+        this.setChanged();
+        this.notifyObservers();
+        return true;
+      }
+    }
+    
+    return false;
+  }
+  
+  /***********************************/
+  /**** ASSOCIATED NODE FUNCTIONS ****/
+  /***********************************/
+  
+  /**
+   * @param time
+   * 
+   * @return The {@link jchrest.architecture.Node} associated with this {@link
+   * #this} at the time specified. If this {@link #this} was not associated with
+   * another {@link jchrest.architecture.Node} at the time specified then null
+   * is returned. 
+   */
+  public Node getAssociatedNode(int time){
+    Entry entry = this._associatedNodeHistory.floorEntry(time);
+    return entry == null ? null : (Node)entry.getValue();
+  }
+  
+  /**
+   * Set the {@link jchrest.architecture.Node} that is associated with this 
+   * {@link #this} at the time specified and set the learning clock of the 
+   * {@link jchrest.architecture.Chrest} model associated with this {@link 
+   * #this} to the time this function was invoked plus the time returned by 
+   * {@link jchrest.architecture.Chrest#getTimeToCreateSemanticLink()}.
+   * 
+   * @param node
+   * @param time
+   * @return True if this function has now associated the two {@link 
+   * jchrest.architecture.Node}s together, false if not.  The {@link 
+   * jchrest.architecture.Node}s won't be associated if any of the following
+   * conditions evaluate to true:
+   * <ul>
+   *  <li>
+   *    This {@link #this} and the {@link jchrest.architecture.Node} to create
+   *    the association between are the same {@link jchrest.architecture.Node}.
+   *  </li>
+   *  <li>
+   *    This {@link #this} hasn't been created when this function is invoked.
+   *  </li>
+   *  <li>
+   *    The {@link jchrest.architecture.Node} to be associated with this 
+   *    {@link #this} hasn't been created when this function is invoked.
+   *  </li>
+   *  <li>
+   *    This {@link #this} is a root node.
+   *  </li>
+   *  <li>
+   *    The {@link jchrest.architecture.Node} to associate with {@link #this} is
+   *    a root node.
+   *  </li>
+   *  <li>
+   *    This function will not rewrite the associated node history of {@link 
+   *    #this} (see {@link jchrest.architecture.Chrest#isRewritingHistory(
+   *    java.util.TreeMap, int)).
+   *  </li>
+   * </ul>
+   */
+  boolean setAssociatedNode (Node node, int time) {
+    if(
+      node != this &&
+      this.getCreationTime() <= time &&
+      node.getCreationTime() <= time &&
+      !this.isRootNode() &&
+      !node.isRootNode()
+    ){
+      boolean updateAssociatedNodeResult = (boolean)this._associatedNodeHistory.put(time, node);
+      
+      if(updateAssociatedNodeResult){
+        setChanged ();
+        notifyObservers ();
+        return true;
+      }
+    }
+    
+    return false;
+  }
+  
+  /********************************/
+  /**** NAMED BY FUNCTIONALITY ****/
+  /********************************/
+  
+  /**
+   * @param time
+   * 
+   * @return The {@link jchrest.architecture.Node} that named this {@link #this}
+   * at the time specified or null if no {@link jchrest.architecture.Node} named
+   * this {@link #this} at the time specified.
+   */
+  public Node getNamedBy(int time){
+    Entry entry = this._namedByHistory.floorEntry(time);
+    return entry == null ? null : (Node)entry.getValue();
+  }
+  
+  /**
+   * Modify what {@link jchrest.lib.Modality#VERBAL} {@link 
+   * jchrest.architecture.Node} is linked to this {@link #this}.
+   * 
+   * @param node
+   * @param time
+   */
+  boolean setNamedBy (Node node, int time) {
+    
+    //No need to check if this node and the node it is named by are the same 
+    //node since they must have different modalities.  The implication is that 
+    //the same node cannot belong to two modalities and since the  modality of 
+    //the nodes to create a production between are checked below, this will 
+    //ensure that a node is not named by itself. 
+    if(
+      this.getCreationTime() <= time &&
+      node.getCreationTime() <= time &&
+      !this.isRootNode() &&
+      !node.isRootNode() &&
+      this.getImage(time).getModality() == Modality.VISUAL &&
+      node.getImage(time).getModality() == Modality.VERBAL
+    ){
+      boolean updateNamedByResult = (boolean)this._namedByHistory.put(time, node);
+      
+      if(updateNamedByResult){
+        setChanged ();
+        notifyObservers ();
+        return true;
+      }
+    }
+    
+    return false;
+  }
+  
+  /********************************/
+  /**** TEMPLATE FUNCTIONALITY ****/
+  /********************************/
+  
+  /**
+   * @param time
+   * @return {@link java.lang.Boolean#TRUE} if {@link #this} is a template at 
+   * the time specified otherwise, {@link java.lang.Boolean#FALSE}.
+   */
+  public boolean isTemplate(int time){
+    return this.getCreationTime() <= time ? (boolean)this._templateHistory.floorEntry(time).getValue() : false;
+  }
+  
+  /** 
+   * @param time
+   * @return {@link java.lang.Boolean#TRUE} if all of the following conditions
+   * are true at the time specified, {@link java.lang.Boolean#FALSE} otherwise:
+   * <ol type="1">
+   *  <li>
+   *    {@link #this} is not a root node. This may seem superfluous considering
+   *    there is a check on the depth of {@link #this} performed below as well.
+   *    However, it may be that its possible to specify that the minimum depth
+   *    that a node must be before it can become a template is 0, this would 
+   *    make root nodes pass this function.  So, better to be safe than sorry.
+   *  </li>
+   *  <li>
+   *    {@link #this} exists at the time specified.
+   *  </li>
+   *  <li>
+   *    {@link #this} isn't already a template at the time specified (this also
+   *    means that the function won't rewrite the item/position slot or filled
+   *    item/position slot history of {@link #this} since the data structures
+   *    that store the history of this information only exist if {@link #this} 
+   *    is already a template).
+   *  </li>
+   *  <li>
+   *    The depth of {@link #this} in long-term memory surpasses the threshold 
+   *    stipulated in the {@link jchrest.architecture.Chrest} model that {@link 
+   *    #this} is associated with (see {@link 
+   *    jchrest.architecture.Chrest#getMinNodeDepthInNetworkToBeTemplate()}).
+   *  </li>
+   *  <li>
+   *    Gather together: 
+   *    <ol>
+   *      <li>{@link #this}'s image.</li>
+   *      <li>The images of {@link #this}'s immediate children</li>
+   *      <li>
+   *        The images of {@link jchrest.architecture.Node}s that {@link #this}
+   *        is semantically linked to
+   *      </li>
+   *    </ol>
+   *    Then, after removing {@link #this}'s contents (see {@link 
+   *    jchrest.architecture.Node#getContents()} from the cumulative image 
+   *    generated, check if an item or position occurs more than the threshold 
+   *    stipulated in the {@link jchrest.architecture.Chrest} model that {@link 
+   *    #this} is associated with (see {@link 
+   *    jchrest.architecture.Chrest#getMinItemOrPositionOccurrencesToBeSlotValue()   */
+  boolean canBeTemplate (int time) {
+    if(
+      !this.isRootNode() &&
+      this.getCreationTime() <= time &&
+      !this.isTemplate(time) &&
+      this.getContents().size () >= this._model.getMinNodeDepthInNetworkToBeTemplate() //Check depth of node.
+    ){
+    
+      //Construct cumulative image.
+      List<ListPattern> cumulativeImage = new ArrayList<ListPattern> ();
+      ListPattern contentsOfThisNode = this.getContents();
+
+      cumulativeImage.add( this.getImage(time).remove(contentsOfThisNode) );
+
+      for (Link link : this.getChildren(time)) {
+        cumulativeImage.add( link.getChildNode().getImage(time).remove(contentsOfThisNode) );
+      }
+
+      for (Node node : this.getSemanticLinks(time)) {
+        cumulativeImage.add( node.getImage(time).remove(contentsOfThisNode) );
+      }
+
+      //Create a hashmap of occurrences of items and positions in the cumulative
+      //image.
+      Map<String,Integer> itemCount = new HashMap<String, Integer> ();
+      Map<Integer,Integer> positionCount = new HashMap<Integer, Integer> ();
+      for (ListPattern cumulativeImagePattern : cumulativeImage) {
+        for (PrimitivePattern cumulativeImagePatternPrimitive : cumulativeImagePattern) {
+          if (cumulativeImagePatternPrimitive instanceof ItemSquarePattern) {
+            ItemSquarePattern cumulativeImageIsp = (ItemSquarePattern)cumulativeImagePatternPrimitive;
+
+            if (itemCount.containsKey (cumulativeImageIsp.getItem ())) {
+              itemCount.put (cumulativeImageIsp.getItem (), itemCount.get(cumulativeImageIsp.getItem ()) + 1);
+            } else {
+              itemCount.put (cumulativeImageIsp.getItem (), 1);
+            }
+
+            Integer posn_key = cumulativeImageIsp.getRow () + 1000 * cumulativeImageIsp.getColumn ();
+            if (positionCount.containsKey (posn_key)) {
+              positionCount.put (posn_key, positionCount.get(posn_key) + 1);
+            } else {
+              positionCount.put (posn_key, 1);
+            }
+          }
+        }
+      }
+
+      //Check if any item occurs more frequently than the stipulated threshold.
+      for (Entry<String, Integer> itemOccurrences : itemCount.entrySet()) {
+        if (itemOccurrences.getValue() >= _model.getMinItemOrPositionOccurrencesToBeSlotValue ()) {
+          return true;
+        }
+      }
+
+      //Check if any position occurs more frequently than the stipulated 
+      //threshold.
+      for (Entry<Integer, Integer> positionOccurrences : positionCount.entrySet()) {
+        if (positionOccurrences.getValue() >= _model.getMinItemOrPositionOccurrencesToBeSlotValue ()) {
+          return true;
+        }
+      }
+    }
+    
+    return false;
+  }
+  
+  /**
+   * Makes {@link #this} into a template at the time specified, if {@link 
+   * jchrest.architecture.Node#canBeTemplate(int)} returns {@link 
+   * java.lang.Boolean#TRUE} and the function will not rewrite the template/slot
+   * history of {@link #this}.
+   * 
+   * @param time
+   */
+  boolean makeTemplate (int time) {
+    if(this.canBeTemplate(time)){
+      
+      //Instantiate the slot history instance variables, if necessary (this Node 
+      //may have been a template then cleared in which case, instantiation of
+      //these instance variables is not required).
+      if(this._itemSlotsHistory == null) this._itemSlotsHistory = new HistoryTreeMap();
+      if(this._positionSlotsHistory == null) this._positionSlotsHistory = new HistoryTreeMap();
+      if(this._filledItemSlotsHistory == null) this._filledItemSlotsHistory = new HistoryTreeMap();
+      if(this._filledPositionSlotsHistory == null) this._filledPositionSlotsHistory = new HistoryTreeMap();
+      
+      // Since four historical instance variables are required to make a Node
+      // into a template, check that adding an entry with the time specified 
+      // will not rewrite any of their histories.
+      if(
+        !this._itemSlotsHistory.rewritingHistory(time) &&
+        !this._positionSlotsHistory.rewritingHistory(time) &&
+        !this._filledItemSlotsHistory.rewritingHistory(time) &&
+        !this._filledPositionSlotsHistory.rewritingHistory(time) 
+      ){
+        
+        // When a Node is converted into a template, no slots should be filled.
+        this._filledItemSlotsHistory.put(time, new ArrayList());
+        this._filledPositionSlotsHistory.put(time, new ArrayList());
+      
+        //Construct cumulative image
+        List<ListPattern> cumulativeImage = new ArrayList<>();
+        ListPattern contentsOfThisNode = this.getContents();
+        cumulativeImage.add( this.getImage(time).remove(contentsOfThisNode) );
+
+        for (Link link : this.getChildren(time)) {
+          cumulativeImage.add( link.getChildNode().getImage(time).remove(contentsOfThisNode) );
+        }
+
+        for (Node node : this.getSemanticLinks(time)) {
+          cumulativeImage.add( node.getImage(time).remove(contentsOfThisNode) );
+        }
+
+        //Create a hashmap of occurrences of items and positions in the cumulative
+        //image.
+        Map<String,Integer> itemCount = new HashMap<String, Integer> ();
+        Map<Integer,Integer> positionCount = new HashMap<Integer, Integer> ();
+        for (ListPattern cumulativeImagePattern : cumulativeImage) {
+          for (PrimitivePattern cumulativeImagePatternPrimitive : cumulativeImagePattern) {
+            if (cumulativeImagePatternPrimitive instanceof ItemSquarePattern) {
+              ItemSquarePattern cumulativeImageIsp = (ItemSquarePattern)cumulativeImagePatternPrimitive;
+
+              if (itemCount.containsKey (cumulativeImageIsp.getItem ())) {
+                itemCount.put (cumulativeImageIsp.getItem (), itemCount.get(cumulativeImageIsp.getItem ()) + 1);
+              } else {
+                itemCount.put (cumulativeImageIsp.getItem (), 1);
+              }
+
+              Integer posn_key = cumulativeImageIsp.getRow () + 1000 * cumulativeImageIsp.getColumn ();
+              if (positionCount.containsKey (posn_key)) {
+                positionCount.put (posn_key, positionCount.get(posn_key) + 1);
+              } else {
+                positionCount.put (posn_key, 1);
+              }
+            }
+          }
+        }
+
+        // Construct and add item and position slot values.  Since there was a
+        // history rewrite check earlier, there is no requirement at this point
+        // to check the result of "putting" the slot values in the respective
+        // historical instance variables because this will always succeed.
+        List<String> itemSlotEntry = new ArrayList();
+        for (Entry<String, Integer> itemOccurrences : itemCount.entrySet()) {
+          if (itemOccurrences.getValue() >= _model.getMinItemOrPositionOccurrencesToBeSlotValue ()) {
+            itemSlotEntry.add (itemOccurrences.getKey());
+          }
+        }
+        this._itemSlotsHistory.put(time, itemSlotEntry);
+
+        List<Square> positionSlotEntry = new ArrayList();
+        for (Entry<Integer, Integer> positionOccurrences : positionCount.entrySet()) {
+          if (positionOccurrences.getValue() >= _model.getMinItemOrPositionOccurrencesToBeSlotValue ()) {
+            Integer posnKey = positionOccurrences.getKey();
+            positionSlotEntry.add (new Square (
+              posnKey / 1000, 
+              posnKey - (1000 * (posnKey/1000))
+            ));
+          }
+        }
+        this._positionSlotsHistory.put(time, positionSlotEntry);
+
+        // Finally, add an entry to specify that the Node is a template at the
+        // time specified.
+        this._templateHistory.put(time, true);
+        return true;
+      }
+    }
+    
+    return false;
+  }
+  
+  /**
+   * Clears non-filled/filled item/position slots of {@link #this} at the time 
+   * specified if {@link #this} is a template (see {@link jchrest.architecture.
+   * Node#isTemplate(int)}) so {@link #this} is no longer considered to be a 
+   * template.
+   * 
+   * @param time
+   * @return {@link java.lang.Boolean#TRUE} if {@link #this} is successfully
+   * converted to a non-template {@link jchrest.architecture.Node}, {@link 
+   * java.lang.Boolean#FALSE} otherwise.
+   */
+  boolean makeNonTemplate(int time){
+    if(
+      this.isTemplate(time) &&
+      !this._itemSlotsHistory.rewritingHistory(time) &&
+      !this._positionSlotsHistory.rewritingHistory(time) &&
+      !this._filledItemSlotsHistory.rewritingHistory(time) &&
+      !this._filledPositionSlotsHistory.rewritingHistory(time) &&
+      !this._templateHistory.rewritingHistory(time)
+    ){
+      this._itemSlotsHistory.put(time, null);
+      this._positionSlotsHistory.put(time, null);
+      this._filledItemSlotsHistory.put(time, null);
+      this._filledPositionSlotsHistory.put(time, null);
+      this._templateHistory.put(time, false);
+      return true;
+    }
+    return false;
+  }
+  
+  /**
+   * Attempt to fill some of this {@link #this}'s slots using the items in the 
+   * given pattern.  This will only work if the conditions below are all true:
+   * <ul>
+   *  <li>
+   *    {@link #this} is a template at the time specified (also means {@link 
+   *    #this} exists at the time specified.
+   *  </li>
+   *  <li>
+   *    The modality of the {@link jchrest.lib.ListPattern} to fill {@link 
+   *    #this}'s slots with is of the same modality as {@link #this}'s image.
+   *  </li>
+   *  <li>
+   *    Filling the slots at this point in time would not rewrite the filled
+   *    item/position slot history of {@link #this}.
+   * </ul>
+   * 
+   * @param pattern
+   * @param time
+   * @return The number of slots filled or null if any condition listed above 
+   * evaluates to false.
+   */
+  Integer fillSlots (ListPattern pattern, int time) {
+    if(
+      this.isTemplate(time) &&
+      pattern.getModality() == this.getImage(time).getModality() &&
+      !this._filledItemSlotsHistory.rewritingHistory(time) &&
+      !this._filledPositionSlotsHistory.rewritingHistory(time)
+    ){
+      List<ItemSquarePattern> itemsForItemSlot = new ArrayList();
+      List<ItemSquarePattern> itemsForPositionSlot = new ArrayList();
+
+      //Check each primitive pattern in the pattern passed to this function to see
+      //if:
+      // 
+      //a) It is an ItemSquarePattern
+      //b) Its item/position is a potential slot value.
+      //
+      //If both conditions are true, add the first item or position slot value to 
+      //the filled item/position slot data structure.
+      for (int index = 0; index < pattern.size (); index++) {
+        boolean slotFilled = false;
+        if (pattern.getItem(index) instanceof ItemSquarePattern) {
+          ItemSquarePattern item = (ItemSquarePattern)(pattern.getItem (index));
+
+          // only try to fill a slot if item is not already in image or slot
+          if (
+            !this.getImage(time).contains(item) && 
+            !this.getFilledItemSlots(time).contains(item) && 
+            !this.getFilledPositionSlots(time).contains(item)
+          ) { 
+
+            // 1. check the item slots
+            for (String slot : this.getItemSlots(time)) {
+              if (!slotFilled) {
+                if (slot.equals(item.getItem ())) {
+                  itemsForItemSlot.add (item);
+                  slotFilled = true;
+                }
+              }
+            }
+
+            // 2. check the position slots
+            for (Square slot : this.getPositionSlots(time)) {
+              if (!slotFilled) {
+                if (
+                  slot.getRow () == item.getRow() &&
+                  slot.getColumn () == item.getColumn()
+                ){
+                  itemsForPositionSlot.add (item);
+                  slotFilled = true;
+                }
+              }
+            }
+          }
+        }
+      }
+
+      if(!itemsForItemSlot.isEmpty()){
+        this._filledItemSlotsHistory.put(time, itemsForItemSlot);
+      }
+
+      if(!itemsForPositionSlot.isEmpty()){
+        this._filledPositionSlotsHistory.put(time, itemsForPositionSlot);
+      }
+      
+      return itemsForItemSlot.size() + itemsForPositionSlot.size();
+    }
+    
+    return null;
+  }
+  
+  /**
+   * Clears {@link #this}'s filled item/position slots at the time specified
+   * if {@link #this} is a template.
+   * 
+   * @param time 
+   * @return {@link java.lang.Boolean#TRUE} if filled slots are cleared, 
+   * {@link java.lang.Boolean#FALSE} otherwise.
+   */
+  boolean clearFilledSlots(int time){
+    if(
+      this.isTemplate(time) &&
+      (boolean)this._filledItemSlotsHistory.put(time, new ArrayList()) &&
+      (boolean)this._filledPositionSlotsHistory.put(time, new ArrayList())
+    ){
+      return true;
+    }
+    
+    return false;
+  }
+
+  /**
+   * @param time
+   * 
+   * @return The item slots of {@link #this} at the time specified (may be 
+   * empty).  Null is returned if {@link #this} is not a template at the time 
+   * specified. 
+   */
+  public List<String> getItemSlots(int time){
+    if(this._itemSlotsHistory != null){
+      Entry itemSlotsAtTime = this._itemSlotsHistory.floorEntry(time);
+      if(itemSlotsAtTime != null){
+        return (List<String>)itemSlotsAtTime.getValue();
+      }
+    }
+    return null;
+  }
+  
+  /**
+   * @param time
+   * 
+   * @return The position slots of {@link #this} at the time specified (may be 
+   * empty).  Null is returned if {@link #this} is not a template at the time 
+   * specified. 
+   */
+  public List<Square> getPositionSlots(int time){
+    if(this._positionSlotsHistory != null){
+      Entry positionSlotsAtTime = this._positionSlotsHistory.floorEntry(time);
+      if(positionSlotsAtTime != null){
+        return (List<Square>)positionSlotsAtTime.getValue();
+      }
+    }
+    return null;
+  }
+  
+  /**
+   * @param time
+   * @return The filled item slots of {@link #this} at the time specified (may 
+   * be empty).  Null is returned if {@link #this} is not a template at the time 
+   * specified. 
+   */
+  public List<ItemSquarePattern> getFilledItemSlots(int time) {
+    if(this._filledItemSlotsHistory != null){
+      Entry filledItemSlotsAtTime = this._filledItemSlotsHistory.floorEntry(time);
+      if(filledItemSlotsAtTime != null){
+        return (List<ItemSquarePattern>)filledItemSlotsAtTime.getValue();
+      }
+    }
+    return null;
+  }
+
+  /**
+   * @param time
+   * @return The filled item slots of {@link #this} at the time specified (may 
+   * be empty).  Null is returned if {@link #this} is not a template at the time 
+   * specified. 
+   */
+  public List<ItemSquarePattern> getFilledPositionSlots(int time) {
+    if(this._filledPositionSlotsHistory != null){
+      Entry filledPositionSlotsAtTime = this._filledPositionSlotsHistory.floorEntry(time);
+      if(filledPositionSlotsAtTime != null){
+        return (List<ItemSquarePattern>)filledPositionSlotsAtTime.getValue();
+      }
+    }
+    return null;
+  }
+  
+  /**
+   * @return The contents of filled item/position with no duplicate {@link
+   * jchrest.lib.Pattern}s.  Three values may be returned: null (if {@link 
+   * #this} is not a template at the time specified or has no entry in its 
+   * filled item/position slot history data structures at a time earlier than or 
+   * equal to the time specified), an empty {@link jchrest.lib.ListPattern} (if 
+   * {@link #this} is a template but hasn't had either its item/position slots 
+   * filled earlier than or equal to the time specified) or a non-empty {@link 
+   * jchrest.lib.ListPattern} (if {@link #this} is a template and has had either 
+   * its item/position slots filled earlier than or equal to the time 
+   * specified).
+   */
+  ListPattern getFilledSlots (int time) {
+    List<ItemSquarePattern> filledItemSlots = this.getFilledItemSlots(time);
+    List<ItemSquarePattern> filledPositionSlots = this.getFilledPositionSlots(time);
+    
+    if(filledItemSlots != null && filledPositionSlots != null){
+      ListPattern listPattern = new ListPattern(this.getImage(time).getModality());
+      List<ItemSquarePattern> filledItemAndPositionSlots = new ArrayList();
+      filledItemAndPositionSlots.addAll(filledItemSlots);
+      filledItemAndPositionSlots.addAll(filledPositionSlots);
+      
+      for (ItemSquarePattern filledSlotValue : filledItemAndPositionSlots) {
+        boolean slotValueAlreadyInListPattern = false;
+        for(PrimitivePattern pattern : listPattern){
+          ItemSquarePattern isp = (ItemSquarePattern)pattern;
+          if(isp.toString().equals(filledSlotValue.toString())){
+            slotValueAlreadyInListPattern = true;
+          }
+        }
+        
+        if(!slotValueAlreadyInListPattern){
+          listPattern.add(filledSlotValue);
+        }
+      }
+
+      return listPattern;
+    }
+    return null;
+  }
+  
+  /***********************/
+  /**** VNA FUNCTIONS ****/
+  /***********************/
+  
+  /**
+   * Write information (reference and contents of {@link #this} in VNA format.
+   * 
+   * @param writer
+   * @param time
+   * @throws java.io.IOException
+   */
+  public void writeNodeAsVna (Writer writer, int time) throws IOException {
+    writer.write ("" + _reference + " \"" + _contents.toString() + "\"\n");
+    for (Link link : this.getChildren(time)) {
+      link.getChildNode().writeNodeAsVna (writer, time);
+    }
+  }
+
+  public void writeLinksAsVna (Writer writer, int time) throws IOException {
+    // write my links
+    for (Link link : this.getChildren(time)) {
+      writer.write ("" + _reference + " " + link.getChildNode().getReference () + "\n");
+    }
+    // repeat for children
+    for (Link link : this.getChildren(time)) {
+      link.getChildNode().writeLinksAsVna (writer, time);
+    }
+  }
+
+  public void writeSemanticLinksAsVna (Writer writer, int time) throws IOException {
+    // write my links
+    for (Node node : this.getSemanticLinks(time)) {
+      writer.write ("" + _reference + " " + node.getReference () + "\n");
+    }
+    // repeat for children
+    for (Link link : this.getChildren(time)) {
+      link.getChildNode().writeSemanticLinksAsVna (writer, time);
+    }
   }
 }
 

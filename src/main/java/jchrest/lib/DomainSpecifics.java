@@ -84,6 +84,6 @@ public abstract class DomainSpecifics {
   public abstract ListPattern convertSceneSpecificCoordinatesToDomainSpecificCoordinates(ListPattern listPattern, Scene scene);
   
   public abstract List<Square> proposeMovementFixations (Scene scene, Square square);
-  public abstract Set<Square> proposeSalientSquareFixations (Scene scene, Chrest model);
+  public abstract Set<Square> proposeSalientSquareFixations (Scene scene, Chrest model, int time);
 }
 

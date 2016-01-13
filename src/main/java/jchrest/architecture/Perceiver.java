@@ -26,8 +26,8 @@ import java.util.Set;
 import jchrest.lib.PrimitivePattern;
 
 /**
- * Perceiver class manages the model's visual interaction with an external, 
- * two-dimensional scene.
+ * Manages a {@link jchrest.architecture.Chrest} model's visual interaction with 
+ * a {@link jchrest.lib.Scene}.
  */
 public class Perceiver {
   
@@ -62,11 +62,15 @@ public class Perceiver {
   }
 
   /** 
-   * Initial fixation point is the centre of the scene.
+   * Make an initial fixation, i.e. fixate on the centre of the {@link 
+   * jchrest.lib.Scene} passed to the last invocation of {@link 
+   * jchrest.architecture.Perceiver#setScene(jchrest.lib.Scene)} for this {@link 
+   * #this}.
    * 
    * @param targetNumberFixations
+   * @param time
    */
-  public void start (int targetNumberFixations) {
+  public void start (int targetNumberFixations, int time) {
     _recognisedNodes.clear ();
     _targetNumberFixations = targetNumberFixations;
     
@@ -74,17 +78,17 @@ public class Perceiver {
     _fixationY = _currentScene.getHeight () / 2;
 
     _lastHeuristic = FixationType.start;
-    addFixation (new Fixation (_lastHeuristic, _fixationX, _fixationY));
+    addFixation (new Fixation (_lastHeuristic, _fixationX, _fixationY, time));
   }
 
-  private boolean doInitialFixation () {
-    Set<Square> squares = _model.getDomainSpecifics().proposeSalientSquareFixations (_currentScene, _model);
+  private boolean doInitialFixation (int time) {
+    Set<Square> squares = _model.getDomainSpecifics().proposeSalientSquareFixations (_currentScene, _model, time);
     
     if (squares.isEmpty ()) {
       return false;
     } else {
       Square square = (new ArrayList<Square>(squares)).get ((new java.util.Random()).nextInt (squares.size ()));
-      addFixation (new Fixation (FixationType.salient, square.getColumn (), square.getRow ()));
+      addFixation (new Fixation (FixationType.salient, square.getColumn (), square.getRow (), time));
       return true;
     }
   }
@@ -104,8 +108,9 @@ public class Perceiver {
    *            be tried.)
    */
   private boolean ltmHeuristic (int time) {
-    if (_model.getVisualStm().getCount () >= 1) {
-      List<Link> hypothesisChildren = _model.getVisualStm().getItem(0).getChildren ();
+    Stm visualStm = _model.getStm(Modality.VISUAL);
+    if (visualStm.getCount(time) >= 1) {
+      List<Link> hypothesisChildren = visualStm.getItem(0, time).getChildren (time);
       if (hypothesisChildren.isEmpty ()) return false;
       //        System.out.println ("Checking LTM heuristic");
       for (int i = 0; i < hypothesisChildren.size () && i < 1; ++i) { // *** i == 0 only
@@ -128,7 +133,7 @@ public class Perceiver {
           //    visual-spatial field and, if object locations are relative to 
           //    the visual-spatial avatar of the agent equipped with CHREST,
           //    its visual-spatial sight boundary can be greater than its 
-          //    "physical" sight boundary.  For example, CHREST may learn that 
+          //    "physical" sight boundary.  For example, CHREST may recogniseAndLearn that 
           //    an object is 3 squares to the east of its avatar in its 
           //    visual-spatial field but the agent equipped with CHREST can only
           //    see 2 squares in any direction in "reality".
@@ -150,7 +155,7 @@ public class Perceiver {
             _fixationY = ios.getRow(); 
             _lastHeuristic = FixationType.ltm;
             
-            addFixation (new Fixation (_lastHeuristic, _fixationX, _fixationY));
+            addFixation (new Fixation (_lastHeuristic, _fixationX, _fixationY, time));
             
             // look at square given by first test link
             // then look to see if a test link has the same square and observed piece
@@ -168,7 +173,7 @@ public class Perceiver {
                   if (
                     _currentScene.getSquareContentsAsListPattern(_fixationX, _fixationY, true).contains( testIos )
                   ){
-                    _model.getVisualStm().replaceHypothesis (link.getChildNode (), time);
+                    visualStm.replaceHypothesis (link.getChildNode (), time);
                   }
                 }
               }
@@ -247,14 +252,16 @@ public class Perceiver {
    * Find the next fixation point using one of the available 
    * heuristics.
    */
-  private void moveEyeUsingHeuristics () {
+  private void moveEyeUsingHeuristics (int time) {
     double r = Math.random ();
     boolean fixationDone = false;
     if (r < 0.3333) { // try movement fixation
+      
       List<Square> pieceMoves = _model.getDomainSpecifics().proposeMovementFixations (
-          _currentScene, 
-          new Square (_fixationX, _fixationY)
-          );
+        _currentScene, 
+        new Square (_fixationX, _fixationY)
+      );
+      
       if (pieceMoves.size () > 0) { 
         int move = (new java.util.Random ()).nextInt (pieceMoves.size ());
         _fixationX = pieceMoves.get(move).getColumn ();
@@ -263,11 +270,12 @@ public class Perceiver {
         fixationDone = true;
       }
     }
-    if (r >= 0.3333 && r < 0.6667) { // try random item fixation
+    else if (r >= 0.3333 && r < 0.6667) { // try random item fixation
       fixationDone = randomItemHeuristic ();
     }
+    
     if (!fixationDone) { // else try random place/global strategy
-      if (_model.isExperienced ()) {
+      if (_model.isExperienced (time)) {
         // TODO: include global strategy
         randomPlaceHeuristic ();
       } else {
@@ -276,41 +284,43 @@ public class Perceiver {
     }
     // randomPlace / globalStrategy guaranteed to succeed
 
-    addFixation (new Fixation (_lastHeuristic, _fixationX, _fixationY));
+    addFixation (new Fixation (_lastHeuristic, _fixationX, _fixationY, time));
   }
 
   /**
    * Find the next fixation point using one of the available 
-   * heuristics, and then learn from the new pattern.
+ heuristics, and then recogniseAndLearn from the new pattern.
    * @param time The domain time (in milliseconds) when this method was called.
    */
   public void moveEyeAndLearn (int time) {
     boolean fixationDone = false;
     if (doingInitialFixations ()) {
-      fixationDone = doInitialFixation ();
+      fixationDone = doInitialFixation (time);
     }
     if (!fixationDone) {
       fixationDone = ltmHeuristic (time);
     }
     if (!fixationDone) {
-      moveEyeUsingHeuristics ();
+      moveEyeUsingHeuristics (time);
     }
-    // learn pattern found from fixations
+    // recogniseAndLearn pattern found from fixations
     if (shouldLearnFixations ()) {
-      learnFixatedPattern ();
+      learnFixatedPattern (time);
     }
 
-    //simplified version of learning, learns pattern at current point.  Note
-    //that information learned should be generalisable so instead of getting
-    //unique identifiers for objects in the scope specified in the scene, 
-    //the identifiers for each object should be the object's class.
-    _model.recogniseAndLearn (
+    //simplified version of learning, learns information at current fixation.  
+    //Note: information learned should be generalisable. So, instead of 
+    //      identifying objects in the scope specified in the scene using their 
+    //      unique identifier's, they should be identified by their object 
+    //      class.
+    _model.learn (
       _model.getDomainSpecifics().normalise (
         _model.getDomainSpecifics().convertSceneSpecificCoordinatesToDomainSpecificCoordinates(
           _currentScene.getItemsInScopeAsListPattern (_fixationX, _fixationY, this.getFieldOfView(), true),
           this._currentScene
         )
-      )
+      ),
+      time
     );
 
     // NB: template construction is only assumed to occur after training, so 
@@ -318,27 +328,36 @@ public class Perceiver {
   }
 
   /**
-   * Find the next fixation point using one of the available 
-   * heuristics, and simply move the eye to that point.
-   * @param time The domain time (in milliseconds) when this method was called.
+   * Find the next {@link jchrest.lib.Fixation} using one of the available 
+   * heuristics and record (make) this {@link jchrest.lib.Fixation}.
+   * 
+   * @param time The time the {@link jchrest.lib.Fixation} will be made (not 
+   * when this function is invoked).
+   * @param debug Output debug information to {@link java.lang.System#out}.
    */
   public void moveEye (int time, boolean debug) {
     if(debug) System.out.println("\n=== Perceiver.moveEye() ===");
-    Node node = _model.getVisualLtm ();
+    Node node = _model.getLtmModalityRootNode(Modality.VISUAL);
     boolean fixationDone = false;
     
     if (doingInitialFixations ()) {
       if(debug) System.out.println("- Doing initial fixations");
-      fixationDone = doInitialFixation ();
-      if (fixationDone) {
+      fixationDone = doInitialFixation (time);
+      
+      if (fixationDone) {  
+        ListPattern listPatternToRecognise = _model.getDomainSpecifics().normalise (
+          _model.getDomainSpecifics().convertSceneSpecificCoordinatesToDomainSpecificCoordinates(
+            _currentScene.getItemsInScopeAsListPattern (_fixationX, _fixationY, this.getFieldOfView(), true),
+            this._currentScene
+          )
+        );
+        
+        if(debug) System.out.println("Attempting to recognise: " + listPatternToRecognise.toString());
+        
         node = _model.recognise (
-          _model.getDomainSpecifics().normalise (
-            _model.getDomainSpecifics().convertSceneSpecificCoordinatesToDomainSpecificCoordinates(
-              _currentScene.getItemsInScopeAsListPattern (_fixationX, _fixationY, this.getFieldOfView(), true),
-              this._currentScene
-            )
-          ), 
-          time
+          listPatternToRecognise, 
+          time,
+          false
         );
       }
     }
@@ -346,43 +365,52 @@ public class Perceiver {
     if (!fixationDone) {
       if(debug) System.out.println("- Doing fixations guided by LTM heuristics");
       fixationDone = ltmHeuristic (time);
-      if (fixationDone && _model.getVisualStm().getCount () >= 1) {
-        node = _model.getVisualStm().getItem(0);
+      Stm visualStm = _model.getStm(Modality.VISUAL);
+      if (fixationDone && visualStm.getCount (time) >= 1) {
+        node = visualStm.getItem(0, time);
       }
     }
     
     if (!fixationDone) {
       if(debug) System.out.println("- Moving eye using heuristics");
-      moveEyeUsingHeuristics ();
-      node = _model.recognise (
-        _model.getDomainSpecifics().normalise (
-          _model.getDomainSpecifics().convertSceneSpecificCoordinatesToDomainSpecificCoordinates(
-            _currentScene.getItemsInScopeAsListPattern (_fixationX, _fixationY, this.getFieldOfView(), true),
-            this._currentScene
-          )
-        ), 
-        time
-      );
-    }
-    
-    if(debug) System.out.println("Adding node " + node.getReference() + " (image: " + node.getImage().toString() + ") to nodes recognised");
-    
-    _recognisedNodes.add (node);
-    
-    // Attempt to fill out the slots on the top-node of visual STM with the currently 
-    // fixated items
-    if (_model.getVisualStm().getCount () >= 1) {
-      _model.getVisualStm().getItem(0).fillSlots (
+      moveEyeUsingHeuristics (time);
+      
+      ListPattern listPatternToRecognise = _model.getDomainSpecifics().normalise (
         _model.getDomainSpecifics().convertSceneSpecificCoordinatesToDomainSpecificCoordinates(
           _currentScene.getItemsInScopeAsListPattern (_fixationX, _fixationY, this.getFieldOfView(), true),
           this._currentScene
         )
       );
+      
+      if(debug) System.out.println("Attempting to recognise: " + listPatternToRecognise.toString());
+        
+      node = _model.recognise (
+        listPatternToRecognise, 
+        time,
+        false
+      );
+    }
+    
+    if(debug) System.out.println("Adding node " + node.getReference() + " (image: " + node.getImage(time).toString() + ") to nodes recognised");
+    
+    _recognisedNodes.add (node);
+    
+    // Attempt to fill out the slots on the top-node of visual STM with the currently 
+    // fixated items
+    Stm visualStm = this._model.getStm(Modality.VISUAL);
+    if (visualStm.getCount (time) >= 1) {
+      visualStm.getItem(0, time).fillSlots (
+        _model.getDomainSpecifics().convertSceneSpecificCoordinatesToDomainSpecificCoordinates(
+          _currentScene.getItemsInScopeAsListPattern (_fixationX, _fixationY, this.getFieldOfView(), true),
+          this._currentScene
+        ),
+        time
+      );
     }
   }
 
   List<Fixation> _fixations = new ArrayList<Fixation> ();
-  private int _fixationsLearnFrom = 0; // used to mark first fixation to learn from
+  private int _fixationsLearnFrom = 0; // used to mark first fixation to recogniseAndLearn from
   private int _targetNumberFixations = 20; // used to store the number of fixations in a scene
 
   public void clearFixations () {
@@ -412,7 +440,7 @@ public class Perceiver {
     _fixations.add (fixation);
   }
 
-  // learn pattern found from fixations
+  // recogniseAndLearn pattern found from fixations
   // -- in CHREST 2 this is triggered by:
   //    a. last fixation an empty square
   //    b. last fixation a result of random item or global strategy
@@ -420,7 +448,7 @@ public class Perceiver {
   //    d. cycle in fixations
   private boolean shouldLearnFixations () {
     int lastFixationIndex = _fixations.size () - 1;
-    if (lastFixationIndex <= _fixationsLearnFrom) { // nothing to learn
+    if (lastFixationIndex <= _fixationsLearnFrom) { // nothing to recogniseAndLearn
       return false;
     }
     Fixation lastFixation = _fixations.get (lastFixationIndex);
@@ -447,11 +475,11 @@ public class Perceiver {
         return true;
       }
     }
-    // otherwise, nothing to learn
+    // otherwise, nothing to recogniseAndLearn
     return false;
   }
 
-  private void learnFixatedPattern () {
+  private void learnFixatedPattern (int time) {
     ListPattern fixatedPattern = new ListPattern (Modality.VISUAL);
     for (int i = _fixationsLearnFrom; i < _fixations.size () - 1; ++i) {
       if (
@@ -463,14 +491,15 @@ public class Perceiver {
         }
       }
     }
-    _model.recogniseAndLearn (
+    _model.learn (
       _model.getDomainSpecifics().normalise (
         _model.getDomainSpecifics().convertSceneSpecificCoordinatesToDomainSpecificCoordinates(
           fixatedPattern.append(_currentScene.getItemsInScopeAsListPattern(_fixationX, _fixationY, this.getFieldOfView(), true)),
           this._currentScene
         )
-      )
-    ).getImage();
+      ),
+      time
+    );
     
     // begin cycle again, from point where we stopped
     _fixationsLearnFrom = _fixations.size () - 1;

@@ -98,7 +98,7 @@ public class TileworldDomain extends DomainSpecifics{
    * jchrest.lib.Square} that isn't blind, empty or unknown.
    */
   @Override
-  public Set<Square> proposeSalientSquareFixations(Scene scene, Chrest model) {
+  public Set<Square> proposeSalientSquareFixations(Scene scene, Chrest model, int time) {
     Set<Square> result = new HashSet<> ();
     
     int randomCol = new java.util.Random().nextInt(scene.getWidth ());

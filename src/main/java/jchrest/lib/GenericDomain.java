@@ -87,7 +87,7 @@ public class GenericDomain extends DomainSpecifics {
    * @return A random square that doesn't represent a blind square.
    */
   @Override
-  public Set<Square> proposeSalientSquareFixations (Scene scene, Chrest model) {
+  public Set<Square> proposeSalientSquareFixations (Scene scene, Chrest model, int time) {
     Set<Square> result = new HashSet<> ();
     
     int randomCol = new java.util.Random().nextInt(scene.getWidth ());

@@ -47,7 +47,7 @@ public abstract class Pattern {
     return makeList (numbers, Modality.VERBAL);
   }
 
-  private static ListPattern makeList (String[] strings, Modality modality) {
+  public static ListPattern makeList (String[] strings, Modality modality) {
     ListPattern list = new ListPattern (modality);
     for (int i = 0; i < strings.length; ++i)
     {

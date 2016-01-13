@@ -8,14 +8,20 @@ package jchrest.lib;
  * fixation being made.
  */
 public class Fixation {
+  
+  private final FixationType _type;
+  private final int _x;
+  private final int _y;
+  private final int _time;
 
   /**
    * Constructor for fixation.
    */
-  public Fixation (FixationType type, int x, int y) {
+  public Fixation (FixationType type, int x, int y, int time) {
     _type = type;
     _x = x;
     _y = y;
+    _time = time;
   }
 
   /**
@@ -45,6 +51,10 @@ public class Fixation {
   public int getY () {
     return _y;
   }
+  
+  public int getTimeMade(){
+    return _time;
+  }
 
   /**
    * Note: added 1 to x,y coordinates to match up with the display of visual scenes.
@@ -53,9 +63,6 @@ public class Fixation {
     return "(" + (_x+1) + ", " + (_y+1) + ") " + _type;
   }
 
-  // private fields
-  private final FixationType _type;
-  private final int _x;
-  private final int _y;
+  
 }
 

@@ -2,6 +2,8 @@ package jchrest.lib;
 
 import java.util.Map.Entry;
 import java.util.TreeMap;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import jchrest.architecture.VisualSpatialField;
 
 /**
@@ -26,9 +28,9 @@ public class VisualSpatialFieldObject {
   private final String _identifier;
   
   //Allows for CHREST to create chunks containing generalisable information.  
-  //For example, if a chess player were to learn the position of bishops on a 
+  //For example, if a chess player were to recogniseAndLearn the position of bishops on a 
   //chess board at a given moment, the CHREST model representing the player 
-  //could learn where the bishops in the current game are positioned and use 
+  //could recogniseAndLearn where the bishops in the current game are positioned and use 
   //this information in subsequent games.  This is only possible if each bishop 
   //isn't considered to be a unique entity when its location is learned (as they
   //would be if VisualSpatialObjects could only be represented using their 
@@ -134,7 +136,17 @@ public class VisualSpatialFieldObject {
       ) || 
       setTerminus
     ){
-      this._terminus = timeCreated + this._associatedVisualSpatialField.getUnrecognisedObjectLifespan();
+      try{
+        Integer lifespanForUnrecognisedVisualSpatialObjects = this._associatedVisualSpatialField.getAssociatedModel().getUnrecognisedVisualSpatialObjectLifespan(timeCreated);
+        if(lifespanForUnrecognisedVisualSpatialObjects == null){
+          throw new VisualSpatialFieldException("Attempted to create a VisualSpatialFieldObject at a time (" + timeCreated + ") before the associated CHREST model was created");
+        }
+        else{
+          this._terminus = timeCreated + lifespanForUnrecognisedVisualSpatialObjects;
+        }
+      } catch (VisualSpatialFieldException ex) {
+        Logger.getLogger(VisualSpatialFieldObject.class.getName()).log(Level.SEVERE, null, ex);
+      } 
     }
   }
   
@@ -313,8 +325,8 @@ public class VisualSpatialFieldObject {
       }
       else{
         this._terminus = time + (this.recognised(time) ? 
-          this._associatedVisualSpatialField.getRecognisedObjectLifespan() : 
-          this._associatedVisualSpatialField.getUnrecognisedObjectLifespan() 
+          this._associatedVisualSpatialField.getAssociatedModel().getRecognisedVisualSpatialObjectLifespan(time) : 
+          this._associatedVisualSpatialField.getAssociatedModel().getUnrecognisedVisualSpatialObjectLifespan(time)
         );
       }
     }

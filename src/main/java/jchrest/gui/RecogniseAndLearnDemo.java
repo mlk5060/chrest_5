@@ -85,7 +85,7 @@ class RecogniseAndLearnDemo extends JPanel {
     public void actionPerformed (ActionEvent e) {
       if (isSelected ()) {
         _model.setEngagedInExperiment();
-        _model.recogniseAndLearn (selectedPattern());
+        _model.learn (selectedPattern(), _exptClock);
         _feedback.setText ("Learning " + selectedPattern().toString ());
       }
     }
@@ -101,7 +101,7 @@ class RecogniseAndLearnDemo extends JPanel {
       for (ListPattern pattern : _patterns) {
         ListPattern patternInCorrectMode = pattern.clone ();
         patternInCorrectMode.setModality ((Modality)_modeButton.getSelectedItem ());
-        _model.recogniseAndLearn (patternInCorrectMode);
+        _model.learn (patternInCorrectMode, _exptClock);
       }
       _feedback.setText ("Learnt all patterns");
     }
@@ -116,7 +116,7 @@ class RecogniseAndLearnDemo extends JPanel {
       if (isSelected ()) {
         _model.setEngagedInExperiment();
         _feedback.setText ("Recalled " + 
-            _model.recallPattern (selectedPattern(), _exptClock).toString () +
+            _model.recognise (selectedPattern(), _exptClock, true).toString () +
             " for " +
             selectedPattern().toString ());
       }
