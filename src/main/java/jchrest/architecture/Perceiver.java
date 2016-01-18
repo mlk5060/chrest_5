@@ -313,7 +313,7 @@ public class Perceiver {
     //      identifying objects in the scope specified in the scene using their 
     //      unique identifier's, they should be identified by their object 
     //      class.
-    _model.learn (
+    _model.recogniseAndLearn (
       _model.getDomainSpecifics().normalise (
         _model.getDomainSpecifics().convertSceneSpecificCoordinatesToDomainSpecificCoordinates(
           _currentScene.getItemsInScopeAsListPattern (_fixationX, _fixationY, this.getFieldOfView(), true),
@@ -491,7 +491,7 @@ public class Perceiver {
         }
       }
     }
-    _model.learn (
+    _model.recogniseAndLearn (
       _model.getDomainSpecifics().normalise (
         _model.getDomainSpecifics().convertSceneSpecificCoordinatesToDomainSpecificCoordinates(
           fixatedPattern.append(_currentScene.getItemsInScopeAsListPattern(_fixationX, _fixationY, this.getFieldOfView(), true)),

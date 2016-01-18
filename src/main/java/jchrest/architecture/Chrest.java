@@ -532,6 +532,22 @@ public class Chrest extends Observable {
     this._nodeComparisonTime = nodeComparisonTime;
   }
   
+  /**
+   * Default is 2.
+   * 
+   * @param maximumSemanticLinkSearchDistance The number of semantic links that
+   * can be followed from a {@link jchrest.architecture.Node} reached after 
+   * sorting a {@link jchrest.lib.ListPattern} vertically through long-term 
+   * memory.  For example, if 3 {@link jchrest.architecture.Node}s are 
+   * semantically linked to as 1 -> 2 -> 3 and {@link jchrest.architecture.Node} 
+   * 1 is retrieved after long-term memory sorting and the maximum semantic link 
+   * search distance parameter is set to 1, {@link jchrest.architecture.Node} 2 
+   * would be retrieved.
+   */
+  public void setMaximumSemanticLinkSearchDistance(int maximumSemanticLinkSearchDistance){
+    this._maximumSemanticLinkSearchDistance = maximumSemanticLinkSearchDistance;
+  }
+  
   public void setTemplateConstructionParameters (int minNodeDepthInNetworkToBeTemplate, int minItemOrPositionOccurrencesInNodeImagesToBeSlotValue) {
     if(minNodeDepthInNetworkToBeTemplate >= 1 && minItemOrPositionOccurrencesInNodeImagesToBeSlotValue >= 1){
       this._minNodeDepthInNetworkToBeTemplate = minNodeDepthInNetworkToBeTemplate;
@@ -1668,21 +1684,21 @@ public class Chrest extends Observable {
               //TODO: this is overlearning the first pattern?
               if (productionNode.getImage(time).equals(actionPattern)) {
                 actionPatternAlreadyProduction = true;
-                learn (pattern, time); 
+                recogniseAndLearn (pattern, time); 
               }
               else {
-                learn (actionPattern, time);
+                recogniseAndLearn (actionPattern, time);
               }
               
               //Set the time to the value of the cognition clock since this 
-              //will have been incremented due to the learn() calls
+              //will have been incremented due to the recogniseAndLearn() calls
               //above + 1.  Will ensure that any further cognitive functions are 
               //not blocked due to the cognition resource being blocked.
               time = this._cognitionClock + 1;
             }
           }
         
-          //If the action pattern isn't already a production learn the 
+          //If the action pattern isn't already a production recogniseAndLearn the 
           //actionPattern and the first pattern again to force correction of 
           //any mistakes and attempt to recognise the action pattern again.
           //
@@ -1704,10 +1720,10 @@ public class Chrest extends Observable {
           //      Node recognised when the first pattern is presented?
           if(!actionPatternAlreadyProduction){
             
-            learn (actionPattern, time);
+            recogniseAndLearn (actionPattern, time);
             time = this._cognitionClock + 1;
           
-            learn (pattern, time);
+            recogniseAndLearn (pattern, time);
             time = this._cognitionClock + 1;
           
             Node actionNodeRetrieved = recognise (actionPattern, time, false);
@@ -1741,7 +1757,7 @@ public class Chrest extends Observable {
             if (!_frozen) notifyObservers ();
           } 
           else { 
-            learn (actionPattern, time);
+            recogniseAndLearn (actionPattern, time);
             time = this._cognitionClock + 1;
           
             actionNodeRetrieved = recognise (actionPattern, time, false);
@@ -1761,7 +1777,7 @@ public class Chrest extends Observable {
         }
       }
       else { 
-        learn (pattern, time);
+        recogniseAndLearn (pattern, time);
       }
     }
     
@@ -1770,8 +1786,8 @@ public class Chrest extends Observable {
   }
   
   /**
-   * Presents Chrest with a pair of patterns, which it should learn and 
- then attempt to learn a link.  Assumes the two patterns are of the same 
+   * Presents Chrest with a pair of patterns, which it should recogniseAndLearn and 
+ then attempt to recogniseAndLearn a link.  Assumes the two patterns are of the same 
    * modality.
    */
   private Node learnAndCreateSemanticLink (ListPattern pattern1, ListPattern pattern2, int time) {
@@ -1788,27 +1804,27 @@ public class Chrest extends Observable {
       if (associatedNode != null) {
         
         // if yes
-        //   3. is linked node image match pattern2? if not, learn pattern2
+        //   3. is linked node image match pattern2? if not, recogniseAndLearn pattern2
         if (associatedNode.getImage(time).matches (pattern2)) {
           
           //   if yes
-          //   4. if linked node image == pattern2, learn pattern1, else learn pattern2
+          //   4. if linked node image == pattern2, recogniseAndLearn pattern1, else recogniseAndLearn pattern2
           if (associatedNode.getImage(time).equals (pattern2)) {  
-            learn (pattern1, time); // TODO: this is overlearning?
+            recogniseAndLearn (pattern1, time); // TODO: this is overlearning?
           } else {
-            learn (pattern2, time);
+            recogniseAndLearn (pattern2, time);
           }
         } else {
-          learn (pattern2, time);
+          recogniseAndLearn (pattern2, time);
           time = this._cognitionClock + 1;
           
-          learn (pattern1, time);
+          recogniseAndLearn (pattern1, time);
           time = this._cognitionClock + 1;
           
           Node pat2RecognisedNode = recognise (pattern2, time, false);
           time = this._cognitionClock + 1;
 
-          // 6. if pattern2 retrieved node image match for pattern2, learn link, else learn pattern2
+          // 6. if pattern2 retrieved node image match for pattern2, recogniseAndLearn link, else recogniseAndLearn pattern2
           if (pat2RecognisedNode.getImage(time).matches (pattern2)) {
             time += this._semanticLinkCreationTime;
             pat1RecognisedNode.addSemanticLink(pat2RecognisedNode, time);
@@ -1822,22 +1838,22 @@ public class Chrest extends Observable {
         Node pat2RecognisedNode = recognise (pattern2, time, false);
         time = this._cognitionClock + 1;
         
-        // 6. if pattern2 retrieved node image match for pattern2, learn link, else learn pattern2
+        // 6. if pattern2 retrieved node image match for pattern2, recogniseAndLearn link, else recogniseAndLearn pattern2
         if (pat2RecognisedNode.getImage(time).matches (pattern2)) {  
           time += this._semanticLinkCreationTime;
           pat1RecognisedNode.addSemanticLink(pat2RecognisedNode, time);
           setChanged ();
           if (!_frozen) notifyObservers ();
         } 
-        else { // image not a match, so we need to learn pattern 2
-          learn (pattern2, time);
+        else { // image not a match, so we need to recogniseAndLearn pattern 2
+          recogniseAndLearn (pattern2, time);
           time = this._cognitionClock + 1;
           
           // 5. sort pattern2
           pat2RecognisedNode = recognise (pattern2, time, false);
           time = this._cognitionClock + 1;
           
-          // 6. if pattern2 retrieved node image match for pattern2, learn link, else learn pattern2
+          // 6. if pattern2 retrieved node image match for pattern2, recogniseAndLearn link, else recogniseAndLearn pattern2
           if (pat2RecognisedNode.getImage(time).matches (pattern2)) {
             time += this._semanticLinkCreationTime;
             pat1RecognisedNode.addSemanticLink(pat2RecognisedNode, time);
@@ -1846,8 +1862,8 @@ public class Chrest extends Observable {
           }
         }
       }
-    } else { // image not a match, so we need to learn pattern 1
-      learn (pattern1, time);
+    } else { // image not a match, so we need to recogniseAndLearn pattern 1
+      recogniseAndLearn (pattern1, time);
     }
     
     this._cognitionClock = time;
@@ -1859,15 +1875,14 @@ public class Chrest extends Observable {
    * memory network of {@link #this} (see {@link #recognise(
    * jchrest.lib.ListPattern, int)), add the {@link jchrest.architecture.Node}
    * recognised to the relevant {@link jchrest.architecture.Stm} {@link 
-   * jchrest.lib.Modality} and learn the {@link jchrest.lib.ListPattern} if 
+   * jchrest.lib.Modality} and recogniseAndLearn the {@link jchrest.lib.ListPattern} if 
    * the image of the {@link jchrest.architecture.Node} recognised does not 
    * exactly match the {@link jchrest.lib.ListPattern} provided.
    * 
    * @param pattern
    * @param time
-   * @return Whether the pattern will be learned.
    */
-  public void learn (ListPattern pattern, Integer time) {
+  public void recogniseAndLearn (ListPattern pattern, Integer time) {
     String func = "- learn: ";
     
     this.printDebugStatement(func + "START");
@@ -1889,20 +1904,20 @@ public class Chrest extends Observable {
     
     // If the node recognised is != null, i.e. the cognition resource is free, 
     // continue.
-    if (node != null ) { 
+    if (node != null) { 
       
-      //Set current time to be equal to the attention clock since lerning should 
-      //only continue after the recognised node has been placed into STM.
+      //Set current time to be equal to the cognitive clock since lerning should 
+      //only continue after a node has been retrieved from LTM.
       this.printDebugStatement(
         func + "Node recognised, the current time will be " +
-        "set to the current value of the attention clock (" + 
-        this._attentionClock + ") since the node recognised can only be " +
-        "used after it has been placed into STM."
+        "set to the current value of the cognition clock (" + 
+        this._cognitionClock + ") since learning can only continue after LTM " +
+        "retrieval is complete."
       );
       
-      time = this._attentionClock;
+      time = this._cognitionClock;
       
-      //The model should only try to learn if the image of the recognised node
+      //The model should only try to recogniseAndLearn if the image of the recognised node
       //differs from pattern provided.
       ListPattern recognisedNodeImage = node.getImage(time);
       
@@ -1944,7 +1959,7 @@ public class Chrest extends Observable {
     }
     else{
       this.printDebugStatement(
-        func + "Cognitive resource isn't free neither recognition or learning " +
+        func + "Cognitive resource isn't free; neither recognition or learning " +
         "performed."
       );
     }
@@ -2474,7 +2489,7 @@ public class Chrest extends Observable {
       "familiarisation: " + newInformation + "."
     );
 
-    // EXIT if nothing new to learn
+    // EXIT if nothing new to recogniseAndLearn
     if (newInformation.isEmpty ()) {  
       description += ", empty.";
       historyRowToInsert.put(Chrest._executionHistoryTableDescriptionColumnName, description);
@@ -2495,7 +2510,7 @@ public class Chrest extends Observable {
 
     if (recognisedNode == this.getLtmModalityRootNode (pattern)) {
 
-      // primitive not known, so learn it
+      // primitive not known, so recogniseAndLearn it
       description += "New information not recognised, learning as primitive.";
       historyRowToInsert.put(Chrest._executionHistoryTableDescriptionColumnName, description);
       this.addEpisodeToExecutionHistory(historyRowToInsert);
@@ -2542,7 +2557,7 @@ public class Chrest extends Observable {
   
   /**
    * Attempts to reinforce the specified production if this {@link #this} model
- is free to learn.
+ is free to recogniseAndLearn.
    * 
    * @param visualPattern
    * @param actionPattern
@@ -2971,9 +2986,9 @@ public class Chrest extends Observable {
    * {@link #this} model with recognised information and various other instance
    * variables of the {@link jchrest.architecture.Perceiver} associated with
    * this {@link #this} model.  The function will also cause this {@link #this}
- model to learn any information "seen".
+ model to recogniseAndLearn any information "seen".
    * 
-   * @param scene The {@link jchrest.lib.Scene} to learn from.
+   * @param scene The {@link jchrest.lib.Scene} to recogniseAndLearn from.
    * @param numFixations Number of fixations this {@link #this} model's {@link
    * jchrest.architecture.Perceiver} should make on the {@link 
    * jchrest.lib.Scene}.

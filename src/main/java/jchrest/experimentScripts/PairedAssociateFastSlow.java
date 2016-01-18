@@ -1594,7 +1594,7 @@ public class PairedAssociateFastSlow {
           //"skim" the dictionary once.
           case PairedAssociateFastSlow.DICTIONARY_CONDITION:
             for(ListPattern word : PairedAssociateFastSlow.this._dictionary){
-              PairedAssociateFastSlow.this._model.learn(word, PairedAssociateFastSlow.this._model.getCognitionClock());
+              PairedAssociateFastSlow.this._model.recogniseAndLearn(word, PairedAssociateFastSlow.this._model.getCognitionClock());
             }
             break;
             
@@ -1602,14 +1602,14 @@ public class PairedAssociateFastSlow {
           //the letters completely.
           case PairedAssociateFastSlow.LETTERS_CONDITION:
             for(ListPattern letter : PairedAssociateFastSlow.this._letters){
-              PairedAssociateFastSlow.this._model.learn(letter, PairedAssociateFastSlow.this._model.getCognitionClock());
+              PairedAssociateFastSlow.this._model.recogniseAndLearn(letter, PairedAssociateFastSlow.this._model.getCognitionClock());
               while(
                 !PairedAssociateFastSlow.this._model.presentInStm(
                   letter, 
                   PairedAssociateFastSlow.this._model.getCognitionClock()
                 )
               ){
-                PairedAssociateFastSlow.this._model.learn(letter, PairedAssociateFastSlow.this._model.getCognitionClock());
+                PairedAssociateFastSlow.this._model.recogniseAndLearn(letter, PairedAssociateFastSlow.this._model.getCognitionClock());
               }
             }
             break;

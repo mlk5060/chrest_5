@@ -218,9 +218,9 @@ public class PairedAssociateExperiment extends Observable{
   
   /**
    * Attempts to associate the second pattern with the first pattern of a 
-   * specified pattern if they are both learned or attempts to learn and 
-   * associate them every millisecond until the presentation time specified is 
-   * reached.
+ specified pattern if they are both learned or attempts to recogniseAndLearn and 
+ associate them every millisecond until the presentation time specified is 
+ reached.
    * 
    * @param shufflePresentationOrder Set to true if the presentation 
    * order of stimulus response pair presentation should be shuffled or false if
@@ -324,7 +324,7 @@ public class PairedAssociateExperiment extends Observable{
       }
       
       //Until the time comes for the next stimulus response pair to be 
-      //presented, associate and learn the first item in the auditory loop.
+      //presented, associate and recogniseAndLearn the first item in the auditory loop.
       while(_exptClock < nextStimulusResponsePairPresentedTime){
         if(!this._auditoryLoop.isEmpty()){
           PairedPattern stimulusResponseToLearn = this._auditoryLoop.get(0);

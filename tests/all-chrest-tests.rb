@@ -40,7 +40,7 @@ end
 end
 
 # Pick up all ruby test files except this one
-Dir.glob(File.dirname(__FILE__) + "/stm-tests.rb") do |file|
+Dir.glob(File.dirname(__FILE__) + "/*.rb") do |file|
   require file unless File.expand_path(file) == File.expand_path(__FILE__)
 end
 

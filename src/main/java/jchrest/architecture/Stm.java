@@ -260,12 +260,9 @@ public class Stm implements Iterable<Node> {
    *  </li>
    * </ul>
    */
-  boolean clear (int time) {
+  public boolean clear (int time) {
     if(this._creationTime <= time){
-      boolean clearSuccessful = (boolean)this._itemHistory.put(time, new ArrayList());
-      if(clearSuccessful){
-        return true;
-      }
+      return (boolean)this._itemHistory.put(time, new ArrayList());
     }
     return false;
   }
