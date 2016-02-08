@@ -107,7 +107,7 @@ public class Stm implements Iterable<Node> {
     if(
       this._creationTime <= time &&
       nodeToAdd.getCreationTime() <= time &&
-      this._modality == nodeToAdd.getImage(time).getModality() &&
+      this._modality == nodeToAdd.getModality() &&
       !this._itemHistory.rewritingHistory(time)
     ){
       ArrayList<Node> newStmContents = new ArrayList();
@@ -190,7 +190,7 @@ public class Stm implements Iterable<Node> {
     if(
       this._creationTime <= time &&
       replacement.getCreationTime() <= time &&
-      this._modality == replacement.getImage(time).getModality()
+      this._modality == replacement.getModality()
     ){
       List<Node> stmContentsAtTime = (List<Node>)this._itemHistory.floorEntry(time).getValue();
       if (stmContentsAtTime.size() > 0) {

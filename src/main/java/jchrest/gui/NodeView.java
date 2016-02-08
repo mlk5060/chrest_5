@@ -6,6 +6,7 @@ package jchrest.gui;
 import java.awt.BorderLayout;
 import java.awt.GridLayout;
 import java.awt.event.*;
+import java.util.List;
 import javax.swing.*;
 import javax.swing.border.*;
 import jchrest.architecture.Chrest;
@@ -37,7 +38,7 @@ public class NodeView extends JFrame implements java.util.Observer {
 
     // create and add the widgets
     _contentsLabel = new JLabel (_node.getContents().toString ());
-    _imageLabel = new JLabel (_node.getImage().toString ());
+    _imageLabel = new JLabel (_node.getImage(_time).toString ());
 
     JPanel fields = new JPanel ();
     fields.setLayout (new GridLayout (4, 2));
@@ -48,16 +49,18 @@ public class NodeView extends JFrame implements java.util.Observer {
     
     _associatedNode = new JLabel ("");
     _associatedNode.setBorder (new CompoundBorder (new EmptyBorder (3, 3, 3, 3), new EtchedBorder ()));
-    if (_node.getAssociatedNode (_time) != null) {
-      _associatedNode.setIcon (new NodeIcon (_node.getAssociatedNode (_time), _associatedNode, _time));
+    Node associatedNode = _node.getAssociatedNode (_time);
+    if (associatedNode != null) {
+      _associatedNode.setIcon (new NodeIcon (associatedNode, _associatedNode, _time));
     }
     fields.add (new JLabel ("Assocated node: ", SwingConstants.RIGHT));
     fields.add (_associatedNode);
 
     _namedBy = new JLabel ("");
     _namedBy.setBorder (new CompoundBorder (new EmptyBorder (3, 3, 3, 3), new EtchedBorder ()));
-    if (_node.getNamedBy (_time) != null) {
-      _namedBy.setIcon (new NodeIcon (_node.getNamedBy (_time), _namedBy, _time));
+    Node namedBy = _node.getNamedBy (_time);
+    if (namedBy != null) {
+      _namedBy.setIcon (new NodeIcon (namedBy, _namedBy, _time));
     }
     fields.add (new JLabel ("Named by: ", SwingConstants.RIGHT));
     fields.add (_namedBy);
@@ -105,44 +108,67 @@ public class NodeView extends JFrame implements java.util.Observer {
 
   void close () {
     _node.deleteObserver (this);
-    if (_node.getAssociatedNode (_time) != null) {
-      _node.getAssociatedNode (_time).deleteObserver (this);
+    
+    Node associatedNode = _node.getAssociatedNode (_time);
+    if (associatedNode != null) {
+      associatedNode.deleteObserver (this);
     }
-    if (_node.getNamedBy (_time) != null) {
-      _node.getNamedBy(_time).deleteObserver (this);
+    
+    Node namedBy = _node.getNamedBy (_time);
+    if (namedBy != null) {
+      namedBy.deleteObserver (this);
     }
-    for (Link link : _node.getChildren (_time)) {
-      link.getChildNode().deleteObserver (this);
+    
+    List<Link> children = _node.getChildren (_time);
+    if(children != null){
+      for (Link link : children) {
+        link.getChildNode().deleteObserver (this);
+      }
     }
-    for (Node node : _node.getSemanticLinks (_time)) {
-      node.deleteObserver (this);
+    
+    List<Node> semanticLinks = _node.getSemanticLinks (_time);
+    if(semanticLinks != null){
+      for (Node node : semanticLinks) {
+        node.deleteObserver (this);
+      }
     }
+    
     setVisible (false);
     dispose ();
   }
 
   private void updateDisplays () {
-    _imageLabel.setText (_node.getImage().toString ());
-    if (_node.getAssociatedNode (_time) != null) {
-      _associatedNode.setIcon (new NodeIcon (_node.getAssociatedNode (_time), _associatedNode, _time));
-      _node.getAssociatedNode(_time).addObserver (this);
+    _imageLabel.setText (_node.getImage(_time).toString ());
+    
+    Node associatedNode = _node.getAssociatedNode (_time);
+    if (associatedNode != null) {
+      _associatedNode.setIcon (new NodeIcon (associatedNode, _associatedNode, _time));
+      associatedNode.addObserver (this);
     }
-    if (_node.getNamedBy (_time) != null) {
-      _namedBy.setIcon (new NodeIcon (_node.getNamedBy (_time), _namedBy, _time));
-      _node.getNamedBy(_time).addObserver (this);
+    
+    Node namedBy = _node.getNamedBy (_time);
+    if (namedBy != null) {
+      _namedBy.setIcon (new NodeIcon (namedBy, _namedBy, _time));
+      namedBy.addObserver (this);
     }
 
     _childLinksView.clear ();
-    for (Link link: _node.getChildren ()) {
-      _childLinksView.addElement (link.getChildNode ());
-      link.getChildNode().addObserver (this);
+    List<Link> children = _node.getChildren (_time);
+    if(children != null){
+      for (Link link: children) {
+        _childLinksView.addElement (link.getChildNode ());
+        link.getChildNode().addObserver (this);
+      }
     }
     _childLinks.setModel (_childLinksView);
 
     _similarityLinksView.clear ();
-    for (Node node : _node.getSemanticLinks (_time)) {
-      _similarityLinksView.addElement (node);
-      node.addObserver (this);
+    List<Node> semanticLinks = _node.getSemanticLinks (_time);
+    if(semanticLinks != null){
+      for (Node node : semanticLinks) {
+        _similarityLinksView.addElement (node);
+        node.addObserver (this);
+      }
     }
     _similarityLinks.setModel (_similarityLinksView);
   }

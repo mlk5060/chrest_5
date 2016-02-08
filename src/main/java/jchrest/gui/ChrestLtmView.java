@@ -179,9 +179,9 @@ public class ChrestLtmView extends JPanel {
    */
   private LtmTreeViewNode constructTree () {
     LtmTreeViewNode baseTreeViewNode = new NodeDisplay (null, this._stateAtTimeValue);
-//    baseTreeViewNode.add( constructTree(_model.getClonedLtm(Modality.ACTION)) );
-//    baseTreeViewNode.add( constructTree(_model.getClonedLtm(Modality.VERBAL)) );
-//    baseTreeViewNode.add( constructTree(_model.getClonedLtm(Modality.VISUAL)) );
+    baseTreeViewNode.add( constructTree(_model.getLtmModalityRootNode(Modality.ACTION), this._stateAtTimeValue) );
+    baseTreeViewNode.add( constructTree(_model.getLtmModalityRootNode(Modality.VERBAL), this._stateAtTimeValue) );
+    baseTreeViewNode.add( constructTree(_model.getLtmModalityRootNode(Modality.VISUAL), this._stateAtTimeValue) );
     return baseTreeViewNode;
   }
 
@@ -190,16 +190,21 @@ public class ChrestLtmView extends JPanel {
    */
   private LtmTreeViewNode constructTree (Node baseNode, int time) {
     NodeDisplay baseTreeViewNode = new NodeDisplay (baseNode, this._stateAtTimeValue);
-    for (Link link : baseNode.getChildren(time)) {
-      if(
-        (link.getCreationTime() <= this._stateAtTimeValue) &&
-        (link.getExperimentCreatedIn().equals(this._experimentToVisualise))
-      ){
-        LtmTreeViewNode linkNode = new LinkDisplay (link);
-        linkNode.add (constructTree (link.getChildNode (), time));
-        baseTreeViewNode.add (linkNode);
+    
+    List<Link> children = baseNode.getChildren(time);
+    if(children != null){
+      for (Link link : children) {
+        if(
+          (link.getCreationTime() <= this._stateAtTimeValue) &&
+          (link.getExperimentCreatedIn().equals(this._experimentToVisualise))
+        ){
+          LtmTreeViewNode linkNode = new LinkDisplay (link);
+          linkNode.add (constructTree (link.getChildNode (), time));
+          baseTreeViewNode.add (linkNode);
+        }
       }
     }
+    
     return baseTreeViewNode;
   }
 }

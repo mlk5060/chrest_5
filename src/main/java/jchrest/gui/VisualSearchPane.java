@@ -521,13 +521,21 @@ public class VisualSearchPane extends JPanel {
         addLog ("   " + "Node: " + node.getReference() + " " + node.getImage(VisualSearchPane.this._time).toString ());
         if (_model.canCreateTemplates() && node.isTemplate (VisualSearchPane.this._time)) {
           addLog ("     Template:");
+          
           addLog ("        filled item slots: ");
-          for (ItemSquarePattern isp : node.getFilledItemSlots (VisualSearchPane.this._time)) {
-            addLog ("         " + isp.toString ());
+          List<ItemSquarePattern> filledItemSlots = node.getFilledItemSlots (VisualSearchPane.this._time);
+          if(filledItemSlots != null){
+            for (ItemSquarePattern isp : filledItemSlots) {
+              addLog ("         " + isp.toString ());
+            }
           }
+          
           addLog ("        filled position slots: ");
-          for (ItemSquarePattern isp : node.getFilledPositionSlots (VisualSearchPane.this._time)) {
-            addLog ("         " + isp.toString ());
+          List<ItemSquarePattern> filledPositionSlots = node.getFilledPositionSlots (VisualSearchPane.this._time);
+          if(filledPositionSlots != null){
+            for (ItemSquarePattern isp : filledPositionSlots) {
+              addLog ("         " + isp.toString ());
+            }
           }
 
         }

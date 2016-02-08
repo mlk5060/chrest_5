@@ -249,6 +249,9 @@ public class Node extends Observable {
     return _contents;
   }
   
+  /**
+   * @return The {@link jchrest.lib.Modality} of {@link #this}.
+   */
   public Modality getModality(){
     return _modality;
   }
@@ -282,8 +285,12 @@ public class Node extends Observable {
     int count = 0;
     if(this.getCreationTime() <= time){
       count = 1; // for self
-      for (Link link : this.getChildren(time)) {
-        count += link.getChildNode().size (time);
+      
+      List<Link> children = this.getChildren(time);
+      if(children != null){
+        for (Link link : children) {
+          count += link.getChildNode().size (time);
+        }
       }
     }
 
@@ -314,13 +321,7 @@ public class Node extends Observable {
   
   /*************************/
   /**** CHILD FUNCTIONS ****/
-  /*************************/
-  
-  public List<Link> getChildren(){
-    Entry entry = this._childHistory.lastEntry();
-    return entry == null ? null : (List<Link>)entry.getValue();
-  }
-  
+  /*************************/  
   
   /**
    * @param time
@@ -341,7 +342,7 @@ public class Node extends Observable {
    * 
    * @param test The test for the new {@link jchrest.architecture.Link} to be
    * added.
-   * @param child The {@link jchrest.architecture.Node} that the new {@link 
+   * @param childToAdd The {@link jchrest.architecture.Node} that the new {@link 
    * jchrest.architecture.Link} should terminate with.
    * @param time The time that the new {@link jchrest.architecture.Link} should
    * be added.
@@ -379,7 +380,7 @@ public class Node extends Observable {
    * 
    * Otherwise, {@link java.lang.Boolean#TRUE} is returned.
    */
-  boolean addChild(ListPattern test, Node child, int time, String currentExperimentName) {
+  boolean addChild(ListPattern test, Node childToAdd, int time, String currentExperimentName) {
     
     //Set-up history variables
     HashMap<String, Object> historyRowToInsert = new HashMap<>();
@@ -394,67 +395,68 @@ public class Node extends Observable {
     historyRowToInsert.put(Chrest._executionHistoryTableOperationColumnName, 
       ExecutionHistoryOperations.getOperationString(this.getClass(), Local.class.getEnclosingMethod())
     );
-    historyRowToInsert.put(Chrest._executionHistoryTableInputColumnName, "Test: " + test.toString() + "\nChild node ref: " + child.getReference());
+    historyRowToInsert.put(Chrest._executionHistoryTableInputColumnName, "Test: " + test.toString() + "\nChild node ref: " + childToAdd.getReference());
     historyRowToInsert.put(Chrest._executionHistoryTableDescriptionColumnName, "Using input to create new test & child from node " + this.getReference() + ".");
     
     String func = "- " + Local.class.getEnclosingMethod().getName() + ": ";
     
     this._model.printDebugStatement(func + "START");
     this._model.printDebugStatement(
-      func + "Node " + child.getReference() + " is to be added as a child to " +
+      func + "Node " + childToAdd.getReference() + " is to be added as a child to " +
       "node " + this.getReference() + " at time " + time + ".  Checking if " + 
-      "the parent and child nodes aren't the same, both exist at the time the " + 
-      "child is to be added, and whether the modality of the nodes are the same."
+      "these nodes aren't the same, both exist at the time the " + 
+      "child is to be added and whether the modality of the nodes are the same."
     );
     
     if(
-      this != child &&
+      this != childToAdd &&
       this.getCreationTime() <= time &&
-      child.getCreationTime() <= time &&
-      this.getModality() == child.getModality()
+      childToAdd.getCreationTime() <= time &&
+      this.getModality() == childToAdd.getModality()
     ){
       
       this._model.printDebugStatement(
-        func + "Checks passed, checking if test that will exist on the " +
-        "link from parent to child node is already present on an link from " +
-        "the parent to the child."
+        func + "Checks passed, checking if the test that will exist on the " +
+        "link from parent to child is already present on an link from " +
+        "the parent to the child or if the child to add is already a child of " +
+        "the parent."
       );
         
-      // ignore if the same test already exists
-      // NOTE: this.getChildren() can return null however, this will only happen
-      //       if it is passed a time that the Node does not exist.  Since this
-      //       is checked for in the conditional above, this.getChildren() will 
-      //       not, at this point, return null so no null check is performed.
-      for (Link testLink : this.getChildren(time)) {
-        if (testLink.getTest().equals (test)) {
-          historyRowToInsert.put(Chrest._executionHistoryTableDescriptionColumnName, "Test pattern specified (" + test.toString() + ") is already a test for node " + this.getReference() + ", exiting.");
-          historyRowToInsert.put(Chrest._executionHistoryTableOutputColumnName, "Node (ref: " + this.getReference() + ")");
-          this._model.addEpisodeToExecutionHistory(historyRowToInsert);
-          
-          this._model.printDebugStatement(
-            func + "Test is already present on a link from parent to child " +
-            "node, returning false"
-          );
-          this._model.printDebugStatement(func + "RETURN");
-          
-          return false;
+      List<Link> children = this.getChildren(time);
+      if(children != null){
+        for (Link testLink : children) {
+          if(testLink.getTest().equals(test) || testLink.getChildNode() == childToAdd) {
+            historyRowToInsert.put(Chrest._executionHistoryTableDescriptionColumnName, "Test pattern specified (" + test.toString() + ") is already a test for node " + this.getReference() + ", exiting.");
+            historyRowToInsert.put(Chrest._executionHistoryTableOutputColumnName, "Node (ref: " + this.getReference() + ")");
+            this._model.addEpisodeToExecutionHistory(historyRowToInsert);
+
+            this._model.printDebugStatement(
+              func + "Test is already present on a link from parent to child " +
+              "node or the child to add is already a child of the parent, " + 
+              "returning false"
+            );
+            this._model.printDebugStatement(func + "RETURN");
+
+            return false;
+          }
         }
       }
       
       this._model.printDebugStatement(
-        func + "Test does not already exist on a link from parent to child so " +
+        func + "Test does not already exist on a link from parent to child and " + 
+        "the child to add is not already a child of the parent so " +
         "an attempt will be made to add the child to the parent at time " + 
         time + "."
       );
 
       List<Link> testLinksToAdd = new ArrayList<>();
-      testLinksToAdd.add(new Link (test, child, time, currentExperimentName));
-      testLinksToAdd.addAll(this.getChildren(time));
+      testLinksToAdd.add(new Link (test, childToAdd, time, currentExperimentName));
+      if(children != null) testLinksToAdd.addAll(children);
       boolean updateChildHistorySuccessful = (boolean)this._childHistory.put(time, testLinksToAdd);
       
       if(updateChildHistorySuccessful){
-        historyRowToInsert.put(Chrest._executionHistoryTableDescriptionColumnName, "New test link with test " + test + " and child with ref " + child.getReference() + " added to node " + this.getReference() + " at time specified.");
-        historyRowToInsert.put(Chrest._executionHistoryTableOutputColumnName, "Array: Node (ref: " + child.getReference() +", true");     
+        historyRowToInsert.put(Chrest._executionHistoryTableDescriptionColumnName, "New test link with test " + test + " and child with ref " + childToAdd.getReference() + " added to node " + this.getReference() + " at time specified.");
+        historyRowToInsert.put(Chrest._executionHistoryTableOutputColumnName, "Array: Node (ref: " + childToAdd.getReference() +", true");     
         this._model.addEpisodeToExecutionHistory(historyRowToInsert);
 
         this.setChanged();
@@ -474,14 +476,13 @@ public class Node extends Observable {
       historyRowToInsert.put(Chrest._executionHistoryTableOutputColumnName, "Array: null, false");     
       this._model.addEpisodeToExecutionHistory(historyRowToInsert);
 
-      this._model.printDebugStatement(
-        func + "Checks not passed, either the parent and child are the same (" +
-        (this == child) + "), the parent does not exist at the time the child " + 
+      this._model.printDebugStatement(func + "Checks not passed, either the parent and child are the same (" +
+        (this == childToAdd) + "), the parent does not exist at the time the child " + 
         "is to be added (" + (this.getCreationTime() > time) + ", the child " +
         "does not exist at the time it is to be added to the parent " +
-        (child.getCreationTime() > time) + " or the modalities of the parent " +
+        (childToAdd.getCreationTime() > time) + " or the modalities of the parent " +
         "and child are not equal (" + (this.getModality() != 
-        child.getModality()) + "), returning false."
+        childToAdd.getModality()) + "), returning false."
       );
     }
     
@@ -527,14 +528,6 @@ public class Node extends Observable {
   /*************************/
   
   /**
-   * @return The most recent image for {@link #this}
-   */
-  public ListPattern getImage(){
-    Entry entry = this._imageHistory.lastEntry();
-    return entry == null ? null : (ListPattern)entry.getValue();
-  }
-  
-  /**
    * @param time
    * 
    * @return The image of this {@link #this} at the time specified.  If this 
@@ -575,14 +568,14 @@ public class Node extends Observable {
       "node was created before or at time " + time + " (creation time of node = " + 
       this.getCreationTime() + "), this node is not a root node and the " + 
       "new image's modality is equal to the modality of this node (modality " + 
-      "of this node = " + this.getImage(time).getModality() + ", modality of " +
+      "of this node = " + this.getModality() + ", modality of " +
       "new image = " + image.getModalityString() + ")."
     );
     
     if(
       this._creationTime <= time &&
       !this.isRootNode() &&
-      image.getModality() == this.getImage(time).getModality()
+      image.getModality() == this.getModality()
     ){
       boolean updateImageHistoryResult = (boolean)this._imageHistory.put(time, image);
       
@@ -740,14 +733,17 @@ public class Node extends Observable {
     if(
       this.getCreationTime() <= time &&
       node.getCreationTime() <= time &&
-      this.getImage(time).getModality() == Modality.VISUAL &&
-      node.getImage(time).getModality() == Modality.ACTION &&
+      this.getModality() == Modality.VISUAL &&
+      node.getModality() == Modality.ACTION &&
       !this.isRootNode() &&
       !node.isRootNode()
     ){
       HashMap<Node, Double> productionsToAdd = new HashMap();
-      productionsToAdd.putAll(this.getProductions(time));
       productionsToAdd.put(node, productionValue);
+      
+      HashMap<Node, Double> productions = this.getProductions(time);
+      if(productions != null) productionsToAdd.putAll(productions);
+      
       boolean updateProductionResult = (boolean)this._productionHistory.put(time, productionsToAdd);
 
       if(updateProductionResult){
@@ -824,8 +820,8 @@ public class Node extends Observable {
     if(
       this.getCreationTime() <= time &&
       node.getCreationTime() <= time &&
-      this.getImage(time).getModality() == Modality.VISUAL &&
-      node.getImage(time).getModality() == Modality.ACTION
+      this.getModality() == Modality.VISUAL &&
+      node.getModality() == Modality.ACTION
     ){
       
       //These could go in the conditional above but their results are used again
@@ -835,6 +831,7 @@ public class Node extends Observable {
         
       if(
         !rlt.equals("null") &&
+        currentProductions != null &&
         currentProductions.containsKey(node)
       ){
 
@@ -920,18 +917,21 @@ public class Node extends Observable {
       this.getCreationTime() <= time &&
       node.getCreationTime() <= time &&
       !this.isRootNode() &&
-      !node.isRootNode() &&
-      !this.getSemanticLinks(time).contains(node)
+      !node.isRootNode()
     ){
-      List<Node> semanticLinksToAdd = new ArrayList();
-      semanticLinksToAdd.add(node);
-      semanticLinksToAdd.addAll(this.getSemanticLinks(time));
-      boolean updateSemanticLinksResult = (boolean)this._semanticLinksHistory.put(time, semanticLinksToAdd);
+      List<Node> semanticLinks = this.getSemanticLinks(time);
+      if(semanticLinks != null && !semanticLinks.contains(node)){
+        
+        List<Node> semanticLinksToAdd = new ArrayList();
+        semanticLinksToAdd.add(node);
+        semanticLinksToAdd.addAll(semanticLinks);
+        boolean updateSemanticLinksResult = (boolean)this._semanticLinksHistory.put(time, semanticLinksToAdd);
 
-      if(updateSemanticLinksResult){
-        this.setChanged();
-        this.notifyObservers();
-        return true;
+        if(updateSemanticLinksResult){
+          this.setChanged();
+          this.notifyObservers();
+          return true;
+        }
       }
     }
     
@@ -988,6 +988,10 @@ public class Node extends Observable {
    *    a root node.
    *  </li>
    *  <li>
+   *    {@link #this} is not currently associated with the {@link 
+   *    jchrest.architecture.Node} to be associated.
+   *  </li>
+   *  <li>
    *    This function will not rewrite the associated node history of {@link 
    *    #this} (see {@link jchrest.architecture.Chrest#isRewritingHistory(
    *    java.util.TreeMap, int)).
@@ -1000,7 +1004,8 @@ public class Node extends Observable {
       this.getCreationTime() <= time &&
       node.getCreationTime() <= time &&
       !this.isRootNode() &&
-      !node.isRootNode()
+      !node.isRootNode() &&
+      this.getAssociatedNode(time) != node
     ){
       boolean updateAssociatedNodeResult = (boolean)this._associatedNodeHistory.put(time, node);
       
@@ -1049,8 +1054,8 @@ public class Node extends Observable {
       node.getCreationTime() <= time &&
       !this.isRootNode() &&
       !node.isRootNode() &&
-      this.getImage(time).getModality() == Modality.VISUAL &&
-      node.getImage(time).getModality() == Modality.VERBAL
+      this.getModality() == Modality.VISUAL &&
+      node.getModality() == Modality.VERBAL
     ){
       boolean updateNamedByResult = (boolean)this._namedByHistory.put(time, node);
       
@@ -1074,7 +1079,8 @@ public class Node extends Observable {
    * the time specified otherwise, {@link java.lang.Boolean#FALSE}.
    */
   public boolean isTemplate(int time){
-    return this.getCreationTime() <= time ? (boolean)this._templateHistory.floorEntry(time).getValue() : false;
+    Object result = this._templateHistory.floorEntry(time);
+    return result == null ? false : (boolean)result;
   }
   
   /** 
@@ -1135,12 +1141,18 @@ public class Node extends Observable {
 
       cumulativeImage.add( this.getImage(time).remove(contentsOfThisNode) );
 
-      for (Link link : this.getChildren(time)) {
-        cumulativeImage.add( link.getChildNode().getImage(time).remove(contentsOfThisNode) );
+      List<Link> children = this.getChildren(time);
+      if(children != null){
+        for (Link link : children) {
+          cumulativeImage.add( link.getChildNode().getImage(time).remove(contentsOfThisNode) );
+        }
       }
 
-      for (Node node : this.getSemanticLinks(time)) {
-        cumulativeImage.add( node.getImage(time).remove(contentsOfThisNode) );
+      List<Node> semanticLinks = this.getSemanticLinks(time);
+      if(semanticLinks != null){
+        for (Node node : semanticLinks) {
+          cumulativeImage.add( node.getImage(time).remove(contentsOfThisNode) );
+        }
       }
 
       //Create a hashmap of occurrences of items and positions in the cumulative
@@ -1225,12 +1237,18 @@ public class Node extends Observable {
         ListPattern contentsOfThisNode = this.getContents();
         cumulativeImage.add( this.getImage(time).remove(contentsOfThisNode) );
 
-        for (Link link : this.getChildren(time)) {
-          cumulativeImage.add( link.getChildNode().getImage(time).remove(contentsOfThisNode) );
+        List<Link> children = this.getChildren(time);
+        if(children != null){
+          for (Link link : children) {
+            cumulativeImage.add( link.getChildNode().getImage(time).remove(contentsOfThisNode) );
+          }
         }
 
-        for (Node node : this.getSemanticLinks(time)) {
-          cumulativeImage.add( node.getImage(time).remove(contentsOfThisNode) );
+        List<Node> semanticLinks = this.getSemanticLinks(time);
+        if(semanticLinks != null){
+          for (Node node : semanticLinks) {
+            cumulativeImage.add( node.getImage(time).remove(contentsOfThisNode) );
+          }
         }
 
         //Create a hashmap of occurrences of items and positions in the cumulative
@@ -1347,7 +1365,7 @@ public class Node extends Observable {
   Integer fillSlots (ListPattern pattern, int time) {
     if(
       this.isTemplate(time) &&
-      pattern.getModality() == this.getImage(time).getModality() &&
+      pattern.getModality() == this.getModality() &&
       !this._filledItemSlotsHistory.rewritingHistory(time) &&
       !this._filledPositionSlotsHistory.rewritingHistory(time)
     ){
@@ -1368,31 +1386,39 @@ public class Node extends Observable {
           ItemSquarePattern item = (ItemSquarePattern)(pattern.getItem (index));
 
           // only try to fill a slot if item is not already in image or slot
+          List<ItemSquarePattern> filledItemSlots = this.getFilledItemSlots(time);
+          List<ItemSquarePattern> filledPositionSlots = this.getFilledPositionSlots(time);
           if (
             !this.getImage(time).contains(item) && 
-            !this.getFilledItemSlots(time).contains(item) && 
-            !this.getFilledPositionSlots(time).contains(item)
+            (filledItemSlots != null && !filledItemSlots.contains(item)) && 
+            (filledPositionSlots != null && !filledPositionSlots.contains(item))
           ) { 
 
             // 1. check the item slots
-            for (String slot : this.getItemSlots(time)) {
-              if (!slotFilled) {
-                if (slot.equals(item.getItem ())) {
-                  itemsForItemSlot.add (item);
-                  slotFilled = true;
+            List<String> itemSlots = this.getItemSlots(time);
+            if(itemSlots != null){
+              for (String slot : itemSlots) {
+                if (!slotFilled) {
+                  if (slot.equals(item.getItem ())) {
+                    itemsForItemSlot.add (item);
+                    slotFilled = true;
+                  }
                 }
               }
             }
 
             // 2. check the position slots
-            for (Square slot : this.getPositionSlots(time)) {
-              if (!slotFilled) {
-                if (
-                  slot.getRow () == item.getRow() &&
-                  slot.getColumn () == item.getColumn()
-                ){
-                  itemsForPositionSlot.add (item);
-                  slotFilled = true;
+            List<Square> positionSlots = this.getPositionSlots(time);
+            if(positionSlots != null){
+              for (Square slot : positionSlots) {
+                if (!slotFilled) {
+                  if (
+                    slot.getRow () == item.getRow() &&
+                    slot.getColumn () == item.getColumn()
+                  ){
+                    itemsForPositionSlot.add (item);
+                    slotFilled = true;
+                  }
                 }
               }
             }
@@ -1517,7 +1543,7 @@ public class Node extends Observable {
     List<ItemSquarePattern> filledPositionSlots = this.getFilledPositionSlots(time);
     
     if(filledItemSlots != null && filledPositionSlots != null){
-      ListPattern listPattern = new ListPattern(this.getImage(time).getModality());
+      ListPattern listPattern = new ListPattern(this.getModality());
       List<ItemSquarePattern> filledItemAndPositionSlots = new ArrayList();
       filledItemAndPositionSlots.addAll(filledItemSlots);
       filledItemAndPositionSlots.addAll(filledPositionSlots);
@@ -1554,30 +1580,46 @@ public class Node extends Observable {
    */
   public void writeNodeAsVna (Writer writer, int time) throws IOException {
     writer.write ("" + _reference + " \"" + _contents.toString() + "\"\n");
-    for (Link link : this.getChildren(time)) {
-      link.getChildNode().writeNodeAsVna (writer, time);
+    
+    List<Link> children = this.getChildren(time);
+    if(children != null){
+      for (Link link : children) {
+        link.getChildNode().writeNodeAsVna (writer, time);
+      }
     }
   }
 
   public void writeLinksAsVna (Writer writer, int time) throws IOException {
-    // write my links
-    for (Link link : this.getChildren(time)) {
-      writer.write ("" + _reference + " " + link.getChildNode().getReference () + "\n");
-    }
-    // repeat for children
-    for (Link link : this.getChildren(time)) {
-      link.getChildNode().writeLinksAsVna (writer, time);
+    List<Link> children = this.getChildren(time);
+    if(children != null){
+      
+      // write my links
+      for (Link link : children) {
+        writer.write ("" + _reference + " " + link.getChildNode().getReference () + "\n");
+      }
+    
+      // repeat for children
+      for (Link link : this.getChildren(time)) {
+        link.getChildNode().writeLinksAsVna (writer, time);
+      }
     }
   }
 
   public void writeSemanticLinksAsVna (Writer writer, int time) throws IOException {
     // write my links
-    for (Node node : this.getSemanticLinks(time)) {
-      writer.write ("" + _reference + " " + node.getReference () + "\n");
+    List<Node> semanticLinks = this.getSemanticLinks(time);
+    if(semanticLinks != null){
+      for (Node node : semanticLinks) {
+        writer.write ("" + _reference + " " + node.getReference () + "\n");
+      }
     }
+    
     // repeat for children
-    for (Link link : this.getChildren(time)) {
-      link.getChildNode().writeSemanticLinksAsVna (writer, time);
+    List<Link> children = this.getChildren(time);
+    if(children != null){
+      for (Link link : children) {
+        link.getChildNode().writeSemanticLinksAsVna (writer, time);
+      }
     }
   }
 }

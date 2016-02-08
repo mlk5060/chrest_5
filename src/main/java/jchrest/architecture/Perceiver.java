@@ -111,13 +111,13 @@ public class Perceiver {
     Stm visualStm = _model.getStm(Modality.VISUAL);
     if (visualStm.getCount(time) >= 1) {
       List<Link> hypothesisChildren = visualStm.getItem(0, time).getChildren (time);
-      if (hypothesisChildren.isEmpty ()) return false;
-      //        System.out.println ("Checking LTM heuristic");
+      if (hypothesisChildren == null || hypothesisChildren.isEmpty ()) return false;
+      
       for (int i = 0; i < hypothesisChildren.size () && i < 1; ++i) { // *** i == 0 only
         ListPattern test = hypothesisChildren.get(i).getTest ();
         if (test.isEmpty ()) continue; // return false;
         Pattern first = test.getItem (0);
-        //        System.out.println ("Checking: " + first);
+        
         if (first instanceof ItemSquarePattern) {
           ItemSquarePattern iosWithDomainSpecificCoordinates = (ItemSquarePattern)first;
           

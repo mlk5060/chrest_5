@@ -33,11 +33,10 @@ class NodeDisplay implements LtmTreeViewNode {
   }
 
   private String toDisplay () {
-    if (_node.getReference () == 0) {
-      return _node.getImage().getModalityString ();
+    if (_node.isRootNode()) {
+      return _node.getModality().toString();
     } else {
-      //return _node.getHistoricalImage(this._stateAtTime).toString();
-      return _node.getImage().toString ();
+      return _node.getImage(_time).toString();
     }
   }
 
@@ -50,14 +49,16 @@ class NodeDisplay implements LtmTreeViewNode {
       width = size.getSmallSize ();
     } else {
       int fixedItemsWidth = Math.max (getNodeNumberWidth (g, size), 
-          size.getWidth (toDisplay (), g));
-      if (_node.getAssociatedNode (_time) != null) {
-        fixedItemsWidth = Math.max (fixedItemsWidth, 
-            size.getWidth (_node.getAssociatedNode(_time).getReference() + "", g));
+          size.getWidth (toDisplay(), g));
+      
+      Node associatedNode = _node.getAssociatedNode (_time);
+      if (associatedNode != null) {
+        fixedItemsWidth = Math.max (fixedItemsWidth, size.getWidth (associatedNode.getReference() + "", g));
       }
-      if (_node.getNamedBy (_time) != null) {
-        fixedItemsWidth = Math.max (fixedItemsWidth, 
-            size.getWidth (_node.getNamedBy(_time).getReference() + "", g));
+      
+      Node namedBy = _node.getNamedBy (_time);
+      if (namedBy != null) {
+        fixedItemsWidth = Math.max (fixedItemsWidth, size.getWidth (namedBy.getReference() + "", g));
       }
       width += fixedItemsWidth;
     }
@@ -76,13 +77,17 @@ class NodeDisplay implements LtmTreeViewNode {
       height += getNodeNumberHeight (g, size);
       height += size.getMargin (); // gap between the two
       height += size.getHeight (toDisplay ().toString (), g);
-      if (_node.getAssociatedNode(_time) != null) {
+      
+      Node associatedNode = _node.getAssociatedNode(_time);
+      if (associatedNode != null) {
         height += size.getMargin ();
-        height += size.getHeight (_node.getAssociatedNode(_time).getReference() + "", g);
+        height += size.getHeight (associatedNode.getReference() + "", g);
       }
-      if (_node.getNamedBy(_time) != null) {
+      
+      Node namedBy = _node.getNamedBy(_time);
+      if (namedBy != null) {
         height += size.getMargin ();
-        height += size.getHeight (_node.getNamedBy(_time).getReference() + "", g);
+        height += size.getHeight (namedBy.getReference() + "", g);
       }
     }
     return height;
@@ -126,15 +131,19 @@ class NodeDisplay implements LtmTreeViewNode {
 
     int textHeight = size.getHeight (getNodeNumberString (), g);
     size.drawText (g, x, y + textHeight + size.getMargin (), toDisplay ().toString ());
-    if (_node.getAssociatedNode (_time) != null) {
-      textHeight += size.getMargin () + size.getHeight ((_node.getAssociatedNode(_time).getReference() + ""), g);
+    
+    Node associatedNode = _node.getAssociatedNode (_time);
+    if (associatedNode != null) {
+      textHeight += size.getMargin () + size.getHeight ((associatedNode.getReference() + ""), g);
       g.setColor (Color.BLUE);
-      size.drawText (g, x, y + textHeight + size.getMargin (), _node.getAssociatedNode(_time).getReference() + "");
+      size.drawText (g, x, y + textHeight + size.getMargin (), associatedNode.getReference() + "");
     }
-    if (_node.getNamedBy (_time) != null) {
-      textHeight += size.getMargin () + size.getHeight ((_node.getNamedBy(_time).getReference() + ""), g);
+    
+    Node namedBy = _node.getNamedBy (_time);
+    if (namedBy != null) {
+      textHeight += size.getMargin () + size.getHeight ((namedBy.getReference() + ""), g);
       g.setColor (Color.GREEN);
-      size.drawText (g, x, y + textHeight + size.getMargin (), _node.getNamedBy(_time).getReference() + "");
+      size.drawText (g, x, y + textHeight + size.getMargin (), namedBy.getReference() + "");
     }
   }
 

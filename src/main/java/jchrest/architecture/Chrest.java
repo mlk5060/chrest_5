@@ -12,6 +12,7 @@ import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.sql.SQLException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -738,8 +739,11 @@ public class Chrest extends Observable {
       List<Integer> depths = new ArrayList ();
 
       // -- find every depth
-      for (Link link : node.getChildren(time)) {
-        this.findDepth(link.getChildNode(), 1, depths, time);
+      List<Link> nodeChildren = node.getChildren(time);
+      if(nodeChildren != null){
+        for (Link link : node.getChildren(time)) {
+          this.findDepth(link.getChildNode(), 1, depths, time);
+        }
       }
 
       // -- compute the average of the depths
@@ -757,18 +761,15 @@ public class Chrest extends Observable {
     return null;
   }
   
-  /**
-   * If this {@link #this} is a child node, then add its depth to depths 
-   * otherwise, continue searching through children for the depth.
-   */
   private void findDepth (Node node, int currentDepth, List<Integer> depths, int time) {
     List<Link> children = node.getChildren(time);
     
-    if (children.isEmpty ()) {
-      depths.add (currentDepth);
-    } else {
+    if(children == null || children.isEmpty()) {
+      depths.add(currentDepth);
+    } 
+    else {
       for (Link link : children) {
-        this.findDepth (link.getChildNode(), currentDepth + 1, depths, time);
+        this.findDepth(link.getChildNode(), currentDepth + 1, depths, time);
       }
     }
   }
@@ -868,11 +869,14 @@ public class Chrest extends Observable {
    * {@link jchrest.architecture.Node} passed at the time specified.
    */
   private int countTemplatesBelowNode (Node node, int count, int time) {
-    Boolean nodeIsTemplate = node.isTemplate (time);
-    if (nodeIsTemplate) count += 1;
+    boolean nodeIsTemplate = node.isTemplate (time);
+    if(nodeIsTemplate) count += 1;
 
-    for (Link link : node.getChildren(time)) {
-      count += this.countTemplatesBelowNode(link.getChildNode(), count, time);
+    List<Link> children = node.getChildren(time);
+    if(children != null){
+      for (Link link : children) {
+        count += this.countTemplatesBelowNode(link.getChildNode(), count, time);
+      }
     }
 
     return count;
@@ -910,8 +914,11 @@ public class Chrest extends Observable {
       contentSizeCountsAndFrequencies.put (contentsSize, 1);
     }
 
-    for (Link child : node.getChildren(time)) {
-      this.getContentSizeCounts(child.getChildNode(), contentSizeCountsAndFrequencies, time);
+    List<Link> children = node.getChildren(time);
+    if(children != null){
+      for (Link child : children) {
+        this.getContentSizeCounts(child.getChildNode(), contentSizeCountsAndFrequencies, time);
+      }
     }
   }
 
@@ -940,16 +947,22 @@ public class Chrest extends Observable {
    * @param time
    */
   public void getImageSizeCounts (Node node, Map<Integer, Integer> sizesToFrequencies, int time) {
-    int size = node.getImage(time).size();
+    ListPattern image = node.getImage(time);
+    if(image != null){
+      int size = image.size();
     
-    if (sizesToFrequencies.containsKey (size)) {
-      sizesToFrequencies.put (size, sizesToFrequencies.get(size) + 1);
-    } else {
-      sizesToFrequencies.put (size, 1);
+      if (sizesToFrequencies.containsKey (size)) {
+        sizesToFrequencies.put (size, sizesToFrequencies.get(size) + 1);
+      } else {
+        sizesToFrequencies.put (size, 1);
+      }
     }
 
-    for (Link child : node.getChildren(time)) {
-      this.getImageSizeCounts(child.getChildNode(), sizesToFrequencies, time);
+    List<Link> children = node.getChildren(time);
+    if(children != null){
+      for (Link child : children) {
+        this.getImageSizeCounts(child.getChildNode(), sizesToFrequencies, time);
+      }
     }
   }
   
@@ -960,10 +973,17 @@ public class Chrest extends Observable {
    * jchrest.architecture.Node} specified at the time specified.
    */
   private int totalImageSize (Node node, int time) {
-    int size = node.getImage(time).size();
+    int size = 0;
+    ListPattern image = node.getImage(time);
+    if(image != null){
+      size = image.size();
+    }
     
-    for (Link link : node.getChildren(time)) {
-      size += this.totalImageSize(link.getChildNode(), time);
+    List<Link> children = node.getChildren(time);
+    if(children != null){
+      for (Link link : children) {
+        size += this.totalImageSize(link.getChildNode(), time);
+      }
     }
 
     return size;
@@ -1003,11 +1023,19 @@ public class Chrest extends Observable {
    * @return See parameter documentation.
    */
   protected int getProductionCount(Node node, boolean recurse, int time){
-    int count = node.getProductions(time).size();
+    int count = 0;
     
-    if(recurse){
-      for(Link link : node.getChildren(time)){
-        count += this.getProductionCount(link.getChildNode(), true, time);
+    HashMap<Node, Double> productions = node.getProductions(time);
+    if(productions != null){
+      count = productions.size();
+      
+      if(recurse){
+        List<Link> children = node.getChildren(time);
+        if(children != null){
+          for(Link link : children){
+            count += this.getProductionCount(link.getChildNode(), true, time);
+          }
+        }
       }
     }
     
@@ -1038,7 +1066,12 @@ public class Chrest extends Observable {
    * @param time
    */
   public void getSemanticLinkCounts (Node node, Map<Integer, Integer> semanticLinkCountsAndFrequencies, int time) {
-    int semanticLinkCount = node.getSemanticLinks(time).size ();
+    int semanticLinkCount = 0;
+    
+    List<Node> semanticLinks = node.getSemanticLinks(time);
+    if(semanticLinks != null){
+      semanticLinkCount = semanticLinks.size ();
+    }
     
     if (semanticLinkCount > 0) { // do not count nodes with no semantic links
       if (semanticLinkCountsAndFrequencies.containsKey (semanticLinkCount)) {
@@ -1048,8 +1081,11 @@ public class Chrest extends Observable {
       }
     }
 
-    for (Link child : node.getChildren(time)) {
-      this.getSemanticLinkCounts(child.getChildNode(), semanticLinkCountsAndFrequencies, time);
+    List<Link> children = node.getChildren(time);
+    if(children != null){
+      for (Link child : children) {
+        this.getSemanticLinkCounts(child.getChildNode(), semanticLinkCountsAndFrequencies, time);
+      }
     }
   }
   
@@ -1242,12 +1278,12 @@ public class Chrest extends Observable {
         ArrayList<ArrayList<Object[]>> lastRowInserted = this._databaseInterface.executeSqliteQuery(getLastRowInsertedSql, null);
 
         if(lastRowInserted != null){
-          for(ArrayList<Object[]> rowData : lastRowInserted){
+          lastRowInserted.stream().forEach((rowData) -> {
             for(int col = 0; col < rowData.size(); col++){
               Object[] colData = rowData.get(col);
               Chrest.this._lastHistoryRowInserted.put((String)colData[0], colData[1]);
             }
-          }
+          });
 
         }
       } catch (SQLException ex) {
@@ -1496,7 +1532,6 @@ public class Chrest extends Observable {
    */
   public boolean canDrawLtmState(int time){
     int ltmSize = 0;
-    
     for(Modality modality : Modality.values()){
       ltmSize += this.getLtmModalitySize(modality, time);
     }
@@ -1666,7 +1701,8 @@ public class Chrest extends Observable {
     
       //If the test below passes, it may be that the node retrieved is not equal
       //to the first pattern so some overgeneralisation may occur.
-      if(recognisedNode.getImage(time).matches(pattern)){
+      ListPattern recognisedNodeImage = recognisedNode.getImage(time);
+      if(recognisedNodeImage.matches(pattern)){
       
         HashMap<Node, Double> recognisedNodeProductions = recognisedNode.getProductions(time);
         if(recognisedNodeProductions != null) {
@@ -1679,10 +1715,11 @@ public class Chrest extends Observable {
             //Increment time since a production is being traversed to.
             time += this._ltmLinkTraversalTime;
           
-            if (productionNode.getImage(time).matches (actionPattern)) {
+            ListPattern productionNodeImage = productionNode.getImage(time);
+            if (productionNodeImage.matches (actionPattern)) {
               
               //TODO: this is overlearning the first pattern?
-              if (productionNode.getImage(time).equals(actionPattern)) {
+              if (productionNodeImage.equals(actionPattern)) {
                 actionPatternAlreadyProduction = true;
                 recogniseAndLearn (pattern, time); 
               }
@@ -2027,7 +2064,7 @@ public class Chrest extends Observable {
       ListPattern sortedPattern = pattern;
       int linkToCheck = 0;
 
-      while (linkToCheck < currentNodeTestLinks.size()) {
+      while(currentNodeTestLinks != null && linkToCheck < currentNodeTestLinks.size()) {
         Link currentNodeTestLink = currentNodeTestLinks.get(linkToCheck);
         
         this.printDebugStatement(
@@ -2178,60 +2215,63 @@ public class Chrest extends Observable {
       );
       
       Node bestNode = node;
-      for (Node comparisonNode : node.getSemanticLinks(time)) {
+      List<Node> semanticLinks = node.getSemanticLinks(time);
+      if(semanticLinks != null){
+        for (Node comparisonNode : semanticLinks) {
 
-        this.printDebugStatement(
-          func + "Checking semantically linked to node (ref: " + 
-          comparisonNode.getReference() + ")."
-        );
-        
-        if(considerTime){
           this.printDebugStatement(
-            "Incrementing current time (" + time + ") by the time taken to " +
-            "traverse a long-term memory link (" + this._ltmLinkTraversalTime + 
-            ") and setting the cognition clock to this value."
-          );
-          
-          this._cognitionClock = time + this._ltmLinkTraversalTime;
-        }
-
-        this.printDebugStatement(
-          "Searching semantic links of node semantically linked to node " +
-          "with ref: " + comparisonNode.getReference() + "."
-        );
-        
-        Node bestChild = this.searchSemanticLinks(comparisonNode, semanticSearchDistanceRemaining - 1, this._cognitionClock, considerTime);
-
-        this.printDebugStatement(
-          func + "Checking if most informative semantic child node (" + 
-          bestChild.getReference() + ") is more informative than this node (" + 
-          bestNode.getReference() + ")."
-        );
-        
-        if(considerTime){
-          
-          this.printDebugStatement(
-            "Since a node comparison is occurring, the current time will be " +
-            "incremented by the time taken to perform a node comparison (" + 
-            this._nodeComparisonTime + ") and the cognition clock will be set " +
-            "to this value."
-          );
-          
-          this._cognitionClock += this._nodeComparisonTime;
-        }
-
-        if(
-          bestChild.information(considerTime ? this._cognitionClock : time) > 
-          bestNode.information (considerTime ? this._cognitionClock : time)
-        ) {
-          
-          this.printDebugStatement(
-            func + "Most informative semantic child node (" + bestChild.getReference() + 
-            ") is more informative than this node " + bestNode.getReference() + 
-            " so node " + bestChild.getReference() + " will be returned"
+            func + "Checking semantically linked to node (ref: " + 
+            comparisonNode.getReference() + ")."
           );
 
-          bestNode = bestChild;
+          if(considerTime){
+            this.printDebugStatement(
+              "Incrementing current time (" + time + ") by the time taken to " +
+              "traverse a long-term memory link (" + this._ltmLinkTraversalTime + 
+              ") and setting the cognition clock to this value."
+            );
+
+            this._cognitionClock = time + this._ltmLinkTraversalTime;
+          }
+
+          this.printDebugStatement(
+            "Searching semantic links of node semantically linked to node " +
+            "with ref: " + comparisonNode.getReference() + "."
+          );
+
+          Node bestChild = this.searchSemanticLinks(comparisonNode, semanticSearchDistanceRemaining - 1, this._cognitionClock, considerTime);
+
+          this.printDebugStatement(
+            func + "Checking if most informative semantic child node (" + 
+            bestChild.getReference() + ") is more informative than this node (" + 
+            bestNode.getReference() + ")."
+          );
+
+          if(considerTime){
+
+            this.printDebugStatement(
+              "Since a node comparison is occurring, the current time will be " +
+              "incremented by the time taken to perform a node comparison (" + 
+              this._nodeComparisonTime + ") and the cognition clock will be set " +
+              "to this value."
+            );
+
+            this._cognitionClock += this._nodeComparisonTime;
+          }
+
+          if(
+            bestChild.information(considerTime ? this._cognitionClock : time) > 
+            bestNode.information (considerTime ? this._cognitionClock : time)
+          ) {
+
+            this.printDebugStatement(
+              func + "Most informative semantic child node (" + bestChild.getReference() + 
+              ") is more informative than this node " + bestNode.getReference() + 
+              " so node " + bestChild.getReference() + " will be returned"
+            );
+
+            bestNode = bestChild;
+          }
         }
       }
 
@@ -2667,7 +2707,7 @@ public class Chrest extends Observable {
     
     this.printDebugStatement(
       func + "Attempting to add node " + nodeToAdd.getReference() + " to " +
-      nodeToAdd.getImage(time).getModalityString() + " STM.  Checking if " + 
+      nodeToAdd.getModality() + " STM.  Checking if " + 
       "attention resource is free at time function invoked i.e. is the " +
       "current attention clock value (" + this._attentionClock + ") <= the " + 
       "time this function is invoked (" + time + ")?"
@@ -2683,7 +2723,7 @@ public class Chrest extends Observable {
         this._timeToUpdateStm + ")."
       );
       
-      Stm stm = this.getStm(nodeToAdd.getImage(time).getModality());
+      Stm stm = this.getStm(nodeToAdd.getModality());
       
       // TODO: Check if this is the best place
       // Idea is that nodeToAdd's filled slots are cleared when put into STM, 
@@ -2870,7 +2910,7 @@ public class Chrest extends Observable {
   public void replaceStmHypothesis(Node replacement, int time){
     if(this._attentionClock < time){
       time += this._timeToUpdateStm;
-      Stm stmToReplaceHypothesisIn = this.getStm(replacement.getImage(time).getModality());
+      Stm stmToReplaceHypothesisIn = this.getStm(replacement.getModality());
       if(stmToReplaceHypothesisIn.replaceHypothesis(replacement, time)){
         this._attentionClock = time;
       }
@@ -2943,8 +2983,11 @@ public class Chrest extends Observable {
       node.makeTemplate(time);
     }
     
-    for (Link link : node.getChildren(time)) {
-      this.makeTemplates (link.getChildNode(), time);
+    List<Link> children = node.getChildren(time);
+    if(children != null){
+      for (Link link : children) {
+        this.makeTemplates (link.getChildNode(), time);
+      }
     }
   }
 
@@ -3194,7 +3237,7 @@ public class Chrest extends Observable {
 
         //If the node isn't the visual LTM root node (nothing recognised) then,
         //continue.
-        if(this.getLtmModalityRootNode(Modality.VISUAL) != node && !nodeImage.isEmpty()){
+        if(!node.isRootNode()){
 
           if(debug) System.out.println("   - Processing chunk: " + nodeImage.toString());
           if (_canCreateTemplates) { // check if templates needed
@@ -3355,15 +3398,19 @@ public class Chrest extends Observable {
       
       Map<ListPattern, Integer> moveFrequencies = new HashMap<ListPattern, Integer> ();
       for (Node node : _visualStm) {
-        for (Node action : node.getProductions (time).keySet()) {
-          if (sameColour(action.getImage(time), colour)) {
-            if (moveFrequencies.containsKey(action.getImage (time))) {
-              moveFrequencies.put (
-                  action.getImage (time), 
-                  moveFrequencies.get(action.getImage (time)) + 1
-                  );
-            } else {
-              moveFrequencies.put (action.getImage (time), 1);
+        
+        HashMap<Node, Double> productions = node.getProductions (time);
+        if(productions != null){
+          for (Node action : productions.keySet()) {
+            if (sameColour(action.getImage(time), colour)) {
+              if (moveFrequencies.containsKey(action.getImage (time))) {
+                moveFrequencies.put (
+                    action.getImage (time), 
+                    moveFrequencies.get(action.getImage (time)) + 1
+                    );
+              } else {
+                moveFrequencies.put (action.getImage (time), 1);
+              }
             }
           }
         }
