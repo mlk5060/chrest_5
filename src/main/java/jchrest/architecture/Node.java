@@ -1079,7 +1079,7 @@ public class Node extends Observable {
    * the time specified otherwise, {@link java.lang.Boolean#FALSE}.
    */
   public boolean isTemplate(int time){
-    Object result = this._templateHistory.floorEntry(time);
+    Object result = this._templateHistory.floorEntry(time).getValue();
     return result == null ? false : (boolean)result;
   }
   
