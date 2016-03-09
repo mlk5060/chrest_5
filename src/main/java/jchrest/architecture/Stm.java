@@ -186,7 +186,7 @@ public class Stm implements Iterable<Node> {
    * If either of the conditions above are not true, the hypothesis is not 
    * replaced and {@link java.lang.Boolean#FALSE} is returned.
    */
-  boolean replaceHypothesis (Node replacement, int time) {
+  public boolean replaceHypothesis (Node replacement, int time) {
     if(
       this._creationTime <= time &&
       replacement.getCreationTime() <= time &&
@@ -297,7 +297,7 @@ public class Stm implements Iterable<Node> {
    * at the time specified.  If {@link #this} did not exist at the time 
    * specified, null is returned.
    */
-  Integer getCount (int time) {
+  public Integer getCount (int time) {
     List<Node> contentsAtTime = this.getContents(time);
     return contentsAtTime == null? null : contentsAtTime.size();
   }
@@ -309,7 +309,7 @@ public class Stm implements Iterable<Node> {
    * {@link #this} at the time specified.  If {@link #this} did not exist at the 
    * time specified, null is returned.
    */
-  Node getItem (int index, int time) {
+  public Node getItem (int index, int time) {
     List<Node> contentsAtTime = this.getContents(time);
     return contentsAtTime == null ? null : contentsAtTime.get(index);
   }
