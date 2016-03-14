@@ -1,16 +1,21 @@
 // Copyright (c) 2012, Peter C. R. Lane
 // Released under Open Works License, http://owl.apotheon.org/
 
-package jchrest.lib;
+package jchrest.domainSpecifics;
 
 import java.util.ArrayList;
+import java.util.Objects;
 import jchrest.architecture.VisualSpatialField;
+import jchrest.lib.ItemSquarePattern;
+import jchrest.lib.ListPattern;
+import jchrest.lib.PrimitivePattern;
+import jchrest.lib.Square;
 
 /**
  * Represents a 2D external environment that a CHREST model can "see" as a 2D
  * {@link java.util.ArrayList}.  Currently, only one object can be encoded per
- * coordinate in the {@link jchrest.lib.Scene}.  The {@link java.util.ArrayList}
- * created has the following structure when created:
+ * coordinate in the {@link jchrest.domainSpecifics.Scene}.  The {@link 
+ * java.util.ArrayList} created has the following structure when created:
  * 
  * <ul>
  *  <li>
@@ -25,14 +30,20 @@ import jchrest.architecture.VisualSpatialField;
  * 
  * Constructing the data structure in this way means that coordinate 
  * specification must follow the form of x-coordinate <b>then</b> y-coordinate.
- * Thus, coordinate specification in a {@link jchrest.lib.Scene} instance is
- * congruent with the "along the corridor, up the stairs" approach to 2D grid
- * reading.
+ * Thus, coordinate specification in a {@link jchrest.domainSpecifics.Scene} is
+ * congruent with the <a href="http://www.bbc.co.uk/schools/teachers/
+ * ks2_lessonplans/maths/grids.shtml"> along the corridor, up the stairs</a> 
+ * approach to 2D grid reading. 
  * 
  * Rows and columns are zero-indexed and therefore, identifying coordinates in
- * a {@link jchrest.lib.Scene} should not use coordinates specific to the
- * external environment (unless coordinates for the external environment are
- * also zero-indexed).
+ * a {@link jchrest.domainSpecifics.Scene} should not use coordinates specific 
+ * to the external environment (unless coordinates for the external environment 
+ * are also zero-indexed). However, {@link jchrest.domainSpecifics.Scene Scenes} 
+ * are capable of returning the domain-specific coordinates of any coordinate 
+ * they represent since the minimum x/y-coordinate that the {@link 
+ * jchrest.domainSpecifics.Scene} represents is required when {@link 
+ * #this#Scene(java.lang.String, int, int, int, int, 
+ * jchrest.architecture.VisualSpatialField)} is invoked.
  * 
  * @author Peter C. R. Lane <p.c.lane@herts.ac.uk>
  * @author Martyn Lloyd-Kelly <martynlk@liverpool.ac.uk>
@@ -46,10 +57,15 @@ public class Scene {
   private final int _height;
   private final int _width;
   
+  //The minimum x and y coordinate values in the domain that this scene is to
+  //represent.
+  private final int _minimumDomainSpecificColumn;
+  private final int _minimumDomainSpecificRow;
+  
   private final VisualSpatialField _visualSpatialFieldGeneratedFrom;
   
   //The string used to denote blind squares in a Scene, i.e. squares that can't 
-  //be seen in a Scene instance.
+  //be seen.
   private static final String BLIND_SQUARE_TOKEN = "null";
   
   //The string used to denote empty squares.
@@ -66,6 +82,12 @@ public class Scene {
    * and items must be added using the appropriate methods from this class.
    * 
    * @param name Human-readable identifier for the Scene instance created.
+   * @param minDomainSpecificXCoordinate The minimum x-coordinate value in the 
+   * domain that {@link #this} is intended to represent.  Note that this value
+   * must represent an absolute coordinate value in the domain.
+   * @param minDomainSpecificYCoordinate The minimum y-coordinate value in the 
+   * domain that {@link #this} is intended to represent.  Note that this value
+   * must represent an absolute coordinate value in the domain.
    * @param width Represents the maximum number of indivisible x-coordinates 
    * that can be "seen".
    * @param height Represents the maximum number of indivisible y-coordinates 
@@ -73,13 +95,22 @@ public class Scene {
    * @param visualSpatialFieldGeneratedFrom Set to null if this {@link #this} is
    * not being generated from a {@link jchrest.architecture.VisualSpatialField}
    */
-  public Scene (String name, int width, int height, VisualSpatialField visualSpatialFieldGeneratedFrom) {
+  public Scene(String name, int width, int height, int minDomainSpecificXCoordinate, int minDomainSpecificYCoordinate, VisualSpatialField visualSpatialFieldGeneratedFrom) {
+    if(width <= 0 || height <= 0){
+      throw new IllegalArgumentException(
+        "The width (" + width + ") or height (" + height + ") specified for a " +
+        "new Scene is <= 0."
+      );
+    }
+    
     this._name = name;
     this._height = height;
     this._width = width;
+    this._minimumDomainSpecificColumn = minDomainSpecificXCoordinate;
+    this._minimumDomainSpecificRow = minDomainSpecificYCoordinate;
     this._visualSpatialFieldGeneratedFrom = visualSpatialFieldGeneratedFrom;
     
-    //Instantiate Scene with ScenObjects representing blind squares at first 
+    //Instantiate Scene with SceneObjects representing blind squares at first 
     //(empty squares must be encoded explicitly).  Note that identifiers for 
     //blind SceneObjects are not unique since blind squares can not be moved in 
     //a visual-spatial field if they are converted to VisualSpatialFieldObject 
@@ -96,19 +127,39 @@ public class Scene {
   }
   
   /**
-   * Creates a new {@link jchrest.lib.SceneObject} and inserts it into the 
-   * specified coordinate in this {@link #this}.  If a {@link 
-   * jchrest.lib.SceneObject} already exists on the coordinates specified, the 
-   * new {@link jchrest.lib.SceneObject} overwrites the old one.
+   * Adds the specified {@link jchrest.domainSpecifics.SceneObject} to the
+   * coordinates specified by {@code col} and {@code row}.  These coordinates 
+   * should be specific to {@link #this}, i.e. zero-indexed.
+   * 
+   * @param col
+   * @param row
+   * @param item 
+   */
+  public void addItemToSquare(int col, int row, SceneObject item){
+    if(row < 0 || row > this._height || col < 0 || col > this._width){
+      throw new IllegalArgumentException(
+        "The column or row to add a SceneObject to (" + col + "," + row + ") " +
+        "is < 0 or greater than the maximum width/height of the scene with " +
+        "name '" + this._name + "' (" + this._width + " and " + this._height + 
+        ", respectively)."
+      );
+    }
+    _scene.get(col).set(row, item);
+  }
+  
+  /**
+   * Wrapper for {@link #this#addItemToSquare(int, int, 
+   * jchrest.domainSpecifics.SceneObject)} that creates a new {@link 
+   * jchrest.lib.SceneObject} using the {@code itemIdentifier} and {@code 
+   * objectClass} specified.
    * 
    * @param row
    * @param col
    * @param itemIdentifier
    * @param objectClass
    */
-  public void addItemToSquare (int col, int row, String itemIdentifier, String objectClass) {
-    assert (row >= 0 && row < _height && col >= 0 && col < _width);
-    _scene.get(col).set(row, new SceneObject(itemIdentifier, objectClass));
+  public void addItemToSquare(int col, int row, String itemIdentifier, String objectClass) {
+    this.addItemToSquare(col, row, new SceneObject(itemIdentifier, objectClass));
   }
   
   /**
@@ -134,6 +185,28 @@ public class Scene {
   }
   
   /**
+   * @param domainSpecificCol
+   * @param domainSpecificRow
+   * 
+   * @return Whether or not the {@code domainSpecificCol} and {@code 
+   * domainSpecificRow} specified are represented in {@link #this}. 
+   */
+  public boolean areDomainSpecificCoordinatesRepresented(int domainSpecificCol, int domainSpecificRow){
+    for(int col = 0; col < this.getWidth(); col++){
+      for(int row = 0; row < this.getHeight(); row++){
+        if(
+          this._minimumDomainSpecificColumn + col == domainSpecificCol &&
+          this._minimumDomainSpecificRow + row == domainSpecificRow
+        ){
+          return true;
+        }
+      }
+    }
+    
+    return false;
+  }
+  
+  /**
    * Compute the errors of commission in this {@link #this} compared to another.
    * 
    * @param sceneToCompareAgainst
@@ -145,12 +218,13 @@ public class Scene {
    *    calculation are equal, the number of {@link jchrest.lib.SceneObject}s 
    *    that are in this {@link #this} but not the other is returned.  For 
    *    example, if this {@link #this} were to have 4 {@link 
-   *    jchrest.lib.SceneObject}s and another {@link jchrest.lib.Scene} were to 
-   *    have 3, the output of this function would be 1 (blind and empty 
-   *    {@link jchrest.lib.SceneObject}s are not included in the calculation).  
+   *    jchrest.lib.SceneObject SceneObjects} and another {@link 
+   *    jchrest.domainSpecifics.Scene} were to have 3, the output of this 
+   *    function would be 1 (blind and empty {@link jchrest.lib.SceneObject 
+   *    SceneObjects} are not included in the calculation).  
    *  </li>
    *  <li>
-   *    If the number of squares in the {@link #this}s to be used in the 
+   *    If the number of squares in {@link #this} that are to be used in the 
    *    calculation are not equal, an error is thrown since a fair calculation 
    *    can not be made in these circumstances.  
    *  </li>
@@ -192,7 +266,7 @@ public class Scene {
    *    calculation are equal, the number of {@link jchrest.lib.SceneObject}s 
    *    that aren't in this {@link #this} but are in the other is returned.  For 
    *    example, if this {@link #this} were to have 3 {@link 
-   *    jchrest.lib.SceneObject}s and another {@link jchrest.lib.Scene} were to 
+   *    jchrest.lib.SceneObject}s and another {@link jchrest.domainSpecifics.Scene} were to 
    *    have 4, the output of this function would be 1 (blind and empty 
    *    {@link jchrest.lib.SceneObject}s are not included in the calculation).  
    *  </li>
@@ -323,17 +397,55 @@ public class Scene {
   }
   
   /**
-   * @return The token used to denote blind squares in a {@link #this}.
+   * @param scene
+   * 
+   * @return {@link java.lang.Boolean#TRUE} if the following conditions all 
+   * evaluate to {@link java.lang.Boolean#TRUE}, {@link java.lang.Boolean#FALSE}
+   * otherwise:
+   * <ul>
+   *    <li>
+   *      {@code scene} is not {@code null}.
+   *    </li>
+   *    <li>
+   *      The class of {@link #this} (see {@link #this#getClass()} and class of
+   *      {@code scene} are equal.
+   *    </li>
+   *    <li>
+   *      {@link #this#sameDomainSpace(jchrest.domainSpecifics.Scene)} evaluates 
+   *      to {@link java.lang.Boolean#TRUE} when {@code scene} is passed as a 
+   *      parameter.
+   *    </li>
+   *    <li>
+   *      All {@link jchrest.domainSpecifics.SceneObject SceneObjects} on the 
+   *      {@link jchrest.lib.Square Squares} in {@link #this} are located on the 
+   *      same {@link jchrest.lib.Square Squares} in {@code scene} ({@link 
+   *      jchrest.domainSpecifics.SceneObject SceneObjects} are identified using
+   *      the result of invoking {@link 
+   *      jchrest.domainSpecifics.SceneObject#getIdentifier()} on them).
+   *    </li>
+   * </ul>
    */
-  public static String getBlindSquareToken(){
-    return Scene.BLIND_SQUARE_TOKEN;
-  }
-  
-  /**
-   * @return The token used to denote empty squares in a {@link #this}.
-   */
-  public static String getEmptySquareToken(){
-    return Scene.EMPTY_SQUARE_TOKEN;
+  @Override
+  public boolean equals(Object scene){
+    if(scene != null && this.getClass().equals(scene.getClass())){
+      
+      //The scene passed must be a Scene instance at this point so cast it so 
+      //that it can be used in Scene functions.
+      Scene sceneAsScene = (Scene)scene;
+      if(this.sameDomainSpace(sceneAsScene)){
+        for(int col = 0; col < this.getWidth(); col++){
+          for(int row = 0; row < this.getHeight(); row++){
+            String idOfObjectOnThisScenesSquare = this.getSquareContents(col, row).getIdentifier();
+            String idOfObjectOnOtherScenesSquare = sceneAsScene.getSquareContents(col, row).getIdentifier();
+
+            if(!idOfObjectOnThisScenesSquare.equals(idOfObjectOnOtherScenesSquare)) return false;
+          }
+        }
+
+        return true;
+      }
+    }
+    return false;
   }
   
   /**
@@ -359,9 +471,53 @@ public class Scene {
   }
   
   /**
+   * @return The token used to denote blind squares in a {@link #this}.
+   */
+  public static String getBlindSquareToken(){
+    return Scene.BLIND_SQUARE_TOKEN;
+  }
+  
+  /**
+   * @return The string used to denote the creator of the {@link #this} in the
+   * {@link #this}.
+   */
+  public static String getCreatorToken(){
+    return Scene.CREATOR_TOKEN;
+  }
+  
+  /**
+   * @param sceneSpecificCol Should be zero-indexed.
+   * 
+   * @return The absolute domain-specific column value in context of {@link 
+   * #this} given {@code sceneSpecificCol} relative to the coordinates of {@link 
+   * #this}.
+   */
+  public int getDomainSpecificColFromSceneSpecificCol(int sceneSpecificCol){
+    return this._minimumDomainSpecificColumn + sceneSpecificCol;
+  }
+  
+  /**
+   * @param sceneSpecificRow Should be zero-indexed.
+   * 
+   * @return The absolute domain-specific row value in context of {@link #this} 
+   * given {@code sceneSpecificRow} relative to the coordinates of {@link 
+   * #this}.
+   */
+  public int getDomainSpecificRowFromSceneSpecificRow(int sceneSpecificRow){
+    return this._minimumDomainSpecificRow + sceneSpecificRow;
+  }
+  
+  /**
+   * @return The token used to denote empty squares in a {@link #this}.
+   */
+  public static String getEmptySquareToken(){
+    return Scene.EMPTY_SQUARE_TOKEN;
+  }
+  
+  /**
    * @return The number of rows in this {@link #this}.
    */
-  public int getHeight () {
+  public int getHeight() {
     return _height;
   }
   
@@ -394,11 +550,54 @@ public class Scene {
     }
     return itemsInScope;
   }
+  
+  /**
+   * @return The location of this {@link #this}'s creator (if it identified 
+   * itself) in this {@link jchrest.domainSpecifics.Scene}.  If it didn't, 
+   * {@code null} is returned.
+   */
+  public Square getLocationOfCreator(){
+    for(int row = 0; row < this._height; row++){
+      for(int col = 0; col < this._width; col++){
+        String squareContents = this._scene.get(col).get(row).getObjectClass();
+        if(squareContents.equals(Scene.CREATOR_TOKEN)){
+          return new Square(col, row);
+        }
+      }
+    }
+    
+    return null;
+  }
+  
+  /**
+   * @return The minimum domain-specific column coordinate that {@link #this}
+   * represents.
+   */
+  public int getMinimumDomainSpecificColumn(){
+    return this._minimumDomainSpecificColumn;
+  }
+  
+  /**
+   * @return The minimum domain-specific row coordinate that {@link #this}
+   * represents.
+   */
+  public int getMinimumDomainSpecificRow(){
+    return this._minimumDomainSpecificRow;
+  }
+  
+  /**
+   * @return The name of this {@link #this}.
+   */
+  public String getName () {
+    return _name;
+  }
    
   /**
    * @param col
    * @param row
-   * @return The contents of the coordinate specified in this {@link #this}.
+   * @return The contents of the coordinate specified by {@code col} and {@code 
+   * row} in this {@link #this} or {@code null} if the coordinate specified does
+   * not exist.
    */
   public SceneObject getSquareContents(int col, int row){
     if(
@@ -450,42 +649,34 @@ public class Scene {
   }
   
   /**
-   * @return The location of this {@link #this}'s creator (if it identified 
-   * itself) in this {@link jchrest.lib.Scene}.  If it didn't, null is returned.
+   * @return The {@link jchrest.architecture.VisualSpatialField} this {@link 
+   * #this} was created from, if applicable.
    */
-  public Square getLocationOfCreator(){
-    for(int row = 0; row < this._height; row++){
-      for(int col = 0; col < this._width; col++){
-        String squareContents = this._scene.get(col).get(row).getObjectClass();
-        if(squareContents.equals(Scene.CREATOR_TOKEN)){
-          return new Square(col, row);
-        }
-      }
-    }
-    
-    return null;
-  }
-
-  /**git 
-   * @return The name of this {@link #this}.
-   */
-  public String getName () {
-    return _name;
-  }
-  
-   /**
-   * @return The string used to denote the creator of the {@link #this} in the
-   * {@link #this}.
-   */
-  public static String getCreatorToken(){
-    return Scene.CREATOR_TOKEN;
+  public VisualSpatialField getVisualSpatialFieldGeneratedFrom(){
+    return this._visualSpatialFieldGeneratedFrom;
   }
 
   /**
    * @return The number of columns in this {@link #this}
    */
-  public int getWidth () {
+  public int getWidth(){
     return _width;
+  }
+  
+  /**
+   * 
+   * @return {@link java.lang.Boolean#TRUE} if {@link #this} consists entirely
+   * of blind {@link jchrest.lib.SceneObject SceneObjects}, {@link 
+   * java.lang.Boolean#FALSE} if not.
+   */
+  public boolean isEntirelyBlind(){
+    for(int col = 0; col < this._width; col++){
+      for(int row = 0; row < this._height; row++){
+        if(!this.isSquareBlind(col, row)) return false;
+      }
+    }
+    
+    return true;
   }
   
   /**
@@ -507,13 +698,33 @@ public class Scene {
   public boolean isSquareEmpty (int col, int row) {
     return _scene.get(col).get(row).getObjectClass().equals(Scene.EMPTY_SQUARE_TOKEN);
   }
-  
+ 
   /**
-   * @return The {@link jchrest.architecture.VisualSpatialField} this {@link 
-   * #this} was created from, if applicable.
+   * 
+   * @param scene
+   * 
+   * @return {@link java.lang.Boolean#TRUE} if {@link #this} represents the
+   * <i>exact</i> same domain-specific coordinates as the {@code scene} passed
+   * as a parameter.
    */
-  public VisualSpatialField getVisualSpatialFieldGeneratedFrom(){
-    return this._visualSpatialFieldGeneratedFrom;
+  public boolean sameDomainSpace(Scene scene){
+    return 
+      this._minimumDomainSpecificColumn == scene._minimumDomainSpecificColumn &&
+      this._minimumDomainSpecificRow == scene._minimumDomainSpecificRow &&
+      this.getWidth() == scene.getWidth() &&
+      this.getHeight() == scene.getHeight()
+    ;
+  }
+
+  @Override
+  public int hashCode() {
+    int hash = 5;
+    hash = 97 * hash + this._height;
+    hash = 97 * hash + this._width;
+    hash = 97 * hash + this._minimumDomainSpecificColumn;
+    hash = 97 * hash + this._minimumDomainSpecificRow;
+    hash = 97 * hash + Objects.hashCode(this._scene);
+    return hash;
   }
 }
 
