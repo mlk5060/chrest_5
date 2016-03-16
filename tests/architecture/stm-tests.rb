@@ -1,7 +1,7 @@
 ################################################################################
 unit_test "constructor" do
   model_creation_time = 5
-  model = Chrest.new(model_creation_time, GenericDomain.java_class)
+  model = Chrest.new(model_creation_time)
   
   error_thrown = false
   
@@ -48,7 +48,7 @@ process_test "getter and setters" do
   #############
   
   model_creation_time = 0
-  model = Chrest.new(model_creation_time, GenericDomain.java_class)
+  model = Chrest.new(model_creation_time)
   
   # Construct a new STM with a different creation time to that of the model so
   # that conditional checks in setter methods that check the creation time of
@@ -319,10 +319,10 @@ process_test "getter and setters" do
     expected_stm_contents = ArrayList.new()
     time_description = ""
     
-    if time < time_stm_created
+    if time < (time_stm_created - 1)
       expected_stm_contents = nil
       time_description = "before STM created"
-    elsif time >= time_stm_created and time < time_node_1_added_to_stm
+    elsif time >= (time_stm_created - 1) and time < time_node_1_added_to_stm
       # expected_stm_contents should be empty i.e remain unchanged
       time_description = "after STM created but before node 1 added to STM"
     elsif time >= time_node_1_added_to_stm and time < time_node_2_added_to_stm
@@ -406,10 +406,10 @@ process_test "getter and setters" do
     expected_stm_count = nil
     time_description = ""
     
-    if time < time_stm_created
+    if time < (time_stm_created - 1)
       # expected_stm_count should be nil i.e. remain unchanged
       time_description = "before STM created"
-    elsif time >= time_stm_created and time < time_node_1_added_to_stm
+    elsif time >= (time_stm_created - 1) and time < time_node_1_added_to_stm
       expected_stm_count = 0
       time_description = "after STM created but before node 1 added to STM"
     elsif time >= time_node_1_added_to_stm and time < time_node_2_added_to_stm
@@ -452,10 +452,10 @@ process_test "getter and setters" do
     expected_stm_items = nil
     time_description = ""
     
-    if time < time_stm_created
+    if time < (time_stm_created - 1)
       # expected_stm_items should be nil i.e remain unchanged
       time_description = "before STM created"
-    elsif time >= time_stm_created and time < time_node_1_added_to_stm
+    elsif time >= (time_stm_created - 1) and time < time_node_1_added_to_stm
       expected_stm_items = []
       time_description = "after STM created but before node 1 added to STM"
     elsif time >= time_node_1_added_to_stm and time < time_node_2_added_to_stm

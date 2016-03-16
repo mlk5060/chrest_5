@@ -6,9 +6,7 @@ package jchrest.architecture;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
-import java.util.Map;
 import java.util.Map.Entry;
-import java.util.TreeMap;
 import jchrest.lib.HistoryTreeMap;
 import jchrest.lib.Modality;
 
@@ -39,7 +37,6 @@ import jchrest.lib.Modality;
  * @author Martyn Lloyd-Kelly <martynlk@liverpool.ac.uk>
  */
 public class Stm implements Iterable<Node> {
-  private final Chrest _model;
   private final int _creationTime;
   private final Modality _modality;
   private final HistoryTreeMap _capacityHistory = new HistoryTreeMap();
@@ -49,6 +46,11 @@ public class Stm implements Iterable<Node> {
    * Initialises this {@link #this} with the capacity stipulated and no contents
    * at the time specified.
    * 
+   * <b>NOTE:</b> The initial key values for any {@link 
+   * jchrest.lib.HistoryTreeMap HistoryTreeMaps} of {@link #this} are set to 1 
+   * less than the {@code time} specified so that they can be modified 
+   * immediately when {@link #this} is created (if necessary).
+   * 
    * @param model
    * @param modality
    * @param capacity
@@ -56,11 +58,10 @@ public class Stm implements Iterable<Node> {
    */
   public Stm (Chrest model, Modality modality, int capacity, int time) {
     if(model.getCreationTime() <= time){
-      this._model = model;
       this._creationTime = time;
       this._modality = modality;
-      this._capacityHistory.put(time, capacity);
-      this._itemHistory.put(time, new ArrayList());
+      this._capacityHistory.put(time - 1, capacity);
+      this._itemHistory.put(time - 1, new ArrayList());
     }
     else{
       throw new RuntimeException("Creation time specified for new Stm instance ("
