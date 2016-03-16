@@ -178,8 +178,8 @@ public class Scene {
   public void addItemsToRow (int row, ArrayList<SceneObject> items) {
     for (int i = 0; i < this._width; i++) {
       SceneObject item = items.get(i);
-      if(!item.getObjectClass().equals(Scene.BLIND_SQUARE_TOKEN)){
-        this.addItemToSquare(i, row, item.getIdentifier(), item.getObjectClass());
+      if(!item.getObjectType().equals(Scene.BLIND_SQUARE_TOKEN)){
+        this.addItemToSquare(i, row, item.getIdentifier(), item.getObjectType());
       }
     }
   }
@@ -559,7 +559,7 @@ public class Scene {
   public Square getLocationOfCreator(){
     for(int row = 0; row < this._height; row++){
       for(int col = 0; col < this._width; col++){
-        String squareContents = this._scene.get(col).get(row).getObjectClass();
+        String squareContents = this._scene.get(col).get(row).getObjectType();
         if(squareContents.equals(Scene.CREATOR_TOKEN)){
           return new Square(col, row);
         }
@@ -632,7 +632,7 @@ public class Scene {
       //By default, assume that the item identifier for the ItemSquarePattern
       //representation of the object on square will have the object's class
       //as the item identifier.
-      String itemIdentifier = squareContents.getObjectClass();
+      String itemIdentifier = squareContents.getObjectType();
       
       if(!objectsIdentifiedByObjectClass){
         itemIdentifier = squareContents.getIdentifier();
@@ -686,7 +686,7 @@ public class Scene {
    * jchrest.lib.SceneObject} representing a blind square.
    */
   public Boolean isSquareBlind(int col, int row){
-    return _scene.get(col).get(row).getObjectClass().equals(Scene.BLIND_SQUARE_TOKEN);
+    return _scene.get(col).get(row).getObjectType().equals(Scene.BLIND_SQUARE_TOKEN);
   }
 
   /**
@@ -696,7 +696,7 @@ public class Scene {
    * jchrest.lib.SceneObject} representing an empty square.
    */
   public boolean isSquareEmpty (int col, int row) {
-    return _scene.get(col).get(row).getObjectClass().equals(Scene.EMPTY_SQUARE_TOKEN);
+    return _scene.get(col).get(row).getObjectType().equals(Scene.EMPTY_SQUARE_TOKEN);
   }
  
   /**
