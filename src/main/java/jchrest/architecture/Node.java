@@ -1426,13 +1426,8 @@ public class Node extends Observable {
         }
       }
 
-      if(!itemsForItemSlot.isEmpty()){
-        this._filledItemSlotsHistory.put(time, itemsForItemSlot);
-      }
-
-      if(!itemsForPositionSlot.isEmpty()){
-        this._filledPositionSlotsHistory.put(time, itemsForPositionSlot);
-      }
+      if(!itemsForItemSlot.isEmpty()) this._filledItemSlotsHistory.put(time, itemsForItemSlot);
+      if(!itemsForPositionSlot.isEmpty()) this._filledPositionSlotsHistory.put(time, itemsForPositionSlot);
       
       return itemsForItemSlot.size() + itemsForPositionSlot.size();
     }
