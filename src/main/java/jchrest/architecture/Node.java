@@ -738,15 +738,14 @@ public class Node extends Observable {
       !this.isRootNode() &&
       !node.isRootNode()
     ){
-      HashMap<Node, Double> productionsToAdd = new HashMap();
-      productionsToAdd.put(node, productionValue);
+      HashMap<Node, Double> currentProductions = this.getProductions(time);
+      HashMap<Node, Double> newProductions = new HashMap();
+      newProductions.put(node, productionValue);
+      if(currentProductions != null) newProductions.putAll(currentProductions);
       
-      HashMap<Node, Double> productions = this.getProductions(time);
-      if(productions != null) productionsToAdd.putAll(productions);
-      
-      boolean updateProductionResult = (boolean)this._productionHistory.put(time, productionsToAdd);
+      boolean addProductionSuccessful = (boolean)this._productionHistory.put(time, newProductions);
 
-      if(updateProductionResult){
+      if(addProductionSuccessful){
         this.setChanged();
         this.notifyObservers();
 
@@ -808,48 +807,40 @@ public class Node extends Observable {
    */
   boolean reinforceProduction (Node node, Double[] variables, int time){
     
-    //No need to check if this or the node specified is a root Node since 
-    //root nodes can not be the source or terminus of a production (see 
-    //Node.addProduction()). So, when the existence of the production is checked
-    //in the minor conditional below, the function will block production 
-    //reinforcement if this or the node specified is a root node.
-    //
-    //There is also no need to check if this node and the node passed are the
-    //same node for the reasons explained in the comment above the major 
-    //conditional in the Node.addProduction() function.
+    Entry<Integer, Object> currentProductionEntry = this._productionHistory.floorEntry(time);
+    String reinforcementLearningTheoryName = this._model.getReinforcementLearningTheory();
+    
     if(
       this.getCreationTime() <= time &&
       node.getCreationTime() <= time &&
       this.getModality() == Modality.VISUAL &&
-      node.getModality() == Modality.ACTION
+      node.getModality() == Modality.ACTION &&
+      currentProductionEntry != null &&
+      ((HashMap)currentProductionEntry.getValue()).containsKey(node) &&
+      !reinforcementLearningTheoryName.equals("null")
     ){
+
+      HashMap<Node, Double> currentProductions = (HashMap)currentProductionEntry.getValue();
+      double reinforcedValue = currentProductions.get(node) + 
+        ReinforcementLearning.ReinforcementLearningTheories.valueOf(reinforcementLearningTheoryName).
+          calculateReinforcementValue(variables);
       
-      //These could go in the conditional above but their results are used again
-      //so, for efficiency, store the results and check them independently.
-      String rlt = this._model.getReinforcementLearningTheory();
-      HashMap<Node, Double> currentProductions = this.getProductions(time);
-        
-      if(
-        !rlt.equals("null") &&
-        currentProductions != null &&
-        currentProductions.containsKey(node)
-      ){
-
-        //Use this.addProduction() to update the production's value since this
-        //method uses "TreeMap.put()".  Consequently, the old value for the 
-        //production will be overwritten (a new entry won't actually be added; 
-        //this would be undesirable).
-        boolean modifyProductionSuccessful = this.addProduction(
-          node, 
-          currentProductions.get(node) + ReinforcementLearning.ReinforcementLearningTheories.valueOf(rlt).calculateReinforcementValue(variables),
-          time
-        );
-
-        if(modifyProductionSuccessful){
-          this.setChanged();
-          this.notifyObservers();
-          return true;
+      HashMap<Node, Double> newProductions = new HashMap();
+      for(Entry<Node, Double> currentProduction : currentProductions.entrySet()){
+        if(currentProduction.getKey().equals(node)){
+          newProductions.put(node, reinforcedValue);
         }
+        else{
+          newProductions.put(currentProduction.getKey(), currentProduction.getValue());
+        }
+      }
+      
+      boolean reinforceProductionSuccessful = (boolean)this._productionHistory.put(time, newProductions);
+
+      if(reinforceProductionSuccessful){
+        this.setChanged();
+        this.notifyObservers();
+        return true;
       }
     }
     
@@ -1079,8 +1070,8 @@ public class Node extends Observable {
    * the time specified otherwise, {@link java.lang.Boolean#FALSE}.
    */
   public boolean isTemplate(int time){
-    Object result = this._templateHistory.floorEntry(time).getValue();
-    return result == null ? false : (boolean)result;
+    Entry<Integer, Object> result = this._templateHistory.floorEntry(time);
+    return result == null ? false : (boolean)result.getValue();
   }
   
   /** 
