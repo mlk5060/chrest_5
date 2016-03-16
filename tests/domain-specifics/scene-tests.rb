@@ -31,7 +31,7 @@ unit_test "constructor" do
         for col in 0 ...scene.getWidth()
           object = scene.getSquareContents(col, row)
           assert_equal(Scene.getBlindSquareToken, object.getIdentifier, "occurred when checking the identifier of the item on col " + col.to_s + " and row " + row.to_s)
-          assert_equal(Scene.getBlindSquareToken, object.getObjectClass, "occurred when checking the class of the item on col " + col.to_s + " and row " + row.to_s)
+          assert_equal(Scene.getBlindSquareToken, object.getObjectType, "occurred when checking the type of the item on col " + col.to_s + " and row " + row.to_s)
         end
       end
     end
@@ -118,7 +118,7 @@ unit_test "add-item-to-square" do
       
       square_contents = scene.getSquareContents(col, row)
       assert_equal(expected_object_identifier, square_contents.getIdentifier(), "occurred when checking the identifier for the item on col " + col.to_s + " and row " + row.to_s + " in sub-test 1.")
-      assert_equal(expected_object_class, square_contents.getObjectClass(), "occurred when checking the class of the item on col " + col.to_s + " and row " + row.to_s + " in sub-test 1.")
+      assert_equal(expected_object_class, square_contents.getObjectType(), "occurred when checking the type of the item on col " + col.to_s + " and row " + row.to_s + " in sub-test 1.")
     end
   end
   
@@ -167,7 +167,7 @@ unit_test "add-item-to-square" do
       
       square_contents = scene.getSquareContents(col, row)
       assert_equal(expected_object_identifier, square_contents.getIdentifier(), "occurred when checking the identifier for the item on col " + col.to_s + " and row " + row.to_s + " in sub-test 2.")
-      assert_equal(expected_object_class, square_contents.getObjectClass(), "occurred when checking the class of the item on col " + col.to_s + " and row " + row.to_s + " in sub-test 2.")
+      assert_equal(expected_object_class, square_contents.getObjectType(), "occurred when checking the type of the item on col " + col.to_s + " and row " + row.to_s + " in sub-test 2.")
     end
   end
   
@@ -212,7 +212,7 @@ unit_test "add-item-to-square" do
       
       square_contents = scene.getSquareContents(col, row)
       assert_equal(expected_object_identifier, square_contents.getIdentifier(), "occurred when checking the identifier for the item on col " + col.to_s + " and row " + row.to_s + " in sub-test 3.")
-      assert_equal(expected_object_class, square_contents.getObjectClass(), "occurred when checking the class of the item on col " + col.to_s + " and row " + row.to_s + " in sub-test 3.")
+      assert_equal(expected_object_class, square_contents.getObjectType(), "occurred when checking the class of the item on col " + col.to_s + " and row " + row.to_s + " in sub-test 3.")
     end
   end
   
@@ -257,7 +257,7 @@ unit_test "add-item-to-square" do
       
       square_contents = scene.getSquareContents(col, row)
       assert_equal(expected_object_identifier, square_contents.getIdentifier(), "occurred when checking the identifier for the item on col " + col.to_s + " and row " + row.to_s + " in sub-test 4.")
-      assert_equal(expected_object_class, square_contents.getObjectClass(), "occurred when checking the class of the item on col " + col.to_s + " and row " + row.to_s + " in sub-test 4.")
+      assert_equal(expected_object_class, square_contents.getObjectType(), "occurred when checking the class of the item on col " + col.to_s + " and row " + row.to_s + " in sub-test 4.")
     end
   end
   
@@ -351,7 +351,7 @@ unit_test "add-items-to-row" do
       
       squareContents = scene.getSquareContents(col, row)
       assert_equal(expected_identifier, squareContents.getIdentifier(), "occurred when checking the object identifier of the object on col " + col.to_s + " and row " + row.to_s)
-      assert_equal(expected_object_class, squareContents.getObjectClass(), "occurred when checking the object class of the object on col " + col.to_s + " and row " + row.to_s)
+      assert_equal(expected_object_class, squareContents.getObjectType(), "occurred when checking the object type of the object on col " + col.to_s + " and row " + row.to_s)
     end
   end
 end
@@ -458,7 +458,7 @@ unit_test "get-square-contents" do
       end
       
       assert_equal(expected_object_identifier, contents_of_square.getIdentifier(), "occurred when checking the identifier of the item on col " + col.to_s + " and row " + row.to_s)
-      assert_equal(expected_object_class, contents_of_square.getObjectClass(), "occurred when checking the class of the item on col " + col.to_s + " and row " + row.to_s)
+      assert_equal(expected_object_class, contents_of_square.getObjectType(), "occurred when checking the type of the item on col " + col.to_s + " and row " + row.to_s)
     end
   end
   

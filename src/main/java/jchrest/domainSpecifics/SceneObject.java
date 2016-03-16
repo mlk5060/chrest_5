@@ -1,4 +1,4 @@
-package jchrest.lib;
+package jchrest.domainSpecifics;
 
 /**
  * Class that represents objects in a {@link jchrest.lib.Scene}.
@@ -7,61 +7,63 @@ package jchrest.lib;
  */
 public class SceneObject {
   private final String _identifier;
-  private final String _objectClass;
+  private final String _objectType;
   
   /**
-   * Constructor.  If the object class is equal to 
-   * {@link jchrest.lib.Scene#getBlindSquareToken()} or
-   * {@link jchrest.lib.Scene#getEmptySquareToken()} then, the identifier 
-   * passed is always overwritten to the result of 
-   * {@link jchrest.lib.Scene#getBlindSquareToken()} or
-   * {@link jchrest.lib.Scene#getEmptySquareToken()} accordingly.  
-   * Otherwise, if the {@link jchrest.lib.Scene} that this {@link #this} is a 
-   * part of is rendered as a {@link jchrest.lib.ListPattern} and objects are 
-   * encoded using their unique identifiers, there may be some
-   * confusion since unique identifiers intuitively imply that {@link #this} 
-   * represents an actual object.
+   * Constructor.
    * 
-   * @param identifier A unique identifier for the object (in context of the 
-   * {@link jchrest.lib.Scene} it is to be placed in: used to provide
-   * information to the {@link jchrest.lib.VisualSpatialFieldObject} constructor 
-   * if the {@link jchrest.lib.Scene} that this {@link #this} is present in is 
-   * used to construct a {@link jchrest.architecture.VisualSpatialField} 
-   * instance.
+   * @param identifier Can not be {@code null}: a unique identifier for {@link 
+   * #this} (in context of the {@link jchrest.lib.Scene} it is to be placed in),
+   * i.e. if {@link #this} is to represent a car, {@code identifier} may be set 
+   * to "0000".  If {@link #this} is to represent a blind/empty {@link 
+   * jchrest.lib.Square}, whatever is specified here will be overwritten with
+   * the result of {@link jchrest.lib.Scene#getBlindSquareToken()} or {@link 
+   * jchrest.lib.Scene#getEmptySquareToken()} accordingly since the {@code 
+   * identifier} for {@link #this} intuitively implies that {@link #this} 
+   * represents a non blind/empty  {@link jchrest.lib.Square}, i.e. an 
+   * <i>actual</i> object in a {@link jchrest.lib.Scene}.
    * 
-   * @param objectClass The class of object: used to provide information to the 
-   * {@link jchrest.lib.VisualSpatialFieldObject} constructor if the
-   * {@link jchrest.lib.Scene} that this {@link #this} is present in is used to 
-   * construct a {@link jchrest.architecture.VisualSpatialField} instance.
+   * @param objectType Can not be {@code null}: specifies the generic "type" of
+   * {@link #this}, i.e. if {@link #this} is to represent a car, {@code 
+   * objectType} may be "Toyota".  If {@link #this} is to represent a 
+   * blind/empty {@link jchrest.lib.Square}, this parameter should be set to the
+   * result of {@link jchrest.lib.Scene#getBlindSquareToken()} or {@link 
+   * jchrest.lib.Scene#getEmptySquareToken()}, accordingly.
+   * 
+   * @throws IllegalArgumentException If the {@code identifier} or {@code 
+   * objectType} specified are equal to {@code null}.
    */
-  public SceneObject(String identifier, String objectClass){
+  public SceneObject(String identifier, String objectType){
     
-    if(objectClass.equals(Scene.getBlindSquareToken())){
+    if(identifier == null || objectType == null){
+      throw new IllegalArgumentException(
+        "SceneObject identifier and object class can not be null." +
+        "\n   - Identifier specified: " + (identifier == null ? "null" : identifier) +
+        "\n   - Obj. class specified: " + (objectType == null ? "null" : objectType)
+      );
+    }
+    
+    if(objectType.equals(Scene.getBlindSquareToken())){
       identifier = Scene.getBlindSquareToken();
     }
-    else if(objectClass.equals(Scene.getEmptySquareToken())){
+    else if(objectType.equals(Scene.getEmptySquareToken())){
       identifier = Scene.getEmptySquareToken();
     }
     
     this._identifier =  identifier;
-    this._objectClass = objectClass;
+    this._objectType = objectType;
   }
 
-  /**
-   * Returns the identifier for this object.
-   * 
-   * @return 
-   */
   public String getIdentifier() {
     return this._identifier;
   }
 
-  /**
-   * Returns the object class for this object.
-   * 
-   * @return 
-   */
-  public String getObjectClass() {
-    return _objectClass;
+  public String getObjectType() {
+    return _objectType;
+  }
+  
+  @Override
+  public String toString(){
+    return "Identifier: " + this._identifier + ", type: " + this._objectType;
   }
 }
