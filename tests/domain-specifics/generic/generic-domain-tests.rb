@@ -7,7 +7,7 @@ unit_test "normalise" do
   non_empty_item_square_pattern = ItemSquarePattern.new("A", 0, 3)
   duplicate_non_empty_item_square_pattern = ItemSquarePattern.new("A", 0, 3)
   
-  generic_domain = GenericDomain.new(Chrest.new)
+  generic_domain = GenericDomain.new(Chrest.new(0, false), nil)
   
   #The normalised ListPattern returned by the GenericDomain.normalise() function
   #should always be equal to the modality of the ListPattern that is to be 
