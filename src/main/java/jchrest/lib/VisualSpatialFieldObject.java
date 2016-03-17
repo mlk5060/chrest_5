@@ -1,5 +1,6 @@
 package jchrest.lib;
 
+import jchrest.domainSpecifics.Scene;
 import java.util.Map.Entry;
 import java.util.TreeMap;
 import java.util.logging.Level;
@@ -90,7 +91,7 @@ public class VisualSpatialFieldObject {
    * 
    * @param ghostObject If this {@link #this} represents an object in the 
    * associated {@link jchrest.architecture.VisualSpatialField} that is not 
-   * represented as a {@link jchrest.lib.SceneObject} in the 
+   * represented as a {@link jchrest.domainSpecifics.SceneObject} in the 
    * {@link jchrest.lib.Scene} transposed into the associated 
    * {@link jchrest.architecture.VisualSpatialField} (the result of 
    * {@link jchrest.architecture.VisualSpatialField#getSceneEncoded()}), then
