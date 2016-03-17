@@ -591,6 +591,18 @@ public class Scene {
   public String getName () {
     return _name;
   }
+  
+  public Integer getSceneSpecificColFromDomainSpecificCol(int col){
+    return col >= this._minimumDomainSpecificColumn && col <= ((this._minimumDomainSpecificColumn + this._width) - 1) ? 
+      col - this._minimumDomainSpecificColumn :
+      null;
+  }
+  
+  public Integer getSceneSpecificRowFromDomainSpecificRow(int row){
+    return row >= this._minimumDomainSpecificRow && row <= (this._minimumDomainSpecificRow + this._height) - 1 ? 
+      row - this._minimumDomainSpecificRow :
+      null;
+  }
    
   /**
    * @param col

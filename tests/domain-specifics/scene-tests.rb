@@ -1431,3 +1431,59 @@ unit_test "same_domain_space" do
   assert_false(scene.sameDomainSpace(scene_4), "occurred when checking scene against scene whose min domain row is different")
   assert_true(scene.sameDomainSpace(scene_5), "occurred when checking scene against scene whose dimensions are all the same")
 end
+
+################################################################################
+unit_test "get_scene_specific_col_from_domain_specific_col" do
+  
+  # Note that the width and height are different so that the upper bound for 
+  # width is too large for height; enables verification that the correct 
+  # dimension is being used in the function.
+  scene = Scene.new("", 5, 4, 2, 2, nil)
+  
+  # Scenario 1: col specified less than minimum col
+  # Scenario 2: col specified greater than maximum col
+  # Scenario 3: col specified minimum col
+  # Scenario 4: col specified maximum col
+  for scenario in 1..4
+    scene_specific_col = scene.getSceneSpecificColFromDomainSpecificCol(
+      scenario == 1 ? 1 : scenario == 2 ? 7 : scenario == 3 ? 2 : 6
+    )
+
+    expected_scene_specific_col = 
+      (scenario.between?(1,2) ? nil : scenario == 3 ? 0 : 4)
+
+    assert_equal(
+      expected_scene_specific_col,
+      scene_specific_col,
+      "occurred in scenario " + scenario.to_s
+    )
+  end
+end
+
+################################################################################
+unit_test "get_scene_specific_col_from_domain_specific_col" do
+  
+  # Note that the width and height are different so that the upper bound for 
+  # height is too large for width; enables verification that the correct 
+  # dimension is being used in the function.
+  scene = Scene.new("", 5, 6, 2, 2, nil)
+  
+  # Scenario 1: row specified less than minimum row
+  # Scenario 2: row specified greater than maximum row
+  # Scenario 3: row specified minimum row
+  # Scenario 4: row specified maximum row
+  for scenario in 1..4
+  scene_specific_col = scene.getSceneSpecificRowFromDomainSpecificRow(
+    scenario == 1 ? 1 : scenario == 2 ? 8 : scenario == 3 ? 2 : 7
+  )
+  
+  expected_scene_specific_row = 
+    (scenario.between?(1,2) ? nil : scenario == 3 ? 0 : 5)
+  
+    assert_equal(
+      expected_scene_specific_row,
+      scene_specific_col,
+      "occurred in scenario " + scenario.to_s
+    )
+  end
+end
