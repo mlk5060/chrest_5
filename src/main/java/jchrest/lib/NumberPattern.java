@@ -44,12 +44,20 @@ public class NumberPattern extends PrimitivePattern {
   /**
    * Two NumberPatterns are only equal if their stored numbers are the same.
    */
+  @Override
   public boolean equals (Object pattern) {
     if (pattern instanceof NumberPattern) {
       return _number == ((NumberPattern)pattern).getNumber ();
     } else {
       return false;
     }
+  }
+
+  @Override
+  public int hashCode() {
+    int hash = 5;
+    hash = 41 * hash + this._number;
+    return hash;
   }
 
   /**

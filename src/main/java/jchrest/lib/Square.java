@@ -34,8 +34,22 @@ public class Square {
     return _row;
   }
 
+  @Override
   public String toString () {
     return "(" + _column + ", " + _row + ")";
+  }
+  
+  @Override
+  public boolean equals(Object square){
+    return square != null && square.getClass().equals(Square.class) && this.toString().equals(square.toString());
+  }
+
+  @Override
+  public int hashCode() {
+    int hash = 7;
+    hash = 31 * hash + this._column;
+    hash = 31 * hash + this._row;
+    return hash;
   }
 }
 

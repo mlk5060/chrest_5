@@ -3,11 +3,13 @@
 
 package jchrest.lib;
 
+import jchrest.domainSpecifics.Scene;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Objects;
 
 /**
  * The ListPattern is the primary datatype used to represent compound 
@@ -160,27 +162,56 @@ public class ListPattern extends Pattern implements Iterable<PrimitivePattern> {
   }
 
   /** 
-   * Two patterns are equal if they contain the same items.
+   * @param pattern
+   * 
+   * @return {@link java.lang.Boolean#TRUE} if the {@code pattern} specified is 
+   * not null, {@link #this} and the {@code pattern} specified are both 
+   * instances of {@link jchrest.lib.ListPattern}, the {@link 
+   * jchrest.lib.Modality Modalities} of {@link #this} and the {@code pattern} 
+   * specified are equal, the result of invoking {@link 
+   * jchrest.lib.ListPattern#size()} on {@link #this} and the {@code pattern} 
+   * specified are equal, {@link #this} and the {@code pattern} specified 
+   * contain the same items and {@link #this} and the {@code pattern} specified
+   * are both un/finished.
    */
-  public boolean equals (ListPattern pattern) { 
-    if (_modality != pattern._modality) return false;
+  @Override
+  public boolean equals(Object pattern) { 
+    if(pattern != null && this.getClass().equals(pattern.getClass())){
+      ListPattern patt = (ListPattern)pattern;
+      
+      if(
+        this._modality == patt._modality &&
+        this.size() == patt.size() 
+      ){
 
-    // patterns must be equal size to be equal
-    if (size () != pattern.size ()) return false;
-
-    for (int i = 0, n = size (); i < n; ++i) {
-      if (!pattern.getItem(i).equals(getItem(i))) {
-        return false; // false if any item not the same
+        for (int i = 0, n = size (); i < n; ++i) {
+          if (!patt.getItem(i).equals(getItem(i))) {
+            return false; // false if any item not the same
+          }
+        }
+        
+        // Finally, they must both have the 'finished' property the same
+        return _finished == patt.isFinished ();
       }
     }
-    // else, they must both have the 'finished' property the same
-    return _finished == pattern.isFinished ();
+    
+    return false;
+  }
+
+  @Override
+  public int hashCode() {
+    int hash = 3;
+    hash = 89 * hash + Objects.hashCode(this._list);
+    hash = 89 * hash + Objects.hashCode(this._modality);
+    hash = 89 * hash + (this._finished ? 1 : 0);
+    return hash;
   }
 
   /** 
    * Two patterns match if they are both ListPatterns and this ListPattern
    * is a presequence of given pattern. 
    */
+  @Override
   public boolean matches (Pattern givenPattern) {
     if (!(givenPattern instanceof ListPattern)) return false;
     ListPattern pattern = (ListPattern)givenPattern;

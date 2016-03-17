@@ -3,6 +3,8 @@
 
 package jchrest.lib;
 
+import java.util.Objects;
+
 /**
  * The ItemSquarePattern is a type of PrimitivePattern used to hold 
  * objects places on a square array.  The item-on-square is treated 
@@ -11,6 +13,10 @@ package jchrest.lib;
  * @author Peter C. R. Lane
  */
 public class ItemSquarePattern extends PrimitivePattern {
+  
+  private final String _item;
+  private final int _column;
+  private final int _row;
 
   /**
    * Constructor takes a string to identify the item, and a column and row
@@ -46,6 +52,7 @@ public class ItemSquarePattern extends PrimitivePattern {
   /**
    * Two ItemSquarePatterns are only equal if all their parts are the same.
    */
+  @Override
   public boolean equals (Object object) {
     if (object instanceof ItemSquarePattern) {
       ItemSquarePattern ios = (ItemSquarePattern)object;
@@ -55,6 +62,15 @@ public class ItemSquarePattern extends PrimitivePattern {
     } else {
       return false;
     }
+  }
+
+  @Override
+  public int hashCode() {
+    int hash = 7;
+    hash = 47 * hash + Objects.hashCode(this._item);
+    hash = 47 * hash + this._column;
+    hash = 47 * hash + this._row;
+    return hash;
   }
 
   /** 
@@ -71,10 +87,5 @@ public class ItemSquarePattern extends PrimitivePattern {
   public String toString () {
     return "[" + _item + " " + _column + " " + _row + "]";
   }
-
-  // private fields
-  private final String _item;
-  private final int _column;
-  private final int _row;
 }
 

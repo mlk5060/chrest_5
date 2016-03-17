@@ -5,6 +5,7 @@ package jchrest.lib;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Objects;
 
 /**
  * The StringPattern is a type of PrimitivePattern used to hold 
@@ -45,12 +46,20 @@ public class StringPattern extends PrimitivePattern {
    * Two StringPatterns are only equal if their stored names 
    * are the same.
    */
+  @Override
   public boolean equals (Object pattern) {
     if (pattern instanceof StringPattern) {
       return _name.equals (((StringPattern)pattern).getString ());
     } else {
       return false;
     }
+  }
+
+  @Override
+  public int hashCode() {
+    int hash = 7;
+    hash = 53 * hash + Objects.hashCode(this._name);
+    return hash;
   }
 
   /** 
