@@ -1,12 +1,18 @@
-package jchrest.lib;
+package jchrest.domainSpecifics.tileworld;
 
-import java.util.ArrayList;
+import jchrest.domainSpecifics.DomainSpecifics;
+import java.lang.reflect.Method;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Iterator;
-import java.util.List;
-import java.util.Set;
 import jchrest.architecture.Chrest;
+import jchrest.domainSpecifics.Fixation;
+import jchrest.lib.ExecutionHistoryOperations;
+import jchrest.lib.ItemSquarePattern;
+import jchrest.lib.ListPattern;
+import jchrest.lib.Modality;
+import jchrest.lib.PrimitivePattern;
+import jchrest.domainSpecifics.Scene;
+import jchrest.lib.VisualSpatialFieldObject;
 
 /**
  * Used for Tileworld modelling.
@@ -28,9 +34,12 @@ public class TileworldDomain extends DomainSpecifics{
    * @param model
    * @param verticalFieldOfView How many squares ahead can be seen.
    * @param horizontalFieldOfView How many squares to the side can be seen.
+   * @param maxFixationsInSet Used as input to {@link 
+   * jchrest.domainSpecifics.DomainSpecifics#DomainSpecifics(
+   * jchrest.architecture.Chrest, java.lang.Integer)}.
    */
-  public TileworldDomain(Chrest model, Integer verticalFieldOfView, Integer horizontalFieldOfView) {
-    super(model);
+  public TileworldDomain(Chrest model, Integer verticalFieldOfView, Integer horizontalFieldOfView, Integer maxFixationsInSet) {
+    super(model, maxFixationsInSet);
     this._verticalFieldOfView = verticalFieldOfView;
     this._horizontalFieldOfView = horizontalFieldOfView;
   }
@@ -89,34 +98,202 @@ public class TileworldDomain extends DomainSpecifics{
     
     return result;
   }
+  
+//  @Override
+//  public void makeOrScheduleFixation(Scene scene, int time){
+//    Perceiver perceiver = this._associatedModel.getPerceiver();
+//    Object[] nextScheduledFixation = this._associatedModel.getNextScheduledFixation();
+//    
+//    //Attempt to make a fixation if one is scheduled at the current time.
+//    if((int)nextScheduledFixation[0] == time){
+//      
+//      switch((FixationType)nextScheduledFixation[1]){
+//        
+//        case first:
+//          perceiver.makeFirstFixation(scene, time);
+//          this._associatedModel.setNextScheduledFixation(new Object[]{
+//            time + this._salientObjectSelectionTime,
+//            FixationType.salientObject
+//          });
+//          
+//        case salientObject:
+//          if(
+//            !perceiver.makeFixationUsingSalientObjectHeuristic(scene, time) ||
+//            !perceiver.doingInitialFixations()
+//          ){
+//            this._nextScheduledFixation = new Object[]{
+//              time + this._timeToRetrieveItemFromStm,
+//              FixationType.hypothesisDiscrimination
+//            };
+//          }
+//        
+//        case hypothesisDiscrimination:
+//          if(!perceiver.makeFixationUsingHypothesisDiscriminationHeuristic(scene, time)){
+//            double r = Math.random ();
+//            
+//            if(r < 0.3333){
+//              this._nextScheduledFixation = new Object[]{
+//                time + this._movementSquareSelectionTime,
+//                FixationType.objectMovement
+//              };
+//            }
+//            else if (r >= 0.3333 && r < 0.6667) {
+//              this._nextScheduledFixation = new Object[]{
+//                time + this._randomSquareSelectionTime,
+//                FixationType.peripheralObject
+//              };
+//            }
+//            else if(this.isExperienced(time)){
+//              this._nextScheduledFixation = new Object[]{
+//                time + this.getDomainSpecifics().getTimeToUseGlobalStrategy(),
+//                FixationType.globalStrategy
+//              };
+//            }
+//            else{
+//              this._nextScheduledFixation = new Object[]{
+//                time + this._randomSquareSelectionTime,
+//                FixationType.peripheralSquare
+//              };
+//            }
+//          }
+//        
+//        case objectMovement:
+//          perceiver.makeFixationUsingObjectMovementHeuristic(scene, time);
+//          
+//        case peripheralSquare:
+//          perceiver.makeFixationUsingPeripheralLocationHeuristic(scene, time);
+//          
+//        case globalStrategy:
+//          
+//        case peripheralObject:
+//          perceiver.makeFixationUsingPeripheralObjectHeuristic(scene, time);
+//          
+//        //TODO: learn fixation after it is made, could put the following in
+//        //      Perceiver.addFixation():
+//        //      ListPattern listPatternToRecognise = _model.getDomainSpecifics().normalise (
+////          _model.getDomainSpecifics().convertSceneSpecificCoordinatesToDomainSpecificCoordinates(
+////            _currentScene.getItemsInScopeAsListPattern (_fixationX, _fixationY, this.getFieldOfView(), true),
+////            this._currentScene
+////          )
+////        );
+//      }
+//      
+//    }
+//    //No fixation is to be made so check if the perceiver resource is free.  If
+//    //it is, schedule a new fixation.
+//    else if(this.perceiverFree(time)){
+//      
+//      
+//      //If no fixations have yet been made, this is the start of a new fixation
+//      //set so make the initial fixation, this incurs no time cost.
+//      if(perceiver.getFixations(time).isEmpty()){
+//        
+//        //If there has been a fixation previously scheduled and the required
+//        //amount of time to move the eye back to the "default" position hasn't
+//        //elapsed, schedule the initial fixation.  Otherwise, make it now.
+//        if(
+//          this._nextScheduledFixation[0] != null &&
+//          (int)this._nextScheduledFixation[0] + this._saccadeTime < time 
+//        ){
+//         this._nextScheduledFixation = new Object[]{
+//           (int)this._nextScheduledFixation[0] + this._saccadeTime,
+//           FixationType.first
+//         };
+//        }
+//        else{
+//          perceiver.makeFirstFixation(scene, time);
+//          this._nextScheduledFixation = new Object[]{
+//            time + this._salientObjectSelectionTime, 
+//            FixationType.salientObject
+//          };
+//        }
+//      }
+//    }
+//  }
+  
+  /** 
+   * Make the first fixation in a set (see {@link 
+   * jchrest.lib.DomainSpecifics#getFirstFixation(jchrest.lib.Scene)} for the
+   * result of invoking {@link jchrest.architecture.Chrest#getDomainSpecifics()}
+   * on the {@link jchrest.architecture.Chrest} model associated with {@link 
+   * #this}.
+   * 
+   * <b>NOTE:</b> Since this is a domain-specific heuristic, it is assumed that
+   * {@link jchrest.lib.Square Squares} proposed for {@link jchrest.domainSpecifics.chess.fixationTypes.Fixation
+   * Fixations} to make are not blind.
+   * 
+   * @param scene The scene to make the {@link jchrest.domainSpecifics.chess.fixationTypes.Fixation} in context
+   * of.  If this contains only blind {@link jchrest.lib.SceneObject 
+   * SceneObjects} then no fixation will be made.
+   * 
+   * @param time
+   */
+//  public void makeFirstFixation(Scene scene, int time) {
+//    //_recognisedNodes.clear();
+//    
+//    if(!scene.isEntirelyBlind()){
+//      Square firstFixation = _associatedChrestModel.getDomainSpecifics().getFirstFixation(scene);    
+//      this.addFixation(
+//        new Fixation(jchrest.domainSpecifics.chess.FixationType.first, firstFixation.getColumn(), firstFixation.getRow(), time),
+//        scene,
+//        time
+//      );
+//    }
+//  }
+  
+  /**
+   * @param scene
+   * @return The {@link jchrest.lib.Square} immediately ahead of a player along 
+   * their current heading.  Note that {@code null} may be returned if {@link 
+   * #this#setMethodToDetermineSquareAheadOfPlayer(java.lang.reflect.Method, 
+   * java.lang.Object, java.lang.Object...)} has not been used to set the 
+   * parameters required to determine what the {@link jchrest.lib.Square} 
+   * immediately ahead of a player along their current heading is.
+   */
+//  @Override
+//  public Square getFirstFixation(Scene scene){
+//    Square initialFixation = null;
+//      
+//    try {
+//      initialFixation = (Square)this._getSquareAheadOfPlayerMethod.invoke(this._player, this._getSquareAheadOfPlayerMethodArguments);
+//    } catch (IllegalAccessException | IllegalArgumentException | InvocationTargetException ex) {
+//      Logger.getLogger(TileworldDomain.class.getName()).log(Level.SEVERE, null, ex);
+//    }
+//    
+//    return initialFixation;
+//  }
 
   /**
    * @param scene
    * @param model
-   * @return The location of the creator of the {@link jchrest.lib.Scene} 
-   * specified or, if the creator is not present, a random {@link 
-   * jchrest.lib.Square} that isn't blind, empty or unknown.
+   * @return A {@link jchrest.lib.Square} in the {@link jchrest.lib.Scene} 
+   * passed that isn't blind, empty or occupied by the creator of the {@link 
+   * jchrest.lib.Scene}.
    */
-  @Override
-  public Set<Square> proposeSalientSquareFixations(Scene scene, Chrest model, int time) {
-    Set<Square> result = new HashSet<> ();
-    
-    int randomCol = new java.util.Random().nextInt(scene.getWidth ());
-    int randomRow = new java.util.Random().nextInt(scene.getHeight ());
-
-    String objectOnSquare = scene.getSquareContents(randomCol, randomRow).getObjectClass();
-    while( objectOnSquare.equals(Scene.getBlindSquareToken()) ){
-      randomCol = new java.util.Random().nextInt(scene.getWidth ());
-      randomRow = new java.util.Random().nextInt(scene.getHeight ());
-      objectOnSquare = scene.getSquareContents(randomCol, randomRow).getObjectClass();
-    }
-
-    result.add (new Square(randomCol, randomRow));
-    return result;
-  }
+//  @Override
+//  public Set<Square> getSalientObjectFixations(Scene scene, Chrest model, int time) {
+//    Set<Square> result = new HashSet<> ();
+//    
+//    int randomCol = new java.util.Random().nextInt(scene.getWidth ());
+//    int randomRow = new java.util.Random().nextInt(scene.getHeight ());
+//
+//    String objectOnSquare = scene.getSquareContents(randomCol, randomRow).getObjectClass();
+//    while( 
+//      objectOnSquare.equals(Scene.getBlindSquareToken()) ||
+//      objectOnSquare.equals(Scene.getCreatorToken()) ||
+//      objectOnSquare.equals(Scene.getEmptySquareToken())
+//    ){
+//      randomCol = new java.util.Random().nextInt(scene.getWidth ());
+//      randomRow = new java.util.Random().nextInt(scene.getHeight ());
+//      objectOnSquare = scene.getSquareContents(randomCol, randomRow).getObjectClass();
+//    }
+//
+//    result.add (new Square(randomCol, randomRow));
+//    return result;
+//  }
 
   /**
-   * If the {@link jchrest.lib.Square} passed on the {@link jchrest.lib.Scene} 
+   * If the {@link jchrest.lib.Square} passed on the {@link jchrest.domainSpecifics.Scene} 
    * passed contains a tile, opponent or the scene creator, then the 
    * {@link jchrest.lib.Square}s that are 1 square north, east, south and west 
    * of the passed {@link jchrest.lib.Square} will be added to the 
@@ -126,35 +303,30 @@ public class TileworldDomain extends DomainSpecifics{
    * @param square
    * @return 
    */
-  @Override
-  public List<Square> proposeMovementFixations(Scene scene, Square square) {
-    ArrayList<Square> movementFixations = new ArrayList<>();
-    int col = square.getColumn();
-    int row = square.getRow();
-    
-    SceneObject objectOnSquare = scene.getSquareContents(col, row);
-    
-    if(objectOnSquare != null){
-      String objectOnSquareClass = objectOnSquare.getObjectClass();
-      if(
-        objectOnSquareClass.equals(TILE_TOKEN) ||
-        objectOnSquareClass.equals(Scene.getCreatorToken()) ||
-        objectOnSquareClass.equals(OPPONENT_TOKEN)
-      ){
-        if ((row + 1 >= 0) && (row + 1 < scene.getHeight())) movementFixations.add(new Square(col, row + 1)); //North
-        if ((col + 1 >= 0) && (col + 1 < scene.getWidth())) movementFixations.add(new Square(col + 1, row));//East
-        if ((row - 1 >= 0) && (row - 1 < scene.getHeight())) movementFixations.add(new Square(col, row - 1));//South
-        if ((col - 1 >= 0) && (col - 1 < scene.getWidth())) movementFixations.add(new Square(col - 1, row));//West
-      }
-    }
-    
-    return movementFixations;
-  }
-
-  @Override
-  public int getCurrentTime() {
-    throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
-  }
+//  @Override
+//  public List<Square> proposeMovementFixations(Scene scene, Square square) {
+//    ArrayList<Square> movementFixations = new ArrayList<>();
+//    int col = square.getColumn();
+//    int row = square.getRow();
+//    
+//    SceneObject objectOnSquare = scene.getSquareContents(col, row);
+//    
+//    if(objectOnSquare != null){
+//      String objectOnSquareClass = objectOnSquare.getObjectClass();
+//      if(
+//        objectOnSquareClass.equals(TILE_TOKEN) ||
+//        objectOnSquareClass.equals(Scene.getCreatorToken()) ||
+//        objectOnSquareClass.equals(OPPONENT_TOKEN)
+//      ){
+//        if ((row + 1 >= 0) && (row + 1 < scene.getHeight())) movementFixations.add(new Square(col, row + 1)); //North
+//        if ((col + 1 >= 0) && (col + 1 < scene.getWidth())) movementFixations.add(new Square(col + 1, row));//East
+//        if ((row - 1 >= 0) && (row - 1 < scene.getHeight())) movementFixations.add(new Square(col, row - 1));//South
+//        if ((col - 1 >= 0) && (col - 1 < scene.getWidth())) movementFixations.add(new Square(col - 1, row));//West
+//      }
+//    }
+//    
+//    return movementFixations;
+//  }
   
   public static String getHoleIdentifier(){
     return HOLE_TOKEN;
@@ -168,65 +340,28 @@ public class TileworldDomain extends DomainSpecifics{
     return TILE_TOKEN;
   }
 
-  /**
-   * Converts relative coordinates in {@link jchrest.lib.ItemSquarePattern}s 
-   * contained in a {@link jchrest.lib.ListPattern} to zero-indexed coordinates
-   * so the information in the {@link jchrest.lib.ListPattern}'s {@link 
-   * jchrest.lib.ItemSquarePattern}s can be mapped onto a 
-   * {@link jchrest.lib.Scene}.  For example, if the 
-   * coordinates to translate are (-2, -2) and the horizontal/vertical field of
-   * view specified is 2, the returned coordinates would be (0, 0).
-   * 
-   * @param listPattern
-   * @param scene Not used so can be set to null
-   * @return 
-   */
   @Override
-  public ListPattern convertDomainSpecificCoordinatesToSceneSpecificCoordinates(ListPattern listPattern, Scene scene) {
-    ListPattern preparedListPattern = new ListPattern(Modality.VISUAL);
-    Iterator<PrimitivePattern> listPatternIterator = listPattern.iterator();
-    
-    while(listPatternIterator.hasNext()){
-      ItemSquarePattern isp = (ItemSquarePattern)listPatternIterator.next();
-      preparedListPattern.add(
-        new ItemSquarePattern(
-          isp.getItem(),
-          isp.getColumn() + this._horizontalFieldOfView, 
-          isp.getRow() + this._verticalFieldOfView
-        )
-      );
-    }
-    
-    return preparedListPattern;
+  public Fixation getInitialFixationInSet(int time) {
+    throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
   }
 
-  /**
-   * Converts zero-indexed coordinates in {@link jchrest.lib.ItemSquarePattern}s 
-   * contained in a {@link jchrest.lib.ListPattern} to coordinates relative to
-   * the sight parameters specified for this class.  For example, if the 
-   * coordinates to translate are (0, 0) and the horizontal/vertical field of
-   * view specified is 2, the returned coordinates would be (-2, -2).
-   * 
-   * @param listPattern
-   * @param scene Not used, can be set to null
-   * @return 
-   */
   @Override
-  public ListPattern convertSceneSpecificCoordinatesToDomainSpecificCoordinates(ListPattern listPattern, Scene scene) {
-    ListPattern preparedListPattern = new ListPattern(Modality.VISUAL);
-    Iterator<PrimitivePattern> listPatternIterator = listPattern.iterator();
-    
-    while(listPatternIterator.hasNext()){
-      ItemSquarePattern isp = (ItemSquarePattern)listPatternIterator.next();
-      preparedListPattern.add(
-        new ItemSquarePattern(
-          isp.getItem(),
-          isp.getColumn() - this._horizontalFieldOfView, 
-          isp.getRow() - this._verticalFieldOfView
-        )
-      );
-    }
-    
-    return preparedListPattern;
+  public Fixation getNonInitialFixationInSet(int time) {
+    throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+  }
+
+  @Override
+  public boolean shouldLearnFromNewFixations(int time) {
+    throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+  }
+
+  @Override
+  public boolean isFixationSetComplete(int time) {
+    throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+  }
+
+  @Override
+  public boolean shouldAddNewFixation(int time) {
+    throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
   }
 }

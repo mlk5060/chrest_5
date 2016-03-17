@@ -1,24 +1,30 @@
 // Copyright (c) 2012, Peter C. R. Lane
 // Released under Open Works License, http://owl.apotheon.org/
 
-package jchrest.lib;
+package jchrest.domainSpecifics.generic;
 
+import jchrest.domainSpecifics.DomainSpecifics;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Iterator;
 import java.util.List;
-import java.util.Set;
 
 import jchrest.architecture.Chrest;
+import jchrest.domainSpecifics.Fixation;
+import jchrest.lib.ExecutionHistoryOperations;
+import jchrest.lib.ItemSquarePattern;
+import jchrest.lib.ListPattern;
+import jchrest.lib.PrimitivePattern;
+import jchrest.domainSpecifics.Scene;
+import jchrest.lib.Square;
+import jchrest.lib.VisualSpatialFieldObject;
 
 /**
   * The GenericDomain is used when no domain-specific methods have been created.
   */
 public class GenericDomain extends DomainSpecifics {
   
-  public GenericDomain(Chrest model) {
-    super(model);
+  public GenericDomain(Chrest model, Integer maxFixationsInSet) {
+    super(model,maxFixationsInSet);
   }
   
   /**
@@ -86,23 +92,23 @@ public class GenericDomain extends DomainSpecifics {
    * @param model
    * @return A random square that doesn't represent a blind square.
    */
-  @Override
-  public Set<Square> proposeSalientSquareFixations (Scene scene, Chrest model, int time) {
-    Set<Square> result = new HashSet<> ();
-    
-    int randomCol = new java.util.Random().nextInt(scene.getWidth ());
-    int randomRow = new java.util.Random().nextInt(scene.getHeight ());
-    String objectOnSquare = scene.getSquareContents(randomCol, randomRow).getObjectClass();
-    
-    while( objectOnSquare.equals(Scene.getBlindSquareToken()) ){
-      randomCol = new java.util.Random().nextInt(scene.getWidth ());
-      randomRow = new java.util.Random().nextInt(scene.getHeight ());
-      objectOnSquare = scene.getSquareContents(randomCol, randomRow).getObjectClass();
-    }
-
-    result.add (new Square(randomCol, randomRow));
-    return result;
-  }
+//  @Override
+//  public Set<Square> getSalientObjectFixations (Scene scene, Chrest model, int time) {
+//    Set<Square> result = new HashSet<> ();
+//    
+//    int randomCol = new java.util.Random().nextInt(scene.getWidth ());
+//    int randomRow = new java.util.Random().nextInt(scene.getHeight ());
+//    String objectOnSquare = scene.getSquareContents(randomCol, randomRow).getObjectClass();
+//    
+//    while( objectOnSquare.equals(Scene.getBlindSquareToken()) ){
+//      randomCol = new java.util.Random().nextInt(scene.getWidth ());
+//      randomRow = new java.util.Random().nextInt(scene.getHeight ());
+//      objectOnSquare = scene.getSquareContents(randomCol, randomRow).getObjectClass();
+//    }
+//
+//    result.add (new Square(randomCol, randomRow));
+//    return result;
+//  }
 
   /**
    * No possible movement fixations, so return empty list of proposals.
@@ -112,79 +118,27 @@ public class GenericDomain extends DomainSpecifics {
   }
 
   @Override
-  public int getCurrentTime() {
-    throw new UnsupportedOperationException("Not supported yet.");
+  public Fixation getInitialFixationInSet(int time) {
+    throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
   }
 
-  /**
-   * Takes into account the location of a creator in the {@link 
-   * jchrest.lib.Scene} passed so that, if one is present, coordinates are 
-   * translated so they are relative to the location of the {@link 
-   * jchrest.lib.Scene} creator otherwise, coordinates remain unaltered.
-   * 
-   * @param listPattern
-   * @param scene
-   * @return 
-   */
   @Override
-  public ListPattern convertDomainSpecificCoordinatesToSceneSpecificCoordinates(ListPattern listPattern, Scene scene) {
-    Square locationOfCreator = scene.getLocationOfCreator();
-    if(locationOfCreator == null){
-      return listPattern;
-    }
-    else{
-      ListPattern convertedListPattern = new ListPattern(listPattern.getModality());
-      Iterator<PrimitivePattern> iterator = listPattern.iterator();
-      while(iterator.hasNext()){
-        PrimitivePattern pattern = iterator.next();
-        assert (pattern instanceof ItemSquarePattern);
-        ItemSquarePattern isp = (ItemSquarePattern)pattern;
-        convertedListPattern.add(
-          new ItemSquarePattern(
-            isp.getItem(),
-            isp.getColumn() + locationOfCreator.getColumn(),
-            isp.getRow() + locationOfCreator.getRow()
-          )
-        );
-      }
-      
-      return convertedListPattern;
-    }
+  public Fixation getNonInitialFixationInSet(int time) {
+    throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
   }
 
-  /**
-   * Takes into account the location of a creator in the {@link 
-   * jchrest.lib.Scene} passed so that, if one is present, coordinates are 
-   * translated so they are relative to the location of the {@link 
-   * jchrest.lib.Scene} creator otherwise, coordinates remain unaltered. 
-   * 
-   * @param listPattern
-   * @param scene
-   * @return 
-   */
   @Override
-  public ListPattern convertSceneSpecificCoordinatesToDomainSpecificCoordinates(ListPattern listPattern, Scene scene) {
-    Square locationOfCreator = scene.getLocationOfCreator();
-    if(locationOfCreator == null){
-      return listPattern;
-    }
-    else{
-      ListPattern convertedListPattern = new ListPattern(listPattern.getModality());
-      Iterator<PrimitivePattern> iterator = listPattern.iterator();
-      while(iterator.hasNext()){
-        PrimitivePattern pattern = iterator.next();
-        assert (pattern instanceof ItemSquarePattern);
-        ItemSquarePattern isp = (ItemSquarePattern)pattern;
-        convertedListPattern.add(
-          new ItemSquarePattern(
-            isp.getItem(),
-            isp.getColumn() - locationOfCreator.getColumn(),
-            isp.getRow() - locationOfCreator.getRow()
-          )
-        );
-      }
-      
-      return convertedListPattern;
-    }
+  public boolean shouldLearnFromNewFixations(int time) {
+    throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+  }
+
+  @Override
+  public boolean isFixationSetComplete(int time) {
+    throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+  }
+
+  @Override
+  public boolean shouldAddNewFixation(int time) {
+    throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
   }
 }
