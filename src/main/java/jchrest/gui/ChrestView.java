@@ -41,7 +41,7 @@ public class ChrestView extends JFrame implements Observer {
   private JTextField _stateAtTimeTextField; 
 
   public ChrestView (Chrest model, int timeToVisualise) {
-    this (new Shell (model), model, timeToVisualise);
+    this (new Shell (), model, timeToVisualise);
   }
 
   public ChrestView (Shell shell, Chrest model, int timeToVisualise) {
