@@ -1,89 +1,133 @@
 // Copyright (c) 2012, Peter C. R. Lane
 // Released under Open Works License, http://owl.apotheon.org/
 
-package jchrest.lib;
+package jchrest.domainSpecifics;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Set;
 import jchrest.architecture.Chrest;
-import org.reflections.Reflections;
+import jchrest.lib.ListPattern;
 
 /**
   * An interface for defining domain-specific methods.
   */
 public abstract class DomainSpecifics {
   
-  public Chrest _associatedModel;
+  public final Chrest _associatedModel;
+  private Integer _maxFixationsInSet;
   
-  public DomainSpecifics(Chrest model){
-    _associatedModel = model;
+  /**
+   * 
+   * @param model
+   * @param maxFixationsInSet The maximum number of {@link 
+   * jchrest.domainSpecifics.Fixation Fixations} that can be made in a set.
+   * Pass {@code null} if this does not apply in the domain being modelled.
+   */
+  public DomainSpecifics(Chrest model, Integer maxFixationsInSet){
+    this._associatedModel = model;
+    this._maxFixationsInSet = maxFixationsInSet;
   }
   
+  /////////////////////////////
+  ///// CONCRETE METHODS //////
+  /////////////////////////////
+  
   /**
-   * Retrieves a list of Strings produced after calling the 
-   * {@link java.lang.Class#getName()} on all classes that extend the 
-   * {@link jchrest.lib.DomainSpecifics} class from the {@link jchrest.lib} 
-   * package.
+   * Used by {@link jchrest.architecture.Chrest#scheduleOrMakeNextFixation(
+   * jchrest.domainSpecifics.Scene, int)}.
    * 
-   * @return 
+   * @return The maximum number of fixations that can be made in a set.  May
+   * return {@code null} if specified in {@link #this#DomainSpecifics(
+   * jchrest.architecture.Chrest, java.lang.Integer)}.
    */
-  public static ArrayList getDeclaredDomains(){
-    ArrayList listOfDeclaredDomains = new ArrayList();
-    Reflections reflections = new Reflections("jchrest.lib");
-    Set<Class<? extends DomainSpecifics>> declaredDomains = reflections.getSubTypesOf(DomainSpecifics.class);
-    for(Class<? extends DomainSpecifics> declaredDomain : declaredDomains){
-      listOfDeclaredDomains.add(declaredDomain.getName());
-    }
-    return listOfDeclaredDomains;
+  public Integer getMaximumFixationsInSet(){
+    return this._maxFixationsInSet;
   }
   
-  public abstract int getCurrentTime();
+  public void setMaximumFixationsInSet(int maxFixationsInSet){
+    this._maxFixationsInSet = maxFixationsInSet;
+  }
   
-  //Used to modify chunks in a domain-specific manner before they are input to a
-  //CHREST proper.  For example, item-square patterns that denote empty space 
-  //may need to be ignored in specific domains; this method allows you to 
-  //implement such functionality.
-  public abstract ListPattern normalise (ListPattern pattern);
+  ////////////////////////////
+  ///// ABSTRACT METHODS /////
+  ////////////////////////////
   
   /**
-   * Used to translate coordinates in {@link jchrest.lib.ItemSquarePattern}s
-   * to zero-indexed coordinates so information can be used in a 
-   * {@link jchrest.lib.Scene}.
+   * Used to prepare {@link jchrest.lib.ListPattern ListPatterns} for input to 
+   * long-term memory by a {@link jchrest.architecture.Chrest} model.
+   * <br/><br/>
+   * Implementing this function enables {@link jchrest.lib.Modality#VISUAL} 
+   * {@link jchrest.lib.ListPattern ListPatterns} to be stripped of {@link 
+   * jchrest.lib.ItemSquarePattern ItemSquarePatterns} that denote empty {@link 
+   * jchrest.lib.Square Squares} in a {@link jchrest.domainSpecifics.Scene}, for
+   * example.
+   */
+  public abstract ListPattern normalise(ListPattern pattern);
+  
+  /**
+   * Used by {@link jchrest.architecture.Chrest#scheduleOrMakeNextFixation(
+   * jchrest.domainSpecifics.Scene, int)}.
    * 
-   * @param listPattern
-   * @param scene Can be used if the concrete implementation of this method 
-   * needs to take into account whether some object (like the {@link 
-   * jchrest.lib.Scene} creator) is present in a {@link jchrest.lib.Scene} to
-   * convert coordinates differently.  For example, if the {@link 
-   * jchrest.lib.Scene} creator is present, coordinates of objects may be 
-   * translated so they are relative to the location of the {@link 
-   * jchrest.lib.Scene} creator.  If the {@link jchrest.lib.Scene} creator is 
-   * not present then coordinates may be absolute.
+   * @param time
+   * 
+   * @return Retrieves the initial {@link jchrest.domainSpecifics.Fixation} in 
+   * a new set.
+   */
+  public abstract Fixation getInitialFixationInSet(int time);
+  
+  /**
+   * Used by {@link jchrest.architecture.Chrest#scheduleOrMakeNextFixation(
+   * jchrest.domainSpecifics.Scene, int)}.
+   * 
+   * @param time
+   * 
+   * @return Retrieves a {@link jchrest.domainSpecifics.Fixation} in a set that
+   * shouldn't be the initial {@link jchrest.domainSpecifics.Fixation} made.
+   */
+  public abstract Fixation getNonInitialFixationInSet(int time);
+ 
+  /**
+   * Used by {@link jchrest.architecture.Chrest#scheduleOrMakeNextFixation(
+   * jchrest.domainSpecifics.Scene, int)}.
+   * 
+   * @param time
    * 
    * @return 
    */
-  public abstract ListPattern convertDomainSpecificCoordinatesToSceneSpecificCoordinates(ListPattern listPattern, Scene scene);
+  public abstract boolean shouldAddNewFixation(int time);
   
   /**
-   * Used to translate zero-indexed {@link jchrest.lib.Scene} coordinates in 
-   * {@link jchrest.lib.ItemSquarePattern}s to domain-specific coordinates.
+   * Used by {@link jchrest.architecture.Chrest#scheduleOrMakeNextFixation(
+   * jchrest.domainSpecifics.Scene, int)} to determine if any {@link 
+   * jchrest.domainSpecifics.Fixation Fixations} successfully performed by the 
+   * {@link jchrest.architecture.Perceiver} associated with the {@link 
+   * jchrest.architecture.Chrest} model invoking {@link 
+   * jchrest.architecture.Chrest#scheduleOrMakeNextFixation(
+   * jchrest.domainSpecifics.Scene, int)} that have not been learned yet, should
+   * be.
    * 
-   * @param listPattern
-   * @param scene Can be used if the concrete implementation of this method 
-   * needs to take into account whether some object (like the {@link 
-   * jchrest.lib.Scene} creator) is present in a {@link jchrest.lib.Scene} to
-   * convert coordinates differently.  For example, if the {@link 
-   * jchrest.lib.Scene} creator is present, coordinates of objects may be 
-   * translated so they are relative to the location of the {@link 
-   * jchrest.lib.Scene} creator.  If the {@link jchrest.lib.Scene} creator is 
-   * not present then coordinates may be absolute.
+   * <b>NOTE:</b> {@link jchrest.architecture.Chrest#scheduleOrMakeNextFixation(
+   * jchrest.domainSpecifics.Scene, int)} already checks for a {@link 
+   * jchrest.domainSpecifics.SceneObject} or {@link jchrest.lib.Square} being 
+   * focused on again since the last time {@link 
+   * jchrest.architecture.Chrest#scheduleOrMakeNextFixation(
+   * jchrest.domainSpecifics.Scene, int)} was invoked.
    * 
+   * @param time
    * @return 
    */
-  public abstract ListPattern convertSceneSpecificCoordinatesToDomainSpecificCoordinates(ListPattern listPattern, Scene scene);
+  public abstract boolean shouldLearnFromNewFixations(int time);
   
-  public abstract List<Square> proposeMovementFixations (Scene scene, Square square);
-  public abstract Set<Square> proposeSalientSquareFixations (Scene scene, Chrest model, int time);
+  /**
+   * Used by {@link jchrest.architecture.Chrest#scheduleOrMakeNextFixation(
+   * jchrest.domainSpecifics.Scene, int)} to determine if there are any 
+   * conditions other than the maximum number of {@link 
+   * jchrest.domainSpecifics.Fixation Fixations} in a set having been attempted 
+   * that should signal the end of a {@link jchrest.domainSpecifics.Fixation} 
+   * set.
+   * 
+   * @param time
+   * 
+   * @return
+   */
+  public abstract boolean isFixationSetComplete(int time);
 }
 
