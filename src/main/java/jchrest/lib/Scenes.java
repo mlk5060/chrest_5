@@ -3,6 +3,8 @@
 
 package jchrest.lib;
 
+import jchrest.domainSpecifics.Scene;
+import jchrest.domainSpecifics.SceneObject;
 import java.io.*;
 import java.util.ArrayList;
 import java.util.List;
@@ -22,22 +24,27 @@ public class Scenes {
    * @param input Format is:
    *
    * <ul>
-   * <li>line 1: height width e.g. 8 8</li>
-   * <li>line 2: blank (can act as a comment)</li>
-   * <li>line 3 to 3+height: lines of length 'width'.  Each char in the line 
-   * should be the class of an object or '.' if the coordinate should be empty
-   * </li>
-   * <li>line 3+height+3: blank (can be comment)</li>
-   * <li>Can then repeat previous 2 bullet points until EOF</li>
+   *  <li>
+   *    line 1: height width minimum_domain_specific_x_coordinate 
+   *    minimum_domain_specific_y_coordinate e.g. 8 8 13 10
+   *  </li>
+   *  <li>line 2: blank (can act as a comment)</li>
+   *  <li>
+   *    line 3 to 3+height: lines of length 'width'.  Each char in the line 
+   *    should be the class of an object or '.' if the coordinate should be 
+   *    empty
+   *  </li>
+   *  <li>line 3+height+3: blank (can be comment)</li>
+   *  <li>Can then repeat previous 2 bullet points until EOF</li>
    * </ul>
    * 
    * @return 
    * @throws java.io.IOException If any line is short, or the number of lines 
    * cannot be read.
    */
-  public static Scenes read (BufferedReader input) throws IOException {
+  public static Scenes read(BufferedReader input) throws IOException {
     Scenes scenes;
-    int height, width;
+    int height, width, minimumDomainSpecificXCoordinate, minimumDomainSpecificYCoordinate;
 
     //Line 1
     String line;
@@ -46,8 +53,10 @@ public class Scenes {
     String[] dimensions = line.split (" ");
     if (dimensions.length != 2) throw new IOException ();
     try {
-      height = Integer.decode(dimensions[0]).intValue ();
-      width = Integer.decode(dimensions[1]).intValue ();
+      height = Integer.decode(dimensions[0]);
+      width = Integer.decode(dimensions[1]);
+      minimumDomainSpecificXCoordinate = Integer.decode(dimensions[2]);
+      minimumDomainSpecificYCoordinate = Integer.decode(dimensions[3]);
     } catch (NumberFormatException nfe) { throw new IOException (); 
     }
     
@@ -59,16 +68,33 @@ public class Scenes {
       if (line == null) break;  // finish calmly if last position followed by blank line
       sceneNumber += 1;
     
-      Scene scene = new Scene ("Scene " + sceneNumber, width, height, null);
-      for (int i = 0; i < height; ++i) {
+      Scene scene = new Scene(
+        "Scene " + sceneNumber, 
+        width, 
+        height,
+        minimumDomainSpecificXCoordinate,
+        minimumDomainSpecificYCoordinate,
+        null
+      );
+      
+      for (int y = 0; y < height; ++y) {
         if (line == null) throw new IOException ();         // finished in the middle of a position
         if (line.length() != width) throw new IOException (); // incorrect width of row
         char[] lineAsCharArray = line.toCharArray ();
         ArrayList<SceneObject> itemsToAdd = new ArrayList<>();
+        
+        int x = 0;
         for(char character : lineAsCharArray){
-          itemsToAdd.add(new SceneObject(UUID.randomUUID().toString(), String.valueOf(character)));
+          scene.addItemToSquare(
+            x,
+            y,
+            UUID.randomUUID().toString(),
+            String.valueOf(character)
+          );
+          
+          x++;
         }
-        scene.addItemsToRow (i, itemsToAdd);
+        
         line = input.readLine (); // on last cycle, this tries to read blank/comment line
       }
       scenes.add (scene);
