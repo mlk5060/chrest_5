@@ -3,6 +3,10 @@
 
 package jchrest.gui;
 
+import jchrest.domainSpecifics.Scene;
+import jchrest.domainSpecifics.Fixation;
+import jchrest.domainSpecifics.generic.GenericDomain;
+import jchrest.domainSpecifics.chess.ChessDomain;
 import jchrest.architecture.Chrest;
 import jchrest.architecture.Node;
 import jchrest.lib.*;
@@ -47,7 +51,8 @@ public class VisualSearchPane extends JPanel {
     
     _model = model;
     _scenes = scenes;
-    _model.getPerceiver().setScene (_scenes.get (0));
+    //TODO: fix this when perceiver functionality working correctly.
+    //_model.getPerceiver().setScene (_scenes.get (0));
     _model.setClocks(0);
     _sceneDisplay = new SceneDisplay (_scenes.get (0));
     _domainSelector = new JComboBox (new String[]{"Generic", "Chess"});
@@ -55,9 +60,10 @@ public class VisualSearchPane extends JPanel {
       public void actionPerformed (ActionEvent e){
         int index = _domainSelector.getSelectedIndex ();
         if (index == 0) {
-          _model.setDomain (new GenericDomain (_model));
+          _model.setDomain (new GenericDomain (_model, null));
         } else { // if (index == 1) 
-          _model.setDomain (new ChessDomain (_model));
+          //TODO: fix this when perceiver functionality working correctly.
+          //_model.setDomain (new ChessDomain (_model));
         }
       }
     });
@@ -230,7 +236,8 @@ public class VisualSearchPane extends JPanel {
           for (int i = 0, lastSceneIndex = _scenes.size (); 
               i < lastSceneIndex && (_model.getLtmSize(_time) < _maxSize) && !isCancelled (); 
               i++) {
-            _model.learnScene (_scenes.get (i), _numFixations, _time, null);
+            //TODO: fix this when perceiver functionality working correctly.
+            //_model.learnScene (_scenes.get (i), _numFixations, _time, null);
             positionsSeen += 1;
             if (positionsSeen % stepSize == 0) {
               result = new Pair (positionsSeen, _model.getLtmSize(_time));
@@ -357,12 +364,13 @@ public class VisualSearchPane extends JPanel {
   private JLabel _precision, _recall, _omission, _commission;
   private JPanel recallResultsPanel () {
     _recallSceneLabel = new JLabel ("RECALLED SCENE");
-    _recalledSceneDisplay = new SceneDisplay (new Scene (
-      "empty",
-      _scenes.get(0).getWidth(), 
-      _scenes.get(0).getHeight(),
-      null
-    ));
+    //TODO: fix this when perceiver functionality working correctly.
+//    _recalledSceneDisplay = new SceneDisplay (new Scene (
+//      "empty",
+//      _scenes.get(0).getWidth(), 
+//      _scenes.get(0).getHeight(),
+//      null
+//    ));
     _precision = new JLabel ("");
     _recall = new JLabel ("");
     _omission = new JLabel ("");
@@ -408,7 +416,8 @@ public class VisualSearchPane extends JPanel {
     _sceneSelector.addActionListener (new AbstractAction () {
       public void actionPerformed (ActionEvent e) {
         Scene newScene = _scenes.get (_sceneSelector.getSelectedIndex ());
-        _model.getPerceiver().setScene (newScene);
+        //TODO: fix this when perceiver functionality working correctly.
+//        _model.getPerceiver().setScene (newScene);
         _sceneDisplay.updateScene (newScene);
       }
     });
@@ -459,15 +468,16 @@ public class VisualSearchPane extends JPanel {
         // loop through each scene, doing recall
         for (int i = 0; i < _scenes.size () && !isCancelled (); i++) {
           Scene scene = _scenes.get (i);
-          _model.scanScene (scene, ((SpinnerNumberModel)(_numFixations.getModel())).getNumber().intValue (), 0, null, false);
-          for (Node node : _model.getPerceiver().getRecognisedNodes ()) {
-            int id = node.getReference ();
-            if (_recallFrequencies.containsKey (id)) {
-              _recallFrequencies.put (id, _recallFrequencies.get(id) + 1);
-            } else {
-              _recallFrequencies.put (id, 1);
-            }
-          }
+          //TODO: fix this when perceiver functionality working correctly.
+//          _model.scanScene (scene, ((SpinnerNumberModel)(_numFixations.getModel())).getNumber().intValue (), 0, null, false);
+//          for (Node node : _model.getPerceiver().getRecognisedNodes ()) {
+//            int id = node.getReference ();
+//            if (_recallFrequencies.containsKey (id)) {
+//              _recallFrequencies.put (id, _recallFrequencies.get(id) + 1);
+//            } else {
+//              _recallFrequencies.put (id, 1);
+//            }
+//          }
           setProgress (100 * i / _scenes.size ());
         }
         return null;
@@ -496,26 +506,27 @@ public class VisualSearchPane extends JPanel {
 
     public void actionPerformed (ActionEvent e) {
       Scene scene =  _scenes.get(_sceneSelector.getSelectedIndex ());
-      Scene recalledScene = _model.scanAndRecallScene (
-        scene, 
-        ((SpinnerNumberModel)(_numFixations.getModel())).getNumber().intValue (),
-        _model.getDomainSpecifics().getCurrentTime(), //TODO: this is probably wrong but inserted to get S/LTM history views working.
-        null
-      );
+      //TODO: fix this when perceiver functionality working correctly.
+//      Scene recalledScene = _model.scanAndRecallScene (
+//        scene, 
+//        ((SpinnerNumberModel)(_numFixations.getModel())).getNumber().intValue (),
+//        _model.getDomainSpecifics().getCurrentTime(), //TODO: this is probably wrong but inserted to get S/LTM history views working.
+//        null
+//      );
 
-      _recallSceneLabel.setText (recalledScene.getName ());
-      _recalledSceneDisplay.updateScene (recalledScene);
-      _precision.setText ("" + scene.computePrecision (recalledScene, true));
-      _recall.setText ("" + scene.computeRecall (recalledScene, true));
-      _omission.setText ("" + scene.computeErrorsOfOmission (recalledScene));
-      _commission.setText ("" + scene.computeErrorsOfCommission (recalledScene));
-      _sceneDisplay.setFixations (_model.getPerceiver().getFixations ());
-      // log results
-      addLog ("\n" + recalledScene.getName ());
-      addLog ("Fixations: ");
-      for (Fixation fixation : _model.getPerceiver().getFixations ()) {
-        addLog ("   " + fixation.toString ());
-      }
+//      _recallSceneLabel.setText (recalledScene.getName ());
+//      _recalledSceneDisplay.updateScene (recalledScene);
+//      _precision.setText ("" + scene.computePrecision (recalledScene, true));
+//      _recall.setText ("" + scene.computeRecall (recalledScene, true));
+//      _omission.setText ("" + scene.computeErrorsOfOmission (recalledScene));
+//      _commission.setText ("" + scene.computeErrorsOfCommission (recalledScene));
+//      _sceneDisplay.setFixations (_model.getPerceiver().getFixations ());
+//      // log results
+//      addLog ("\n" + recalledScene.getName ());
+//      addLog ("Fixations: ");
+//      for (Fixation fixation : _model.getPerceiver().getFixations ()) {
+//        addLog ("   " + fixation.toString ());
+//      }
       addLog ("Chunks used: ");
       for (Node node : _model.getStm(Modality.VISUAL).getContents(_model.getCurrentExperiment().getCurrentTime())) {
         addLog ("   " + "Node: " + node.getReference() + " " + node.getImage(VisualSearchPane.this._time).toString ());
@@ -540,11 +551,12 @@ public class VisualSearchPane extends JPanel {
 
         }
       }
-      addLog ("Performance: ");
-      addLog ("   Precision: " + scene.computePrecision (recalledScene, true));
-      addLog ("   Recall: " + scene.computeRecall (recalledScene, true));
-      addLog ("   Errors of Omission: " + scene.computeErrorsOfOmission (recalledScene));
-      addLog ("   Errors of Commission: " + scene.computeErrorsOfCommission (recalledScene));
+      //TODO: fix this when perceiver functionality working correctly.
+//      addLog ("Performance: ");
+//      addLog ("   Precision: " + scene.computePrecision (recalledScene, true));
+//      addLog ("   Recall: " + scene.computeRecall (recalledScene, true));
+//      addLog ("   Errors of Omission: " + scene.computeErrorsOfOmission (recalledScene));
+//      addLog ("   Errors of Commission: " + scene.computeErrorsOfCommission (recalledScene));
     }
   }
 
@@ -813,8 +825,8 @@ class SceneDisplay extends JPanel {
         g2.setColor (Color.RED); // first fixation in red
         g2.setStroke (new BasicStroke (6)); // with thick border
         for (Fixation fixation : _fixations) {
-          int nextX = offsetX + scale * fixation.getX () + 5;
-          int nextY = offsetY + scale * fixation.getY () + 5;
+          int nextX = offsetX + scale * fixation.getColFixatedOn () + 5;
+          int nextY = offsetY + scale * fixation.getRowFixatedOn () + 5;
           if (prevX == -1 && prevY == -1) {
             ; // draw nothing for first oval
           } else {
