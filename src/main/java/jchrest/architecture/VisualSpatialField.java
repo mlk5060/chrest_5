@@ -1,18 +1,10 @@
 package jchrest.architecture;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashSet;
-import java.util.List;
-import jchrest.lib.Fixation;
-import jchrest.lib.ItemSquarePattern;
-import jchrest.lib.ListPattern;
 import jchrest.lib.VisualSpatialFieldException;
 import jchrest.lib.VisualSpatialFieldObject;
-import jchrest.lib.PrimitivePattern;
-import jchrest.lib.Scene;
-import jchrest.lib.SceneObject;
-import jchrest.lib.Square;
+import jchrest.domainSpecifics.Scene;
 
 /**
  * Class that implements a visual-spatial field, specifically one that handles
@@ -983,7 +975,7 @@ public class VisualSpatialField {
 //  }
   
   /**
-   * Returns the {@link jchrest.lib.Scene} that was encoded into this
+   * Returns the {@link jchrest.domainSpecifics.Scene} that was encoded into this
    * {@link #this} originally.
    * 
    * @return 
@@ -1030,7 +1022,7 @@ public class VisualSpatialField {
   
   /**
    * Returns the state of this {@link #this} at the time specified as a {@link 
-   * jchrest.lib.Scene}.
+   * jchrest.domainSpecifics.Scene}.
    * 
    * TODO: should this incur an attentional time cost?
    * TODO: should this incur an access time cost?
@@ -1038,50 +1030,50 @@ public class VisualSpatialField {
    * @param time The time in the domain when this function was invoked.
    * @param encodeGhostObjects
    * 
-   * @return The {@link jchrest.lib.Scene} returned will contain {@link 
-   * jchrest.lib.SceneObject} representations of 
+   * @return The {@link jchrest.domainSpecifics.Scene} returned will contain {@link 
+   * jchrest.domainSpecifics.SceneObject} representations of 
    * {@link jchrest.lib.VisualSpatialFieldObject}s that are alive (see 
    * {@link jchrest.lib.VisualSpatialFieldObject#alive(int)}) on this {@link 
    * #this} at the time specified.  If a coordinate on this {@link #this} does
    * not contain any {@link jchrest.lib.VisualSpatialFieldObject}s that are 
-   * alive, a {@link jchrest.lib.SceneObject} that represents a square whose
-   * object status is unknown will be found on the {@link jchrest.lib.Scene} 
+   * alive, a {@link jchrest.domainSpecifics.SceneObject} that represents a square whose
+   * object status is unknown will be found on the {@link jchrest.domainSpecifics.Scene} 
    * coordinates.  Also, if there are multiple {@link 
    * jchrest.lib.VisualSpatialFieldObject}s on a coordinate, the corresponding 
-   * coordinate in the {@link jchrest.lib.Scene} returned will contain a {@link 
-   * jchrest.lib.SceneObject} that represents the {@link 
+   * coordinate in the {@link jchrest.domainSpecifics.Scene} returned will contain a {@link 
+   * jchrest.domainSpecifics.SceneObject} that represents the {@link 
    * jchrest.lib.VisualSpatialFieldObject} that was added to the coordinates 
    * most recently.
    */
-  public Scene getAsScene(int time, boolean encodeGhostObjects){
-      
-    //Create a new Scene instance based on the current dimensions of this
-    //visual-spatial field.
-    Scene visualSpatialFieldScene = new Scene(
-      "Visual-spatial-field @ time " + time, 
-      this.getWidth(), 
-      this.getHeight(),
-      this
-    );
-
-    for(int row = 0; row < this.getHeight(); row++){
-      for(int col = 0; col < this.getWidth(); col++){
-        for(VisualSpatialFieldObject object : this.getSquareContents(col, row, time)){
-          boolean encodeObject = true;
-          
-          if(object.isGhost() && !encodeGhostObjects){
-            encodeObject = false;
-          }
-          
-          if(encodeObject){
-            visualSpatialFieldScene.addItemToSquare(col, row, object.getIdentifier(), object.getObjectClass());
-          }
-        }
-      }
-    }
-    
-    return visualSpatialFieldScene;
-  }
+//  public Scene getAsScene(int time, boolean encodeGhostObjects){
+//      
+//    //Create a new Scene instance based on the current dimensions of this
+//    //visual-spatial field.
+//    Scene visualSpatialFieldScene = new Scene(
+//      "Visual-spatial-field @ time " + time, 
+//      this.getWidth(), 
+//      this.getHeight(),
+//      this
+//    );
+//
+//    for(int row = 0; row < this.getHeight(); row++){
+//      for(int col = 0; col < this.getWidth(); col++){
+//        for(VisualSpatialFieldObject object : this.getSquareContents(col, row, time)){
+//          boolean encodeObject = true;
+//          
+//          if(object.isGhost() && !encodeGhostObjects){
+//            encodeObject = false;
+//          }
+//          
+//          if(encodeObject){
+//            visualSpatialFieldScene.addItemToSquare(col, row, object.getIdentifier(), object.getObjectClass());
+//          }
+//        }
+//      }
+//    }
+//    
+//    return visualSpatialFieldScene;
+//  }
   
   public int getWidth(){
     return this._width;
