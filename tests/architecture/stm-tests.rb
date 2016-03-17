@@ -1,7 +1,7 @@
 ################################################################################
 unit_test "constructor" do
   model_creation_time = 5
-  model = Chrest.new(model_creation_time)
+  model = Chrest.new(model_creation_time, false)
   
   error_thrown = false
   
@@ -48,7 +48,7 @@ process_test "getter and setters" do
   #############
   
   model_creation_time = 0
-  model = Chrest.new(model_creation_time)
+  model = Chrest.new(model_creation_time, false)
   
   # Construct a new STM with a different creation time to that of the model so
   # that conditional checks in setter methods that check the creation time of

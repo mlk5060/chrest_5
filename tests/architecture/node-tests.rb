@@ -19,7 +19,7 @@
 #       the LTM modality root nodes.
 process_test "root node constructor" do
   creation_time = 0
-  model = Chrest.new(creation_time)
+  model = Chrest.new(creation_time, false)
   
   modality_root_nodes = Array.new
   Modality.values().each do |modality|
@@ -63,8 +63,8 @@ end
 # 2. Node should not be constructed when requested.
 process_test "non-root node constructor" do
   model_creation_time = 0
-  model = Chrest.new(model_creation_time) # Modality root nodes will have been 
-                                          # constructed now too.
+  model = Chrest.new(model_creation_time, false) # Modality root nodes will have 
+                                                 # been constructed now too.
   time = model_creation_time
   node_reference = 3
   Modality.values().each do |modality|
@@ -155,7 +155,7 @@ unit_test "size" do
   
   # Setup CHREST model
   model_creation_time = 0
-  model = Chrest.new(model_creation_time)
+  model = Chrest.new(model_creation_time, false)
   
   #Setup nodes.
   visual_root_node = model.getLtmModalityRootNode(Modality::VISUAL)
@@ -277,7 +277,7 @@ process_test "child functionality" do
   
   # Setup the model and Nodes to use.
   model_creation_time = 0
-  model = Chrest.new(model_creation_time)
+  model = Chrest.new(model_creation_time, false)
   
   parent_node_creation_time = model_creation_time + 1
   parent_node_contents = Pattern.makeList(["parent_contents"].to_java(:String), Modality::VISUAL)
@@ -666,7 +666,7 @@ process_test "image functionality" do
   
   # Create a CHREST model.
   model_creation_time = 0
-  model = Chrest.new(model_creation_time)
+  model = Chrest.new(model_creation_time, false)
   
   # Create a node within the CHREST model just created.
   node_creation_time = model_creation_time + 2
@@ -809,7 +809,7 @@ process_test "production functionality" do
   ##################
   
   time = 0
-  model = Chrest.new(time)
+  model = Chrest.new(time, false)
   
   visual_node_1_image_and_content = ListPattern.new(Modality::VISUAL)
   visual_node_1_image_and_content.add(ItemSquarePattern.new("T", 0, 1))
@@ -968,7 +968,7 @@ process_test "semantic link functionality" do
   #############
   
   model_creation_time = 0
-  model = Chrest.new(model_creation_time)
+  model = Chrest.new(model_creation_time, false)
   
   node_1_creation_time = model_creation_time + 5
   node_1 = Node.new(
@@ -1211,7 +1211,7 @@ process_test "associated node functionality" do
   node_1_associate_with_node_3_time = 20
   node_1_associate_with_node_2_time = 25
   
-  model = Chrest.new(model_creation_time)
+  model = Chrest.new(model_creation_time, false)
   
   node_1 = Node.new(
     model,
@@ -1330,7 +1330,7 @@ process_test "named by functionality" do
   ### RESOURCE SETUP ###
   ######################
   
-  model = Chrest.new(model_creation_time)
+  model = Chrest.new(model_creation_time, false)
   
   node_0 = Node.new(
     model,
@@ -1618,7 +1618,7 @@ process_test "template functionality" do
   
   #Create model
   model_creation_time = 0
-  model = Chrest.new(model_creation_time)
+  model = Chrest.new(model_creation_time, false)
   
   # Create node 1 and add as child to visual modality root node.
   node_1_contents = ListPattern.new(Modality::VISUAL)
@@ -2163,7 +2163,7 @@ process_test "information" do
   
   # Create the model that all tests will occur in context of.
   model_creation_time = 0
-  model = Chrest.new(model_creation_time)
+  model = Chrest.new(model_creation_time, false)
   
   ##################
   ### ROOT NODES ###
