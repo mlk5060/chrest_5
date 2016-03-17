@@ -37,7 +37,7 @@ process_test "recogniseAndLearn" do
   test_time = 0
   
   # Create new CHREST model
-  model = Chrest.new(test_time, GenericDomain.java_class)
+  model = Chrest.new(test_time, false)
   
   # Learning parameter setup
   model.setLtmLinkTraversalTime(10)
@@ -196,6 +196,177 @@ process_test "recogniseAndLearn" do
   assert_equal(expected_attention_clock, model.getAttentionClock(), "see test 18")
   assert_equal(expected_cognition_clock, model.getCognitionClock(), "see test 19")
 end
+
+################################################################################
+# Checks that the scheduleOrMakeNextFixation function works as expected when
+# a CHREST model's domain is set to the ChessDomain.
+#
+# To do this, a CHREST model is constructed and the scheduleOrMakeNextFixation 
+# is invoked every millisecond until it returns true.  When this is the case, 
+# the data structures used to record Fixations by the CHREST model and its 
+# associated Perceiver are checked to ensure that they are as expected.
+#
+# The test is repeated twice, first with an "inexperienced" CHREST model then 
+# with an "experienced" CHREST model (Fixations generated change in the 
+# ChessDomain depending on the experienced status of a CHREST model).
+canonical_result_test "make_fixations_in_chess_domain" do
+  
+  for repeat in 1..2
+  
+    time = 5
+    
+    ########################
+    ##### SET-UP MODEL #####
+    ########################
+    
+    # Need to be able to specify if a CHREST model is experienced "on-the-fly"
+    # otherwise, when trying to get non-initial fixations, the model would have 
+    # to have a certain number of Nodes, n, in LTM to return "true" when the 
+    # model's "experienced" status is queried when determining if a 
+    # GlobalStrategyFixation or a PeripheralItemFixation should be made.  Thus, 
+    # if n is changed this test will break in addition, performing this learning 
+    # in a test adds extra code that will just complicate an already complex 
+    # test!
+    #
+    # To circumvent this, subclass the "Chrest" java class with a jRuby class 
+    # that will be used in place of the "Chrest" java class in this test. In the 
+    # subclass, override "Chrest.isExperienced()" (the method used to determine 
+    # the "experienced" status of a CHREST model) and have it return a class 
+    # variable (for the subclass) that can be set at will.
+    model = Class.new(Chrest) {
+      @@experienced = false
+
+      def isExperienced(x)
+        return @@experienced
+      end
+
+      def setExperienced(bool)
+        @@experienced = bool
+      end
+    }.new(time, false)
+    
+    if repeat == 2 then model.setExperienced(true) end
+
+    ###############################
+    ##### SET-UP CHESS DOMAIN #####
+    ###############################
+
+    initial_fixation_threshold = 4
+    fixation_periphery_max_attempts = 3
+    max_fixations_in_set = 10
+    model.setDomain(ChessDomain.new(model, initial_fixation_threshold, fixation_periphery_max_attempts, max_fixations_in_set))
+
+    ########################
+    ##### SET-UP SCENE #####
+    ########################
+
+    chess_board = ChessDomain.constructBoard(
+      "rnbqkbnr/" +
+      "pppppppp/" +
+      "......../" +
+      "......../" +
+      "......../" +
+      "......../" +
+      "PPPPPPPP/" +
+      "RNBQKBNR"
+    )
+
+    2000.times do
+      until model.scheduleOrMakeNextFixation(chess_board, time)
+        time += 1
+      end
+
+      # At the time "true" is returned by "scheduleOrMakeNextFixation()", the
+      # fixations attempted by the Perceiver should not be cleared (they will be
+      # at time + 1 though).
+      fixations_attempted = model.getPerceiver.getFixations(time)
+      assert_true(model.getFixationsToMake(time).isEmpty(), "occurred when checking the state of the data structure that stores fixations to be made by the CHREST model")
+      assert_equal(max_fixations_in_set, fixations_attempted.size(), "occurred when checking the number of fixations in the Perceiver's fixations attempted data structure")
+
+      fixation_classes_expected = []
+      for fixation_attempted in 0...max_fixations_in_set
+
+        if fixation_attempted == 0 
+          fixation_classes_expected.push(CentralFixation.java_class)
+        elsif fixation_attempted.between?(1,3)
+          fixation_classes_expected.push(SalientManFixation.java_class)
+        elsif fixation_attempted == 4
+          fixation_classes_expected.push(HypothesisDiscriminationFixation.java_class)
+        else
+          fixation_classes_expected.push(HypothesisDiscriminationFixation.java_class)
+          fixation_classes_expected.push(repeat == 1 ? PeripheralItemFixation.java_class : GlobalStrategyFixation.java_class)
+          fixation_classes_expected.push(PeripheralSquareFixation.java_class)
+          fixation_classes_expected.push(AttackDefenseFixation.java_class)
+        end
+
+        assert_true(
+          fixation_classes_expected.include?(fixations_attempted.get(fixation_attempted).getClass()),
+          "occurred when checking the type of fixation " + fixation_attempted.to_s + " in the Perceiver's fixations attempted data structure"
+        )
+      end
+    end
+  end
+end
+  
+  #####################
+  ##### TEST BODY #####
+  #####################
+  
+#  # First, invoke "scheduleOrMakeNextFixation" and, given the scene provided
+#  # and the time the "scheduleOrMakeNextFixation" is invoked, this should 
+#  # successfully schedule a ChessDomain.fixation.CentralFixation at the time
+#  # the method is invoked plus 150ms.
+#  time += 5
+#  result = model.scheduleOrMakeNextFixation(chess_board, time, false)
+#  fixations_to_make = model.getFixationsToMake(time)
+#  
+#  assert_equal(1, result.size())
+#  assert_equal(result.get(0), FixationResult::DELIBERATION_SCHEDULED)
+#  assert_equal(model.getAttentionClock(), time + 150)
+#  assert_equal(1, fixations_to_make.size())
+#  assert_equal(CentralFixation.java_class(), fixations_to_make.get(0).java_class())
+#  assert_equal(model.getAttentionClock(), fixations_to_make.get(0).getTimeDecidedUpon())
+#  
+#  # Invoke "scheduleOrMakeNextFixation" before the CentralFixation just 
+#  # scheduled is decided upon.  All variables checked previously remain 
+#  # unaltered.
+#  time = rand(time...model.getAttentionClock())
+#  result = model.scheduleOrMakeNextFixation(chess_board, time, false)
+#  fixations_to_make = model.getFixationsToMake(time)
+#  
+#  assert_true(result.isEmpty())
+#  assert_equal(1, fixations_to_make.size())
+#  assert_equal(CentralFixation.java_class(), fixations_to_make.get(0).java_class())
+#  assert_equal(model.getAttentionClock(), fixations_to_make.get(0).getTimeDecidedUpon())
+#  
+#  # Invoke "scheduleOrMakeNextFixation" when the CentralFixation just 
+#  # scheduled is decided upon, i.e. when the attention resource of the CHREST 
+#  # model is free.  At this point, the perceiver resource should also be free
+#  # so the CentralFixation should now have its performance time set.  A 
+#  # ChessDomain.fixation.SalientManFixation will now also be loaded for 
+#  # deliberation since CHREST's attention is free, it is still performing its
+#  # initial fixations but its very initial fixation has been loaded for 
+#  # execution.
+#  time = model.getAttentionClock()
+#  result = model.scheduleOrMakeNextFixation(chess_board, time, false)
+#  fixations_to_make = model.getFixationsToMake(time)
+#  
+#  assert_equal(2, result.size())
+#  assert_equal(FixationResult::DELIBERATION_SCHEDULED, result.get(0))
+#  assert_equal(FixationResult::PERFORMANCE_SCHEDULED, result.get(1))
+#  
+#  assert_equal(time, model.getAttentionClock())
+#  assert_equal(time + model.getSaccadeTime(), model.getPerceiverClock())
+#  assert_equal(1, fixations_to_make.size())
+#  assert_equal(CentralFixation.java_class(), fixations_to_make.get(0).java_class())
+  
+  
+  # Not yet tested
+  #   - What happens when no fixation is scheduled to be made/performed but the
+  #     attention resource is busy
+  #   - What happens when fixation is scheduled to be performed and the function
+  #     is invoked at a time when the perceptual resource is busy and the 
+  #     "abandonFixationIfPerceptionBusy" boolean parameter is set to true.
 
 #process_test "base case" do
 #  model = Chrest.new

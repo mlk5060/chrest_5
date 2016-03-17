@@ -4,15 +4,15 @@
 
 package jchrest.architecture;
 
+import jchrest.domainSpecifics.Scene;
+import jchrest.domainSpecifics.generic.GenericDomain;
+import jchrest.domainSpecifics.DomainSpecifics;
 import java.io.IOException;
 import java.io.PrintStream;
 import java.io.Writer;
 import java.lang.reflect.Field;
-import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
 import java.sql.SQLException;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -23,6 +23,8 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.TreeMap;
 import jchrest.database.DatabaseInterface;
+import jchrest.domainSpecifics.Fixation;
+import jchrest.domainSpecifics.SceneObject;
 import jchrest.gui.experiments.Experiment;
 import jchrest.lib.*;
 import jchrest.lib.ReinforcementLearning.ReinforcementLearningTheories;
@@ -35,6 +37,8 @@ import jchrest.lib.ReinforcementLearning.ReinforcementLearningTheories;
  * @author Peter C. R. Lane
  * @author Martyn Lloyd-Kelly <martynlk@liverpool.ac.uk>
  */
+//TODO: Implement template time variables (how long to create a template, fill 
+//      slots etc.
 public class Chrest extends Observable {
   
   /****************************************************************************/
@@ -49,10 +53,6 @@ public class Chrest extends Observable {
   
   private final int _creationTime;
   private DomainSpecifics _domainSpecifics;
-  private String[] _publiclyExecutableMethods = {
-    "learn",
-    "recognise"
-  };
   
   /*************************/
   /**** Debug variables ****/
@@ -78,9 +78,6 @@ public class Chrest extends Observable {
   private int _ltmLinkTraversalTime = 10; //From "Perception and Memory in Chess" by deGroot and Gobet
   private int _timeToUpdateStm = 50; //From "Perception and Memory in Chess" by deGroot and Gobet
   private int _timeToRetrieveItemFromStm = 10;
-  private int _salientSquareSelectionTime = 150; //From "Perception and Memory in Chess" by deGroot and Gobet
-  private int _randomSquareSelectionTime = 150; //From "Perception and Memory in Chess" by deGroot and Gobet
-  private int _fillTemplateSlotTime = 250;
   private int _visualSpatialFieldPhysicalObjectEncodingTime = 25; 
   private int _visualSpatialFieldEmptySquareEncodingTime = 10; 
   private int _visualSpatialFieldAccessTime = 100; //From "Mental Imagery and Chunks" by Gobet and Waters
@@ -139,8 +136,29 @@ public class Chrest extends Observable {
   private Stm _actionStm; // TODO: Incorporate into displays
   
   private final Perceiver _perceiver;
+  
   private final TreeMap<Integer, VisualSpatialField> _visualSpatialFields = new TreeMap();
   private final EmotionAssociator _emotionAssociator = new EmotionAssociator();
+  
+  /******************************/
+  /**** Perceptual variables ****/
+  /******************************/
+  
+  //Used for scheduling and tracking the next fixation point that is to be made
+  //by this model, if applicable.
+  private HistoryTreeMap _fixationsToMake = new HistoryTreeMap();
+  
+  //Records how many fixations have been made in the current saccade set.
+  private int _fixationsScheduledForDeliberation = 0;
+  
+  //Stipulates whether object locations in a Scene will have their coordinates 
+  //specified relative to the agent equipped with CHREST's location in the Scene 
+  //or not.  Can not be modified when set since its not currently possible to 
+  //tell whether stored visual information is relative to an agent's location or 
+  //not, e.g. does <[T 1 1]> indicate that there is a "T" object on domain 
+  //coordinates [1, 1] or that there is a "T" object on coordinates 1 square 
+  //north and 1 square east of the agent equipped with CHREST.
+  private final boolean _learnObjectLocationsRelativeToAgent;
   
   /****************************/
   /**** Learning variables ****/
@@ -237,10 +255,52 @@ public class Chrest extends Observable {
   /**
    * Constructor.
    * 
+   * Note that the domain for {@link #this} is set to be {@link 
+   * jchrest.domainSpecifics.generic.GenericDomain} initially and should be
+   * modified, if necessary, after {@link #this} has been constructed.
+   * 
    * @param time 
-   * @param domain 
+   * @param learnObjectLocationsRelativeToAgent When the {@link 
+   * jchrest.architecture.Perceiver} associated with {@link #this} generates new
+   * {@link jchrest.lib.Modality#VISUAL} {@link jchrest.lib.ListPattern 
+   * ListPatterns} from {@link jchrest.domainSpecifics.Scene Scenes} or when 
+   * {@link jchrest.lib.ListPattern ListPatterns} stored in long-term memory are 
+   * used to suggest new {@link jchrest.domainSpecifics.Fixation Fixations}, 
+   * this variable is used to control whether the columns and rows of {@link 
+   * jchrest.lib.Square Squares} that {@link jchrest.domainSpecifics.SceneObject 
+   * SceneObjects} are located on are absolute or relative to the agent that
+   * is equipped with {@link #this}.  Consider the following {@link 
+   * jchrest.domainSpecifics.Scene} ("SELF" denotes the agent equipped with
+   * {@link #this}, "OO" denotes a {@link jchrest.domainSpecifics.SceneObject}):
+   * 
+   * Row
+   *    |----|----|----|
+   *  2 |    |    |    |
+   *    |----|----|----|
+   *  1 |    |SELF|    |
+   *    |----|----|----|
+   *  0 |    |    | OO |
+   *    |----|----|----|
+   *      0     1    2    Col
+   * 
+   * If this variable is set to {@link java.lang.Boolean#TRUE} and the agent is
+   * to learn the location of "OO", the {@link jchrest.lib.ListPattern} 
+   * generated and (potentially) memorised would be: <[OO, 1, -1]> ("OO" is 1 
+   * square east and 1 square south of the agent's location). If this 
+   * variable were set to {@link java.lang.Boolean#FALSE}, the {@link 
+   * jchrest.lib.ListPattern} generated and (potentially) memorised would be: 
+   * <[OO, 2, 0]>.  Note that, if the domain-coordinates were not zero-indexed,
+   * the coordinates used would change, i.e. the zero-indexed {@link 
+   * jchrest.domainSpecifics.Scene} coordinates are never used in this case.
+   * 
+   * <b>CAVEATS:</b> this variable can not be changed after being set and if
+   * set to {@link java.lang.Boolean#TRUE}, all {@link 
+   * jchrest.domainSpecifics.Scene Scenes} used by the {@link 
+   * jchrest.architecture.Perceiver} associated with {@link #this} must have the
+   * agent equipped with {@link #this} identified (see {@link 
+   * jchrest.domainSpecifics.Scene#getCreatorToken()).
    */
-  public Chrest (int time, Class domain) {
+  public Chrest (int time, boolean learnObjectLocationsRelativeToAgent) {
     
     /*******************************/
     /**** Simple variable setup ****/
@@ -248,17 +308,8 @@ public class Chrest extends Observable {
     
     //Set creation time and resource clocks.
     this._creationTime = time;
-    
-    //Set domain.
-    if(domain == null){
-      domain = GenericDomain.class;
-    }
-    
-    try {
-      this._domainSpecifics = (DomainSpecifics)domain.getConstructor(new Class[]{Chrest.class}).newInstance(this);
-    } catch (NoSuchMethodException | SecurityException | InstantiationException | IllegalAccessException | IllegalArgumentException | InvocationTargetException ex) {
-      Logger.getLogger(Chrest.class.getName()).log(Level.SEVERE, null, ex);
-    }
+    this._domainSpecifics = new GenericDomain(this, 10);
+    this._learnObjectLocationsRelativeToAgent = learnObjectLocationsRelativeToAgent;
     
     /******************************/
     /**** Clock variable setup ****/
@@ -283,8 +334,12 @@ public class Chrest extends Observable {
     _actionStm = new Stm (this, Modality.ACTION, 4, time);
     
     //Setup remaining architecture variables.
-    this._perceiver = new Perceiver (this, 2);
-    this._visualSpatialFields.put(time, null);
+    this._perceiver = new Perceiver(this, time);
+    this._visualSpatialFields.put(time - 1, null);
+    
+    //Add first entry at time - 1 so that, if a fixation is made at the time 
+    //this CHREST model is created, the HistoryTreeMap can be updated correctly.
+    this._fixationsToMake.put(time - 1, new ArrayList());
     
     /*********************************************/
     /***** Execution history DB table set-up *****/
@@ -324,47 +379,11 @@ public class Chrest extends Observable {
     }
   }
   
-  /**
-   * Typical execution cycle for agent:
-   * 
-   * 1. Is attention/cognition/perceiver free?
-   *  1.1. Yes: execute some action that requires attention/cognition/perceiver.
-   *  1.2. No: Go back to 1
-   * 
-   * @param methodName
-   * @param parameters
-   * @return 
-   */
-  public Object execute(String methodName, Object[] parameters){
-    
-    boolean validExecutableMethodName = false;
-    for(int i = 0; i < _publiclyExecutableMethods.length; i++){
-      if(_publiclyExecutableMethods[i].equals(methodName)){
-        validExecutableMethodName = true;
-      }
-    }
-    
-    if(validExecutableMethodName){
-      Class[] parameterTypes = new Class[parameters.length];
-      for(int i = 0; i < parameters.length; i++){
-        parameterTypes[i] = parameters[i].getClass();
-      }
-
-      try {
-        return Chrest.class.getDeclaredMethod(methodName, parameterTypes).invoke(this, parameters);
-      } catch (NoSuchMethodException | SecurityException | IllegalAccessException | IllegalArgumentException | InvocationTargetException ex) {
-        throw new RuntimeException(ex);
-      }
-    }
-    else{
-      throw new RuntimeException(
-        "The method name specified (" + methodName + ") is not a publicly " +
-        "executable method."
-      );
-    }
-  }
+  /***************************/
+  /**** DEBUGGING METHODS ****/
+  /***************************/
   
-  void printDebugStatement(String statement){
+  public void printDebugStatement(String statement){
     if(this._debug) this._debugOutput.println(statement);
   }
     
@@ -374,6 +393,10 @@ public class Chrest extends Observable {
   
   public void turnOffDebugging(){
     this._debug = false;
+  }
+  
+  public boolean debug(){
+    return this._debug;
   }
   
   /**
@@ -475,6 +498,10 @@ public class Chrest extends Observable {
   
   void incrementNextNodeReference(){
     this._nextLtmNodeReference++;
+  }
+  
+  public boolean isLearningObjectLocationsRelativeToAgent(){
+    return _learnObjectLocationsRelativeToAgent;
   }
   
   public boolean attentionFree(int time){
@@ -1966,7 +1993,7 @@ public class Chrest extends Observable {
         "learning will occur."
       );
       
-      if (!recognisedNodeImage.equals (pattern) && Math.random() < _rho) {
+      if (!recognisedNodeImage.equals(pattern) && Math.random() < _rho) {
         
         this.printDebugStatement(
           func + "Conditions both evaluate to true so learning will be " +
@@ -2596,8 +2623,8 @@ public class Chrest extends Observable {
   }
   
   /**
-   * Attempts to reinforce the specified production if this {@link #this} model
- is free to recogniseAndLearn.
+   * Attempts to reinforce the specified production if the cognition resource of 
+   * {@link #this} is free at the {@code time} specified.
    * 
    * @param visualPattern
    * @param actionPattern
@@ -2666,8 +2693,8 @@ public class Chrest extends Observable {
    * #this} at the time passed.
    * 
    * Also, create a bidirectional semantic link between the {@link 
-   * jchrest.architecture.Node} to add and the current hypothesisBeforeNodeAdded of the 
- relevant {@link jchrest.architecture.Stm} if applicable, i.e. all of the 
+   * jchrest.architecture.Node} to add and the current hypothesis of the 
+   * relevant {@link jchrest.architecture.Stm} if applicable, i.e. all of the 
    * following must evaluate to true:
    * 
    * <ol type="1">
@@ -2892,13 +2919,13 @@ public class Chrest extends Observable {
   /**
    * Modifies the attention clock of {@link #this}.
    * 
-   * If the attention resource is free at the time this function is requested, 
- the hypothesisBeforeNodeAdded (the first {@link jchrest.architecture.Node} in a {@link 
+   * If the attention resource is free at the time this function is requested,
+   * the hypothesis (the first {@link jchrest.architecture.Node} in a {@link 
    * jchrest.architecture.Stm} modality) in the relevant {@link 
    * jchrest.architecture.Stm} modality associated with {@link #this} is 
    * replaced with the {@link jchrest.architecture.Node} specified.
- 
- The time the new hypothesisBeforeNodeAdded is added to the relevant {@link 
+   * 
+   * The time the new hypothesis is added to the relevant {@link 
    * jchrest.architecture.Stm}, <i>t</i>, is equal to the time this function is 
    * invoked plus the time specified to add update short-term memory (see {@link 
    * #getTimeToUpdateStm()}). The attention clock of {@link #this} will also be
@@ -2908,7 +2935,7 @@ public class Chrest extends Observable {
    * @param time 
    */
   public void replaceStmHypothesis(Node replacement, int time){
-    if(this._attentionClock < time){
+    if(this.attentionFree(time)){
       time += this._timeToUpdateStm;
       Stm stmToReplaceHypothesisIn = this.getStm(replacement.getModality());
       if(stmToReplaceHypothesisIn.replaceHypothesis(replacement, time)){
@@ -2922,14 +2949,14 @@ public class Chrest extends Observable {
   /*******************/
   
   /**
-   * Instruct {@link #this} to make templates throughout the entirety of its 
+   * Instruct {@link #this} to create templates throughout the entirety of its 
    * visual long-term memory modality at the time specified.
    * 
    * Templates will only be created if all the following statements are true:
    * 
    * <ul>
    *  <li>{@link #this} is "alive" at the time specified.</li> 
-   *  <li>{@link #this} can make templates.</li>
+   *  <li>{@link #this} can construct templates.</li>
    *  <li>
    *    The cognition resource of {@link #this} is free at the time specified.
    *  </li>
@@ -3001,75 +3028,332 @@ public class Chrest extends Observable {
     return this._perceiverClock < time;
   }
   
+  /**
+   * @return The time taken for the {@link jchrest.architecture.Perceiver} 
+   * associated with {@link #this} to perform a saccade, i.e. to move the 
+   * {@link jchrest.architecture.Perceiver Perceiver's} focus to a particular
+   * {@link jchrest.lib.Square} in a {@link jchrest.lib.Scene}.
+   */
   public int getSaccadeTime() {
     return _saccadeTime;
   }
 
+  /**
+   * Sets the time taken for the {@link jchrest.architecture.Perceiver} 
+   * associated with {@link #this} to perform a saccade, i.e. to move the 
+   * {@link jchrest.architecture.Perceiver Perceiver's} focus to a particular
+   * {@link jchrest.lib.Square} in a {@link jchrest.lib.Scene}.
+   * 
+   * @param saccadeTime 
+   */
   public void setSaccadeTime(int saccadeTime) {
     this._saccadeTime = saccadeTime;
   }
   
-  private boolean sameColour (ListPattern move, String colour) {
-    if (colour == null) return true;
-    if ((move.size () == 1) && (move.getItem(0) instanceof ItemSquarePattern)) {
-        ItemSquarePattern m = (ItemSquarePattern)move.getItem (0);
-        return m.getItem() == colour;
-    } else {
-      return false;
-    }
+  /**
+   * 
+   * @return The number of fixations that have been scheduled for deliberation 
+   * in the current set.
+   */
+  public int getNumberFixationsScheduledForDeliberation(){
+    return this._fixationsScheduledForDeliberation;
   }
   
   /**
-   * Learns the {@link jchrest.lib.Scene} specified using the {@link 
-   * jchrest.architecture.Perceiver} associated with this {@link #this} model
-   * if its perceptual resources aren't busy at the time this function is 
-   * requested.
+   * @param time
    * 
-   * This will populate the visual {@link jchrest.architecture.Stm} of this
-   * {@link #this} model with recognised information and various other instance
-   * variables of the {@link jchrest.architecture.Perceiver} associated with
-   * this {@link #this} model.  The function will also cause this {@link #this}
- model to recogniseAndLearn any information "seen".
-   * 
-   * @param scene The {@link jchrest.lib.Scene} to recogniseAndLearn from.
-   * @param numFixations Number of fixations this {@link #this} model's {@link
-   * jchrest.architecture.Perceiver} should make on the {@link 
-   * jchrest.lib.Scene}.
-   * @param time The time this function is invoked.
-   * @param timeSceneSeenUntil The time that this {@link #this} model can no 
-   * longer "see" the {@link jchrest.lib.Scene} to be learned from.  If there is
-   * no time limit on how long the {@link jchrest.lib.Scene} can be "seen" for 
-   * then pass null.
-   * @return A {@link java.lang.Boolean} value indicating whether the {@link 
-   * jchrest.lib.Scene} specified was "looked at" or not.  {@link 
-   * java.lang.Boolean#TRUE} will be returned if this {@link #this} model's 
-   * perceptual resources are not busy at the time this function is invoked.
-   * {@link java.lang.Boolean#FALSE} will be returned if this {@link #this} 
-   * model's perceptual resources are busy at the time this function is invoked.
+   * @return The next {@link jchrest.domainSpecifics.Fixation Fixations} that 
+   * are scheduled to be made by {@link #this} or {@code null} if {@link #this}
+   * was not created at the {@code time} specified.
    */
-  public boolean learnScene (Scene scene, int numFixations, int time, Integer timeSceneSeenUntil) {
-    if(this.perceiverFree(time)){
+  public List<Fixation> getFixationsToMake(int time){
+    Entry<Integer, Object> fixationsToMakeAtTime = this._fixationsToMake.floorEntry(time);
+    return fixationsToMakeAtTime == null ? null : (List<Fixation>)fixationsToMakeAtTime.getValue();
+  }
+  
+  /**
+   * Creates {@link jchrest.domainSpecifics.Fixation Fixations}, schedules them
+   * for deliberation/performance and performs them according to the {@code 
+   * scene} and {@code time} specified.
+   * 
+   * Note that the {@link jchrest.domainSpecifics.DomainSpecifics} returned by
+   * {@link #this#getDomainSpecifics()} influences how this function operates
+   * significantly.
+   * 
+   * A {@link jchrest.domainSpecifics.Fixation} will be created for performance
+   * if {@link #this#attentionFree(int)} and {@link 
+   * jchrest.domainSpecifics.DomainSpecifics#shouldAddNewFixation(int)} both
+   * return {@link java.lang.Boolean#TRUE} when invoked with the {@code time}
+   * specified.  If the {@link jchrest.domainSpecifics.Fixation} to create is
+   * the first in a set, {@link 
+   * jchrest.domainSpecifics.DomainSpecifics#getInitialFixationInSet(int)} will 
+   * be invoked otherwise, {@link 
+   * jchrest.domainSpecifics.DomainSpecifics#getNonInitialFixationInSet(int)} 
+   * will be invoked instead.
+   * 
+   * If this function is invoked and the {@code time} specified equals the 
+   * result of invoking {@link 
+   * jchrest.domainSpecifics.Fixation#getTimeDecidedUpon()} on a {@link 
+   * jchrest.domainSpecifics.Fixation} created for performance and {@link 
+   * #this#perceiverFree(int)} returns {@link java.lang.Boolean#TRUE} when the
+   * {@code time} specified is passed as a parameter, the {@link 
+   * jchrest.domainSpecifics.Fixation Fixation's} performance time will
+   * be set to the result of {@link 
+   * jchrest.domainSpecifics.Fixation#getTimeDecidedUpon()} plus {@link 
+   * #this#getSaccadeTime()}.  If {@link 
+   * jchrest.domainSpecifics.Fixation#getTimeDecidedUpon()} returns {@link 
+   * java.lang.Boolean#TRUE} but {@link 
+   * #this#perceiverFree(int)} returns {@link java.lang.Boolean#FALSE} when the
+   * {@code time} specified is passed as a parameter, the {@link 
+   * jchrest.domainSpecifics.Fixation} will be abandoned.
+   * 
+   * If the {@code time} specified equals the result of invoking {@link 
+   * jchrest.domainSpecifics.Fixation#getPerformanceTime()} for any {@link 
+   * jchrest.domainSpecifics.Fixation Fixations} scheduled for performance, 
+   * {@link jchrest.domainSpecifics.Fixation#perform(
+   * jchrest.domainSpecifics.Scene, int)} will be invoked with the {@code scene}
+   * and {@code time} specified passed as input parameters.
+   * 
+   * @param scene
+   * @param time
+   * 
+   * @throws IllegalStateException If this function is invoked and the {@code 
+   * time} specified is later than the value returned after invoking {@link 
+   * jchrest.domainSpecifics.Fixation#getTimeDecidedUpon()} or {@link 
+   * jchrest.domainSpecifics.Fixation#getPerformanceTime()} on any {@link 
+   * jchrest.domainSpecifics.Fixation} currently scheduled for performance.
+   * 
+   * @return {@link java.lang.Boolean#TRUE} if a scheduled {@link 
+   * jchrest.domainSpecifics.Fixation} is performed and {@link 
+   * jchrest.domainSpecifics.DomainSpecifics#isFixationSetComplete(int)} returns
+   * {@link java.lang.Boolean#TRUE}.
+   */
+  public boolean scheduleOrMakeNextFixation(Scene scene, int time){
+    
+    boolean fixationSetComplete = false;
+    
+    if(this._creationTime <= time){
+      List<Fixation> fixationsToMakeAtTime = this.getFixationsToMake(time);
+      Perceiver perceiver = this.getPerceiver();
       
-      _perceiver.setScene (scene);
-      _perceiver.start (numFixations, time);
-      
-      if(timeSceneSeenUntil == null){
-        for(int i = 0; i < numFixations; i++, time += this.getSaccadeTime()) {
-          _perceiver.moveEyeAndLearn (time);
+      /////////////////////////////
+      ///// PERFORM FIXATIONS /////
+      /////////////////////////////
+
+      //Perform any Fixations whose performance time is <= the time
+      //specified.
+      for(int i = 0; i < fixationsToMakeAtTime.size(); i++){
+        Fixation fixation = fixationsToMakeAtTime.get(i);
+        Integer performanceTime = fixation.getPerformanceTime();
+
+        //Only process fixations that are scheduled for performance.
+        if(performanceTime != null){
+          if(performanceTime == time){
+            fixationsToMakeAtTime.remove(i);
+ 
+            //Perform the fixation, if its successful, determine if new 
+            //Fixations performed should be learned from.
+            if(fixation.perform(scene, time)){
+              
+              /////////////////////////////////////////////////
+              ///// SHOULD LEARN FROM PERFORMED FIXATIONS /////
+              /////////////////////////////////////////////////
+              
+              //First, determine if the Fixation has fixated on a position/item
+              //again since the last time Fixations performed were learned from.
+              //If so, all Fixations recorded by the Perceiver (before addition
+              //of the one just performed) should be learned.
+              boolean objectOrLocationFixatedOnAgain = false;
+              
+              SceneObject objectFixatedOn = fixation.getObjectSeen();
+              Integer sceneSpecificColFixatedOn = fixation.getColFixatedOn();
+              Integer sceneSpecificRowFixatedOn = fixation.getRowFixatedOn();
+              Scene sceneFixatedOn = fixation.getScene();
+              
+              if(
+                objectFixatedOn != null &&
+                sceneSpecificColFixatedOn != null &&
+                sceneSpecificRowFixatedOn != null &&
+                sceneFixatedOn != null
+              ){
+                String identifierForObjectJustFixatedOn = objectFixatedOn.getIdentifier();
+                int fixationJustPerformedDomainSpecificCol = sceneFixatedOn.getDomainSpecificColFromSceneSpecificCol(sceneSpecificColFixatedOn);
+                int fixationJustPerformedDomainSpecificRow = sceneFixatedOn.getDomainSpecificRowFromSceneSpecificRow(sceneSpecificRowFixatedOn);
+              
+                //Check if a blind or empty square was just fixated on, if so, 
+                //just check the location since blind and empty square 
+                //SceneObject identifiers are not unique.
+                boolean checkItem = true;
+                if(
+                  identifierForObjectJustFixatedOn.equals(Scene.getBlindSquareToken()) ||
+                  identifierForObjectJustFixatedOn.equals(Scene.getEmptySquareToken())
+                ){
+                  checkItem = false;
+                }
+                
+                List<Fixation> mostRecentFixations = perceiver.getFixations(time);
+                for(int j = perceiver.getFixationToLearnFrom(); j < mostRecentFixations.size(); j++){
+                  Fixation f = mostRecentFixations.get(j);
+                  if(f.hasBeenPerformed()){
+                    String identifierForObjectFixatedOn = f.getObjectSeen().getIdentifier();
+                    int fixationDomainSpecificCol = f.getScene().getDomainSpecificColFromSceneSpecificCol(f.getColFixatedOn());
+                    int fixationDomainSpecificRow = f.getScene().getDomainSpecificRowFromSceneSpecificRow(f.getRowFixatedOn());
+
+                    if(
+                      (checkItem && identifierForObjectFixatedOn.equals(identifierForObjectJustFixatedOn)) ||
+                      (
+                        fixationDomainSpecificCol == fixationJustPerformedDomainSpecificCol &&
+                        fixationDomainSpecificRow == fixationJustPerformedDomainSpecificRow
+                      )
+                    ){
+                      objectOrLocationFixatedOnAgain = true;
+                      break;
+                    }
+                  }
+                }
+              }
+              
+              if(
+                this.getDomainSpecifics().shouldLearnFromNewFixations(time) ||
+                objectOrLocationFixatedOnAgain
+              ){
+                this.getPerceiver().learnFromNewFixations(time);
+              }
+            }
+            
+            /////////////////////////////////////
+            ///// ADD FIXATION TO PERCEIVER /////
+            /////////////////////////////////////
+            
+            //Now, add the new Fixation after learning others since this 
+            //Fixation may contain a duplicate object/location.  COnsequently, 
+            //when this function is called again, the "fixation to learn from" 
+            //Perceiever index will start from the Fixation just performed and 
+            //will not throw a duplicate object/location exception when 
+            //"this.getPerceiver().learnFromNewFixations(time);" is called above
+            perceiver.addFixation(fixation);
+            
+            /////////////////////////////////////////////////////////////
+            ///// CHECK IF FIXATIONS COMPLETE AND SHOULD BE CLEARED /////
+            /////////////////////////////////////////////////////////////
+            
+            if(
+              perceiver.getFixations(time).size() >= this.getDomainSpecifics().getMaximumFixationsInSet() ||
+              this.getDomainSpecifics().isFixationSetComplete(time)
+            ){
+              
+              //If fixations are complete, try to learn from them before 
+              //clearing.
+              perceiver.learnFromNewFixations(time);
+              
+              //Clear the Perceiver's fixation data structure 1ms "in the 
+              //future".  Its not possible, nor desirable, to clear the 
+              //Perceiver's fixations now due to the constraints on the "put"
+              //mechanism of HistoryTreeMap's (the type of structure the 
+              //Perceiver's fixation data structure is).
+              this.getPerceiver().clearFixations(time + 1);
+              this._fixationsScheduledForDeliberation = 0;
+              fixationsToMakeAtTime.clear();
+              fixationSetComplete = true;
+            }
+          }
+          else if(performanceTime < time){
+            throw new IllegalStateException(
+              "Fixation " + i + " in fixations to be made at time " + time + 
+              " was scheduled to be performed at time " + performanceTime + 
+              " but wasn't."
+            );
+          }
         }
       }
-      else{
-        for(int i = 0; i < numFixations || time <= timeSceneSeenUntil; i++, time += this.getSaccadeTime()) {
-          _perceiver.moveEyeAndLearn (time);
+      
+      if(!fixationSetComplete){
+      
+        //////////////////////////////////////////////
+        ///// SCHEDULE FIXATIONS FOR PERFORMANCE /////
+        //////////////////////////////////////////////
+
+        //Convert fixationsToMakeAtTime into an Iterator so that, if a fixation
+        //has been decided on at or before the time passed but the perceptual
+        //resource is busy at the time it was decided upon, it can be removed 
+        //safely whilst iterating through the fixationsToMakeAtTime.
+        for(int i = 0; i < fixationsToMakeAtTime.size(); i++){
+          Fixation fixation = fixationsToMakeAtTime.get(i);
+
+          //Only process fixations that aren't scheduled for performance yet.
+          if(fixation.getPerformanceTime() == null){
+            int timeDecidedUpon = fixation.getTimeDecidedUpon();
+
+            if(timeDecidedUpon == time){
+              if(this.perceiverFree(time)){
+                fixation.setPerformanceTime(time + this._saccadeTime);
+                this._perceiverClock = fixation.getPerformanceTime();
+              }
+              else {
+                fixationsToMakeAtTime.remove(i);
+              }
+            }
+            else if(timeDecidedUpon < time){
+              throw new IllegalStateException(
+                "Fixation " + i + " in fixations to be made at time " + time + 
+                " was scheduled to be decided upon at time " + timeDecidedUpon + 
+                " but wasn't."
+              );
+            }
+          }
+        }
+
+        /////////////////////////////
+        ///// ADD NEW FIXATIONS /////
+        /////////////////////////////
+
+        if(this.getDomainSpecifics().shouldAddNewFixation(time) && this.attentionFree(time)){
+          Fixation newFixation = 
+            (this._fixationsScheduledForDeliberation == 0 ?
+              this.getDomainSpecifics().getInitialFixationInSet(time) :
+              this.getDomainSpecifics().getNonInitialFixationInSet(time)
+            );
+
+          //A Fixation should always be returned but, just in case, perform a 
+          //null check on newFixation before altering relevant variables.
+          if(newFixation != null){
+            this._attentionClock = newFixation.getTimeDecidedUpon();
+            fixationsToMakeAtTime.add(newFixation);
+            this._fixationsScheduledForDeliberation++;
+          }
         }
       }
+
+      this._fixationsToMake.put(time, fixationsToMakeAtTime);
       
-      this._perceiverClock = time;
-      return true;
     }
     
-    return false;
+    return fixationSetComplete;
   }
+
+//  /**
+//   *
+//   * @param numFixations The number of fixations the {@link jchrest.architecture.Perceiver} should perform on the {@link jchrest.lib.Scene}.
+//   * @param time The time this function is invoked.
+//   * @return The times that {@link jchres}
+//   */
+//  public List<Integer> requestToLearnFromVision(int numFixations, int time) {
+//    List<Integer> fixationTimes = new ArrayList();
+//    if(this.isPerceiverFree(time)){
+//      fixationTimes.add(time + this._salientObjectSelectionTime);
+//      
+////      _perceiver.setScene (scene);
+////      _perceiver.start(numFixations, time);
+//
+////      for(int i = 0; i < numFixations; i++, time += this.getSaccadeTime()) {
+////        _perceiver.moveEyeAndLearn(time);
+////      }
+//      
+//      this._perceiverClock = time;
+//    }
+//    
+//    return fixationTimes;
+//  }
   
   /**
    * Scans the {@link jchrest.lib.Scene} specified using the {@link 
@@ -3084,14 +3368,9 @@ public class Chrest extends Observable {
    * 
    * @param scene The {@link jchrest.lib.Scene} to scan.
    * @param numFixations Number of fixations this {@link #this} model's {@link
-   * jchrest.architecture.Perceiver} should make on the {@link 
+   * jchrest.architecture.Perceiver} should perform on the {@link 
    * jchrest.lib.Scene}.
    * @param time The time this function is invoked.
-   * @param timeSceneSeenUntil The time that this {@link #this} model can no 
-   * longer "see" the {@link jchrest.lib.Scene} to be scanned.  If there is no
-   * time limit on how long the {@link jchrest.lib.Scene} can be "seen" for then
-   * pass null. 
-   * @param debug 
    * @return A {@link java.lang.Boolean} value indicating whether the {@link 
    * jchrest.lib.Scene} specified was "looked at" or not.  {@link 
    * java.lang.Boolean#TRUE} will be returned if this {@link #this} model's 
@@ -3099,41 +3378,39 @@ public class Chrest extends Observable {
    * {@link java.lang.Boolean#FALSE} will be returned if this {@link #this} 
    * model's perceptual resources are busy at the time this function is invoked.
    */
-  public boolean scanScene(Scene scene, int numFixations, int time, Integer timeSceneSeenUntil, boolean debug){
-    if(debug) System.out.println("\n=== Chrest.scanScene() ===");
-    if(debug) System.out.println("- Checking if perceiver resource is free @ time " + time);
-    
-    if(this.perceiverFree(time)){
-      if(debug) System.out.println("   - Perceiver resource free, setting scene for perceiver");
-      _perceiver.setScene (scene); //Also clears any previous fixations
-
-      if(debug) System.out.println("   - Starting fixations (setting perceiver to initial fixation)");
-      _perceiver.start (numFixations, time);
-      
-      if(timeSceneSeenUntil == null){
-        if(debug) System.out.println("   - Making fixations until I've fixated " + numFixations + " times");
-        for (int i = 0; i < numFixations; i++, time += this.getSaccadeTime()) {
-          if(debug) System.out.println("   - Making " + (i+1) + " of " + numFixations + " fixations @ time " + time);
-          _perceiver.moveEye (time, debug);
-        }
-      }
-      else{
-        if(debug) System.out.println("   - Making fixations until I've fixated " + numFixations + " times or time > the time the scene can be seen until (" + timeSceneSeenUntil + ")");
-        for (int i = 0; i < numFixations || time <= timeSceneSeenUntil; i++, time += this.getSaccadeTime()) {
-          if(debug) System.out.println("   - Making " + (i+1) + " of " + numFixations + " fixations @ time " + time);
-          _perceiver.moveEye (time, debug);
-        }
-      }
-      
-      this._perceiverClock = time;
-      if(debug) System.out.println("   - Finished fixations, perceiver resource will be busy until " + this._perceiverClock);
-      if(debug) System.out.println("   - Returning true");
-      return true;
-    }
-    
-    if(debug) System.out.println("   - Perceiver resource not free, returning false");
-    return false;
-  }
+//  public boolean scanScene(Scene scene, int numFixations, int time){
+//    String func = "- scanScene: ";
+//    
+//    if(this.perceiverFree(time)){
+//      this.printDebugStatement(func + "Perceiver resource free @ time " + time);
+//      
+//      _perceiver.setScene (scene); //Also clears any previous fixations
+//      _perceiver.start (numFixations, time);
+//      
+//      if(timeSceneSeenUntil == null){
+//        this.printDebugStatement(func + "Making fixations until I've fixated " + numFixations + " times");
+//        for (int i = 0; i < numFixations; i++, time += this.getSaccadeTime()) {
+//          this.printDebugStatement(func + "Making " + (i + 1) + " of " + numFixations + " fixations @ time " + time);
+//          _perceiver.moveEye (time, debug);
+//        }
+//      }
+//      else{
+//        this.printDebugStatement(func + "Making fixations until I've fixated " + numFixations + " times or time > the time the scene can be seen until (" + timeSceneSeenUntil + ")");
+//        for (int i = 0; i < numFixations || time <= timeSceneSeenUntil; i++, time += this.getSaccadeTime()) {
+//          if(debug) System.out.println("   - Making " + (i+1) + " of " + numFixations + " fixations @ time " + time);
+//          _perceiver.moveEye (time, debug);
+//        }
+//      }
+//      
+//      this._perceiverClock = time;
+//      if(debug) System.out.println("   - Finished fixations, perceiver resource will be busy until " + this._perceiverClock);
+//      if(debug) System.out.println("   - Returning true");
+//      return true;
+//    }
+//    
+//    this.printDebugStatement(func + "Perceiver resource not free @ time " + time + ", returning false");
+//    return false;
+//  }
   
   /** 
    * Scan given {@link jchrest.lib.Scene}, <i>s</i>, at the time specified and 
@@ -3149,7 +3426,7 @@ public class Chrest extends Observable {
    * 
    * @param scene The {@link jchrest.lib.Scene} to scan and recall.
    * @param numFixations Number of fixations this {@link #this} model's {@link
-   * jchrest.architecture.Perceiver} should make on the {@link 
+   * jchrest.architecture.Perceiver} should perform on the {@link 
    * jchrest.lib.Scene}.
    * @param time The time this function is invoked.
    * @param timeSceneSeenUntil The time that this {@link #this} model can no 
@@ -3162,9 +3439,9 @@ public class Chrest extends Observable {
    * {@link jchrest.lib.Scene} passed or null if this {@link #this} model's 
    * perceptual resources are busy. 
    */
-  public Scene scanAndRecallScene (Scene scene, int numFixations, int time, Integer timeSceneSeenUntil) {  
-    return scanAndRecallScene (scene, numFixations, true, time, timeSceneSeenUntil, false);
-  }
+//  public Scene scanAndRecallScene (Scene scene, int numFixations, int time, Integer timeSceneSeenUntil) {  
+//    return scanAndRecallScene (scene, numFixations, true, time, timeSceneSeenUntil, false);
+//  }
   
   /** 
    * Scan given {@link jchrest.lib.Scene}, <i>s</i>, at the time specified and 
@@ -3173,7 +3450,7 @@ public class Chrest extends Observable {
    * 
    * @param scene The {@link jchrest.lib.Scene} to scan and recall.
    * @param numFixations Number of fixations this {@link #this} model's {@link
-   * jchrest.architecture.Perceiver} should make on the {@link 
+   * jchrest.architecture.Perceiver} should perform on the {@link 
    * jchrest.lib.Scene}.
    * @param clearVisualStm Set to {@link java.lang.Boolean#TRUE} to clear the
    * visual {@link jchrest.architecture.Stm} associated with this {@link #this}
@@ -3192,182 +3469,182 @@ public class Chrest extends Observable {
    * {@link jchrest.lib.Scene} passed or null if this {@link #this} model's 
    * perceptual resources are busy.  
    */
-  public Scene scanAndRecallScene(Scene scene, int numFixations, boolean clearVisualStm, int time, Integer timeSceneSeenUntil, boolean debug) {
-    
-    if(debug) System.out.println("=== Chrest.scanScene() ===");
-    if(debug) System.out.println("- Requested to scan scene with name '" + scene.getName() + "' at time " + time);
-    
-    // only clear STM if flag is set
-    if (clearVisualStm) {
-      if(debug) System.out.println("- Clearing STM");
-      _visualStm.clear (time);
-    }
-
-    //Get the VisualSpatialField associated with the Scene to be scanned.  If
-    //there is an associated VisualSpatialField, SceneObjects that are 
-    //recognised when scanning the Scene below will have their corresponding
-    //VisualSpatialFieldObject recognised status updated since the 
-    //VisualSpatialField is essentially being looked at if the Scene to be 
-    //scanned is associated with one.
-    VisualSpatialField associatedVisualSpatialField = scene.getVisualSpatialFieldGeneratedFrom();
-    if(debug) System.out.println("- Does the Scene to be scanned represent a VisualSpatialField? " + (associatedVisualSpatialField  != null));
-
-    //Create a data structure to the identifiers of objects that are recognised
-    //when scanning the Scene.  This will be used to determine what objects are
-    //unrecognised if the Scene represents a VisualSpatialField.
-    ArrayList<String> recognisedObjectIdentifiers = new ArrayList<>();
-
-    //Instantiate recalled Scene, this will be a "blind" canvas initially.
-    Scene recalledScene = new Scene (
-      "Recalled scene of " + scene.getName (), 
-      scene.getWidth (), 
-      scene.getHeight (),
-      scene.getVisualSpatialFieldGeneratedFrom()
-    );
-
-    //Scan the scene.
-    if(this.scanScene(scene, numFixations, time, timeSceneSeenUntil, debug)){
-
-      // -- get items from image in STM, and optionally template slots
-      // TODO: use frequency count in recall
-      if(debug) System.out.println("- Processing recognised chunks");
-      for (Node node : _visualStm) {
-
-        ListPattern nodeImage = node.getImage(time);
-
-        //If the node isn't the visual LTM root node (nothing recognised) then,
-        //continue.
-        if(!node.isRootNode()){
-
-          if(debug) System.out.println("   - Processing chunk: " + nodeImage.toString());
-          if (_canCreateTemplates) { // check if templates needed
-            if(debug) System.out.println("   - Templates are enabled, so append any filled slot information to the chunk");
-            nodeImage = nodeImage.append(node.getFilledSlots (time));
-          }
-
-          if(debug) System.out.println("   - Processing chunk with image: '" + nodeImage.toString() + "'");
-
-          nodeImage = this.getDomainSpecifics().convertDomainSpecificCoordinatesToSceneSpecificCoordinates(nodeImage, scene);
-          if(debug) System.out.println("      - Image with scene-specific coordinates: '" + nodeImage.toString() + "'");
-
-          //Add all recognised items to the scene to be returned and flag the 
-          //corresponding VisualSpatialFieldObjects as being recognised.
-          for (int i = 0; i < nodeImage.size(); i++){
-            PrimitivePattern item = nodeImage.getItem(i);
-
-            if (item instanceof ItemSquarePattern) {
-              ItemSquarePattern ios = (ItemSquarePattern)item;
-              int col = ios.getColumn ();
-              int row = ios.getRow ();
-
-              if(debug) System.out.println("      - Processing object " + ios.toString() );
-
-              //Get the SceneObject that represents the recalled object
-              SceneObject recognisedObject = scene.getSquareContents(col, row);
-              //TODO: Write a test that checks for the null check below preventing
-              //      this function from erroring-out when the recognisedObject is 
-              //      set to null (picked up in Netlogo where a turtle learned a
-              //      ListPattern like <[H 0 -2][T -2 -1]> and recognised this 
-              //      when it was at the edge of a Scene and a hole was in the
-              //      location specified in the ListPattern but the tile wasn't
-              //      since that location was not represented since the "self" was
-              //      on the western-most point of the Scene scanned).
-              if(debug) System.out.println("         ~ Equivalent of object in scene scanned");
-
-              //The recalled object may be a ghost (part of a LTM chunk but doesn't exist in the
-              //scene being scanned) so check for this here lest a NullPointerException be thrown.
-              if(recognisedObject != null){
-
-                if(debug){
-                  System.out.println("            = ID: " + recognisedObject.getIdentifier());
-                  System.out.println("            = Class: " + recognisedObject.getObjectClass());
-                  System.out.println("         ~ Adding object to col " + col + ", row " + row + " in the Scene recalled");
-                }
-
-                recalledScene.addItemToSquare(col, row, recognisedObject.getIdentifier(), recognisedObject.getObjectClass());
-
-                if(associatedVisualSpatialField != null){
-                  if(debug) System.out.println("         ~ Updating object in associated visual-spatial field");
-                  for(VisualSpatialFieldObject objectOnVisualSpatialSquare : associatedVisualSpatialField.getSquareContents(col, row, time)){
-                    if(objectOnVisualSpatialSquare.getIdentifier().equals(recognisedObject.getIdentifier())){
-                      objectOnVisualSpatialSquare.setRecognised(time, true);
-                      recognisedObjectIdentifiers.add(objectOnVisualSpatialSquare.getIdentifier());
-
-                      if(debug){
-                        System.out.println("            ID: " + objectOnVisualSpatialSquare.getIdentifier());
-                        System.out.println("            Class: " + objectOnVisualSpatialSquare.getObjectClass());
-                        System.out.println("            Created at: " + objectOnVisualSpatialSquare.getTimeCreated());
-                        System.out.println("            Terminus: " + objectOnVisualSpatialSquare.getTerminus());
-                        System.out.println("            Recognised: " + objectOnVisualSpatialSquare.recognised(time));
-                        System.out.println("            Ghost: " + objectOnVisualSpatialSquare.isGhost());
-                      }
-                    }
-                  }
-                }
-              }
-              else if(debug){
-                System.out.println("            = There is no equivalent object (recognised object must be a ghost)");
-              }
-            }
-          }
-        }
-      }
-
-      //Process unrecognised objects in the associated visual-spatial field.
-      if(associatedVisualSpatialField != null){
-        if(debug) System.out.println("- Processing unrecognised objects in associated visual-spatial field");
-        for(int row = 0; row < associatedVisualSpatialField.getHeight(); row++){
-          for(int col = 0; col < associatedVisualSpatialField.getWidth(); col++){
-            if(debug) System.out.println("   - Processing objects on col " + col + ", row " + row);
-
-            for(VisualSpatialFieldObject object : associatedVisualSpatialField.getSquareContents(col, row, time)){  
-              if(!recognisedObjectIdentifiers.contains(object.getIdentifier())){
-                if(debug){
-                  System.out.println("      - Object unrecognised.  Current status:");
-                  System.out.println("         ID: " + object.getIdentifier());
-                  System.out.println("         Class: " + object.getObjectClass());
-                  System.out.println("         Created at: " + object.getTimeCreated());
-                  System.out.println("         Terminus: " + object.getTerminus());
-                  System.out.println("         Recognised: " + object.recognised(time));
-                  System.out.println("         Ghost: " + object.isGhost());
-                }
-
-                //Squares that contain blind objects and the creator's avatar will 
-                //have null termini so do not overwrite these.
-                if(object.getTerminus() == null){
-                  object.setUnrecognised(time, false);
-                }else{
-                  object.setUnrecognised(time, true);
-                }
-
-                if(debug){
-                  System.out.println("         - After processing:");
-                  System.out.println("            ID: " + object.getIdentifier());
-                  System.out.println("            Class: " + object.getObjectClass());
-                  System.out.println("            Created at: " + object.getTimeCreated());
-                  System.out.println("            Terminus: " + object.getTerminus());
-                  System.out.println("            Recognised: " + object.recognised(time));
-                  System.out.println("            Ghost: " + object.isGhost());
-                }
-              }
-            }
-          }
-        }
-      }
-
-      //If the creator of the scene was identified in the original scene then add
-      //it into the recalled scene.
-      Square creatorLocation = scene.getLocationOfCreator();
-      if(creatorLocation != null){
-        SceneObject self = scene.getSquareContents(creatorLocation.getColumn(), creatorLocation.getRow());
-        recalledScene.addItemToSquare(creatorLocation.getColumn(), creatorLocation.getRow(), self.getIdentifier(), self.getObjectClass());
-      }
-      
-      return recalledScene;
-    }
-    
-    return null;
-  }
+//  public Scene scanAndRecallScene(Scene scene, int numFixations, boolean clearVisualStm, int time, Integer timeSceneSeenUntil, boolean debug) {
+//    
+//    if(debug) System.out.println("=== Chrest.scanScene() ===");
+//    if(debug) System.out.println("- Requested to scan scene with name '" + scene.getName() + "' at time " + time);
+//    
+//    // only clear STM if flag is set
+//    if (clearVisualStm) {
+//      if(debug) System.out.println("- Clearing STM");
+//      _visualStm.clear (time);
+//    }
+//
+//    //Get the VisualSpatialField associated with the Scene to be scanned.  If
+//    //there is an associated VisualSpatialField, SceneObjects that are 
+//    //recognised when scanning the Scene below will have their corresponding
+//    //VisualSpatialFieldObject recognised status updated since the 
+//    //VisualSpatialField is essentially being looked at if the Scene to be 
+//    //scanned is associated with one.
+//    VisualSpatialField associatedVisualSpatialField = scene.getVisualSpatialFieldGeneratedFrom();
+//    if(debug) System.out.println("- Does the Scene to be scanned represent a VisualSpatialField? " + (associatedVisualSpatialField  != null));
+//
+//    //Create a data structure to the identifiers of objects that are recognised
+//    //when scanning the Scene.  This will be used to determine what objects are
+//    //unrecognised if the Scene represents a VisualSpatialField.
+//    ArrayList<String> recognisedObjectIdentifiers = new ArrayList<>();
+//
+//    //Instantiate recalled Scene, this will be a "blind" canvas initially.
+//    Scene recalledScene = new Scene (
+//      "Recalled scene of " + scene.getName (), 
+//      scene.getWidth (), 
+//      scene.getHeight (),
+//      scene.getVisualSpatialFieldGeneratedFrom()
+//    );
+//
+//    //Scan the scene.
+//    if(this.scanScene(scene, numFixations, time, timeSceneSeenUntil, debug)){
+//
+//      // -- get items from image in STM, and optionally template slots
+//      // TODO: use frequency count in recall
+//      if(debug) System.out.println("- Processing recognised chunks");
+//      for (Node node : _visualStm) {
+//
+//        ListPattern nodeImage = node.getImage(time);
+//
+//        //If the node isn't the visual LTM root node (nothing recognised) then,
+//        //continue.
+//        if(!node.isRootNode()){
+//
+//          if(debug) System.out.println("   - Processing chunk: " + nodeImage.toString());
+//          if (_canCreateTemplates) { // check if templates needed
+//            if(debug) System.out.println("   - Templates are enabled, so append any filled slot information to the chunk");
+//            nodeImage = nodeImage.append(node.getFilledSlots (time));
+//          }
+//
+//          if(debug) System.out.println("   - Processing chunk with image: '" + nodeImage.toString() + "'");
+//
+//          nodeImage = this.getDomainSpecifics().convertDomainSpecificCoordinatesToSceneSpecificCoordinates(nodeImage, scene);
+//          if(debug) System.out.println("      - Image with scene-specific coordinates: '" + nodeImage.toString() + "'");
+//
+//          //Add all recognised items to the scene to be returned and flag the 
+//          //corresponding VisualSpatialFieldObjects as being recognised.
+//          for (int i = 0; i < nodeImage.size(); i++){
+//            PrimitivePattern item = nodeImage.getItem(i);
+//
+//            if (item instanceof ItemSquarePattern) {
+//              ItemSquarePattern ios = (ItemSquarePattern)item;
+//              int col = ios.getColumn ();
+//              int row = ios.getRow ();
+//
+//              if(debug) System.out.println("      - Processing object " + ios.toString() );
+//
+//              //Get the SceneObject that represents the recalled object
+//              SceneObject recognisedObject = scene.getSquareContents(col, row);
+//              //TODO: Write a test that checks for the null check below preventing
+//              //      this function from erroring-out when the recognisedObject is 
+//              //      set to null (picked up in Netlogo where a turtle learned a
+//              //      ListPattern like <[H 0 -2][T -2 -1]> and recognised this 
+//              //      when it was at the edge of a Scene and a hole was in the
+//              //      location specified in the ListPattern but the tile wasn't
+//              //      since that location was not represented since the "self" was
+//              //      on the western-most point of the Scene scanned).
+//              if(debug) System.out.println("         ~ Equivalent of object in scene scanned");
+//
+//              //The recalled object may be a ghost (part of a LTM chunk but doesn't exist in the
+//              //scene being scanned) so check for this here lest a NullPointerException be thrown.
+//              if(recognisedObject != null){
+//
+//                if(debug){
+//                  System.out.println("            = ID: " + recognisedObject.getIdentifier());
+//                  System.out.println("            = Class: " + recognisedObject.getObjectClass());
+//                  System.out.println("         ~ Adding object to col " + col + ", row " + row + " in the Scene recalled");
+//                }
+//
+//                recalledScene.addItemToSquare(col, row, recognisedObject.getIdentifier(), recognisedObject.getObjectClass());
+//
+//                if(associatedVisualSpatialField != null){
+//                  if(debug) System.out.println("         ~ Updating object in associated visual-spatial field");
+//                  for(VisualSpatialFieldObject objectOnVisualSpatialSquare : associatedVisualSpatialField.getSquareContents(col, row, time)){
+//                    if(objectOnVisualSpatialSquare.getIdentifier().equals(recognisedObject.getIdentifier())){
+//                      objectOnVisualSpatialSquare.setRecognised(time, true);
+//                      recognisedObjectIdentifiers.add(objectOnVisualSpatialSquare.getIdentifier());
+//
+//                      if(debug){
+//                        System.out.println("            ID: " + objectOnVisualSpatialSquare.getIdentifier());
+//                        System.out.println("            Class: " + objectOnVisualSpatialSquare.getObjectClass());
+//                        System.out.println("            Created at: " + objectOnVisualSpatialSquare.getTimeCreated());
+//                        System.out.println("            Terminus: " + objectOnVisualSpatialSquare.getTerminus());
+//                        System.out.println("            Recognised: " + objectOnVisualSpatialSquare.recognised(time));
+//                        System.out.println("            Ghost: " + objectOnVisualSpatialSquare.isGhost());
+//                      }
+//                    }
+//                  }
+//                }
+//              }
+//              else if(debug){
+//                System.out.println("            = There is no equivalent object (recognised object must be a ghost)");
+//              }
+//            }
+//          }
+//        }
+//      }
+//
+//      //Process unrecognised objects in the associated visual-spatial field.
+//      if(associatedVisualSpatialField != null){
+//        if(debug) System.out.println("- Processing unrecognised objects in associated visual-spatial field");
+//        for(int row = 0; row < associatedVisualSpatialField.getHeight(); row++){
+//          for(int col = 0; col < associatedVisualSpatialField.getWidth(); col++){
+//            if(debug) System.out.println("   - Processing objects on col " + col + ", row " + row);
+//
+//            for(VisualSpatialFieldObject object : associatedVisualSpatialField.getSquareContents(col, row, time)){  
+//              if(!recognisedObjectIdentifiers.contains(object.getIdentifier())){
+//                if(debug){
+//                  System.out.println("      - Object unrecognised.  Current status:");
+//                  System.out.println("         ID: " + object.getIdentifier());
+//                  System.out.println("         Class: " + object.getObjectClass());
+//                  System.out.println("         Created at: " + object.getTimeCreated());
+//                  System.out.println("         Terminus: " + object.getTerminus());
+//                  System.out.println("         Recognised: " + object.recognised(time));
+//                  System.out.println("         Ghost: " + object.isGhost());
+//                }
+//
+//                //Squares that contain blind objects and the creator's avatar will 
+//                //have null termini so do not overwrite these.
+//                if(object.getTerminus() == null){
+//                  object.setUnrecognised(time, false);
+//                }else{
+//                  object.setUnrecognised(time, true);
+//                }
+//
+//                if(debug){
+//                  System.out.println("         - After processing:");
+//                  System.out.println("            ID: " + object.getIdentifier());
+//                  System.out.println("            Class: " + object.getObjectClass());
+//                  System.out.println("            Created at: " + object.getTimeCreated());
+//                  System.out.println("            Terminus: " + object.getTerminus());
+//                  System.out.println("            Recognised: " + object.recognised(time));
+//                  System.out.println("            Ghost: " + object.isGhost());
+//                }
+//              }
+//            }
+//          }
+//        }
+//      }
+//
+//      //If the creator of the scene was identified in the original scene then add
+//      //it into the recalled scene.
+//      Square creatorLocation = scene.getLocationOfCreator();
+//      if(creatorLocation != null){
+//        SceneObject self = scene.getSquareContents(creatorLocation.getColumn(), creatorLocation.getRow());
+//        recalledScene.addItemToSquare(creatorLocation.getColumn(), creatorLocation.getRow(), self.getIdentifier(), self.getObjectClass());
+//      }
+//      
+//      return recalledScene;
+//    }
+//    
+//    return null;
+//  }
   
   /**
    * A predicted move is defined as being a production associated with a visual 
@@ -3392,34 +3669,34 @@ public class Chrest extends Observable {
    * boolean)} is returned.  If the {@link jchrest.architecture.Perceiver} is 
    * not free, null is returned.
    */
-  public Map<ListPattern, Integer> getMovePredictions (Scene scene, int numFixations, String colour, int time, int timeSceneSeenUntil) {
-    
-    if(this.scanScene (scene, numFixations, time, timeSceneSeenUntil, false)){
-      
-      Map<ListPattern, Integer> moveFrequencies = new HashMap<ListPattern, Integer> ();
-      for (Node node : _visualStm) {
-        
-        HashMap<Node, Double> productions = node.getProductions (time);
-        if(productions != null){
-          for (Node action : productions.keySet()) {
-            if (sameColour(action.getImage(time), colour)) {
-              if (moveFrequencies.containsKey(action.getImage (time))) {
-                moveFrequencies.put (
-                    action.getImage (time), 
-                    moveFrequencies.get(action.getImage (time)) + 1
-                    );
-              } else {
-                moveFrequencies.put (action.getImage (time), 1);
-              }
-            }
-          }
-        }
-      }
-      return moveFrequencies;
-    }
-    
-    return null;
-  }
+//  public Map<ListPattern, Integer> getMovePredictions (Scene scene, int numFixations, String colour, int time, int timeSceneSeenUntil) {
+//    
+//    if(this.scanScene (scene, numFixations, time, timeSceneSeenUntil, false)){
+//      
+//      Map<ListPattern, Integer> moveFrequencies = new HashMap<ListPattern, Integer> ();
+//      for (Node node : _visualStm) {
+//        
+//        HashMap<Node, Double> productions = node.getProductions (time);
+//        if(productions != null){
+//          for (Node action : productions.keySet()) {
+//            if (sameColour(action.getImage(time), colour)) {
+//              if (moveFrequencies.containsKey(action.getImage (time))) {
+//                moveFrequencies.put (
+//                    action.getImage (time), 
+//                    moveFrequencies.get(action.getImage (time)) + 1
+//                    );
+//              } else {
+//                moveFrequencies.put (action.getImage (time), 1);
+//              }
+//            }
+//          }
+//        }
+//      }
+//      return moveFrequencies;
+//    }
+//    
+//    return null;
+//  }
 
   /**
    * Predict a move using a CHUMP-like mechanism.
@@ -3436,29 +3713,29 @@ public class Chrest extends Observable {
    * 
    * @return 
    */
-  public Move predictMove (Scene scene, int numFixations, int time, Integer timeSceneSeenUntil) {
-    Map<ListPattern, Integer> moveFrequencies = getMovePredictions (scene, numFixations, null, time, timeSceneSeenUntil);
-    
-    if(moveFrequencies != null){
-      // find the most frequent pattern
-      ListPattern best = null;
-      int bestFrequency = 0;
-      for (ListPattern key : moveFrequencies.keySet ()) {
-        if (moveFrequencies.get (key) > bestFrequency) {
-          best = key;
-          bestFrequency = moveFrequencies.get (key);
-        }
-      }
-      // create a move to return
-      // list pattern should be one item long, with the first item being an ItemSquarePattern
-      if (best != null && (best.size () == 1) && (best.getItem(0) instanceof ItemSquarePattern)) {
-        ItemSquarePattern move = (ItemSquarePattern)best.getItem (0);
-        return new Move (move.getItem (), move.getRow (), move.getColumn ());
-      }
-    }
-    
-    return new Move ("UNKNOWN", 0, 0);
-  }
+//  public Move predictMove (Scene scene, int numFixations, int time, Integer timeSceneSeenUntil) {
+//    Map<ListPattern, Integer> moveFrequencies = getMovePredictions (scene, numFixations, null, time, timeSceneSeenUntil);
+//    
+//    if(moveFrequencies != null){
+//      // find the most frequent pattern
+//      ListPattern best = null;
+//      int bestFrequency = 0;
+//      for (ListPattern key : moveFrequencies.keySet ()) {
+//        if (moveFrequencies.get (key) > bestFrequency) {
+//          best = key;
+//          bestFrequency = moveFrequencies.get (key);
+//        }
+//      }
+//      // create a move to return
+//      // list pattern should be one item long, with the first item being an ItemSquarePattern
+//      if (best != null && (best.size () == 1) && (best.getItem(0) instanceof ItemSquarePattern)) {
+//        ItemSquarePattern move = (ItemSquarePattern)best.getItem (0);
+//        return new Move (move.getItem (), move.getRow (), move.getColumn ());
+//      }
+//    }
+//    
+//    return new Move ("UNKNOWN", 0, 0);
+//  }
 
   /**
    * Predict a move using a CHUMP-like mechanism.
@@ -3476,29 +3753,29 @@ public class Chrest extends Observable {
    * 
    * @return
    */
-  public Move predictMove (Scene scene, int numFixations, String colour, int time, Integer timeSceneSeenUntil) {
-    Map<ListPattern, Integer> moveFrequencies = getMovePredictions (scene, numFixations, colour, time, timeSceneSeenUntil);
-    
-    if(moveFrequencies != null){
-      // find the most frequent pattern
-      ListPattern best = null;
-      int bestFrequency = 0;
-      for (ListPattern key : moveFrequencies.keySet ()) {
-        if (moveFrequencies.get (key) > bestFrequency) {
-          best = key;
-          bestFrequency = moveFrequencies.get (key);
-        }
-      }
-      // create a move to return
-      // list pattern should be one item long, with the first item being an ItemSquarePattern
-      if (best != null && (best.size () == 1) && (best.getItem(0) instanceof ItemSquarePattern)) {
-        ItemSquarePattern move = (ItemSquarePattern)best.getItem (0);
-        return new Move (move.getItem (), move.getRow (), move.getColumn ());
-      }
-    }
-    
-    return new Move ("UNKNOWN", 0, 0);
-  }
+//  public Move predictMove (Scene scene, int numFixations, String colour, int time, Integer timeSceneSeenUntil) {
+//    Map<ListPattern, Integer> moveFrequencies = getMovePredictions (scene, numFixations, colour, time, timeSceneSeenUntil);
+//    
+//    if(moveFrequencies != null){
+//      // find the most frequent pattern
+//      ListPattern best = null;
+//      int bestFrequency = 0;
+//      for (ListPattern key : moveFrequencies.keySet ()) {
+//        if (moveFrequencies.get (key) > bestFrequency) {
+//          best = key;
+//          bestFrequency = moveFrequencies.get (key);
+//        }
+//      }
+//      // create a move to return
+//      // list pattern should be one item long, with the first item being an ItemSquarePattern
+//      if (best != null && (best.size () == 1) && (best.getItem(0) instanceof ItemSquarePattern)) {
+//        ItemSquarePattern move = (ItemSquarePattern)best.getItem (0);
+//        return new Move (move.getItem (), move.getRow (), move.getColumn ());
+//      }
+//    }
+//    
+//    return new Move ("UNKNOWN", 0, 0);
+//  }
   
   
 
@@ -3804,7 +4081,7 @@ public class Chrest extends Observable {
   /**
    * Sets the encoding time for any new {@link 
    * jchrest.lib.VisualSpatialFieldObject}s that represent physical {@link 
-   * jchrest.lib.SceneObject}s, i.e. non-empty and non-blind {@link 
+   * jchrest.domainSpecifics.SceneObject}s, i.e. non-empty and non-blind {@link 
    * jchrest.lib.VisualSpatialFieldObject}s.
    * 
    * @param encodingTime
@@ -3865,7 +4142,7 @@ public class Chrest extends Observable {
    *  </li>
    *  <li>
    *    The time taken to encode any empty squares and {@link 
-   *    jchrest.lib.SceneObject}s in the {@link jchrest.lib.Scene} to encode 
+   *    jchrest.domainSpecifics.SceneObject}s in the {@link jchrest.lib.Scene} to encode 
    *    into the {@link jchrest.architecture.VisualSpatialField} to be created.
    *  </li>
    * </ul>
@@ -3932,9 +4209,9 @@ public class Chrest extends Observable {
    *    The {@link jchrest.lib.Scene} passed is entirely blind.
    *  </li>
    *  <li>
-   *    Two {@link jchrest.lib.SceneObject}s in the {@link jchrest.lib.Scene}  
+   *    Two {@link jchrest.domainSpecifics.SceneObject}s in the {@link jchrest.lib.Scene}  
    *    passed have the same identifier.  This means that it will be impossible
-   *    to identify either {@link jchrest.lib.SceneObject} in the {@link 
+   *    to identify either {@link jchrest.domainSpecifics.SceneObject} in the {@link 
    *    jchrest.architecture.VisualSpatialField} to be created if they are to be 
    *    moved at any point in the future.
    *  </li>
@@ -3957,7 +4234,7 @@ public class Chrest extends Observable {
     
     //Attention and perceptual resources must be free to start constructing a 
     //visual-spatial field.
-    if(this._attentionClock < time && this._perceiverClock < time){
+    if(this.attentionFree(time) && this.perceiverFree(time)){
         
       /******************************************/
       /***** CHECK FOR ENTIRELY BLIND SCENE *****/
@@ -3975,7 +4252,7 @@ public class Chrest extends Observable {
       //Check sceneToEncode for a non-blind object that is not the scene creator.
       for(int col = 0; col < sceneToEncode.getWidth() && realityIsBlind; col++){
         for(int row = 0; row < sceneToEncode.getHeight() && realityIsBlind; row++){
-          String objectClass = sceneToEncode.getSquareContents(col, row).getObjectClass();
+          String objectClass = sceneToEncode.getSquareContents(col, row).getObjectType();
           if(
             !objectClass.equals(Scene.getBlindSquareToken()) &&
             !objectClass.equals(Scene.getCreatorToken())
