@@ -13,9 +13,9 @@ import jchrest.lib.Square;
 
 /**
  * Represents a 2D external environment that a CHREST model can "see" as a 2D
- * {@link java.util.ArrayList}.  Currently, only one object can be encoded per
- * coordinate in the {@link jchrest.domainSpecifics.Scene}.  The {@link 
- * java.util.ArrayList} created has the following structure when created:
+ * {@link java.util.ArrayList} containing one {@link 
+ * jchrest.domainSpecifics.SceneObject} per coordinate.  The {@link 
+ * java.util.ArrayList} created has the following structure:
  * 
  * <ul>
  *  <li>
@@ -24,7 +24,7 @@ import jchrest.lib.Square;
  *  </li>
  *  <li>
  *    Second-dimension elements represent rows (y-axis) in the external 
- *    environment and contain, at most, one {@link jchrest.lib.SceneObject}.
+ *    environment.
  *  </li>
  * </ul>
  * 
@@ -34,7 +34,7 @@ import jchrest.lib.Square;
  * congruent with the <a href="http://www.bbc.co.uk/schools/teachers/
  * ks2_lessonplans/maths/grids.shtml"> along the corridor, up the stairs</a> 
  * approach to 2D grid reading. 
- * 
+ * <p>
  * Rows and columns are zero-indexed and therefore, identifying coordinates in
  * a {@link jchrest.domainSpecifics.Scene} should not use coordinates specific 
  * to the external environment (unless coordinates for the external environment 
@@ -49,53 +49,45 @@ import jchrest.lib.Square;
  * @author Martyn Lloyd-Kelly <martynlk@liverpool.ac.uk>
  */
 public class Scene {
+  protected static final String BLIND_SQUARE_TOKEN = "*";
+  protected static final String EMPTY_SQUARE_TOKEN = ".";
+  protected static final String CREATOR_TOKEN = "SELF";
   
-  //Human-readable identifier for the scene.
-  private final String _name;
-  
-  //The maximimum height and width of the scene.
-  private final int _height;
-  private final int _width;
-  
-  //The minimum x and y coordinate values in the domain that this scene is to
-  //represent.
-  private final int _minimumDomainSpecificColumn;
-  private final int _minimumDomainSpecificRow;
-  
-  private final VisualSpatialField _visualSpatialFieldGeneratedFrom;
-  
-  //The string used to denote blind squares in a Scene, i.e. squares that can't 
-  //be seen.
-  private static final String BLIND_SQUARE_TOKEN = "null";
-  
-  //The string used to denote empty squares.
-  private static final String EMPTY_SQUARE_TOKEN = ".";
-  
-  //The string used to identify the creator of the Scene instance.
-  private static final String CREATOR_TOKEN = "SELF";
-  
-  //The actual scene.
-  private final ArrayList<ArrayList<SceneObject>> _scene;
+  protected final String _name;
+  protected final int _height;
+  protected final int _width;
+  protected final int _minimumDomainSpecificColumn;
+  protected final int _minimumDomainSpecificRow;
+  protected ArrayList<ArrayList<SceneObject>> _scene;
+  private final VisualSpatialField _visualSpatialFieldRepresented;
 
   /**
-   * Constructor: the {@link #this} created is initially "blind"; empty squares
-   * and items must be added using the appropriate methods from this class.
+   * Constructor.
    * 
-   * @param name Human-readable identifier for the Scene instance created.
-   * @param minDomainSpecificXCoordinate The minimum x-coordinate value in the 
-   * domain that {@link #this} is intended to represent.  Note that this value
-   * must represent an absolute coordinate value in the domain.
-   * @param minDomainSpecificYCoordinate The minimum y-coordinate value in the 
-   * domain that {@link #this} is intended to represent.  Note that this value
-   * must represent an absolute coordinate value in the domain.
-   * @param width Represents the maximum number of indivisible x-coordinates 
-   * that can be "seen".
-   * @param height Represents the maximum number of indivisible y-coordinates 
-   * that can be "seen".
-   * @param visualSpatialFieldGeneratedFrom Set to null if this {@link #this} is
-   * not being generated from a {@link jchrest.architecture.VisualSpatialField}
+   * {@link #this} is initially "blind".
+   * 
+   * @param name Human-readable identifier for {@link #this}.
+   * @param minDomainSpecificCol The minimum column in the domain that {@link 
+   * #this} is intended to represent.  Note that this value must represent an 
+   * absolute coordinate value in the domain.
+   * @param minDomainSpecificRow The minimum row in the domain that {@link 
+   * #this} is intended to represent.  Note that this value must represent an 
+   * absolute coordinate value in the domain.
+   * @param width Represents the maximum number of indivisible columns that can 
+   * be "seen".
+   * @param height Represents the maximum number of indivisible rows that can 
+   * be "seen".
+   * @param visualSpatialFieldRepresented Set to {@code null} if {@link #this} 
+   * does not represent a {@link jchrest.architecture.VisualSpatialField}.
    */
-  public Scene(String name, int width, int height, int minDomainSpecificXCoordinate, int minDomainSpecificYCoordinate, VisualSpatialField visualSpatialFieldGeneratedFrom) {
+  public Scene(
+    String name, 
+    int width, 
+    int height, 
+    int minDomainSpecificCol, 
+    int minDomainSpecificRow, 
+    VisualSpatialField visualSpatialFieldRepresented
+  ){
     if(width <= 0 || height <= 0){
       throw new IllegalArgumentException(
         "The width (" + width + ") or height (" + height + ") specified for a " +
@@ -106,36 +98,26 @@ public class Scene {
     this._name = name;
     this._height = height;
     this._width = width;
-    this._minimumDomainSpecificColumn = minDomainSpecificXCoordinate;
-    this._minimumDomainSpecificRow = minDomainSpecificYCoordinate;
-    this._visualSpatialFieldGeneratedFrom = visualSpatialFieldGeneratedFrom;
-    
-    //Instantiate Scene with SceneObjects representing blind squares at first 
-    //(empty squares must be encoded explicitly).  Note that identifiers for 
-    //blind SceneObjects are not unique since blind squares can not be moved in 
-    //a visual-spatial field if they are converted to VisualSpatialFieldObject 
-    //instances (the purpose of a SceneObject identifier is to allow 
-    //VisualSpatialFieldObject instances to be precisely identified so they may 
-    //be moved).
+    this._minimumDomainSpecificColumn = minDomainSpecificCol;
+    this._minimumDomainSpecificRow = minDomainSpecificRow;
+    this._visualSpatialFieldRepresented = visualSpatialFieldRepresented;
     this._scene = new ArrayList<>();
+    
     for(int col = 0; col < width; col++){
       this._scene.add(new ArrayList<>());
       for(int row = 0; row < height; row++){
-        this._scene.get(col).add(new SceneObject("", Scene.getBlindSquareToken()));
+        this._scene.get(col).add(new SceneObject(Scene.getBlindSquareToken()));
       }
     }
   }
   
   /**
-   * Adds the specified {@link jchrest.domainSpecifics.SceneObject} to the
-   * coordinates specified by {@code col} and {@code row}.  These coordinates 
-   * should be specific to {@link #this}, i.e. zero-indexed.
    * 
-   * @param col
-   * @param row
-   * @param item 
+   * @param col Should be specific to {@link #this}.
+   * @param row Should be specific to {@link #this}.
+   * @param object 
    */
-  public void addItemToSquare(int col, int row, SceneObject item){
+  public void addObjectToSquare(int col, int row, SceneObject object){
     if(row < 0 || row > this._height || col < 0 || col > this._width){
       throw new IllegalArgumentException(
         "The column or row to add a SceneObject to (" + col + "," + row + ") " +
@@ -144,43 +126,41 @@ public class Scene {
         ", respectively)."
       );
     }
-    _scene.get(col).set(row, item);
+    _scene.get(col).set(row, object);
   }
   
   /**
    * Wrapper for {@link #this#addItemToSquare(int, int, 
    * jchrest.domainSpecifics.SceneObject)} that creates a new {@link 
-   * jchrest.lib.SceneObject} using the {@code itemIdentifier} and {@code 
-   * objectClass} specified.
+   * jchrest.domainSpecifics.SceneObject} that will have a randomly assigned 
+   * identifier but the {@code objectType} specified.
    * 
    * @param row
    * @param col
-   * @param itemIdentifier
-   * @param objectClass
+   * @param objectType
    */
-  public void addItemToSquare(int col, int row, String itemIdentifier, String objectClass) {
-    this.addItemToSquare(col, row, new SceneObject(itemIdentifier, objectClass));
+  public void addObjectToSquare(int col, int row, String objectType) {
+    this.addObjectToSquare(col, row, new SceneObject(objectType));
   }
   
   /**
-   * Adds the {@link jchrest.lib.SceneObject}s specified along the columns of 
-   * the row specified from the minimum column in the row incrementally.  If the 
-   * number of {@link jchrest.lib.SceneObject}s specified is greater than the 
-   * maximum number of columns in this {@link #this},  the extra {@link 
-   * jchrest.lib.SceneObject}s are ignored.
+   * Adds the {@link jchrest.domainSpecifics.SceneObject SceneObjects} specified 
+   * along the columns of the row specified from the minimum column in the row 
+   * incrementally.  If the number of {@link jchrest.lib.SceneObject 
+   * SceneObjects} specified is greater than the maximum number of columns in 
+   * {@link #this}, the extra {@link jchrest.lib.SceneObject SceneObjects} are 
+   * ignored.
+   * <p>
+   * If a coordinate already contains a {@link jchrest.lib.SceneObject}, it is
+   * overwritten.
    * 
-   * If a coordinate already contains a {@link jchrest.lib.SceneObject}, the new 
-   * {@link jchrest.lib.SceneObject} overwrites the old one.
-   * 
-   * @param row The row to be modified.
-   * @param items The {@link jchrest.lib.SceneObject}s to added to the row.
+   * @param row 
+   * @param objects
    */
-  public void addItemsToRow (int row, ArrayList<SceneObject> items) {
+  public void addObjectsToRow (int row, ArrayList<SceneObject> objects) {
     for (int i = 0; i < this._width; i++) {
-      SceneObject item = items.get(i);
-      if(!item.getObjectType().equals(Scene.BLIND_SQUARE_TOKEN)){
-        this.addItemToSquare(i, row, item.getIdentifier(), item.getObjectType());
-      }
+      SceneObject item = objects.get(i);
+      this._scene.get(i).set(row, item);
     }
   }
   
@@ -244,8 +224,8 @@ public class Scene {
       );
     }
     
-    int numberItemsInThisScene = this.getAsListPattern(true).removeBlindEmptyAndUnknownItems().size();
-    int numberItemsInOtherScene = sceneToCompareAgainst.getAsListPattern(true).removeBlindEmptyAndUnknownItems().size();
+    int numberItemsInThisScene = this.getAsListPattern().removeBlindEmptyAndUnknownItems().size();
+    int numberItemsInOtherScene = sceneToCompareAgainst.getAsListPattern().removeBlindEmptyAndUnknownItems().size();
     
     if(numberItemsInThisScene <= numberItemsInOtherScene){
       return 0;
@@ -255,7 +235,8 @@ public class Scene {
   }
   
   /**
-   * Compute the errors of ommission in this scene compared to another.
+   * Compute the errors of ommission in {@link #this} compared to the {@code 
+   * sceneToCompareAgainst} specified.
    * 
    * @param sceneToCompareAgainst
    * 
@@ -291,8 +272,8 @@ public class Scene {
       );
     }
     
-    int numberItemsInThisScene = this.getAsListPattern(true).removeBlindEmptyAndUnknownItems().size();
-    int numberItemsInOtherScene = sceneToCompareAgainst.getAsListPattern(true).removeBlindEmptyAndUnknownItems().size();
+    int numberItemsInThisScene = this.getAsListPattern().removeBlindEmptyAndUnknownItems().size();
+    int numberItemsInOtherScene = sceneToCompareAgainst.getAsListPattern().removeBlindEmptyAndUnknownItems().size();
 
     if(numberItemsInThisScene >= numberItemsInOtherScene){
       return 0;
@@ -302,21 +283,22 @@ public class Scene {
   }
   
   /**
-   * Compute precision of this {@link #this} against another, i.e. the 
-   * percentage of non blind/empty {@link jchrest.lib.SceneObject}s in this 
-   * {@link #this}, p (0 &lt;= p &lt;= 1), that are correct in their placement 
-   * when compared to another.
+   * Compute precision of this {@link #this} against the {@code 
+   * sceneToCompareAgainst} specified, i.e. the percentage of non blind/empty 
+   * {@link jchrest.lib.SceneObject SceneObjects} in {@link #this}, that are 
+   * placed on the same coordinates in both {@link jchrest.domainSpecifics.Scene 
+   * Scenes}.
+   * <p>
+   * To determine correct placement the result of invoking {@link 
+   * jchrest.domainSpecifics.SceneObject#getObjectType()} on each {@link 
+   * jchrest.domainSpecifics.SceneObject} in {@link #this} and the {@code 
+   * sceneToCompareAgainst} are compared.
    * 
    * @param sceneToCompareAgainst
-   * @param objectsIdentifiedByObjectClass Set to true to specify that the 
-   * {@link jchrest.lib.SceneObject}s in the {@link #this}s to compare should be 
-   * identified and compared according to their object classes.  Set to false to 
-   * specify that the items should be identified and compared by their unique 
-   * identifiers.
    * 
    * @return 
    */
-  public float computePrecision (Scene sceneToCompareAgainst, boolean objectsIdentifiedByObjectClass) {
+  public float computePrecision (Scene sceneToCompareAgainst) {
     if(this.getHeight() != sceneToCompareAgainst.getHeight() || this.getWidth() != sceneToCompareAgainst.getWidth()){
       throw new IllegalArgumentException("Dimensions of scenes to compare are not equal: "
         + "height and width of scene whose recall is to be calculated = " + this.getHeight() + ", " + this.getWidth()
@@ -325,8 +307,8 @@ public class Scene {
       );
     }
       
-    ListPattern itemsInThisScene = this.getAsListPattern(objectsIdentifiedByObjectClass).removeBlindEmptyAndUnknownItems();
-    ListPattern itemsInOtherScene = sceneToCompareAgainst.getAsListPattern(objectsIdentifiedByObjectClass).removeBlindEmptyAndUnknownItems();
+    ListPattern itemsInThisScene = this.getAsListPattern().removeBlindEmptyAndUnknownItems();
+    ListPattern itemsInOtherScene = sceneToCompareAgainst.getAsListPattern().removeBlindEmptyAndUnknownItems();
 
     //Check for potential to divide by 0.
     if( itemsInThisScene.isEmpty() || itemsInOtherScene.isEmpty() ){
@@ -350,13 +332,17 @@ public class Scene {
    * Compute recall of given {@link #this} against this one, i.e. the proportion 
    * of {@link jchrest.lib.SceneObject}s in this {@link #this} which have been 
    * correctly recalled, irrespective of their placement.
+   * <p>
+   * To determine recall the result of invoking {@link 
+   * jchrest.domainSpecifics.SceneObject#getObjectType()} on each {@link 
+   * jchrest.domainSpecifics.SceneObject} in {@link #this} and the {@code 
+   * sceneToCompareAgainst} are compared.
    * 
    * @param sceneToCompareAgainst
-   * @param objectsIdentifiedByObjectClass
    * 
    * @return 
    */
-  public float computeRecall (Scene sceneToCompareAgainst, boolean objectsIdentifiedByObjectClass) {
+  public float computeRecall (Scene sceneToCompareAgainst) {
     if(this.getHeight() != sceneToCompareAgainst.getHeight() || this.getWidth() != sceneToCompareAgainst.getWidth()){
       throw new IllegalArgumentException("Dimensions of scenes to compare are not equal: "
         + "height and width of scene whose recall is to be calculated = " + this.getHeight() + ", " + this.getWidth()
@@ -365,8 +351,8 @@ public class Scene {
       );
     }
     
-    ListPattern itemsInThisScene = this.getAsListPattern(objectsIdentifiedByObjectClass).removeBlindEmptyAndUnknownItems();
-    ListPattern itemsInOtherScene = sceneToCompareAgainst.getAsListPattern(objectsIdentifiedByObjectClass).removeBlindEmptyAndUnknownItems();
+    ListPattern itemsInThisScene = this.getAsListPattern().removeBlindEmptyAndUnknownItems();
+    ListPattern itemsInOtherScene = sceneToCompareAgainst.getAsListPattern().removeBlindEmptyAndUnknownItems();
 
     if(itemsInThisScene.isEmpty() || itemsInOtherScene.isEmpty()){
       return 0.0f;
@@ -421,7 +407,7 @@ public class Scene {
    *      same {@link jchrest.lib.Square Squares} in {@code scene} ({@link 
    *      jchrest.domainSpecifics.SceneObject SceneObjects} are identified using
    *      the result of invoking {@link 
-   *      jchrest.domainSpecifics.SceneObject#getIdentifier()} on them).
+   *      jchrest.domainSpecifics.SceneObject#getObjectType()}).
    *    </li>
    * </ul>
    */
@@ -435,10 +421,7 @@ public class Scene {
       if(this.sameDomainSpace(sceneAsScene)){
         for(int col = 0; col < this.getWidth(); col++){
           for(int row = 0; row < this.getHeight(); row++){
-            String idOfObjectOnThisScenesSquare = this.getSquareContents(col, row).getIdentifier();
-            String idOfObjectOnOtherScenesSquare = sceneAsScene.getSquareContents(col, row).getIdentifier();
-
-            if(!idOfObjectOnThisScenesSquare.equals(idOfObjectOnOtherScenesSquare)) return false;
+            if(!this._scene.get(col).get(row).getObjectType().equals(sceneAsScene._scene.get(col).get(row).getObjectType())) return false;
           }
         }
 
@@ -449,21 +432,23 @@ public class Scene {
   }
   
   /**
-   * @param objectsIdentifiedByObjectClass Set to true to identify {@link 
-   * jchrest.lib.SceneObject}s by their object class, set to false to identify 
-   * {@link jchrest.lib.SceneObject}s by their unique identifier.
-   * 
-   * @return The {@link jchrest.lib.SceneObject}s in this {@link #this} 
-   * (including blind and empty {@link jchrest.lib.SceneObject}s) in order from 
-   * east -> west then south -> north as a {@link jchrest.lib.ListPattern} 
-   * composed of {@link jchrest.lib.ItemSquarePattern}s.
+   * @return The {@link jchrest.lib.SceneObject SceneObjects} in {@link #this} 
+   * (including {@link jchrest.lib.SceneObject SceneObjects} representing blind 
+   * and empty squares) in order from east -> west then south -> north as a 
+   * {@link jchrest.lib.ListPattern} composed of {@link 
+   * jchrest.lib.ItemSquarePattern ItemSquarePatterns}.
+   * <p>
+   * The "item" for each {@link jchrest.lib.ItemSquarePattern} will be the 
+   * result of invoking {@link 
+   * jchrest.domainSpecifics.SceneObject#getObjectType()} on each {@link 
+   * jchrest.domainSpecifics.SceneObject} present in {@link #this}.
    */
-  public ListPattern getAsListPattern (boolean objectsIdentifiedByObjectClass){
+  public ListPattern getAsListPattern(){
     ListPattern scene = new ListPattern();
     
     for(int row = 0; row < _height; row++){
       for(int col = 0; col < _width; col++){
-        scene = scene.append(this.getSquareContentsAsListPattern(col, row, objectsIdentifiedByObjectClass));
+        scene = scene.append(this.getSquareContentsAsListPattern(col, row));
       }
     }
     
@@ -522,28 +507,32 @@ public class Scene {
   }
   
   /**
-   * @param startCol
-   * @param startRow
+   * @param col
+   * @param row
    * @param scope
    * 
-   * @param objectsIdentifiedByObjectClass Set to true to identify {@link 
-   * jchrest.lib.SceneObject}s by their object class, set to false to identify 
-   * {@link jchrest.lib.SceneObject}s by their unique identifier.
-   * 
-   * @return All {@link jchrest.lib.SceneObject}s within given row and column 
-   * +/- the specified field of view in order from east -> west then south -> 
-   * north as a {@link jchrest.lib.ListPattern} composed of {@link 
-   * jchrest.lib.ItemSquarePattern}s. Blind and empty {@link 
-   * jchrest.lib.SceneObject}s are not returned.
+   * @return All {@link jchrest.lib.SceneObject SceneObjects} on coordinates
+   * +/- the specified {@code scope} from the coordinate specified by {@code 
+   * col} and {@code row} from the most south-easterly coordinate to the most 
+   * north-westerly coordinate (all columns in a row are processed before the 
+   * next row is processed) as a {@link jchrest.lib.ListPattern} composed of 
+   * {@link jchrest.lib.ItemSquarePattern ItemSquarePatterns} ({@link 
+   * jchrest.lib.SceneObject SceneObjects} representing blind and empty 
+   * coordinates are not included).
+   * <p>
+   * The "item" for each {@link jchrest.lib.ItemSquarePattern} will be the 
+   * result of invoking {@link 
+   * jchrest.domainSpecifics.SceneObject#getObjectType()} on each {@link 
+   * jchrest.domainSpecifics.SceneObject} present on the applicable coordinates.
    */
-  public ListPattern getItemsInScopeAsListPattern (int startCol, int startRow, int scope, boolean objectsIdentifiedByObjectClass) {
+  public ListPattern getItemsInScopeAsListPattern (int col, int row, int scope) {
     ListPattern itemsInScope = new ListPattern ();
     
-    for (int row = startRow - scope; row <= startRow + scope; row++) {
-      if (row >= 0 && row < _height) {
-        for (int col = startCol - scope; col <= startCol + scope; col++) {
-          if (col >= 0 && col < _width) {
-            itemsInScope = itemsInScope.append(this.getSquareContentsAsListPattern(col, row, objectsIdentifiedByObjectClass));
+    for (int r = row - scope; r <= row + scope; r++) {
+      if (r >= 0 && r < _height) {
+        for (int c = col - scope; c <= col + scope; c++) {
+          if (c >= 0 && c < _width) {
+            itemsInScope = itemsInScope.append(this.getSquareContentsAsListPattern(c, r));
           }
         }
       }
@@ -627,45 +616,40 @@ public class Scene {
    * @param col
    * @param row
    * 
-   * @param objectsIdentifiedByObjectClass Set to true to identify {@link 
-   * jchrest.lib.SceneObject}s by their object class, set to false to identify 
-   * {@link jchrest.lib.SceneObject}s by their unique identifier.
-   * 
-   * @return The contents of the coordinate specified in this {@link #this}.
+   * @return The {@link jchrest.lib.SceneObject SceneObject} on the 
+   * coordinate specified by {@code col} and {@code row} in this {@link #this} 
+   * (including {@link jchrest.lib.SceneObject SceneObjects} representing blind 
+   * and empty squares) as a {@link jchrest.lib.ListPattern} composed of a 
+   * {@link jchrest.lib.ItemSquarePattern ItemSquarePatterns.
+   * <p>
+   * The "item" for the {@link jchrest.lib.ItemSquarePattern} will be the 
+   * result of invoking {@link 
+   * jchrest.domainSpecifics.SceneObject#getObjectType()} on the {@link 
+   * jchrest.domainSpecifics.SceneObject} present on the coordinate specified in 
+   * {@link #this}.
+   * <p>
+   * If the {@code col} and {@code row} specified are not represented in {@link 
+   * #this}, an empty {@link jchrest.lib.ListPattern} is returned.
    */
-  public ListPattern getSquareContentsAsListPattern (int col, int row, boolean objectsIdentifiedByObjectClass) {
+  public ListPattern getSquareContentsAsListPattern (int col, int row) {
     ListPattern squareContentsAsListPattern = new ListPattern();
     
     if (row >= 0 && row < _height && col >= 0 && col < _width) {
       SceneObject squareContents = this.getSquareContents(col, row);
-      int itemSquarePatternCol = col;
-      int itemSquarePatternRow = row;
-      
-      //By default, assume that the item identifier for the ItemSquarePattern
-      //representation of the object on square will have the object's class
-      //as the item identifier.
-      String itemIdentifier = squareContents.getObjectType();
-      
-      if(!objectsIdentifiedByObjectClass){
-        itemIdentifier = squareContents.getIdentifier();
-      }
-
-      squareContentsAsListPattern.add(new ItemSquarePattern(
-        itemIdentifier,
-        itemSquarePatternCol,
-        itemSquarePatternRow
-      ));
+      squareContentsAsListPattern.add(new ItemSquarePattern(squareContents.getObjectType(), col, row));
     }
     
     return squareContentsAsListPattern;
   }
   
   /**
-   * @return The {@link jchrest.architecture.VisualSpatialField} this {@link 
-   * #this} was created from, if applicable.
+   * 
+   * @return The {@link jchrest.architecture.VisualSpatialField} represented by
+   * {@link #this} or {@code null} if {@link #this} does not represent a {@link 
+   * jchrest.architecture.VisualSpatialField}.
    */
-  public VisualSpatialField getVisualSpatialFieldGeneratedFrom(){
-    return this._visualSpatialFieldGeneratedFrom;
+  public VisualSpatialField getVisualSpatialFieldRepresented(){
+    return this._visualSpatialFieldRepresented;
   }
 
   /**

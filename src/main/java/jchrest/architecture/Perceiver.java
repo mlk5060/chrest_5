@@ -10,11 +10,13 @@ import jchrest.lib.Modality;
 import jchrest.domainSpecifics.Scene;
 import jchrest.lib.Square;
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map.Entry;
 import jchrest.lib.HistoryTreeMap;
 import jchrest.domainSpecifics.SceneObject;
 import jchrest.lib.PrimitivePattern;
+import jchrest.lib.VisualSpatialFieldObject;
 
 /**
  * Manages storage of {@link jchrest.domainSpecifics.Fixation Fixations} 
@@ -138,132 +140,227 @@ public class Perceiver {
    * </ul>
    */
   ListPattern addFixation(Fixation fixation) {
-    
+    this._associatedChrestModel.printDebugStatement("===== Perceiver.addFixation() =====");
     ListPattern fixationFieldOfViewInformation = null;
     
-    //Get the Fixation to add's performance time.  This will be used to update
-    //various data structures.
-    Integer fixationPerformanceTime = fixation.getPerformanceTime();
-    if(fixationPerformanceTime != null){
+    this._associatedChrestModel.printDebugStatement(
+      "- Attempting to add the following fixation: " + (fixation == null ? "null" :
+      fixation.toString())
+    );
+    
+    ///////////////////////////////////
+    ///// CHECK FOR NULL FIXATION /////
+    ///////////////////////////////////
+    
+    if(fixation != null){
       
-      ////////////////////////
-      ///// ADD FIXATION /////
-      ////////////////////////
+      this._associatedChrestModel.printDebugStatement("- Checking if the fixation performance time is >= the time the Perceiver was created");
+      Integer fixationPerformanceTime = fixation.getPerformanceTime();
       List<Fixation> mostRecentFixations = this.getFixations(fixationPerformanceTime);
       if(mostRecentFixations != null){
         
+        Scene fixationScene = fixation.getScene();
+        Integer fixationXcor = fixation.getColFixatedOn();
+        Integer fixationYcor = fixation.getRowFixatedOn();
+        
+        if(fixation.hasBeenPerformed()){
+          this._associatedChrestModel.printDebugStatement(
+            "- Fixation has been performed.  Checking:\n   ~ Whether the  " +
+            "Fixation's performance time, Scene fixated on, column fixated on " +
+            "and row fixated on variables are all set before adding it to the " +
+            "Perceiver's Fixations data structure.\n   ~ Whether the CHREST " +
+            "model associated with the Perceiver is learning SceneObject " +
+            "loctaions relative to the agent equipped with the model and, if " +
+            "so, whether this agent is denoted in the Scene fixated on."
+          );
+          
+          if(fixationScene == null || fixationXcor == null || fixationYcor == null){
+            throw new IllegalStateException(
+              "The fixation to add has been performed but one or more of the " +
+              "following variables have not been set:\n- Performance time\n- " +
+              "Scene fixated on\n- Column of Scene coordinates fixated on\n- " +
+              "Row of Scene coordinates fixated on.\n\nFixation details:" + 
+              fixation.toString()
+            );
+          }
+          
+          if(
+            this._associatedChrestModel.isLearningObjectLocationsRelativeToAgent() && 
+            fixationScene.getLocationOfCreator() == null
+          ){
+            throw new IllegalStateException(
+              "CHREST model is to learn object locations relevant to the agent " + 
+              "equipped with CHREST however, the Fixation to add has not " +
+              "identified the agent's location in the Scene fixated on.  " +
+              "Fixation details:\n" + fixation.toString()
+            );
+          }
+        }
+   
+        ////////////////////////
+        ///// ADD FIXATION /////
+        ////////////////////////
+
+        this._associatedChrestModel.printDebugStatement("- Adding Fixation to Perceiver's Fixations data structure");
+
         //TODO: potentially add in trace decay here.
         List<Fixation> newFixations = new ArrayList();
         newFixations.addAll(mostRecentFixations);
         newFixations.add(fixation);
         this._fixations.put(fixationPerformanceTime, newFixations);
 
-        //Check if the fixation was performed and process accordingly.
+        this._associatedChrestModel.printDebugStatement("- Checking if the Fixation was performed");
         if(fixation.hasBeenPerformed()){
-          
+          this._associatedChrestModel.printDebugStatement("   ~ Fixation performed");
+
           /////////////////////////////////////////////////////
           ///// GET INFORMATION IN FIXATION FIELD OF VIEW /////
           /////////////////////////////////////////////////////
 
-          //Get Fixation information required to complete this function if the 
-          //Fixation has been performed correctly (information will be used 
-          //multiple times so do this to increase efficiency).
-          Scene fixationScene = fixation.getScene();
-          Integer fixationXcor = fixation.getColFixatedOn();
-          Integer fixationYcor = fixation.getRowFixatedOn();
+          fixationFieldOfViewInformation = this.getObjectsSeenInFixationFieldOfView(fixation);
+          this._associatedChrestModel.printDebugStatement("- SceneObjects fixated on: " + fixationFieldOfViewInformation.toString());
 
-          //Check that all required information is present.  This could be done 
-          //when the "hasPerformed()" check is made above but if 
-          //"hasPerformed()" returns false, unnecessary memory space will have 
-          //been allocated (small optimisation but aggregation of minor 
-          //modifications is always good).
-          if(fixationScene != null && fixationXcor != null && fixationYcor != null){
-            fixationFieldOfViewInformation = new ListPattern(Modality.VISUAL);
-            ListPattern itemsInFixationFieldOfView = fixationScene.getItemsInScopeAsListPattern(fixationXcor, fixationYcor, this._fixationFieldOfView, true);
-            
-            //Construct fixationFieldOfViewInformation according to 
-            //agent-relative object locations.
-            if(this._associatedChrestModel.isLearningObjectLocationsRelativeToAgent()){
-              Square creatorLocationSceneSpecific = fixationScene.getLocationOfCreator();
-              
-              if(creatorLocationSceneSpecific != null){
-                int absoluteDomainSpecificCreatorLocationCol = fixationScene.getDomainSpecificColFromSceneSpecificCol(creatorLocationSceneSpecific.getColumn());
-                int absoluteDomainSpecificCreatorLocationRow = fixationScene.getDomainSpecificRowFromSceneSpecificRow(creatorLocationSceneSpecific.getRow());
-              
-                for(PrimitivePattern pattern : itemsInFixationFieldOfView){
-                  if(pattern.getClass().equals(ItemSquarePattern.class)){
-                    ItemSquarePattern isp = (ItemSquarePattern)pattern;
-                    int absoluteDomainSpecificCol = fixationScene.getDomainSpecificColFromSceneSpecificCol(isp.getColumn());
-                    int absoluteDomainSpecificRow = fixationScene.getDomainSpecificRowFromSceneSpecificRow(isp.getRow());
-                    
-                    fixationFieldOfViewInformation.add(new ItemSquarePattern(
-                      isp.getItem(),
-                      absoluteDomainSpecificCol - absoluteDomainSpecificCreatorLocationCol,
-                      absoluteDomainSpecificRow - absoluteDomainSpecificCreatorLocationRow
-                    ));
-                  }
-                }
-              }
-              else{
-                throw new IllegalStateException(
-                  "CHREST model is to learn object locations relevant to " +
-                  "agent equipped with CHREST however, a Fixation attempted " +
-                  "has not identified the agent's location in the Scene " +
-                  "fixated on.  Fixation details:\n" + fixation.toString()
-                );
-              }
-            }
-            //Construct fixationFieldOfViewInformation according to non 
-            //agent-relative object locations
-            else{
-              for(PrimitivePattern pattern : itemsInFixationFieldOfView){
-                if(pattern.getClass().equals(ItemSquarePattern.class)){
-                  ItemSquarePattern isp = (ItemSquarePattern)pattern;
-                  int absoluteDomainSpecificCol = fixationScene.getDomainSpecificColFromSceneSpecificCol(isp.getColumn());
-                  int absoluteDomainSpecificRow = fixationScene.getDomainSpecificRowFromSceneSpecificRow(isp.getRow());
+          ////////////////////////////////////////////////
+          ///// FILL OUT VISUAL STM HYPOTHESIS SLOTS /////
+          ////////////////////////////////////////////////
 
-                  fixationFieldOfViewInformation.add(new ItemSquarePattern(
-                    isp.getItem(),
-                    absoluteDomainSpecificCol,
-                    absoluteDomainSpecificRow
-                  ));
-                }
-              }
-            }
-            
-            //Finally, normalise fixationFieldOfViewInformation according to
-            //domain-specifics.
-            fixationFieldOfViewInformation = this._associatedChrestModel.getDomainSpecifics().normalise(fixationFieldOfViewInformation);
-            
-            ////////////////////////////////////////////////
-            ///// FILL OUT VISUAL STM HYPOTHESIS SLOTS /////
-            ////////////////////////////////////////////////
-            
-            Stm visualStm = this._associatedChrestModel.getStm(Modality.VISUAL);
-            if(visualStm.getCount(fixationPerformanceTime) >= 1) {
-              visualStm.getItem(0, fixationPerformanceTime).fillSlots(fixationFieldOfViewInformation, fixationPerformanceTime);
-            }
-
-            ///////////////////////////////////////////////////////
-            ///// LEARN INFORMATION IN FIXATION FIELD OF VIEW /////
-            ///////////////////////////////////////////////////////
-            
-            //Do this last since it will consume attention.
-            this._associatedChrestModel.recogniseAndLearn(fixationFieldOfViewInformation, fixationPerformanceTime);
+          Stm visualStm = this._associatedChrestModel.getStm(Modality.VISUAL);
+          if(visualStm.getCount(fixationPerformanceTime) >= 1) {
+            this._associatedChrestModel.printDebugStatement("- Attempting to fill slots of hypothesis Node in visual STM");
+            visualStm.getItem(0, fixationPerformanceTime).fillSlots(fixationFieldOfViewInformation, fixationPerformanceTime);
           }
-          else{
-            throw new IllegalStateException(
-              "A Fixation to add that has been performed successfully does not " +
-              "have all required informaton set.  Information required: Scene " +
-              "that Fixation is made in context of, column in Scene fixated on " +
-              "and row in Scene fixated on.  Fixation details:\n" + fixation.toString()
+
+          //////////////////////////////////////////////////
+          ///// UPDATE VisualSpatialFieldObjectTermini /////
+          //////////////////////////////////////////////////
+
+          VisualSpatialField visualSpatialFieldRepresented = fixationScene.getVisualSpatialFieldRepresented();
+          if(visualSpatialFieldRepresented != null){
+            this._associatedChrestModel.printDebugStatement(
+              "- Fixation was performed on a Scene representing a " +
+              "VisualSpatialField. Updating relevant VisualSpatialFieldObject " +
+              "termini"
             );
+            this._associatedChrestModel.refreshVisualSpatialFieldObjectTermini(
+              visualSpatialFieldRepresented, 
+              fixation.getColFixatedOn(), 
+              fixation.getRowFixatedOn(), 
+              fixationPerformanceTime
+            );
+          }
+          
+          ///////////////////////////////////////////////////////
+          ///// LEARN INFORMATION IN FIXATION FIELD OF VIEW /////
+          ///////////////////////////////////////////////////////
+
+          this._associatedChrestModel.printDebugStatement(
+            "- Attempting to recognise and learn " + fixationFieldOfViewInformation.toString() +
+            " at fixation performance time (" + fixationPerformanceTime + ")."
+          );
+          this._associatedChrestModel.recogniseAndLearn(fixationFieldOfViewInformation, fixationPerformanceTime);
+        }
+        else{
+          this._associatedChrestModel.printDebugStatement("   ~ Fixation not performed successfully, exiting");
+        }
+      }
+      else{
+        throw new IllegalArgumentException(
+          "Perceiver does not exist at the time the following Fixation was " +
+          "performed:" + fixation.toString()
+        );
+      }
+    }
+    else{
+       this._associatedChrestModel.printDebugStatement("- Fixation to add is null, exiting");
+    }
+      
+    this._associatedChrestModel.printDebugStatement(
+      "- Returning " + (fixationFieldOfViewInformation == null ? 
+        "null" : fixationFieldOfViewInformation.toString())
+    );
+    this._associatedChrestModel.printDebugStatement("===== RETURN =====");
+    return fixationFieldOfViewInformation;
+  }
+  
+  /**
+   * 
+   * @param fixation
+   * @return 
+   */
+  public ListPattern getObjectsSeenInFixationFieldOfView(Fixation fixation){
+    ListPattern objectsSeenInFixationFieldOfView = null;
+    Scene fixationScene = fixation.getScene();
+    Integer fixationXcor = fixation.getColFixatedOn();
+    Integer fixationYcor = fixation.getRowFixatedOn();
+    
+    if(fixationScene != null && fixationXcor != null && fixationYcor != null){
+      objectsSeenInFixationFieldOfView = new ListPattern(Modality.VISUAL);
+      ListPattern fixationFieldOfViewContent = fixationScene.getItemsInScopeAsListPattern(fixationXcor, fixationYcor, this._fixationFieldOfView);
+
+      //Construct fixationFieldOfViewInformation according to 
+      //agent-relative object locations.
+      if(this._associatedChrestModel.isLearningObjectLocationsRelativeToAgent()){
+        Square creatorLocationSceneSpecific = fixationScene.getLocationOfCreator();
+
+        if(creatorLocationSceneSpecific != null){
+          int absoluteDomainSpecificCreatorLocationCol = fixationScene.getDomainSpecificColFromSceneSpecificCol(creatorLocationSceneSpecific.getColumn());
+          int absoluteDomainSpecificCreatorLocationRow = fixationScene.getDomainSpecificRowFromSceneSpecificRow(creatorLocationSceneSpecific.getRow());
+
+          for(PrimitivePattern pattern : fixationFieldOfViewContent){
+            if(pattern.getClass().equals(ItemSquarePattern.class)){
+              ItemSquarePattern isp = (ItemSquarePattern)pattern;
+              int absoluteDomainSpecificCol = fixationScene.getDomainSpecificColFromSceneSpecificCol(isp.getColumn());
+              int absoluteDomainSpecificRow = fixationScene.getDomainSpecificRowFromSceneSpecificRow(isp.getRow());
+
+              objectsSeenInFixationFieldOfView.add(new ItemSquarePattern(
+                isp.getItem(),
+                absoluteDomainSpecificCol - absoluteDomainSpecificCreatorLocationCol,
+                absoluteDomainSpecificRow - absoluteDomainSpecificCreatorLocationRow
+              ));
+            }
+          }
+        }
+        else{
+          throw new IllegalStateException(
+            "CHREST model is to learn object locations relevant to " +
+            "agent equipped with CHREST however, a Fixation attempted " +
+            "has not identified the agent's location in the Scene " +
+            "fixated on.  Fixation details:\n" + fixation.toString()
+          );
+        }
+      }
+      //Construct fixationFieldOfViewInformation according to non 
+      //agent-relative object locations
+      else{
+        for(PrimitivePattern pattern : fixationFieldOfViewContent){
+          if(pattern.getClass().equals(ItemSquarePattern.class)){
+            ItemSquarePattern isp = (ItemSquarePattern)pattern;
+            int absoluteDomainSpecificCol = fixationScene.getDomainSpecificColFromSceneSpecificCol(isp.getColumn());
+            int absoluteDomainSpecificRow = fixationScene.getDomainSpecificRowFromSceneSpecificRow(isp.getRow());
+
+            objectsSeenInFixationFieldOfView.add(new ItemSquarePattern(
+              isp.getItem(),
+              absoluteDomainSpecificCol,
+              absoluteDomainSpecificRow
+            ));
           }
         }
       }
+
+      //Finally, normalise fixationFieldOfViewInformation according to
+      //domain-specifics.
+      objectsSeenInFixationFieldOfView = this._associatedChrestModel.getDomainSpecifics().normalise(objectsSeenInFixationFieldOfView);
+    }
+    else{
+      throw new IllegalArgumentException(
+        "One or more of the following variables are not set for the fixation " +
+        "to get SceneObjects fixated on in context of:\n- Scene fixated on " +
+        "\n- Column of Scene coordinates fixated on\n- Row of Scene coordinates " +
+        "fixated on.\n\nFixation details:" + fixation.toString()
+      );
     }
     
-    return fixationFieldOfViewInformation;
+    return objectsSeenInFixationFieldOfView;
   }
   
   /**

@@ -11,8 +11,8 @@ import jchrest.lib.ListPattern;
   */
 public abstract class DomainSpecifics {
   
-  public final Chrest _associatedModel;
-  private Integer _maxFixationsInSet;
+  protected final Chrest _associatedModel;
+  protected Integer _maxFixationsInSet;
   
   /**
    * 
@@ -29,6 +29,10 @@ public abstract class DomainSpecifics {
   /////////////////////////////
   ///// CONCRETE METHODS //////
   /////////////////////////////
+  
+  public Chrest getAssociatedModel(){
+    return this._associatedModel;
+  }
   
   /**
    * Used by {@link jchrest.architecture.Chrest#scheduleOrMakeNextFixation(

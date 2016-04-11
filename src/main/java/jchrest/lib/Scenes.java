@@ -8,7 +8,6 @@ import jchrest.domainSpecifics.SceneObject;
 import java.io.*;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.UUID;
 
 /**
  * The Scenes class holds a list of Scene objects.  Each Scene contains 
@@ -85,10 +84,9 @@ public class Scenes {
         
         int x = 0;
         for(char character : lineAsCharArray){
-          scene.addItemToSquare(
+          scene.addObjectToSquare(
             x,
             y,
-            UUID.randomUUID().toString(),
             String.valueOf(character)
           );
           

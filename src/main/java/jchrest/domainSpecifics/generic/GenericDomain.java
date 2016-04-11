@@ -16,7 +16,6 @@ import jchrest.lib.ListPattern;
 import jchrest.lib.PrimitivePattern;
 import jchrest.domainSpecifics.Scene;
 import jchrest.lib.Square;
-import jchrest.lib.VisualSpatialFieldObject;
 
 /**
   * The GenericDomain is used when no domain-specific methods have been created.
@@ -34,10 +33,11 @@ public class GenericDomain extends DomainSpecifics {
    * 
    * <ol type="1">
    *  <li>
-   *    Represent the CHREST model or the agent equipped with the CHREST model.
+   *    Represent the agent equipped with the {@link 
+   *    jchrest.architecture.Chrest} model associated with {@link #this}.
    *  </li>
    *  <li> 
-   *    Blind, empty and unknown {@link jchrest.lib.ItemSquarePattern}s.
+   *    Represent blind/empty {@link jchrest.lib.Square Squares}.
    *  </li>
    *  <li> 
    *    Are duplicated in the {@link jchrest.lib.ListPattern} passed.
@@ -50,13 +50,12 @@ public class GenericDomain extends DomainSpecifics {
     
     for(PrimitivePattern prim : pattern){
       if(prim instanceof ItemSquarePattern){
-        ItemSquarePattern itemSquarePrim = (ItemSquarePattern)prim;
-        String identifier = itemSquarePrim.getItem();
+        ItemSquarePattern itemSquarePattern = (ItemSquarePattern)prim;
+        String objectType = itemSquarePattern.getItem();
         if( 
-          !identifier.equalsIgnoreCase(Scene.getCreatorToken()) &&
-          !identifier.equals(Scene.getEmptySquareToken()) && 
-          !identifier.equals(Scene.getBlindSquareToken()) &&
-          !identifier.equals(VisualSpatialFieldObject.getUnknownSquareToken()) &&
+          !objectType.equals(Scene.getCreatorToken()) &&
+          !objectType.equals(Scene.getEmptySquareToken()) &&
+          !objectType.equals(Scene.getBlindSquareToken()) &&
           !result.contains(prim)
         ){
           result.add(prim);

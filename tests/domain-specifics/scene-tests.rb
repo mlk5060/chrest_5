@@ -5,6 +5,15 @@
 # is entirely blind after construction if no illegal arguments are specified.
 unit_test "constructor" do
   
+  Scene.class_eval{
+    field_accessor :_scene
+  }
+  
+  scene_height_field = Scene.java_class.declared_field("_height")
+  scene_width_field = Scene.java_class.declared_field("_width")
+  scene_height_field.accessible = true
+  scene_width_field.accessible = true
+  
   for repeat in 1..3
   
     exception_thrown = false
@@ -27,10 +36,10 @@ unit_test "constructor" do
     )
   
     if repeat == 3
-      for row in 0...scene.getHeight()
-        for col in 0 ...scene.getWidth()
-          object = scene.getSquareContents(col, row)
-          assert_equal(Scene.getBlindSquareToken, object.getIdentifier, "occurred when checking the identifier of the item on col " + col.to_s + " and row " + row.to_s)
+      for col in 0...scene_width_field.value(scene)
+        for row in 0...scene_height_field.value(scene)
+          object = scene._scene.get(col).get(row)
+          #Can't check identifier since this will be assigned randomly.
           assert_equal(Scene.getBlindSquareToken, object.getObjectType, "occurred when checking the type of the item on col " + col.to_s + " and row " + row.to_s)
         end
       end
@@ -63,260 +72,100 @@ end
 # 0    x      x   | SELF |  x      x
 #                 |------|
 #      0      1       2     3      4
-unit_test "add-item-to-square" do
+unit_test "add_object_to_square" do
+  Scene.class_eval{
+    field_accessor :_scene
+  }
+  
+  scene_height_field = Scene.java_class.declared_field("_height")
+  scene_width_field = Scene.java_class.declared_field("_width")
+  scene_height_field.accessible = true
+  scene_width_field.accessible = true
+  
+  scene_object_identifier_field = SceneObject.java_class.declared_field("_identifier")
+  scene_object_type_field = SceneObject.java_class.declared_field("_objectType")
+  scene_object_identifier_field.accessible = true
+  scene_object_type_field.accessible = true
+  
+  ########################################
+  ##### CONSTRUCT AND POPULATE Scene #####
+  ########################################
+  
   scene = Scene.new("test", 5, 3, 0, 0, nil)
+  scene.addObjectToSquare(2, 0, SceneObject.new("0", Scene.getCreatorToken))
+  scene.addObjectToSquare(1, 1, SceneObject.new(Scene.getEmptySquareToken))
+  scene.addObjectToSquare(2, 1, SceneObject.new("1", "c"))
+  scene.addObjectToSquare(3, 1, SceneObject.new(Scene.getEmptySquareToken))
+  scene.addObjectToSquare(0, 2, SceneObject.new("2", "a"))
+  scene.addObjectToSquare(1, 2, SceneObject.new(Scene.getEmptySquareToken))
+  scene.addObjectToSquare(2, 2, SceneObject.new(Scene.getEmptySquareToken))
+  scene.addObjectToSquare(3, 2, SceneObject.new("3", "b"))
+  scene.addObjectToSquare(4, 2, SceneObject.new(Scene.getEmptySquareToken))
   
-  ######################
-  ##### Sub-Test 1 #####
-  ######################
+  ################
+  ##### TEST #####
+  ################
   
-  # The Scene will currently be entirely blind at the moment so add items
-  # accordingly.
-  scene.addItemToSquare(2, 0, "0", Scene.getCreatorToken)
-  scene.addItemToSquare(1, 1, "", Scene.getEmptySquareToken)
-  scene.addItemToSquare(2, 1, "1", "c")
-  scene.addItemToSquare(3, 1, "", Scene.getEmptySquareToken)
-  scene.addItemToSquare(0, 2, "2", "a")
-  scene.addItemToSquare(1, 2, "", Scene.getEmptySquareToken)
-  scene.addItemToSquare(2, 2, "", Scene.getEmptySquareToken)
-  scene.addItemToSquare(3, 2, "3", "b")
-  scene.addItemToSquare(4, 2, "", Scene.getEmptySquareToken)
-  
-  for row in 0..2
-    for col in 0..4
+  for col in 0...scene_width_field.value(scene)
+    for row in 0...scene_height_field.value(scene)
+      expected_identifier = nil
+      expected_object_type = Scene.getBlindSquareToken()
       
-      expected_object_identifier = Scene.getBlindSquareToken
-      expected_object_class = Scene.getBlindSquareToken
+      if col == 2 && row == 0 then expected_identifier, expected_object_type = "0", Scene.getCreatorToken() end
+      if col == 1 && row == 1 then expected_object_type = Scene.getEmptySquareToken() end
+      if col == 2 && row == 1 then expected_identifier, expected_object_type = "1", "c" end
+      if col == 3 && row == 1 then expected_object_type = Scene.getEmptySquareToken() end
+      if col == 0 && row == 2 then expected_identifier, expected_object_type = "2", "a" end
+      if col == 1 && row == 2 then expected_object_type = Scene.getEmptySquareToken() end
+      if col == 2 && row == 2 then expected_object_type = Scene.getEmptySquareToken() end
+      if col == 3 && row == 2 then expected_identifier, expected_object_type = "3", "b" end
+      if col == 4 && row == 2 then expected_object_type = Scene.getEmptySquareToken() end
       
-      if col == 2 and row == 0 
-        expected_object_identifier = "0"
-        expected_object_class = Scene.getCreatorToken
+      scene_object = scene._scene.get(col).get(row)
+      if expected_identifier!= nil
+        assert_equal(expected_identifier, scene_object_identifier_field.value(scene_object))
       end
       
-      if row == 1
-        if col == 1 or col == 3
-          expected_object_identifier = Scene.getEmptySquareToken
-          expected_object_class = Scene.getEmptySquareToken
-        elsif col == 2
-          expected_object_identifier = "1"
-          expected_object_class = "c"
-        end
-      end
-      
-      if row == 2
-        if col == 1 or col == 2 or col == 4
-          expected_object_identifier = Scene.getEmptySquareToken
-          expected_object_class = Scene.getEmptySquareToken
-        elsif col == 0
-          expected_object_identifier = "2"
-          expected_object_class = "a"
-        else
-          expected_object_identifier = "3"
-          expected_object_class = "b"
-        end
-      end
-      
-      square_contents = scene.getSquareContents(col, row)
-      assert_equal(expected_object_identifier, square_contents.getIdentifier(), "occurred when checking the identifier for the item on col " + col.to_s + " and row " + row.to_s + " in sub-test 1.")
-      assert_equal(expected_object_class, square_contents.getObjectType(), "occurred when checking the type of the item on col " + col.to_s + " and row " + row.to_s + " in sub-test 1.")
+      assert_equal(expected_object_type, scene_object_type_field.value(scene_object))
     end
-  end
-  
-  ######################
-  ##### Sub-Test 2 #####
-  ######################
-  
-  scene.addItemToSquare(1, 1, "4", "e")
-  
-  for row in 0..2
-    for col in 0..4
-      
-      expected_object_identifier = Scene.getBlindSquareToken
-      expected_object_class = Scene.getBlindSquareToken
-      
-      if col == 2 and row == 0 
-        expected_object_identifier = "0"
-        expected_object_class = Scene.getCreatorToken
-      end
-      
-      if row == 1
-        if col == 1 
-          expected_object_identifier = "4"
-          expected_object_class = "e"
-        elsif col == 3
-          expected_object_identifier = Scene.getEmptySquareToken
-          expected_object_class = Scene.getEmptySquareToken
-        elsif col == 2
-          expected_object_identifier = "1"
-          expected_object_class = "c"
-        end
-      end
-      
-      if row == 2
-        if col == 1 or col == 2 or col == 4
-          expected_object_identifier = Scene.getEmptySquareToken
-          expected_object_class = Scene.getEmptySquareToken
-        elsif col == 0
-          expected_object_identifier = "2"
-          expected_object_class = "a"
-        else
-          expected_object_identifier = "3"
-          expected_object_class = "b"
-        end
-      end
-      
-      square_contents = scene.getSquareContents(col, row)
-      assert_equal(expected_object_identifier, square_contents.getIdentifier(), "occurred when checking the identifier for the item on col " + col.to_s + " and row " + row.to_s + " in sub-test 2.")
-      assert_equal(expected_object_class, square_contents.getObjectType(), "occurred when checking the type of the item on col " + col.to_s + " and row " + row.to_s + " in sub-test 2.")
-    end
-  end
-  
-  ######################
-  ##### Sub-Test 3 #####
-  ######################
-  
-  scene.addItemToSquare(1, 1, Scene.getEmptySquareToken, Scene.getEmptySquareToken)
-  for row in 0..2
-    for col in 0..4
-      
-      expected_object_identifier = Scene.getBlindSquareToken
-      expected_object_class = Scene.getBlindSquareToken
-      
-      if col == 2 and row == 0 
-        expected_object_identifier = "0"
-        expected_object_class = Scene.getCreatorToken
-      end
-      
-      if row == 1
-        if col == 1 or col == 3
-          expected_object_identifier = Scene.getEmptySquareToken
-          expected_object_class = Scene.getEmptySquareToken
-        elsif col == 2
-          expected_object_identifier = "1"
-          expected_object_class = "c"
-        end
-      end
-      
-      if row == 2
-        if col == 1 or col == 2 or col == 4
-          expected_object_identifier = Scene.getEmptySquareToken
-          expected_object_class = Scene.getEmptySquareToken
-        elsif col == 0
-          expected_object_identifier = "2"
-          expected_object_class = "a"
-        else
-          expected_object_identifier = "3"
-          expected_object_class = "b"
-        end
-      end
-      
-      square_contents = scene.getSquareContents(col, row)
-      assert_equal(expected_object_identifier, square_contents.getIdentifier(), "occurred when checking the identifier for the item on col " + col.to_s + " and row " + row.to_s + " in sub-test 3.")
-      assert_equal(expected_object_class, square_contents.getObjectType(), "occurred when checking the class of the item on col " + col.to_s + " and row " + row.to_s + " in sub-test 3.")
-    end
-  end
-  
-  ######################
-  ##### Sub-Test 4 #####
-  ######################
-  
-  scene.addItemToSquare(2, 1, "5", "e")
-  for row in 0..2
-    for col in 0..4
-      
-      expected_object_identifier = Scene.getBlindSquareToken
-      expected_object_class = Scene.getBlindSquareToken
-      
-      if col == 2 and row == 0 
-        expected_object_identifier = "0"
-        expected_object_class = Scene.getCreatorToken
-      end
-      
-      if row == 1
-        if col == 1 or col == 3
-          expected_object_identifier = Scene.getEmptySquareToken
-          expected_object_class = Scene.getEmptySquareToken
-        elsif col == 2
-          expected_object_identifier = "5"
-          expected_object_class = "e"
-        end
-      end
-      
-      if row == 2
-        if col == 1 or col == 2 or col == 4
-          expected_object_identifier = Scene.getEmptySquareToken
-          expected_object_class = Scene.getEmptySquareToken
-        elsif col == 0
-          expected_object_identifier = "2"
-          expected_object_class = "a"
-        else
-          expected_object_identifier = "3"
-          expected_object_class = "b"
-        end
-      end
-      
-      square_contents = scene.getSquareContents(col, row)
-      assert_equal(expected_object_identifier, square_contents.getIdentifier(), "occurred when checking the identifier for the item on col " + col.to_s + " and row " + row.to_s + " in sub-test 4.")
-      assert_equal(expected_object_class, square_contents.getObjectType(), "occurred when checking the class of the item on col " + col.to_s + " and row " + row.to_s + " in sub-test 4.")
-    end
-  end
-  
-  ######################
-  ##### SUB-TEST 5 #####
-  ######################
-  
-  for repeat in 1..4
-    exception_thrown = false
-    begin
-      scene.addItemToSquare(
-        (repeat == 1 ? -1 : repeat == 2 ? (scene.getWidth + 1) : 2), 
-        (repeat == 3 ? -1 : repeat == 4 ? (scene.getHeight + 1) : 1), 
-        "8", 
-        "T"
-      )
-    rescue
-      exception_thrown = true
-    end
-    
-    assert_true(exception_thrown, "occurred when checking if an exception is thrown in repeat " + repeat.to_s + " in sub-test 5")
   end
 end
 
 ################################################################################
-unit_test "add-items-to-row" do
+unit_test "add_objects_to_row" do
   scene = Scene.new("test", 5, 3, 0, 0, nil)
   blind = Scene.getBlindSquareToken
   empty = Scene.getEmptySquareToken
   
   row_0_items = ArrayList.new
-  row_0_items.add(SceneObject.new("", blind))
-  row_0_items.add(SceneObject.new("", blind))
+  row_0_items.add(SceneObject.new(blind))
+  row_0_items.add(SceneObject.new(blind))
   row_0_items.add(SceneObject.new("0", "d"))
-  row_0_items.add(SceneObject.new("", blind))
-  row_0_items.add(SceneObject.new("", blind))
+  row_0_items.add(SceneObject.new(blind))
+  row_0_items.add(SceneObject.new(blind))
   
   row_1_items = ArrayList.new
-  row_1_items.add(SceneObject.new("", blind))
-  row_1_items.add(SceneObject.new("", empty))
+  row_1_items.add(SceneObject.new(blind))
+  row_1_items.add(SceneObject.new(empty))
   row_1_items.add(SceneObject.new("1", "c"))
-  row_1_items.add(SceneObject.new("", empty))
-  row_1_items.add(SceneObject.new("", blind))
+  row_1_items.add(SceneObject.new(empty))
+  row_1_items.add(SceneObject.new(blind))
   
   row_2_items = ArrayList.new
   row_2_items.add(SceneObject.new("2", "a"))
-  row_2_items.add(SceneObject.new("", empty))
-  row_2_items.add(SceneObject.new("", empty))
+  row_2_items.add(SceneObject.new(empty))
+  row_2_items.add(SceneObject.new(empty))
   row_2_items.add(SceneObject.new("3", "b"))
-  row_2_items.add(SceneObject.new("", empty))
+  row_2_items.add(SceneObject.new(empty))
 
-  scene.addItemsToRow(0, row_0_items)
-  scene.addItemsToRow(1, row_1_items)
-  scene.addItemsToRow(2, row_2_items)
+  scene.addObjectsToRow(0, row_0_items)
+  scene.addObjectsToRow(1, row_1_items)
+  scene.addObjectsToRow(2, row_2_items)
   
   for row in 0..2
     for col in 0..4
       
-      expected_identifier = blind
+      expected_identifier = nil
       expected_object_class = blind
       
       if row == 0 
@@ -328,7 +177,6 @@ unit_test "add-items-to-row" do
       
       if row == 1
         if col == 1 or col == 3
-          expected_identifier = empty
           expected_object_class = empty
         elsif col == 2
           expected_identifier = "1"
@@ -338,7 +186,6 @@ unit_test "add-items-to-row" do
       
       if row == 2
         if col == 1 or col == 2 or col == 4
-          expected_identifier = empty
           expected_object_class = empty
         elsif col == 0
           expected_identifier = "2"
@@ -350,7 +197,9 @@ unit_test "add-items-to-row" do
       end
       
       squareContents = scene.getSquareContents(col, row)
-      assert_equal(expected_identifier, squareContents.getIdentifier(), "occurred when checking the object identifier of the object on col " + col.to_s + " and row " + row.to_s)
+      if expected_identifier != nil 
+        assert_equal(expected_identifier, squareContents.getIdentifier(), "occurred when checking the object identifier of the object on col " + col.to_s + " and row " + row.to_s)
+      end
       assert_equal(expected_object_class, squareContents.getObjectType(), "occurred when checking the object type of the object on col " + col.to_s + " and row " + row.to_s)
     end
   end
@@ -437,14 +286,19 @@ end
 
 ################################################################################
 unit_test "get-square-contents" do
+  
+  Scene.class_eval{
+    field_accessor :_scene
+  }
+  
   scene = Scene.new("test", 2, 2, 0, 0, nil)
-  scene.addItemToSquare(1, 0, "0", "a")
-  scene.addItemToSquare(1, 1, "", Scene.getEmptySquareToken())
+  scene._scene.get(1).set(0, SceneObject.new("0", "a"))
+  scene._scene.get(1).set(1, SceneObject.new(Scene.getEmptySquareToken()))
   
   for row in 0..1
     for col in 0..1
       contents_of_square = scene.getSquareContents(col, row)
-      expected_object_identifier = Scene.getBlindSquareToken()
+      expected_object_identifier = nil
       expected_object_class = Scene.getBlindSquareToken()
       
       if(col == 1)
@@ -452,12 +306,13 @@ unit_test "get-square-contents" do
           expected_object_identifier = "0"
           expected_object_class = "a"
         elsif(row == 1)
-          expected_object_identifier = Scene.getEmptySquareToken()
           expected_object_class = Scene.getEmptySquareToken()
         end
       end
       
-      assert_equal(expected_object_identifier, contents_of_square.getIdentifier(), "occurred when checking the identifier of the item on col " + col.to_s + " and row " + row.to_s)
+      if expected_object_identifier != nil
+        assert_equal(expected_object_identifier, contents_of_square.getIdentifier(), "occurred when checking the identifier of the item on col " + col.to_s + " and row " + row.to_s)
+      end
       assert_equal(expected_object_class, contents_of_square.getObjectType(), "occurred when checking the type of the item on col " + col.to_s + " and row " + row.to_s)
     end
   end
@@ -467,55 +322,44 @@ unit_test "get-square-contents" do
 end
 
 ################################################################################
-#Tests that all variations of parameters passed to the 
-#"Scene.getSquareContentsAsListPattern()" method return results as expected.
 unit_test "get-square-contents-as-list-pattern" do
+  
+  Scene.class_eval{
+    field_accessor :_scene
+  }
+  
   scene = Scene.new("test", 3, 3, 0, 0, nil)
-  scene.addItemToSquare(1, 0, "1", "a")
-  scene.addItemToSquare(1, 1, "0", Scene.getCreatorToken())
-  scene.addItemToSquare(2, 2, "", Scene.getEmptySquareToken())
+  scene._scene.get(1).set(0, SceneObject.new("1", "a"))
+  scene._scene.get(1).set(1, SceneObject.new("0", Scene.getCreatorToken()))
+  scene._scene.get(2).set(2, SceneObject.new(Scene.getEmptySquareToken()))
   
   for row in 0..2
     for col in 0..2
       
-      expected_object_identifier = Scene.getBlindSquareToken()
-      expected_object_class = Scene.getBlindSquareToken()
+      expected_object_type = Scene.getBlindSquareToken()
+      if(col == 1 && row == 0) then expected_object_type = "a" end
+      if(col == 1 && row == 1) then expected_object_type = Scene.getCreatorToken() end
+      if(col == 2 && row == 2) then expected_object_type = Scene.getEmptySquareToken() end
       
-      if(col == 1)
-        if(row == 0)
-          expected_object_identifier = "1"
-          expected_object_class = "a"
-        elsif(row == 1)
-          expected_object_identifier = "0"
-          expected_object_class = Scene.getCreatorToken()
-        end
-      elsif(col == 2)
-        if(row == 2)
-          expected_object_identifier = Scene.getEmptySquareToken()
-          expected_object_class = Scene.getEmptySquareToken()
-        end
-      end
+      expected_list_pattern = ListPattern.new
+      expected_list_pattern.add(ItemSquarePattern.new(expected_object_type.to_s, col, row))
       
-      expected_list_pattern_objects_identified_by_id = ListPattern.new
-      expected_list_pattern_objects_identified_by_id.add(ItemSquarePattern.new(expected_object_identifier.to_s, col, row))
+      result = scene.getSquareContentsAsListPattern(col, row)
       
-      expected_list_pattern_objects_identified_by_class = ListPattern.new
-      expected_list_pattern_objects_identified_by_class.add(ItemSquarePattern.new(expected_object_class.to_s, col, row))
-      
-      objects_identified_by_id = scene.getSquareContentsAsListPattern(col, row, false)
-      objects_identified_by_class = scene.getSquareContentsAsListPattern(col, row, true)
-      
-      assert_equal(expected_list_pattern_objects_identified_by_id.toString(), objects_identified_by_id.toString(), "occurred when checking col " + col.to_s + " and row " + row.to_s + " and object identifiers are requested in the list pattern returned")
-      assert_equal(expected_list_pattern_objects_identified_by_class.toString(), objects_identified_by_class.toString(), "occurred when checking col " + col.to_s + " and row " + row.to_s + " and object classes are requested in the list pattern returned")
+      assert_equal(
+        expected_list_pattern.toString(), 
+        result.toString(), 
+        "occurred when checking col " + col.to_s + " and row " + row.to_s
+      )
     end
   end
 end
 
 ################################################################################
-#Tests whether all permutations of possible parameters to 
-#Scene.getAsListPattern return the correct output when given a scene containing 
-#blind, empty and non-empty squares.  The scene used is depicted 
-#visually below ("x" represents a blind square in the scene):
+# Tests whether all permutations of possible parameters to 
+# Scene.getAsListPattern return the correct output when given a scene containing 
+# blind, empty and non-empty squares.  The scene used is depicted 
+# visually below ("x" represents a blind square in the scene):
 #
 #       |------|------|------|------|------|
 # 2   2 |  a   |      |      |  b   |      |
@@ -527,58 +371,52 @@ end
 #          0      1      2      3      4     SCENE-SPECIFIC COORDS
 #          
 #         -2      -1     0      1      2     CREATOR-RELATIVE COORDS
+#
+# NOTE: can't accurately test situation where SceneObjects are identified by 
+#       SceneObject identifiers since SceneObjects that represent blind squares
+#       have randomly generated identifiers.
 unit_test "get-as-list-pattern" do
+  
+  Scene.class_eval{
+    field_accessor :_scene
+  }
+  
   scene = Scene.new("test", 5, 3, 0, 0, nil)
   
-  scene.addItemToSquare(2, 0, "0", Scene.getCreatorToken)
-  scene.addItemToSquare(1, 1, "", Scene.getEmptySquareToken)
-  scene.addItemToSquare(2, 1, "1", "c")
-  scene.addItemToSquare(3, 1, "", Scene.getEmptySquareToken)
-  scene.addItemToSquare(0, 2, "2", "a")
-  scene.addItemToSquare(1, 2, "", Scene.getEmptySquareToken)
-  scene.addItemToSquare(2, 2, "", Scene.getEmptySquareToken)
-  scene.addItemToSquare(3, 2, "3", "b")
-  scene.addItemToSquare(4, 2, "", Scene.getEmptySquareToken)
+  scene._scene.get(2).set(0, SceneObject.new("0", Scene.getCreatorToken))
+  scene._scene.get(1).set(1, SceneObject.new(Scene.getEmptySquareToken))
+  scene._scene.get(2).set(1, SceneObject.new("1", "c"))
+  scene._scene.get(3).set(1, SceneObject.new(Scene.getEmptySquareToken))
+  scene._scene.get(0).set(2, SceneObject.new("2", "a"))
+  scene._scene.get(1).set(2, SceneObject.new(Scene.getEmptySquareToken))
+  scene._scene.get(2).set(2, SceneObject.new(Scene.getEmptySquareToken))
+  scene._scene.get(3).set(2, SceneObject.new("3", "b"))
+  scene._scene.get(4).set(2, SceneObject.new(Scene.getEmptySquareToken))
   
   blind = Scene.getBlindSquareToken
   empty = Scene.getEmptySquareToken
   
-  expected_list_pattern_objects_identified_by_id = ListPattern.new
-  expected_list_pattern_objects_identified_by_id.add(ItemSquarePattern.new(blind, 0, 0))
-  expected_list_pattern_objects_identified_by_id.add(ItemSquarePattern.new(blind, 1, 0))
-  expected_list_pattern_objects_identified_by_id.add(ItemSquarePattern.new("0", 2, 0))
-  expected_list_pattern_objects_identified_by_id.add(ItemSquarePattern.new(blind, 3, 0))
-  expected_list_pattern_objects_identified_by_id.add(ItemSquarePattern.new(blind, 4, 0))
-  expected_list_pattern_objects_identified_by_id.add(ItemSquarePattern.new(blind, 0, 1))
-  expected_list_pattern_objects_identified_by_id.add(ItemSquarePattern.new(empty, 1, 1))
-  expected_list_pattern_objects_identified_by_id.add(ItemSquarePattern.new("1", 2, 1))
-  expected_list_pattern_objects_identified_by_id.add(ItemSquarePattern.new(empty, 3, 1))
-  expected_list_pattern_objects_identified_by_id.add(ItemSquarePattern.new(blind, 4, 1))
-  expected_list_pattern_objects_identified_by_id.add(ItemSquarePattern.new("2".to_s, 0, 2))
-  expected_list_pattern_objects_identified_by_id.add(ItemSquarePattern.new(empty, 1, 2))
-  expected_list_pattern_objects_identified_by_id.add(ItemSquarePattern.new(empty, 2, 2))
-  expected_list_pattern_objects_identified_by_id.add(ItemSquarePattern.new("3", 3, 2))
-  expected_list_pattern_objects_identified_by_id.add(ItemSquarePattern.new(empty, 4, 2))
+  expected_list_pattern = ListPattern.new
+  expected_list_pattern.add(ItemSquarePattern.new(blind, 0, 0))
+  expected_list_pattern.add(ItemSquarePattern.new(blind, 1, 0))
+  expected_list_pattern.add(ItemSquarePattern.new(Scene.getCreatorToken, 2, 0))
+  expected_list_pattern.add(ItemSquarePattern.new(blind, 3, 0))
+  expected_list_pattern.add(ItemSquarePattern.new(blind, 4, 0))
+  expected_list_pattern.add(ItemSquarePattern.new(blind, 0, 1))
+  expected_list_pattern.add(ItemSquarePattern.new(empty, 1, 1))
+  expected_list_pattern.add(ItemSquarePattern.new("c", 2, 1))
+  expected_list_pattern.add(ItemSquarePattern.new(empty, 3, 1))
+  expected_list_pattern.add(ItemSquarePattern.new(blind, 4, 1))
+  expected_list_pattern.add(ItemSquarePattern.new("a", 0, 2))
+  expected_list_pattern.add(ItemSquarePattern.new(empty, 1, 2))
+  expected_list_pattern.add(ItemSquarePattern.new(empty, 2, 2))
+  expected_list_pattern.add(ItemSquarePattern.new("b", 3, 2))
+  expected_list_pattern.add(ItemSquarePattern.new(empty, 4, 2))
   
-  expected_list_pattern_objects_identified_by_class = ListPattern.new
-  expected_list_pattern_objects_identified_by_class.add(ItemSquarePattern.new(blind, 0, 0))
-  expected_list_pattern_objects_identified_by_class.add(ItemSquarePattern.new(blind, 1, 0))
-  expected_list_pattern_objects_identified_by_class.add(ItemSquarePattern.new(Scene.getCreatorToken, 2, 0))
-  expected_list_pattern_objects_identified_by_class.add(ItemSquarePattern.new(blind, 3, 0))
-  expected_list_pattern_objects_identified_by_class.add(ItemSquarePattern.new(blind, 4, 0))
-  expected_list_pattern_objects_identified_by_class.add(ItemSquarePattern.new(blind, 0, 1))
-  expected_list_pattern_objects_identified_by_class.add(ItemSquarePattern.new(empty, 1, 1))
-  expected_list_pattern_objects_identified_by_class.add(ItemSquarePattern.new("c", 2, 1))
-  expected_list_pattern_objects_identified_by_class.add(ItemSquarePattern.new(empty, 3, 1))
-  expected_list_pattern_objects_identified_by_class.add(ItemSquarePattern.new(blind, 4, 1))
-  expected_list_pattern_objects_identified_by_class.add(ItemSquarePattern.new("a", 0, 2))
-  expected_list_pattern_objects_identified_by_class.add(ItemSquarePattern.new(empty, 1, 2))
-  expected_list_pattern_objects_identified_by_class.add(ItemSquarePattern.new(empty, 2, 2))
-  expected_list_pattern_objects_identified_by_class.add(ItemSquarePattern.new("b", 3, 2))
-  expected_list_pattern_objects_identified_by_class.add(ItemSquarePattern.new(empty, 4, 2))
-  
-  assert_equal(expected_list_pattern_objects_identified_by_id, scene.getAsListPattern(false), "occurred when checking if list pattern returned is correct when objects are identified using unique identifiers")
-  assert_equal(expected_list_pattern_objects_identified_by_class, scene.getAsListPattern(true), "occurred when checking if list pattern returned is correct when objects are identified using their class")
+  assert_equal(
+    expected_list_pattern, 
+    scene.getAsListPattern()
+  )
 end
 
 ################################################################################
@@ -591,6 +429,10 @@ end
 # 3) The correct value is returned when there are errors of commission in a 
 #    scene when compared against another.
 unit_test "compute-errors-of-commission" do
+  
+  Scene.class_eval{
+    field_accessor :_scene
+  }
   
   ######################
   ##### Sub-Test 1 #####
@@ -617,10 +459,10 @@ unit_test "compute-errors-of-commission" do
   scene1 = Scene.new("test-scene-1", 2, 2, 0, 0, nil)
   scene2 = Scene.new("test-scene-2", 2, 2, 0, 0, nil)
   
-  scene1.addItemToSquare(0, 0, "0", "a")
+  scene1._scene.get(0).set(0, SceneObject.new("a"))
   
-  scene2.addItemToSquare(0, 0, "0", "a")
-  scene2.addItemToSquare(1, 0, "0", "b")
+  scene2._scene.get(0).set(0, SceneObject.new("a"))
+  scene2._scene.get(1).set(0, SceneObject.new("b"))
   
   assert_equal(0, scene1.computeErrorsOfCommission(scene2), "occurred in sub-test 2.")
   
@@ -636,50 +478,50 @@ unit_test "compute-errors-of-commission" do
   
   #Scene 1 should have 2 more objects than scene 2.
   scene_1_row_0_items = ArrayList.new
-  scene_1_row_0_items.add(SceneObject.new("", blind))
-  scene_1_row_0_items.add(SceneObject.new("", blind))
-  scene_1_row_0_items.add(SceneObject.new("0", "d"))
-  scene_1_row_0_items.add(SceneObject.new("", blind))
-  scene_1_row_0_items.add(SceneObject.new("", blind))
+  scene_1_row_0_items.add(SceneObject.new(blind))
+  scene_1_row_0_items.add(SceneObject.new(blind))
+  scene_1_row_0_items.add(SceneObject.new("d"))
+  scene_1_row_0_items.add(SceneObject.new(blind))
+  scene_1_row_0_items.add(SceneObject.new(blind))
   scene_1_row_1_items = ArrayList.new
-  scene_1_row_1_items.add(SceneObject.new("", blind))
-  scene_1_row_1_items.add(SceneObject.new("", empty))
-  scene_1_row_1_items.add(SceneObject.new("1", "c"))
-  scene_1_row_1_items.add(SceneObject.new("", empty))
-  scene_1_row_1_items.add(SceneObject.new("", blind))
+  scene_1_row_1_items.add(SceneObject.new(blind))
+  scene_1_row_1_items.add(SceneObject.new(empty))
+  scene_1_row_1_items.add(SceneObject.new("c"))
+  scene_1_row_1_items.add(SceneObject.new(empty))
+  scene_1_row_1_items.add(SceneObject.new(blind))
   scene_1_row_2_items = ArrayList.new
-  scene_1_row_2_items.add(SceneObject.new("2", "a"))
-  scene_1_row_2_items.add(SceneObject.new("", empty))
-  scene_1_row_2_items.add(SceneObject.new("3", "e"))
-  scene_1_row_2_items.add(SceneObject.new("4", "b"))
-  scene_1_row_2_items.add(SceneObject.new("5", "f"))
+  scene_1_row_2_items.add(SceneObject.new("a"))
+  scene_1_row_2_items.add(SceneObject.new(empty))
+  scene_1_row_2_items.add(SceneObject.new("e"))
+  scene_1_row_2_items.add(SceneObject.new("b"))
+  scene_1_row_2_items.add(SceneObject.new("f"))
   
   scene_2_row_0_items = ArrayList.new
-  scene_2_row_0_items.add(SceneObject.new("", blind))
-  scene_2_row_0_items.add(SceneObject.new("", blind))
-  scene_2_row_0_items.add(SceneObject.new("0", "d"))
-  scene_2_row_0_items.add(SceneObject.new("", blind))
-  scene_2_row_0_items.add(SceneObject.new("", blind))
+  scene_2_row_0_items.add(SceneObject.new(blind))
+  scene_2_row_0_items.add(SceneObject.new(blind))
+  scene_2_row_0_items.add(SceneObject.new("d"))
+  scene_2_row_0_items.add(SceneObject.new(blind))
+  scene_2_row_0_items.add(SceneObject.new(blind))
   scene_2_row_1_items = ArrayList.new
-  scene_2_row_1_items.add(SceneObject.new("", blind))
-  scene_2_row_1_items.add(SceneObject.new("", empty))
-  scene_2_row_1_items.add(SceneObject.new("1", "c"))
-  scene_2_row_1_items.add(SceneObject.new("", empty))
-  scene_2_row_1_items.add(SceneObject.new("", blind))
+  scene_2_row_1_items.add(SceneObject.new(blind))
+  scene_2_row_1_items.add(SceneObject.new(empty))
+  scene_2_row_1_items.add(SceneObject.new("c"))
+  scene_2_row_1_items.add(SceneObject.new(empty))
+  scene_2_row_1_items.add(SceneObject.new(blind))
   scene_2_row_2_items = ArrayList.new
-  scene_2_row_2_items.add(SceneObject.new("2", "a"))
-  scene_2_row_2_items.add(SceneObject.new("", empty))
-  scene_2_row_2_items.add(SceneObject.new("", empty))
-  scene_2_row_2_items.add(SceneObject.new("3", "b"))
-  scene_2_row_2_items.add(SceneObject.new("", empty))
+  scene_2_row_2_items.add(SceneObject.new("a"))
+  scene_2_row_2_items.add(SceneObject.new(empty))
+  scene_2_row_2_items.add(SceneObject.new(empty))
+  scene_2_row_2_items.add(SceneObject.new("b"))
+  scene_2_row_2_items.add(SceneObject.new(empty))
   
-  scene1.addItemsToRow(0, scene_1_row_0_items)
-  scene1.addItemsToRow(1, scene_1_row_1_items)
-  scene1.addItemsToRow(2, scene_1_row_2_items)
+  scene1.addObjectsToRow(0, scene_1_row_0_items)
+  scene1.addObjectsToRow(1, scene_1_row_1_items)
+  scene1.addObjectsToRow(2, scene_1_row_2_items)
   
-  scene2.addItemsToRow(0, scene_2_row_0_items)
-  scene2.addItemsToRow(1, scene_2_row_1_items)
-  scene2.addItemsToRow(2, scene_2_row_2_items)
+  scene2.addObjectsToRow(0, scene_2_row_0_items)
+  scene2.addObjectsToRow(1, scene_2_row_1_items)
+  scene2.addObjectsToRow(2, scene_2_row_2_items)
   
   assert_equal(2, scene1.computeErrorsOfCommission(scene2), "occurred in sub-test 3.")
 end
@@ -694,6 +536,10 @@ end
 # 3) The correct value is returned when there are errors of commission in a 
 #    scene when compared against another.
 unit_test "compute-errors-of-omission" do
+  
+  Scene.class_eval{
+    field_accessor :_scene
+  }
   
   ######################
   ##### Sub-Test 1 #####
@@ -720,10 +566,10 @@ unit_test "compute-errors-of-omission" do
   scene1 = Scene.new("test-scene-1", 2, 2, 0, 0, nil)
   scene2 = Scene.new("test-scene-2", 2, 2, 0, 0, nil)
   
-  scene1.addItemToSquare(0, 0, "0", "a")
-  scene1.addItemToSquare(1, 0, "0", "b")
+  scene1._scene.get(0).set(0, SceneObject.new("a"))
+  scene1._scene.get(1).set(0, SceneObject.new("b"))
   
-  scene2.addItemToSquare(0, 0, "0", "a")
+  scene2._scene.get(0).set(0, SceneObject.new("a"))
   
   assert_equal(0, scene1.computeErrorsOfOmission(scene2), "occurred in sub-test 2.")
   
@@ -739,50 +585,50 @@ unit_test "compute-errors-of-omission" do
   
   #Scene 1 should have 2 fewer objects than scene 2.
   scene_1_row_0_items = ArrayList.new
-  scene_1_row_0_items.add(SceneObject.new("", blind))
-  scene_1_row_0_items.add(SceneObject.new("", blind))
+  scene_1_row_0_items.add(SceneObject.new(blind))
+  scene_1_row_0_items.add(SceneObject.new(blind))
   scene_1_row_0_items.add(SceneObject.new("0", "d"))
-  scene_1_row_0_items.add(SceneObject.new("", blind))
-  scene_1_row_0_items.add(SceneObject.new("", blind))
+  scene_1_row_0_items.add(SceneObject.new(blind))
+  scene_1_row_0_items.add(SceneObject.new(blind))
   scene_1_row_1_items = ArrayList.new
-  scene_1_row_1_items.add(SceneObject.new("", blind))
-  scene_1_row_1_items.add(SceneObject.new("", empty))
+  scene_1_row_1_items.add(SceneObject.new(blind))
+  scene_1_row_1_items.add(SceneObject.new(empty))
   scene_1_row_1_items.add(SceneObject.new("1", "c"))
-  scene_1_row_1_items.add(SceneObject.new("", empty))
-  scene_1_row_1_items.add(SceneObject.new("", blind))
+  scene_1_row_1_items.add(SceneObject.new(empty))
+  scene_1_row_1_items.add(SceneObject.new(blind))
   scene_1_row_2_items = ArrayList.new
   scene_1_row_2_items.add(SceneObject.new("2", "a"))
-  scene_1_row_2_items.add(SceneObject.new("", empty))
-  scene_1_row_2_items.add(SceneObject.new("", empty))
+  scene_1_row_2_items.add(SceneObject.new(empty))
+  scene_1_row_2_items.add(SceneObject.new(empty))
   scene_1_row_2_items.add(SceneObject.new("3", "b"))
-  scene_1_row_2_items.add(SceneObject.new("", empty))
+  scene_1_row_2_items.add(SceneObject.new(empty))
   
   scene_2_row_0_items = ArrayList.new
-  scene_2_row_0_items.add(SceneObject.new("", blind))
-  scene_2_row_0_items.add(SceneObject.new("", blind))
+  scene_2_row_0_items.add(SceneObject.new(blind))
+  scene_2_row_0_items.add(SceneObject.new(blind))
   scene_2_row_0_items.add(SceneObject.new("0", "d"))
-  scene_2_row_0_items.add(SceneObject.new("", blind))
-  scene_2_row_0_items.add(SceneObject.new("", blind))
+  scene_2_row_0_items.add(SceneObject.new(blind))
+  scene_2_row_0_items.add(SceneObject.new(blind))
   scene_2_row_1_items = ArrayList.new
-  scene_2_row_1_items.add(SceneObject.new("", blind))
-  scene_2_row_1_items.add(SceneObject.new("", empty))
+  scene_2_row_1_items.add(SceneObject.new(blind))
+  scene_2_row_1_items.add(SceneObject.new(empty))
   scene_2_row_1_items.add(SceneObject.new("1", "c"))
-  scene_2_row_1_items.add(SceneObject.new("", empty))
-  scene_2_row_1_items.add(SceneObject.new("", blind))
+  scene_2_row_1_items.add(SceneObject.new(empty))
+  scene_2_row_1_items.add(SceneObject.new(blind))
   scene_2_row_2_items = ArrayList.new
   scene_2_row_2_items.add(SceneObject.new("2", "a"))
-  scene_2_row_2_items.add(SceneObject.new("", empty))
+  scene_2_row_2_items.add(SceneObject.new(empty))
   scene_2_row_2_items.add(SceneObject.new("3", "e"))
   scene_2_row_2_items.add(SceneObject.new("4", "b"))
   scene_2_row_2_items.add(SceneObject.new("5", "f"))
   
-  scene1.addItemsToRow(0, scene_1_row_0_items)
-  scene1.addItemsToRow(1, scene_1_row_1_items)
-  scene1.addItemsToRow(2, scene_1_row_2_items)
+  scene1.addObjectsToRow(0, scene_1_row_0_items)
+  scene1.addObjectsToRow(1, scene_1_row_1_items)
+  scene1.addObjectsToRow(2, scene_1_row_2_items)
   
-  scene2.addItemsToRow(0, scene_2_row_0_items)
-  scene2.addItemsToRow(1, scene_2_row_1_items)
-  scene2.addItemsToRow(2, scene_2_row_2_items)
+  scene2.addObjectsToRow(0, scene_2_row_0_items)
+  scene2.addObjectsToRow(1, scene_2_row_1_items)
+  scene2.addObjectsToRow(2, scene_2_row_2_items)
   
   assert_equal(2, scene1.computeErrorsOfOmission(scene2), "occurred in sub-test 3.")
 end
@@ -793,9 +639,11 @@ end
 # 2) Error is thrown if size of scenes to be used in calculation are not equal.
 # 3) The correct value is returned when objects in a scene are represented using
 #    their object class.
-# 4) The correct value is returned when objects in a scene are represented using
-#    their unique identifiers.
 unit_test "compute-precision" do
+  
+  Scene.class_eval{
+    field_accessor :_scene
+  }
   
   ######################
   ##### Sub-Test 1 #####
@@ -804,15 +652,15 @@ unit_test "compute-precision" do
   scene1 = Scene.new("test-scene-1", 5, 3, 0, 0, nil)
   
   scene2 = Scene.new("test-scene-2", 5, 3, 0, 0, nil)
-  scene2.addItemToSquare(0, 0, "0", "a")
+  scene2._scene.get(0).set(0, SceneObject.new("0", "a"))
   
   scene3 = Scene.new("test-scene-3", 5, 3, 0, 0, nil)
   
   #Note that object representation has no bearing for this sub-test so false is
   #passed as the parameter concerning this feature in the computePrecision 
   #function.
-  assert_equal(0.0, scene1.computePrecision(scene2, false), "occurred in sub-test 1 when base scene is empty.")
-  assert_equal(0.0, scene2.computePrecision(scene3, false), "occurred in sub-test 1 when scene compared against is empty.")
+  assert_equal(0.0, scene1.computePrecision(scene2), "occurred in sub-test 1 when base scene is empty.")
+  assert_equal(0.0, scene2.computePrecision(scene3), "occurred in sub-test 1 when scene compared against is empty.")
   
   ######################
   ##### Sub-Test 2 #####
@@ -848,58 +696,52 @@ unit_test "compute-precision" do
   #Note that objects in both scenes are in the correct locations whilst their
   #object identifiers differ but their classes match.
   scene_1_row_0_items = ArrayList.new
-  scene_1_row_0_items.add(SceneObject.new("", blind))
-  scene_1_row_0_items.add(SceneObject.new("", blind))
+  scene_1_row_0_items.add(SceneObject.new(blind))
+  scene_1_row_0_items.add(SceneObject.new(blind))
   scene_1_row_0_items.add(SceneObject.new("1", "a"))
   scene_1_row_0_items.add(SceneObject.new("2", "d"))
-  scene_1_row_0_items.add(SceneObject.new("", blind))
+  scene_1_row_0_items.add(SceneObject.new(blind))
   scene_1_row_1_items = ArrayList.new
-  scene_1_row_1_items.add(SceneObject.new("", blind))
-  scene_1_row_1_items.add(SceneObject.new("", empty))
+  scene_1_row_1_items.add(SceneObject.new(blind))
+  scene_1_row_1_items.add(SceneObject.new(empty))
   scene_1_row_1_items.add(SceneObject.new("0", "b"))
   scene_1_row_1_items.add(SceneObject.new("3", "e"))
-  scene_1_row_1_items.add(SceneObject.new("", blind))
+  scene_1_row_1_items.add(SceneObject.new(blind))
   scene_1_row_2_items = ArrayList.new
   scene_1_row_2_items.add(SceneObject.new("4", "c"))
-  scene_1_row_2_items.add(SceneObject.new("", empty))
-  scene_1_row_2_items.add(SceneObject.new("", empty))
-  scene_1_row_2_items.add(SceneObject.new("", empty))
+  scene_1_row_2_items.add(SceneObject.new(empty))
+  scene_1_row_2_items.add(SceneObject.new(empty))
+  scene_1_row_2_items.add(SceneObject.new(empty))
   scene_1_row_2_items.add(SceneObject.new("5", "f"))
   
   scene_2_row_0_items = ArrayList.new
-  scene_2_row_0_items.add(SceneObject.new("", blind))
-  scene_2_row_0_items.add(SceneObject.new("", blind))
+  scene_2_row_0_items.add(SceneObject.new(blind))
+  scene_2_row_0_items.add(SceneObject.new(blind))
   scene_2_row_0_items.add(SceneObject.new("0", "a"))
   scene_2_row_0_items.add(SceneObject.new("1", "d"))
-  scene_2_row_0_items.add(SceneObject.new("", blind))
+  scene_2_row_0_items.add(SceneObject.new(blind))
   scene_2_row_1_items = ArrayList.new
-  scene_2_row_1_items.add(SceneObject.new("", blind))
-  scene_2_row_1_items.add(SceneObject.new("", empty))
+  scene_2_row_1_items.add(SceneObject.new(blind))
+  scene_2_row_1_items.add(SceneObject.new(empty))
   scene_2_row_1_items.add(SceneObject.new("2", "b"))
   scene_2_row_1_items.add(SceneObject.new("3", "e"))
-  scene_2_row_1_items.add(SceneObject.new("", blind))
+  scene_2_row_1_items.add(SceneObject.new(blind))
   scene_2_row_2_items = ArrayList.new
   scene_2_row_2_items.add(SceneObject.new("4", "c"))
-  scene_2_row_2_items.add(SceneObject.new("", empty))
-  scene_2_row_2_items.add(SceneObject.new("", empty))
-  scene_2_row_2_items.add(SceneObject.new("", empty))
+  scene_2_row_2_items.add(SceneObject.new(empty))
+  scene_2_row_2_items.add(SceneObject.new(empty))
+  scene_2_row_2_items.add(SceneObject.new(empty))
   scene_2_row_2_items.add(SceneObject.new("5", "f"))
   
-  scene1.addItemsToRow(0, scene_1_row_0_items)
-  scene1.addItemsToRow(1, scene_1_row_1_items)
-  scene1.addItemsToRow(2, scene_1_row_2_items)
+  scene1.addObjectsToRow(0, scene_1_row_0_items)
+  scene1.addObjectsToRow(1, scene_1_row_1_items)
+  scene1.addObjectsToRow(2, scene_1_row_2_items)
   
-  scene2.addItemsToRow(0, scene_2_row_0_items)
-  scene2.addItemsToRow(1, scene_2_row_1_items)
-  scene2.addItemsToRow(2, scene_2_row_2_items)
+  scene2.addObjectsToRow(0, scene_2_row_0_items)
+  scene2.addObjectsToRow(1, scene_2_row_1_items)
+  scene2.addObjectsToRow(2, scene_2_row_2_items)
   
-  assert_equal(1, scene1.computePrecision(scene2, true), "occurred in sub-test 3.")
-  
-  ######################
-  ##### Sub-Test 4 #####
-  ######################
-  
-  assert_equal(0.5, scene1.computePrecision(scene2, false), "occurred in sub-test 4.")
+  assert_equal(1, scene1.computePrecision(scene2), "occurred in sub-test 3.")
 end
 
 ################################################################################
@@ -908,9 +750,11 @@ end
 # 2) Error is thrown if size of scenes to be used in calculation are not equal.
 # 3) The correct value is returned when objects in a scene are represented using
 #    their object class.
-# 4) The correct value is returned when objects in a scene are represented using
-#    their unique identifiers.
 unit_test "compute-recall" do 
+  
+  Scene.class_eval{
+    field_accessor :_scene
+  }
   
   ######################
   ##### Sub-Test 1 #####
@@ -919,15 +763,15 @@ unit_test "compute-recall" do
   scene1 = Scene.new("test-scene-1", 5, 3, 0, 0, nil)
   
   scene2 = Scene.new("test-scene-2", 5, 3, 0, 0, nil)
-  scene2.addItemToSquare(0, 0, "0", "a")
+  scene2._scene.get(0).set(0, SceneObject.new("0", "a"))
   
   scene3 = Scene.new("test-scene-3", 5, 3, 0, 0, nil)
   
   #Note that object representation has no bearing for this sub-test so false is
   #passed as the parameter concerning this feature in the computePrecision 
   #function.
-  assert_equal(0.0, scene1.computeRecall(scene2, false), "occurred in sub-test 1 when base scene is empty.")
-  assert_equal(0.0, scene2.computeRecall(scene3, false), "occurred in sub-test 1 when scene compared against is empty.")
+  assert_equal(0.0, scene1.computeRecall(scene2), "occurred in sub-test 1 when base scene is empty.")
+  assert_equal(0.0, scene2.computeRecall(scene3), "occurred in sub-test 1 when scene compared against is empty.")
   
   ######################
   ##### Sub-Test 2 #####
@@ -941,7 +785,7 @@ unit_test "compute-recall" do
     #Note that object representation has no bearing for this sub-test so false 
     #is passed as the parameter concerning this feature in the computeRecall 
     #function.
-    scene1.computeRecall(scene2, false)
+    scene1.computeRecall(scene2)
   rescue 
     #Swallow the error output to retain pretty test output but set error_thrown 
     #flag to true to indicate that an error was actually thrown.
@@ -963,58 +807,52 @@ unit_test "compute-recall" do
   #Note that no object's location is the same between scenes and whilst the
   #object classes specified are the same in each scene, object identities differ.
   scene_1_row_0_items = ArrayList.new
-  scene_1_row_0_items.add(SceneObject.new("", blind))
+  scene_1_row_0_items.add(SceneObject.new(blind))
   scene_1_row_0_items.add(SceneObject.new("1", "a"))
   scene_1_row_0_items.add(SceneObject.new("2", "d"))
-  scene_1_row_0_items.add(SceneObject.new("", empty))
-  scene_1_row_0_items.add(SceneObject.new("", blind))
+  scene_1_row_0_items.add(SceneObject.new(empty))
+  scene_1_row_0_items.add(SceneObject.new(blind))
   scene_1_row_1_items = ArrayList.new
-  scene_1_row_1_items.add(SceneObject.new("", blind))
+  scene_1_row_1_items.add(SceneObject.new(blind))
   scene_1_row_1_items.add(SceneObject.new("0", "b"))
   scene_1_row_1_items.add(SceneObject.new("6", "e"))
-  scene_1_row_1_items.add(SceneObject.new("", blind))
-  scene_1_row_1_items.add(SceneObject.new("", blind))
+  scene_1_row_1_items.add(SceneObject.new(blind))
+  scene_1_row_1_items.add(SceneObject.new(blind))
   scene_1_row_2_items = ArrayList.new
-  scene_1_row_2_items.add(SceneObject.new("", empty))
+  scene_1_row_2_items.add(SceneObject.new(empty))
   scene_1_row_2_items.add(SceneObject.new("7", "c"))
-  scene_1_row_2_items.add(SceneObject.new("", empty))
+  scene_1_row_2_items.add(SceneObject.new(empty))
   scene_1_row_2_items.add(SceneObject.new("8", "f"))
-  scene_1_row_2_items.add(SceneObject.new("", empty))
+  scene_1_row_2_items.add(SceneObject.new(empty))
   
   scene_2_row_0_items = ArrayList.new
-  scene_2_row_0_items.add(SceneObject.new("", blind))
-  scene_2_row_0_items.add(SceneObject.new("", blind))
+  scene_2_row_0_items.add(SceneObject.new(blind))
+  scene_2_row_0_items.add(SceneObject.new(blind))
   scene_2_row_0_items.add(SceneObject.new("0", "a"))
   scene_2_row_0_items.add(SceneObject.new("1", "d"))
-  scene_2_row_0_items.add(SceneObject.new("", blind))
+  scene_2_row_0_items.add(SceneObject.new(blind))
   scene_2_row_1_items = ArrayList.new
-  scene_2_row_1_items.add(SceneObject.new("", blind))
-  scene_2_row_1_items.add(SceneObject.new("", empty))
+  scene_2_row_1_items.add(SceneObject.new(blind))
+  scene_2_row_1_items.add(SceneObject.new(empty))
   scene_2_row_1_items.add(SceneObject.new("2", "b"))
   scene_2_row_1_items.add(SceneObject.new("3", "e"))
-  scene_2_row_1_items.add(SceneObject.new("", blind))
+  scene_2_row_1_items.add(SceneObject.new(blind))
   scene_2_row_2_items = ArrayList.new
   scene_2_row_2_items.add(SceneObject.new("4", "c"))
-  scene_2_row_2_items.add(SceneObject.new("", empty))
-  scene_2_row_2_items.add(SceneObject.new("", empty))
-  scene_2_row_2_items.add(SceneObject.new("", empty))
+  scene_2_row_2_items.add(SceneObject.new(empty))
+  scene_2_row_2_items.add(SceneObject.new(empty))
+  scene_2_row_2_items.add(SceneObject.new(empty))
   scene_2_row_2_items.add(SceneObject.new("5", "f"))
   
-  scene1.addItemsToRow(0, scene_1_row_0_items)
-  scene1.addItemsToRow(1, scene_1_row_1_items)
-  scene1.addItemsToRow(2, scene_1_row_2_items)
+  scene1.addObjectsToRow(0, scene_1_row_0_items)
+  scene1.addObjectsToRow(1, scene_1_row_1_items)
+  scene1.addObjectsToRow(2, scene_1_row_2_items)
   
-  scene2.addItemsToRow(0, scene_2_row_0_items)
-  scene2.addItemsToRow(1, scene_2_row_1_items)
-  scene2.addItemsToRow(2, scene_2_row_2_items)
+  scene2.addObjectsToRow(0, scene_2_row_0_items)
+  scene2.addObjectsToRow(1, scene_2_row_1_items)
+  scene2.addObjectsToRow(2, scene_2_row_2_items)
   
-  assert_equal(1.0, scene1.computeRecall(scene2, true), "occurred in sub-test 3.")
-  
-  ######################
-  ##### Sub-Test 4 #####
-  ######################
-  
-  assert_equal(0.5, scene1.computeRecall(scene2, false), "occurred in sub-test 4.")
+  assert_equal(1.0, scene1.computeRecall(scene2), "occurred in sub-test 3.")
 end
 
 # Blind square identifier not publicly settable so not possible to test 
@@ -1045,6 +883,11 @@ end
 #
 # The function should return false for every scenario except 8.
 unit_test "equals" do
+  
+  Scene.class_eval{
+    field_accessor :_scene
+  }
+  
   for scenario in 1..8
     
     scene = Scene.new("", 5, 5, 4, 4, nil)
@@ -1052,7 +895,7 @@ unit_test "equals" do
       (scenario == 1 ? 
         nil : 
         (scenario == 2 ? 
-          ChessBoard.new("", nil) : 
+          ChessBoard.new("") : 
           Scene.new(
             "",
             (scenario == 3 ? 2 : 5),
@@ -1064,14 +907,9 @@ unit_test "equals" do
         )
       )
       
-    scene.addItemToSquare(0,0,"3","T")
+    scene._scene.get(0).set(0, SceneObject.new("3", "T"))
     if comparison_scene != nil 
-      comparison_scene.addItemToSquare(
-        (scenario == 7 ? 2 : 0),
-        0,
-        "3",
-        "T"
-      )
+      comparison_scene._scene.get(scenario == 7 ? 2 : 0).set(0, SceneObject.new("3", "T"))
     end
       
     assert_equal(
@@ -1112,102 +950,77 @@ unit_test "get_items_in_scope_as_list_pattern" do
   scene = Scene.new("test", 5, 5, 0, 0, nil)
 
   row_0_items = ArrayList.new
-  row_0_items.add(SceneObject.new("", blind))
-  row_0_items.add(SceneObject.new("", empty))
+  row_0_items.add(SceneObject.new(blind))
+  row_0_items.add(SceneObject.new(empty))
   row_0_items.add(SceneObject.new("1", "f"))
-  row_0_items.add(SceneObject.new("", empty))
-  row_0_items.add(SceneObject.new("", blind))
+  row_0_items.add(SceneObject.new(empty))
+  row_0_items.add(SceneObject.new(blind))
   
   row_1_items = ArrayList.new
-  row_1_items.add(SceneObject.new("", empty))
-  row_1_items.add(SceneObject.new("", blind))
+  row_1_items.add(SceneObject.new(empty))
+  row_1_items.add(SceneObject.new(blind))
   row_1_items.add(SceneObject.new("2", "a"))
-  row_1_items.add(SceneObject.new("", blind))
-  row_1_items.add(SceneObject.new("", empty))
+  row_1_items.add(SceneObject.new(blind))
+  row_1_items.add(SceneObject.new(empty))
   
   row_2_items = ArrayList.new
-  row_2_items.add(SceneObject.new("", empty))
+  row_2_items.add(SceneObject.new(empty))
   row_2_items.add(SceneObject.new("3", "b"))
   row_2_items.add(SceneObject.new("0", Scene.getCreatorToken()))
   row_2_items.add(SceneObject.new("4", "e"))
-  row_2_items.add(SceneObject.new("", empty))
+  row_2_items.add(SceneObject.new(empty))
   
   row_3_items = ArrayList.new
-  row_3_items.add(SceneObject.new("", empty))
-  row_3_items.add(SceneObject.new("", blind))
+  row_3_items.add(SceneObject.new(empty))
+  row_3_items.add(SceneObject.new(blind))
   row_3_items.add(SceneObject.new("5", "d"))
-  row_3_items.add(SceneObject.new("", blind))
-  row_3_items.add(SceneObject.new("", empty))
+  row_3_items.add(SceneObject.new(blind))
+  row_3_items.add(SceneObject.new(empty))
   
   row_4_items = ArrayList.new
-  row_4_items.add(SceneObject.new("", blind))
-  row_4_items.add(SceneObject.new("", empty))
+  row_4_items.add(SceneObject.new(blind))
+  row_4_items.add(SceneObject.new(empty))
   row_4_items.add(SceneObject.new("6", "g"))
-  row_4_items.add(SceneObject.new("", empty))
-  row_4_items.add(SceneObject.new("", blind))
+  row_4_items.add(SceneObject.new(empty))
+  row_4_items.add(SceneObject.new(blind))
   
-  scene.addItemsToRow(0, row_0_items)
-  scene.addItemsToRow(1, row_1_items)
-  scene.addItemsToRow(2, row_2_items)
-  scene.addItemsToRow(3, row_3_items)
-  scene.addItemsToRow(4, row_4_items)
+  scene.addObjectsToRow(0, row_0_items)
+  scene.addObjectsToRow(1, row_1_items)
+  scene.addObjectsToRow(2, row_2_items)
+  scene.addObjectsToRow(3, row_3_items)
+  scene.addObjectsToRow(4, row_4_items)
   
-  expected_items_identified_by_object_class = ListPattern.new
-  expected_items_identified_by_object_class.add(ItemSquarePattern.new(blind, 0, 0))
-  expected_items_identified_by_object_class.add(ItemSquarePattern.new(empty, 1, 0))
-  expected_items_identified_by_object_class.add(ItemSquarePattern.new("f", 2, 0))
-  expected_items_identified_by_object_class.add(ItemSquarePattern.new(empty, 3, 0))
-  expected_items_identified_by_object_class.add(ItemSquarePattern.new(blind, 4, 0))
-  expected_items_identified_by_object_class.add(ItemSquarePattern.new(empty, 0, 1))
-  expected_items_identified_by_object_class.add(ItemSquarePattern.new(blind, 1, 1))
-  expected_items_identified_by_object_class.add(ItemSquarePattern.new("a", 2, 1))
-  expected_items_identified_by_object_class.add(ItemSquarePattern.new(blind, 3, 1))
-  expected_items_identified_by_object_class.add(ItemSquarePattern.new(empty, 4, 1))
-  expected_items_identified_by_object_class.add(ItemSquarePattern.new(empty, 0, 2))
-  expected_items_identified_by_object_class.add(ItemSquarePattern.new("b", 1, 2))
-  expected_items_identified_by_object_class.add(ItemSquarePattern.new(Scene.getCreatorToken(), 2, 2))
-  expected_items_identified_by_object_class.add(ItemSquarePattern.new("e", 3, 2))
-  expected_items_identified_by_object_class.add(ItemSquarePattern.new(empty, 4, 2))
-  expected_items_identified_by_object_class.add(ItemSquarePattern.new(empty, 0, 3))
-  expected_items_identified_by_object_class.add(ItemSquarePattern.new(blind, 1, 3))
-  expected_items_identified_by_object_class.add(ItemSquarePattern.new("d", 2, 3))
-  expected_items_identified_by_object_class.add(ItemSquarePattern.new(blind, 3, 3))
-  expected_items_identified_by_object_class.add(ItemSquarePattern.new(empty, 4, 3))
-  expected_items_identified_by_object_class.add(ItemSquarePattern.new(blind, 0, 4))
-  expected_items_identified_by_object_class.add(ItemSquarePattern.new(empty, 1, 4))
-  expected_items_identified_by_object_class.add(ItemSquarePattern.new("g", 2, 4))
-  expected_items_identified_by_object_class.add(ItemSquarePattern.new(empty, 3, 4))
-  expected_items_identified_by_object_class.add(ItemSquarePattern.new(blind, 4, 4))
+  expected_list_pattern = ListPattern.new
+  expected_list_pattern.add(ItemSquarePattern.new(blind, 0, 0))
+  expected_list_pattern.add(ItemSquarePattern.new(empty, 1, 0))
+  expected_list_pattern.add(ItemSquarePattern.new("f", 2, 0))
+  expected_list_pattern.add(ItemSquarePattern.new(empty, 3, 0))
+  expected_list_pattern.add(ItemSquarePattern.new(blind, 4, 0))
+  expected_list_pattern.add(ItemSquarePattern.new(empty, 0, 1))
+  expected_list_pattern.add(ItemSquarePattern.new(blind, 1, 1))
+  expected_list_pattern.add(ItemSquarePattern.new("a", 2, 1))
+  expected_list_pattern.add(ItemSquarePattern.new(blind, 3, 1))
+  expected_list_pattern.add(ItemSquarePattern.new(empty, 4, 1))
+  expected_list_pattern.add(ItemSquarePattern.new(empty, 0, 2))
+  expected_list_pattern.add(ItemSquarePattern.new("b", 1, 2))
+  expected_list_pattern.add(ItemSquarePattern.new(Scene.getCreatorToken(), 2, 2))
+  expected_list_pattern.add(ItemSquarePattern.new("e", 3, 2))
+  expected_list_pattern.add(ItemSquarePattern.new(empty, 4, 2))
+  expected_list_pattern.add(ItemSquarePattern.new(empty, 0, 3))
+  expected_list_pattern.add(ItemSquarePattern.new(blind, 1, 3))
+  expected_list_pattern.add(ItemSquarePattern.new("d", 2, 3))
+  expected_list_pattern.add(ItemSquarePattern.new(blind, 3, 3))
+  expected_list_pattern.add(ItemSquarePattern.new(empty, 4, 3))
+  expected_list_pattern.add(ItemSquarePattern.new(blind, 0, 4))
+  expected_list_pattern.add(ItemSquarePattern.new(empty, 1, 4))
+  expected_list_pattern.add(ItemSquarePattern.new("g", 2, 4))
+  expected_list_pattern.add(ItemSquarePattern.new(empty, 3, 4))
+  expected_list_pattern.add(ItemSquarePattern.new(blind, 4, 4))
   
-  expected_items_identified_by_object_id = ListPattern.new
-  expected_items_identified_by_object_id.add(ItemSquarePattern.new(blind, 0, 0))
-  expected_items_identified_by_object_id.add(ItemSquarePattern.new(empty, 1, 0))
-  expected_items_identified_by_object_id.add(ItemSquarePattern.new("1", 2, 0))
-  expected_items_identified_by_object_id.add(ItemSquarePattern.new(empty, 3, 0))
-  expected_items_identified_by_object_id.add(ItemSquarePattern.new(blind, 4, 0))
-  expected_items_identified_by_object_id.add(ItemSquarePattern.new(empty, 0, 1))
-  expected_items_identified_by_object_id.add(ItemSquarePattern.new(blind, 1, 1))
-  expected_items_identified_by_object_id.add(ItemSquarePattern.new("2", 2, 1))
-  expected_items_identified_by_object_id.add(ItemSquarePattern.new(blind, 3, 1))
-  expected_items_identified_by_object_id.add(ItemSquarePattern.new(empty, 4, 1))
-  expected_items_identified_by_object_id.add(ItemSquarePattern.new(empty, 0, 2))
-  expected_items_identified_by_object_id.add(ItemSquarePattern.new("3", 1, 2))
-  expected_items_identified_by_object_id.add(ItemSquarePattern.new("0", 2, 2))
-  expected_items_identified_by_object_id.add(ItemSquarePattern.new("4", 3, 2))
-  expected_items_identified_by_object_id.add(ItemSquarePattern.new(empty, 4, 2))
-  expected_items_identified_by_object_id.add(ItemSquarePattern.new(empty, 0, 3))
-  expected_items_identified_by_object_id.add(ItemSquarePattern.new(blind, 1, 3))
-  expected_items_identified_by_object_id.add(ItemSquarePattern.new("5", 2, 3))
-  expected_items_identified_by_object_id.add(ItemSquarePattern.new(blind, 3, 3))
-  expected_items_identified_by_object_id.add(ItemSquarePattern.new(empty, 4, 3))
-  expected_items_identified_by_object_id.add(ItemSquarePattern.new(blind, 0, 4))
-  expected_items_identified_by_object_id.add(ItemSquarePattern.new(empty, 1, 4))
-  expected_items_identified_by_object_id.add(ItemSquarePattern.new("6", 2, 4))
-  expected_items_identified_by_object_id.add(ItemSquarePattern.new(empty, 3, 4))
-  expected_items_identified_by_object_id.add(ItemSquarePattern.new(blind, 4, 4))
-  
-  assert_equal(expected_items_identified_by_object_class, scene.getItemsInScopeAsListPattern(2, 2, 2, true), "occurred when items should be identified by their class.")
-  assert_equal(expected_items_identified_by_object_id, scene.getItemsInScopeAsListPattern(2, 2, 2, false), "occurred when items should be identified by their id.")
+  assert_equal(
+    expected_list_pattern, 
+    scene.getItemsInScopeAsListPattern(2, 2, 2)
+  )
 end
 
 ################################################################################
@@ -1224,46 +1037,51 @@ end
 #          |------|------|------|
 #      0      1      2      3      4      
 unit_test "get_location_of_self" do
+  
+  Scene.class_eval{
+    field_accessor :_scene
+  }
+  
   blind = Scene.getBlindSquareToken
   empty = Scene.getEmptySquareToken
   
   scene_with_creator = Scene.new("", 5, 5, 0, 0, nil)
-  scene_with_creator.addItemToSquare(1, 0, "", empty);
-  scene_with_creator.addItemToSquare(2, 0, "1", "f");
-  scene_with_creator.addItemToSquare(3, 0, "", empty);
-  scene_with_creator.addItemToSquare(0, 1, "", empty);
-  scene_with_creator.addItemToSquare(2, 1, "2", "a");
-  scene_with_creator.addItemToSquare(4, 1, "", empty);
-  scene_with_creator.addItemToSquare(0, 2, "", empty);
-  scene_with_creator.addItemToSquare(1, 2, "3", "b");
-  scene_with_creator.addItemToSquare(2, 2, "0", Scene.getCreatorToken());
-  scene_with_creator.addItemToSquare(3, 2, "4", "e");
-  scene_with_creator.addItemToSquare(4, 2, "", empty);
-  scene_with_creator.addItemToSquare(0, 3, "", empty);
-  scene_with_creator.addItemToSquare(2, 3, "5", "d");
-  scene_with_creator.addItemToSquare(4, 3, "", empty);
-  scene_with_creator.addItemToSquare(1, 4, "", empty);
-  scene_with_creator.addItemToSquare(2, 4, "6", "g");
-  scene_with_creator.addItemToSquare(3, 4, "", empty);
+  scene_with_creator._scene.get(1).set(0, SceneObject.new(empty))
+  scene_with_creator._scene.get(2).set(0, SceneObject.new("1", "f"))
+  scene_with_creator._scene.get(3).set(0, SceneObject.new(empty))
+  scene_with_creator._scene.get(0).set(1, SceneObject.new(empty))
+  scene_with_creator._scene.get(2).set(1, SceneObject.new("2", "a"))
+  scene_with_creator._scene.get(4).set(1, SceneObject.new(empty))
+  scene_with_creator._scene.get(0).set(2, SceneObject.new(empty))
+  scene_with_creator._scene.get(1).set(2, SceneObject.new("3", "b"))
+  scene_with_creator._scene.get(2).set(2, SceneObject.new("0", Scene.getCreatorToken()))
+  scene_with_creator._scene.get(3).set(2, SceneObject.new("4", "e"))
+  scene_with_creator._scene.get(4).set(2, SceneObject.new(empty))
+  scene_with_creator._scene.get(0).set(3, SceneObject.new(empty))
+  scene_with_creator._scene.get(2).set(3, SceneObject.new("5", "d"))
+  scene_with_creator._scene.get(4).set(3, SceneObject.new(empty))
+  scene_with_creator._scene.get(1).set(4, SceneObject.new(empty))
+  scene_with_creator._scene.get(2).set(4, SceneObject.new("6", "g"))
+  scene_with_creator._scene.get(3).set(4, SceneObject.new(empty))
   
   scene_without_creator = Scene.new("", 5, 5, 0, 0, nil)
-  scene_without_creator.addItemToSquare(1, 0, "", empty);
-  scene_without_creator.addItemToSquare(2, 0, "1", "f");
-  scene_without_creator.addItemToSquare(3, 0, "", empty);
-  scene_without_creator.addItemToSquare(0, 1, "", empty);
-  scene_without_creator.addItemToSquare(2, 1, "2", "a");
-  scene_without_creator.addItemToSquare(4, 1, "", empty);
-  scene_without_creator.addItemToSquare(0, 2, "", empty);
-  scene_without_creator.addItemToSquare(1, 2, "3", "b");
-  scene_without_creator.addItemToSquare(2, 2, "0", "c");
-  scene_without_creator.addItemToSquare(3, 2, "4", "e");
-  scene_without_creator.addItemToSquare(4, 2, "", empty);
-  scene_without_creator.addItemToSquare(0, 3, "", empty);
-  scene_without_creator.addItemToSquare(2, 3, "5", "d");
-  scene_without_creator.addItemToSquare(4, 3, "", empty);
-  scene_without_creator.addItemToSquare(1, 4, "", empty);
-  scene_without_creator.addItemToSquare(2, 4, "6", "g");
-  scene_without_creator.addItemToSquare(3, 4, "", empty);
+  scene_without_creator._scene.get(1).set(0, SceneObject.new(empty))
+  scene_without_creator._scene.get(2).set(0, SceneObject.new("1", "f"))
+  scene_without_creator._scene.get(3).set(0, SceneObject.new(empty))
+  scene_without_creator._scene.get(0).set(1, SceneObject.new(empty))
+  scene_without_creator._scene.get(2).set(1, SceneObject.new("2", "a"))
+  scene_without_creator._scene.get(4).set(1, SceneObject.new(empty))
+  scene_without_creator._scene.get(0).set(2, SceneObject.new(empty))
+  scene_without_creator._scene.get(1).set(2, SceneObject.new("3", "b"))
+  scene_without_creator._scene.get(2).set(2, SceneObject.new("0", "c"))
+  scene_without_creator._scene.get(3).set(2, SceneObject.new("4", "e"))
+  scene_without_creator._scene.get(4).set(2, SceneObject.new(empty))
+  scene_without_creator._scene.get(0).set(3, SceneObject.new(empty))
+  scene_without_creator._scene.get(2).set(3, SceneObject.new("5", "d"))
+  scene_without_creator._scene.get(4).set(3, SceneObject.new(empty))
+  scene_without_creator._scene.get(1).set(4, SceneObject.new(empty))
+  scene_without_creator._scene.get(2).set(4, SceneObject.new("6", "g"))
+  scene_without_creator._scene.get(3).set(4, SceneObject.new(empty))
   
   assert_equal(Square.new(2, 2).toString(), scene_with_creator.getLocationOfCreator().toString(), "occurred when scene creator is present in scene.")
   assert_equal(nil, scene_without_creator.getLocationOfCreator(), "occurred when scene creator is not present in scene.")
@@ -1345,7 +1163,7 @@ unit_test "is_entirely_blind" do
     # In scenario 2, add 1 blind square SceneObject to the Scene so that the 
     # test can verify that the Scene must consist *entirely* of SceneObjects 
     # for the function to return true.
-    if scenario == 2 then scene_data_structure.get(0).set(0, SceneObject.new("", Scene.getBlindSquareToken)) end
+    if scenario == 2 then scene_data_structure.get(0).set(0, SceneObject.new(Scene.getBlindSquareToken)) end
     
     ################
     ##### TEST #####
@@ -1362,26 +1180,31 @@ end
 
 ################################################################################
 unit_test "is_square_blind" do
+  
+  Scene.class_eval{
+    field_accessor :_scene
+  }
+  
   empty = Scene.getEmptySquareToken
   
   scene = Scene.new("", 5, 5, 0, 0, nil)
-  scene.addItemToSquare(1, 0, "", empty);
-  scene.addItemToSquare(2, 0, "1", "f");
-  scene.addItemToSquare(3, 0, "", empty);
-  scene.addItemToSquare(0, 1, "", empty);
-  scene.addItemToSquare(2, 1, "2", "a");
-  scene.addItemToSquare(4, 1, "", empty);
-  scene.addItemToSquare(0, 2, "", empty);
-  scene.addItemToSquare(1, 2, "3", "b");
-  scene.addItemToSquare(2, 2, "0", "c");
-  scene.addItemToSquare(3, 2, "4", "e");
-  scene.addItemToSquare(4, 2, "", empty);
-  scene.addItemToSquare(0, 3, "", empty);
-  scene.addItemToSquare(2, 3, "5", "d");
-  scene.addItemToSquare(4, 3, "", empty);
-  scene.addItemToSquare(1, 4, "", empty);
-  scene.addItemToSquare(2, 4, "6", "g");
-  scene.addItemToSquare(3, 4, "", empty);
+  scene._scene.get(1).set(0, SceneObject.new(empty))
+  scene._scene.get(2).set(0, SceneObject.new("1", "f"))
+  scene._scene.get(3).set(0, SceneObject.new(empty))
+  scene._scene.get(0).set(1, SceneObject.new(empty))
+  scene._scene.get(2).set(1, SceneObject.new("2", "a"))
+  scene._scene.get(4).set(1, SceneObject.new(empty))
+  scene._scene.get(0).set(2, SceneObject.new(empty))
+  scene._scene.get(1).set(2, SceneObject.new("3", "b"))
+  scene._scene.get(2).set(2, SceneObject.new("0", "c"))
+  scene._scene.get(3).set(2, SceneObject.new("4", "e"))
+  scene._scene.get(4).set(2, SceneObject.new(empty))
+  scene._scene.get(0).set(3, SceneObject.new(empty))
+  scene._scene.get(2).set(3, SceneObject.new("5", "d"))
+  scene._scene.get(4).set(3, SceneObject.new(empty))
+  scene._scene.get(1).set(4, SceneObject.new(empty))
+  scene._scene.get(2).set(4, SceneObject.new("6", "g"))
+  scene._scene.get(3).set(4, SceneObject.new(empty))
   
   assert_true(scene.isSquareBlind(0, 0), "occurred when square specified should be blind.")
   assert_false(scene.isSquareBlind(1, 0), "occurred when square specified should be empty.")
@@ -1390,26 +1213,31 @@ end
 
 ################################################################################
 unit_test "is_square_empty" do
+  
+  Scene.class_eval{
+    field_accessor :_scene
+  }
+  
   empty = Scene.getEmptySquareToken
   
   scene = Scene.new("", 5, 5, 0, 0, nil)
-  scene.addItemToSquare(1, 0, "", empty);
-  scene.addItemToSquare(2, 0, "1", "f");
-  scene.addItemToSquare(3, 0, "", empty);
-  scene.addItemToSquare(0, 1, "", empty);
-  scene.addItemToSquare(2, 1, "2", "a");
-  scene.addItemToSquare(4, 1, "", empty);
-  scene.addItemToSquare(0, 2, "", empty);
-  scene.addItemToSquare(1, 2, "3", "b");
-  scene.addItemToSquare(2, 2, "0", "c");
-  scene.addItemToSquare(3, 2, "4", "e");
-  scene.addItemToSquare(4, 2, "", empty);
-  scene.addItemToSquare(0, 3, "", empty);
-  scene.addItemToSquare(2, 3, "5", "d");
-  scene.addItemToSquare(4, 3, "", empty);
-  scene.addItemToSquare(1, 4, "", empty);
-  scene.addItemToSquare(2, 4, "6", "g");
-  scene.addItemToSquare(3, 4, "", empty);
+  scene._scene.get(1).set(0, SceneObject.new(empty))
+  scene._scene.get(2).set(0, SceneObject.new("1", "f"))
+  scene._scene.get(3).set(0, SceneObject.new(empty))
+  scene._scene.get(0).set(1, SceneObject.new(empty))
+  scene._scene.get(2).set(1, SceneObject.new("2", "a"))
+  scene._scene.get(4).set(1, SceneObject.new(empty))
+  scene._scene.get(0).set(2, SceneObject.new(empty))
+  scene._scene.get(1).set(2, SceneObject.new("3", "b"))
+  scene._scene.get(2).set(2, SceneObject.new("0", "c"))
+  scene._scene.get(3).set(2, SceneObject.new("4", "e"))
+  scene._scene.get(4).set(2, SceneObject.new(empty))
+  scene._scene.get(0).set(3, SceneObject.new(empty))
+  scene._scene.get(2).set(3, SceneObject.new("5", "d"))
+  scene._scene.get(4).set(3, SceneObject.new(empty))
+  scene._scene.get(1).set(4, SceneObject.new(empty))
+  scene._scene.get(2).set(4, SceneObject.new("6", "g"))
+  scene._scene.get(3).set(4, SceneObject.new(empty))
   
   assert_false(scene.isSquareEmpty(0, 0), "occurred when square specified should be blind.")
   assert_true(scene.isSquareEmpty(1, 0), "occurred when square specified should be empty.")

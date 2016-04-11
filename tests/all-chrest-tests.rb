@@ -4,13 +4,16 @@
 
 require "java" 
 require "modellers_testing_framework"
+require "securerandom"
 include TestFramework
 
-# Import all required classes
+# Import all required Java classes
+import "java.awt.Color"
 import "java.util.ArrayList"
 import "java.util.HashMap"
-import "java.awt.Color"
+import "java.util.TreeMap"
 
+# Import all CHREST package classes.
 [
   "Chrest", 
   "Link",
@@ -27,7 +30,7 @@ end
   "Fixation",
   "FixationResult",
   "Scene",
-  "SceneObject",
+  "SceneObject"
 ].each do |klass|
   import "jchrest.domainSpecifics.#{klass}"
 end
@@ -68,13 +71,13 @@ end
   "ListPattern",
   "Modality",
   "HistoryTreeMap",
-  "VisualSpatialFieldObject",
   "VisualSpatialFieldMoveObjectException",
   "NumberPattern",
   "Pattern",
   "ReinforcementLearning",
   "Square",
-  "StringPattern"
+  "StringPattern",
+  "VisualSpatialFieldObject"
 ].each do |klass|
   import "jchrest.lib.#{klass}"
 end
@@ -82,9 +85,7 @@ end
 # Pick up all ruby test files except this one
 Dir.glob(File.dirname(__FILE__) + "/**/*.rb") do |file|
   require file unless 
-  File.expand_path(file) == File.expand_path(__FILE__) || 
-    file.to_s.end_with?("visual-spatial-field-tests.rb") ||
-    file.to_s.end_with?("visual-spatial-field-object-tests.rb") ||
+  File.expand_path(file) == File.expand_path(__FILE__) ||
     file.to_s.end_with?("tileworld-domain-tests.rb")
 end
 

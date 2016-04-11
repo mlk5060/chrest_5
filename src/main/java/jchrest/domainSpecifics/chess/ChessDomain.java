@@ -77,15 +77,14 @@ public class ChessDomain extends DomainSpecifics {
       );
     }
     
-    ChessBoard board = new ChessBoard("chess-board", null);
+    ChessBoard board = new ChessBoard("chess-board");
 
     for (int col = 0; col < 8; ++col) {
       for (int row = 0; row < 8; ++row) {
         String pieceType = definition.substring(col + 9*row, 1 + col + 9*row);
-        String uniqueIdentifier = String.valueOf(col + 9*row);
-        ChessObject piece = new ChessObject(uniqueIdentifier, pieceType);
+        ChessObject piece = new ChessObject(pieceType);
         
-        board.addItemToSquare(col, Math.abs((row + 1) - 8), piece);
+        board.addObjectToSquare(col, Math.abs((row + 1) - 8), piece);
       }
     }
 
@@ -106,7 +105,7 @@ public class ChessDomain extends DomainSpecifics {
     for (int col = 0; col < board.getWidth(); ++col) {
       for (int row = 0; row < board.getHeight(); ++row) {
         if (!board.isSquareEmpty(col, row) && !board.isSquareBlind(col, row)) {
-          ListPattern itemsOnSquare = board.getSquareContentsAsListPattern(col, row, true);
+          ListPattern itemsOnSquare = board.getSquareContentsAsListPattern(col, row);
           for(PrimitivePattern itemOnSquare : itemsOnSquare){
             ItemSquarePattern ios = (ItemSquarePattern)itemOnSquare;
             if( !ios.getItem().equalsIgnoreCase("P") ){
@@ -961,20 +960,14 @@ public class ChessDomain extends DomainSpecifics {
   /**
    *
    * @param time
-   * @return {@link java.lang.Boolean#TRUE} if adding a new {@link 
-   * jchrest.domainSpecifics.Fixation} does not result in too many {@link 
-   * jchrest.domainSpecifics.Fixation Fixations} being performed, i.e. is the 
-   * number of {@link jchrest.domainSpecifics.Fixation Fixations} to perform and
-   * the number of {@link jchrest.domainSpecifics.Fixation Fixations} attempted
-   * less than the maximum number of {@link jchrest.domainSpecifics.Fixation 
-   * Fixations} the associated {@link jchrest.architecture.Chrest} model can
-   * make?
+   * @return {@link java.lang.Boolean#TRUE} since there are no additional checks
+   * to be made when adding a new {@link jchrest.domainSpecifics.Fixation} in
+   * {@link jchrest.architecture.Chrest#scheduleOrMakeNextFixation(
+   * jchrest.domainSpecifics.Scene, boolean, int)}.
    */
   @Override
   public boolean shouldAddNewFixation(int time){
-    return 
-      (this._associatedModel.getFixationsToMake(time).size() + this._associatedModel.getPerceiver().getFixations(time).size()) <
-      super.getMaximumFixationsInSet();
+    return true;
   }
   
   /**

@@ -264,6 +264,10 @@ unit_test "make" do
     field_writer :_performanceTime, :_performed, :_scene, :_colFixatedOn, :_rowFixatedOn
   }
   
+  Scene.class_eval{
+    field_accessor :_scene
+  }
+  
   for performance_time in 1..3
     for scenario in 1..13
 
@@ -291,7 +295,7 @@ unit_test "make" do
         empty = Scene.getEmptySquareToken()
         for col in 0...first_fixation_scene.getWidth()
           for row in 0...first_fixation_scene.getHeight()
-            first_fixation_scene.addItemToSquare(col, row, empty, empty)
+            first_fixation_scene._scene.get(col).set(row, SceneObject.new(empty))
           end
         end
       end
@@ -300,26 +304,20 @@ unit_test "make" do
       # Perceiver associated with "model" if the scenario stipulates this.
       first_fixation = CentralFixation.new(time += 100)
       first_fixation._performanceTime = (time += 50)
-
+      first_fixation._scene = first_fixation_scene
+      first_fixation._performed = true
+      first_fixation._colFixatedOn = 2
+      first_fixation._rowFixatedOn = 2
+      
       # If the scenario is equal to 2, the Fixation will not have been performed.
-      if scenario != 2
-        first_fixation._performed = true
-        first_fixation._scene = first_fixation_scene
-
-        # If scenario is equal to 9 then the coordinates should never allow
-        # the PeripheralItemFixation to be made to return a Square that is within
-        # its dimensions.
-        first_fixation._colFixatedOn = (
-          scenario == 9 ? 
-            first_fixation_scene.getWidth() + (model.getPerceiver().getFixationFieldOfView() + 1) : 
-            2
-        )
-
-        first_fixation._rowFixatedOn = (
-          scenario == 9 ? 
-            first_fixation_scene.getHeight() + (model.getPerceiver().getFixationFieldOfView() + 1) : 
-            2
-        )
+      if scenario == 2 then first_fixation._performed = false end
+        
+      # If scenario is equal to 9 then the coordinates should never allow
+      # the PeripheralItemFixation to be made to return a Square that is within
+      # its dimensions.
+      if scenario == 9 
+        first_fixation._colFixatedOn = first_fixation_scene.getWidth() + (model.getPerceiver().getFixationFieldOfView() + 1) 
+        first_fixation._rowFixatedOn = first_fixation_scene.getHeight() + (model.getPerceiver().getFixationFieldOfView() + 1)
       end
 
       model.getPerceiver().addFixation(first_fixation)
@@ -389,7 +387,7 @@ unit_test "make" do
           for row in 0...peripheral_item_fixation_scene.getHeight()
 
             if col != 2 and row != 2 
-              peripheral_item_fixation_scene.addItemToSquare(col, row, object_id.to_s, object_class)
+              peripheral_item_fixation_scene._scene.get(col).set(row, SceneObject.new(object_id.to_s, object_class))
             end
 
             object_id+=1

@@ -96,7 +96,10 @@ public abstract class Fixation {
   /**
    * @return The result of invoking {@link jchrest.lib.Square#getColumn()} on 
    * the {@link jchrest.lib.Square} selected when {@link #this} is performed 
-   * or {@code null} if {@link #this} has not yet been performed.
+   * (coordinate returned is relative to the {@link 
+   * jchrest.domainSpecifics.Scene} fixated on rather than the coordinates in 
+   * the external domain) or {@code null} if {@link #this} has not yet been 
+   * performed.
    */
   public Integer getColFixatedOn(){
     return this._colFixatedOn;
@@ -104,8 +107,11 @@ public abstract class Fixation {
   
   /**
    * @return The result of invoking {@link jchrest.lib.Square#getRow()} on the 
-   * {@link jchrest.lib.Square} selected when {@link #this} is performed or 
-   * {@code null} if {@link #this} has not yet been performed.
+   * {@link jchrest.lib.Square} selected when {@link #this} is performed 
+   * (coordinate returned is relative to the {@link 
+   * jchrest.domainSpecifics.Scene} fixated on rather than the coordinates in 
+   * the external domain) or {@code null} if {@link #this} has not yet been 
+   * performed.
    */
   public Integer getRowFixatedOn(){
     return this._rowFixatedOn;
@@ -169,8 +175,8 @@ public abstract class Fixation {
       + "\n   - Performed at time: " + (this._performanceTime == null ? "null" : this._performanceTime + "ms")
       + "\n   - Performance successful: " + (this._performanceTime == null ? "not performed yet" : this._performed)
       + "\n   - Made in context of scene: " + (this._scene == null ? "null" : this._scene.getName())
-      + "\n   - Column fixated on (domain-coordinates): " + (this._colFixatedOn == null ? "null" : this._scene.getDomainSpecificColFromSceneSpecificCol(this._colFixatedOn))
-      + "\n   - Row fixated on (domain-coordinates): " + (this._rowFixatedOn == null ? "null" : this._scene.getDomainSpecificRowFromSceneSpecificRow(this._rowFixatedOn))
+      + "\n   - Column fixated on (domain-coordinates): " + (this._colFixatedOn == null || this._scene == null ? "null" : this._scene.getDomainSpecificColFromSceneSpecificCol(this._colFixatedOn))
+      + "\n   - Row fixated on (domain-coordinates): " + (this._rowFixatedOn == null || this._scene == null ? "null" : this._scene.getDomainSpecificRowFromSceneSpecificRow(this._rowFixatedOn))
       + "\n   - Object seen: " + (this._objectSeen == null ?
           "has not yet been set" :
           "ID = " + this._objectSeen.getIdentifier() + ", class = " + this._objectSeen.getObjectType()
@@ -246,7 +252,9 @@ public abstract class Fixation {
    * @return A {@link jchrest.lib.Square} denoting where the {@link 
    * jchrest.architecture.Perceiver} associated with the {@link 
    * jchrest.architecture.Chrest} model making {@link #this} should focus its
-   * attention on.  If {@link #this} is not made successfully, {@code null} 
+   * attention on (coordinates specified should be relative to the coordinates 
+   * of the {@code scene} specified rather than the domain that the {@code 
+   * scene} represents.  If {@link #this} is not made successfully, {@code null} 
    * should be returned.
    */
   public abstract Square make(Scene scene, int time);

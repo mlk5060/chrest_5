@@ -23,8 +23,8 @@ public class ChessObject extends SceneObject{
    * </a> notation, e.g. a black pawn should be "p".  Empty squares should be
    * noted as "."
    */
-  public ChessObject(String identifier, String objectClass) {
-    super(identifier, objectClass);
+  public ChessObject(String objectClass) {
+    super(objectClass);
     
     if(!objectClass.equals(Scene.getBlindSquareToken()) && objectClass.length() != 1){
       throw new IllegalArgumentException(

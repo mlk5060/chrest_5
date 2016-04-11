@@ -4,6 +4,7 @@
 
 package jchrest.architecture;
 
+import jchrest.lib.VisualSpatialFieldObject;
 import jchrest.domainSpecifics.Scene;
 import jchrest.domainSpecifics.generic.GenericDomain;
 import jchrest.domainSpecifics.DomainSpecifics;
@@ -78,12 +79,14 @@ public class Chrest extends Observable {
   private int _ltmLinkTraversalTime = 10; //From "Perception and Memory in Chess" by deGroot and Gobet
   private int _timeToUpdateStm = 50; //From "Perception and Memory in Chess" by deGroot and Gobet
   private int _timeToRetrieveItemFromStm = 10;
-  private int _visualSpatialFieldPhysicalObjectEncodingTime = 25; 
-  private int _visualSpatialFieldEmptySquareEncodingTime = 10; 
-  private int _visualSpatialFieldAccessTime = 100; //From "Mental Imagery and Chunks" by Gobet and Waters
-  private int _visualSpatialFieldObjectMovementTime = 50;  //From "Mental Imagery and Chunks" by Gobet and Waters
-  private int _recognisedVisualSpatialObjectLifespan = 10000; 
-  private int _unrecognisedVisualSpatialObjectLifespan = 8000;
+  private int _timeToAccessVisualSpatialField = 100; //From "Mental Imagery and Chunks" by Gobet and Waters
+  private int _timeToEncodeRecognisedSceneObjectAsVisualSpatialFieldObject = 5;
+  private int _timeToEncodeUnrecognisedNonEmptySquareSceneObjectAsVisualSpatialFieldObject = 25; 
+  private int _timeToEncodeUnrecognisedEmptySquareSceneObjectAsVisualSpatialFieldObject = 10; 
+  private int _timeToProcessUnrecognisedSceneObjectDuringVisualSpatialFieldConstruction = 10;
+  private int _recognisedVisualSpatialFieldObjectLifespan = 10000; 
+  private int _unrecognisedVisualSpatialFieldObjectLifespan = 8000;
+  private int _timeToMoveVisualSpatialFieldObject = 50;  //From "Mental Imagery and Chunks" by Gobet and Waters
   
   // Cognitive parameters
   private int _cognitionClock;
@@ -177,6 +180,14 @@ public class Chrest extends Observable {
   private int _minItemOrPositionOccurrencesInNodeImagesToBeSlotValue = 2;
   
   private ReinforcementLearningTheories _reinforcementLearningTheory = null; //Must be set explicitly using Chrest.setReinforcementLearningTheory();
+  
+  /****************************************/
+  /**** Visual-Spatial Field variables ****/
+  /****************************************/
+  
+  //Stores all VisualSpatialFieldObject identifiers that have been recognised in
+  //the Fixation set currently being performed.
+  private List<String> _recognisedVisualSpatialFieldObjectIdentifiers = new ArrayList();
   
   /******************************************/
   /**** Experiment information variables ****/
@@ -428,6 +439,10 @@ public class Chrest extends Observable {
     return _attentionClock;
   }
   
+  public int getCognitionClock(){
+    return this._cognitionClock;
+  }
+  
   public int getCreationTime(){
     return this._creationTime;
   }
@@ -476,12 +491,20 @@ public class Chrest extends Observable {
     return this._perceiverClock;
   }
   
+  public Integer getRecognisedVisualSpatialFieldObjectLifespan(){
+    return this._recognisedVisualSpatialFieldObjectLifespan;
+  }
+  
   public int getReinforceProductionTime(){
     return _reinforceProductionTime;
   }
   
   public float getRho(){
     return _rho;
+  }
+  
+  public Integer getTimeToAccessVisualSpatialField(){
+    return this._timeToAccessVisualSpatialField;
   }
   
   public int getTimeToCreateNamingLink(){
@@ -492,8 +515,44 @@ public class Chrest extends Observable {
     return this._semanticLinkCreationTime;
   }
   
+  public int getTimeToEncodeRecognisedSceneObjectAsVisualSpatialFieldObject(){
+    return this._timeToEncodeRecognisedSceneObjectAsVisualSpatialFieldObject;
+  }
+  
+  public Integer getTimeToEncodeUnrecognisedEmptySquareSceneObjectAsVisualSpatialFieldObject(){
+    return this._timeToEncodeUnrecognisedEmptySquareSceneObjectAsVisualSpatialFieldObject;
+  }
+  
+  public Integer getTimeToEncodeUnrecognisedNonEmptySquareSceneObjectAsVisualSpatialFieldObject(){
+    return this._timeToEncodeUnrecognisedNonEmptySquareSceneObjectAsVisualSpatialFieldObject;
+  }
+  
+  public Integer getTimeToMoveVisualSpatialFieldObject(){
+    return this._timeToMoveVisualSpatialFieldObject;
+  }
+  
+  public int getTimeToProcessUnrecognisedSceneObjectDuringVisualSpatialFieldConstruction(){
+    return _timeToProcessUnrecognisedSceneObjectDuringVisualSpatialFieldConstruction;
+  }
+
   public int getTimeToRetrieveItemFromStm(){
     return this._timeToRetrieveItemFromStm;
+  }
+
+  public Integer getUnrecognisedVisualSpatialFieldObjectLifespan(){
+    return this._unrecognisedVisualSpatialFieldObjectLifespan;
+  }
+  
+  public int getTimeToUpdateStm() {
+    return _timeToUpdateStm;
+  }
+  
+  /**
+   * @return The {@link jchrest.architecture.VisualSpatialField 
+   * VisualSpatialFields} constructed by {@link #this}.
+   */
+  public TreeMap<Integer,VisualSpatialField> getVisualSpatialFields(){
+    return this._visualSpatialFields;
   }
   
   void incrementNextNodeReference(){
@@ -504,15 +563,15 @@ public class Chrest extends Observable {
     return _learnObjectLocationsRelativeToAgent;
   }
   
-  public boolean attentionFree(int time){
+  public boolean isAttentionFree(int time){
     return this._attentionClock <= time;
   }
     
-  public boolean cognitionFree(int time){
+  public boolean isCognitionFree(int time){
     return this._cognitionClock <= time;
   }
   
-  public boolean perceiverFree(int time){
+  public boolean isPerceiverFree(int time){
     return this._perceiverClock <= time;
   }
   
@@ -576,6 +635,14 @@ public class Chrest extends Observable {
     this._maximumSemanticLinkSearchDistance = maximumSemanticLinkSearchDistance;
   }
   
+  public void setRecognisedVisualSpatialFieldObjectLifespan(int lifespan){
+    this._recognisedVisualSpatialFieldObjectLifespan = lifespan;
+  }
+  
+  public void setTimeToEncodeRecognisedSceneObjectAsVisualSpatialFieldObject(int time){
+    this._timeToEncodeRecognisedSceneObjectAsVisualSpatialFieldObject = time;
+  }
+  
   public void setTemplateConstructionParameters (int minNodeDepthInNetworkToBeTemplate, int minItemOrPositionOccurrencesInNodeImagesToBeSlotValue) {
     if(minNodeDepthInNetworkToBeTemplate >= 1 && minItemOrPositionOccurrencesInNodeImagesToBeSlotValue >= 1){
       this._minNodeDepthInNetworkToBeTemplate = minNodeDepthInNetworkToBeTemplate;
@@ -588,20 +655,75 @@ public class Chrest extends Observable {
     }
   }
   
+  /**
+   * @param time The base time for accessing a {@link 
+   * jchrest.architecture.VisualSpatialField} associated with {@link #this}.
+   */
+  public void setTimeToAccessVisualSpatialField(int time){
+    this._timeToAccessVisualSpatialField = time;
+  }
+  
   public void setTimeToCreateNamingLink(int timeToCreateNamingLink) {
     this._namingLinkCreationTime = timeToCreateNamingLink;
   }
-
+  
   public void setTimeToCreateSemanticLink(int timeToCreateSemanticLink) {
     this._semanticLinkCreationTime = timeToCreateSemanticLink;
   }
   
+  /**
+   * @param time The time taken to encode new {@link 
+   * jchrest.domainSpecifics.SceneObject SceneObjects} that represent empty 
+   * {@link jchrest.lib.Square Squares} in a {@link 
+   * jchrest.domainSpecifics.Scene} as {@link 
+   * jchrest.lib.VisualSpatialFieldObject VisualSpatialFieldObjects}.
+   */
+  public void setTimeToEncodeUnrecognisedEmptySquareSceneObjectAsVisualSpatialFieldObject(int time){
+    this._timeToEncodeUnrecognisedEmptySquareSceneObjectAsVisualSpatialFieldObject = time;
+  }
+  
+  /**
+   * @param time The time taken to encode new {@link 
+   * jchrest.domainSpecifics.SceneObject SceneObjects} that do not represent 
+   * empty {@link jchrest.lib.Square Squares} in a {@link 
+   * jchrest.domainSpecifics.Scene} as {@link 
+   * jchrest.lib.VisualSpatialFieldObject VisualSpatialFieldObjects}.
+   */
+  public void setTimeToEncodeUnrecognisedNonEmptySquareSceneObjectAsVisualSpatialFieldObject(int time){
+    this._timeToEncodeUnrecognisedNonEmptySquareSceneObjectAsVisualSpatialFieldObject = time;
+  }
+  
+  /**
+   * @param movementTime The time taken to move a {@link 
+   * jchrest.architecture.VisualSpatialFieldObject} on a {@link 
+   * jchrest.architecture.VisualSpatialField} associated with {@link #this}.
+   */
+  public void setTimeToMoveVisualSpatialFieldObject(int time){
+    this._timeToMoveVisualSpatialFieldObject = time;
+  }
+  
+  /**
+   * @param time The base time taken to process a {@link 
+   * jchrest.domainSpecifics.SceneObject} during {@link 
+   * jchrest.architecture.VisualSpatialField} construction (see {@link 
+   * #this#constructVisualSpatialField(int)}, irrespective of whether the {@link 
+   * jchrest.domainSpecifics.SceneObject} is encoded as a {@link 
+   * jchrest.lib.VisualSpatialFieldObject}.
+   */
+  public void setTimeToProcessUnrecognisedSceneObjectDuringVisualSpatialFieldConstruction(int time){
+    this._timeToProcessUnrecognisedSceneObjectDuringVisualSpatialFieldConstruction = time;
+  }
+
   public void setTimeToUpdateStm(int timeToUpdateStm){
     this._timeToUpdateStm = timeToUpdateStm;
   }
   
   public void setTimeToRetrieveItemFromStm(int timeToRetrieveItemFromStm){
     this._timeToRetrieveItemFromStm = timeToRetrieveItemFromStm;
+  }
+  
+  public void setUnrecognisedVisualSpatialFieldObjectLifespan(int lifespan){
+    this._unrecognisedVisualSpatialFieldObjectLifespan = lifespan;
   }
 
   /**************************************/
@@ -2065,7 +2187,7 @@ public class Chrest extends Observable {
       );
     }
     
-    if(this.cognitionFree(time) || !considerTimeAndAddRecognisedNodeToStm){
+    if(this.isCognitionFree(time) || !considerTimeAndAddRecognisedNodeToStm){
       
       if(considerTimeAndAddRecognisedNodeToStm) this.printDebugStatement(func + "Cognition resource free.");
       this.printDebugStatement(func + "Attempting to recognise " + pattern.toString() + ".");
@@ -2218,14 +2340,14 @@ public class Chrest extends Observable {
     //If time costs are to be incurred and the cognition resource is busy or the 
     //limit of semantic search has been reached, return the current node.
     if(
-      (considerTime && !this.cognitionFree(time)) ||
+      (considerTime && !this.isCognitionFree(time)) ||
       semanticSearchDistanceRemaining <= 0
     ){
       debugStatement = func + "Maximum semantic search distance has been reached (" + 
         (semanticSearchDistanceRemaining <= 0) + ")";
         
       if(considerTime){
-        debugStatement += "or cognitive resource is not free (" + !this.cognitionFree(time) + ")";
+        debugStatement += "or cognitive resource is not free (" + !this.isCognitionFree(time) + ")";
       }
         
       debugStatement += ". Returning current node (ref: " + node.getReference() + ").";
@@ -2309,9 +2431,9 @@ public class Chrest extends Observable {
     }
   }
   
-  /******************/
-  /**** Learning ****/
-  /******************/
+  /********************************/
+  /**** Learning Functionality ****/
+  /********************************/
 
   /**
    * Attempts to increase the total number of {@link jchrest.architecture.Node}s 
@@ -2378,7 +2500,7 @@ public class Chrest extends Observable {
     //therefore possible to combine how the new information is ultimately added
     //to LTM.
     time += this._discriminationTime;
-    boolean discriminationSuccessful = false;
+    boolean discriminationSuccessful;
     
     if (newInformation.isEmpty()) {
 
@@ -2661,9 +2783,9 @@ public class Chrest extends Observable {
     }
   }
   
-  /***************************/
-  /**** Short-term memory ****/
-  /***************************/
+  /*****************************************/
+  /**** Short-term Memory Functionality ****/
+  /*****************************************/
   
   /**
    * @param pattern
@@ -2740,7 +2862,7 @@ public class Chrest extends Observable {
       "time this function is invoked (" + time + ")?"
     );
     
-    if(this.attentionFree(time)){
+    if(this.isAttentionFree(time)){
       
       this.printDebugStatement(
         func + "Attention resource is free so node " + 
@@ -2935,7 +3057,7 @@ public class Chrest extends Observable {
    * @param time 
    */
   public void replaceStmHypothesis(Node replacement, int time){
-    if(this.attentionFree(time)){
+    if(this.isAttentionFree(time)){
       time += this._timeToUpdateStm;
       Stm stmToReplaceHypothesisIn = this.getStm(replacement.getModality());
       if(stmToReplaceHypothesisIn.replaceHypothesis(replacement, time)){
@@ -2944,9 +3066,9 @@ public class Chrest extends Observable {
     }
   }
   
-  /*******************/
-  /**** TEMPLATES ****/
-  /*******************/
+  /********************************/
+  /**** Template Functionality ****/
+  /********************************/
   
   /**
    * Instruct {@link #this} to create templates throughout the entirety of its 
@@ -3020,13 +3142,9 @@ public class Chrest extends Observable {
 
   //TODO: Organise and check all code below this point.
   
-  /******************************/
-  /**** PERCEPTION FUNCTIONS ****/
-  /******************************/
-  
-  private boolean isPerceiverFree(int time){
-    return this._perceiverClock < time;
-  }
+  /**********************************/
+  /**** Perception Functionality ****/
+  /**********************************/
   
   /**
    * @return The time taken for the {@link jchrest.architecture.Perceiver} 
@@ -3072,33 +3190,53 @@ public class Chrest extends Observable {
   }
   
   /**
-   * Creates {@link jchrest.domainSpecifics.Fixation Fixations}, schedules them
-   * for deliberation/performance and performs them according to the {@code 
-   * scene} and {@code time} specified.
-   * 
-   * Note that the {@link jchrest.domainSpecifics.DomainSpecifics} returned by
-   * {@link #this#getDomainSpecifics()} influences how this function operates
+   * Creates/performs {@link jchrest.domainSpecifics.Fixation Fixations} 
+   * in accordance with the {@code scene} and {@code time} specified; the result
+   * of {@link #this#getDomainSpecifics()} influences how this function operates
    * significantly.
-   * 
+   * <p>
    * A {@link jchrest.domainSpecifics.Fixation} will be created for performance
-   * if {@link #this#attentionFree(int)} and {@link 
-   * jchrest.domainSpecifics.DomainSpecifics#shouldAddNewFixation(int)} both
-   * return {@link java.lang.Boolean#TRUE} when invoked with the {@code time}
-   * specified.  If the {@link jchrest.domainSpecifics.Fixation} to create is
-   * the first in a set, {@link 
-   * jchrest.domainSpecifics.DomainSpecifics#getInitialFixationInSet(int)} will 
-   * be invoked otherwise, {@link 
+   * if the following conditions all evaluate to {@link java.lang.Boolean#TRUE}:
+   * <ul>
+   *  <li>
+   *    Creating a new {@link jchrest.domainSpecifics.Fixation} for performance 
+   *    will not cause the maximum number of {@link 
+   *    jchrest.domainSpecifics.Fixation Fixations} that can be attempted (see 
+   *    {@link jchrest.domainSpecifics.DomainSpecifics#shouldAddNewFixation(int)
+   *    } for the result of invoking {@link #this#getDomainSpecifics()}) to be
+   *    surpassed if the {@link jchrest.domainSpecifics.Fixation} created is 
+   *    performed.
+   *  </li>
+   *  <li>
+   *    {@link jchrest.domainSpecifics.DomainSpecifics#shouldAddNewFixation(
+   *    int)} returns {@link java.lang.Boolean#TRUE} for the result of invoking 
+   *    {@link #this#getDomainSpecifics()}.
+   *  </li>
+   *  <li>
+   *    {@link #this#attentionFree(int)} returns {@link java.lang.Boolean#TRUE} 
+   *    when invoked at the {@code time} specified.  
+   *  </li>
+   * </ul>
+   * If the {@link jchrest.domainSpecifics.Fixation} to create is the first in a 
+   * set, the {@link jchrest.lib.Modality#VISUAL} {@link 
+   * jchrest.architecture.Stm} of {@link #this} will be cleared at {@code time}
+   * (ensures that any {@link jchrest.architecture.Node Nodes} in {@link 
+   * jchrest.lib.Modality#VISUAL} {@link jchrest.architecture.Stm} when the 
+   * {@link jchrest.domainSpecifics.Fixation} set is complete have resulted from
+   * the {@link jchrest.domainSpecifics.Fixation} set being performed) and 
+   * {@link jchrest.domainSpecifics.DomainSpecifics#getInitialFixationInSet(int)} 
+   * will be invoked. Otherwise, {@link 
    * jchrest.domainSpecifics.DomainSpecifics#getNonInitialFixationInSet(int)} 
    * will be invoked instead.
-   * 
+   * <p>
    * If this function is invoked and the {@code time} specified equals the 
    * result of invoking {@link 
    * jchrest.domainSpecifics.Fixation#getTimeDecidedUpon()} on a {@link 
    * jchrest.domainSpecifics.Fixation} created for performance and {@link 
    * #this#perceiverFree(int)} returns {@link java.lang.Boolean#TRUE} when the
    * {@code time} specified is passed as a parameter, the {@link 
-   * jchrest.domainSpecifics.Fixation Fixation's} performance time will
-   * be set to the result of {@link 
+   * jchrest.domainSpecifics.Fixation} created will have its performance time 
+   * set to the result of {@link 
    * jchrest.domainSpecifics.Fixation#getTimeDecidedUpon()} plus {@link 
    * #this#getSaccadeTime()}.  If {@link 
    * jchrest.domainSpecifics.Fixation#getTimeDecidedUpon()} returns {@link 
@@ -3106,15 +3244,67 @@ public class Chrest extends Observable {
    * #this#perceiverFree(int)} returns {@link java.lang.Boolean#FALSE} when the
    * {@code time} specified is passed as a parameter, the {@link 
    * jchrest.domainSpecifics.Fixation} will be abandoned.
-   * 
+   * <p>
    * If the {@code time} specified equals the result of invoking {@link 
    * jchrest.domainSpecifics.Fixation#getPerformanceTime()} for any {@link 
    * jchrest.domainSpecifics.Fixation Fixations} scheduled for performance, 
    * {@link jchrest.domainSpecifics.Fixation#perform(
    * jchrest.domainSpecifics.Scene, int)} will be invoked with the {@code scene}
-   * and {@code time} specified passed as input parameters.
+   * and {@code time} specified passed as input parameters.  If the {@link 
+   * jchrest.domainSpecifics.Fixation} performed is on a {@link 
+   * jchrest.domainSpecifics.SceneObject} or {@link jchrest.lib.Square} that has
+   * previously been fixated on by another {@link 
+   * jchrest.domainSpecifics.Fixation} in the current set or {@link 
+   * jchrest.domainSpecifics.DomainSpecifics#shouldLearnFromNewFixations(int)} 
+   * returns {@link java.lang.Boolean#TRUE} then {@link 
+   * jchrest.architecture.Perceiver#learnFromNewFixations(int)} will be invoked
+   * in context of the {@link jchrest.architecture.Perceiver} associated with 
+   * {@link #this}.
+   * <p>
+   * If a {@link jchrest.domainSpecifics.Fixation} is performed on a {@link 
+   * jchrest.domainSpecifics.Scene} that represents a {@link 
+   * jchrest.architecture.VisualSpatialField}, any {@link 
+   * jchrest.lib.VisualSpatialFieldObject VisualSpatialFieldObjects} on 
+   * and around the coordinates fixated on (coordinates "around" are decided by
+   * the value of {@link jchrest.architecture.Perceiver#getFixationFieldOfView()}
+   * in context of the result of invoking {@link #this#getPerceiver()}) will 
+   * have their termini refreshed.  Also, any {@link 
+   * jchrest.lib.VisualSpatialFieldObject VisualSpatialFieldObjects} that are 
+   * referenced in the contents and image of {@link jchrest.architecture.Node
+   * Nodes} recognised after performing a {@link 
+   * jchrest.domainSpecifics.Fixation} will have their recognised status set to
+   * {@link java.lang.Boolean#TRUE} at the time the {@link 
+   * jchrest.architecture.Node} is added to {@link jchrest.lib.Modality#VISUAL}
+   * {@link jchrest.architecture.Stm}.
+   * <p>
+   * If, after performance of a {@link jchrest.domainSpecifics.Fixation}, 
+   * invoking {@link jchrest.architecture.Perceiver#getFixations(int)} in 
+   * context of the {@link jchrest.architecture.Perceiver} associated with 
+   * {@link #this} is greater than or equal to {@link 
+   * jchrest.domainSpecifics.DomainSpecifics#getMaximumFixationsInSet()} or
+   * {@link jchrest.domainSpecifics.DomainSpecifics#isFixationSetComplete(int)}
+   * returns {@link java.lang.Boolean#TRUE}, {@link 
+   * jchrest.architecture.Perceiver#learnFromNewFixations(int)} will be invoked. 
+   * If the {@code constructVisualSpatialField} parameter for this function is 
+   * set to {@link java.lang.Boolean#TRUE}, {@link 
+   * #this#constructVisualSpatialField(int)} will be invoked at the time the 
+   * attention resource for {@link #this} is free.  If the {@link 
+   * jchrest.domainSpecifics.Scene} fixated on represents a {@link 
+   * jchrest.architecture.VisualSpatialField}, any {@link 
+   * jchrest.lib.VisualSpatialFieldObject VisualSpatialFieldObjects} that were
+   * not recognised as the {@link jchrest.domainSpecifics.Fixation Fixations} in
+   * the set were performed will have their recognised status set to {@link 
+   * java.lang.Boolean#FALSE} after 
    * 
-   * @param scene
+   * Finally, {@link 
+   * jchrest.architecture.Perceiver#clearFixations(int)} will be invoked for the
+   * {@link jchrest.architecture.Perceiver} associated with {@link #this}.
+   * 
+   * @param scene The {@link jchrest.domainSpecifics.Scene} that will be used
+   * to schedule or make a new {@link jchrest.domainSpecifics.Fixation}.
+   * 
+   * @param constructVisualSpatialField
+   * 
    * @param time
    * 
    * @throws IllegalStateException If this function is invoked and the {@code 
@@ -3123,18 +3313,30 @@ public class Chrest extends Observable {
    * jchrest.domainSpecifics.Fixation#getPerformanceTime()} on any {@link 
    * jchrest.domainSpecifics.Fixation} currently scheduled for performance.
    * 
-   * @return {@link java.lang.Boolean#TRUE} if a scheduled {@link 
-   * jchrest.domainSpecifics.Fixation} is performed and {@link 
-   * jchrest.domainSpecifics.DomainSpecifics#isFixationSetComplete(int)} returns
-   * {@link java.lang.Boolean#TRUE}.
+   * @return {@link java.lang.Boolean#TRUE} if the current set of {@link 
+   * jchrest.domainSpecifics.Fixation Fixations} has just been completed.
    */
-  public boolean scheduleOrMakeNextFixation(Scene scene, int time){
-    
+  //TODO: Should a new Fixation immediately be scheduled when attention is free
+  //      or should a Fixation be completely performed and STM allowed to update
+  //      before the next Fixation is performed?  Currently, it may be the case
+  //      that only the last Fixation performed will cause visual STM to be 
+  //      updated.
+  public boolean scheduleOrMakeNextFixation(Scene scene, boolean constructVisualSpatialField, int time){
+    this.printDebugStatement("===== Chrest.scheduleOrMakeNextFixation() =====");
     boolean fixationSetComplete = false;
     
+    this.printDebugStatement("- Checking if model exists at the time the function is requested (" + time + ")");
     if(this._creationTime <= time){
+      this.printDebugStatement("   ~ Model exists at the time the function is requested");
+      
       List<Fixation> fixationsToMakeAtTime = this.getFixationsToMake(time);
       Perceiver perceiver = this.getPerceiver();
+      this.printDebugStatement("- Fixations scheduled:");
+      if(this._debug){
+        for(Fixation fixationToMake : fixationsToMakeAtTime){
+          System.out.println(fixationToMake.toString());
+        }
+      }
       
       /////////////////////////////
       ///// PERFORM FIXATIONS /////
@@ -3142,18 +3344,22 @@ public class Chrest extends Observable {
 
       //Perform any Fixations whose performance time is <= the time
       //specified.
+      this.printDebugStatement("- Performing Fixations that are due to be performed");
       for(int i = 0; i < fixationsToMakeAtTime.size(); i++){
         Fixation fixation = fixationsToMakeAtTime.get(i);
         Integer performanceTime = fixation.getPerformanceTime();
+        this.printDebugStatement("   ~ Checking if Fixation with reference " + fixation.getReference() + " is to be performed now");
 
         //Only process fixations that are scheduled for performance.
         if(performanceTime != null){
           if(performanceTime == time){
+            this.printDebugStatement("      + Fixation is to be performed now");
             fixationsToMakeAtTime.remove(i);
  
             //Perform the fixation, if its successful, determine if new 
             //Fixations performed should be learned from.
             if(fixation.perform(scene, time)){
+               this.printDebugStatement("- Fixation performed successfully");
               
               /////////////////////////////////////////////////
               ///// SHOULD LEARN FROM PERFORMED FIXATIONS /////
@@ -3165,59 +3371,82 @@ public class Chrest extends Observable {
               //of the one just performed) should be learned.
               boolean objectOrLocationFixatedOnAgain = false;
               
+              Scene sceneFixatedOn = fixation.getScene();
               SceneObject objectFixatedOn = fixation.getObjectSeen();
               Integer sceneSpecificColFixatedOn = fixation.getColFixatedOn();
               Integer sceneSpecificRowFixatedOn = fixation.getRowFixatedOn();
-              Scene sceneFixatedOn = fixation.getScene();
               
+              this.printDebugStatement("   ~ Checking if Fixation should and can be learned from");
               if(
+                sceneFixatedOn != null &&
                 objectFixatedOn != null &&
                 sceneSpecificColFixatedOn != null &&
-                sceneSpecificRowFixatedOn != null &&
-                sceneFixatedOn != null
+                sceneSpecificRowFixatedOn != null
               ){
+                this.printDebugStatement("      + All relevant data set, Fixation can be learned from.");
+                
+                ////////////////////////////////////////////////////////
+                ///// CHECK FOR REPEAT FIXATION ON OBJECT/LOCATION /////
+                ////////////////////////////////////////////////////////
+                
+                this.printDebugStatement("- Checking if Fixation has been made on a SceneObject or Square already fixated on in this fixation set.");
                 String identifierForObjectJustFixatedOn = objectFixatedOn.getIdentifier();
                 int fixationJustPerformedDomainSpecificCol = sceneFixatedOn.getDomainSpecificColFromSceneSpecificCol(sceneSpecificColFixatedOn);
                 int fixationJustPerformedDomainSpecificRow = sceneFixatedOn.getDomainSpecificRowFromSceneSpecificRow(sceneSpecificRowFixatedOn);
-              
-                //Check if a blind or empty square was just fixated on, if so, 
-                //just check the location since blind and empty square 
-                //SceneObject identifiers are not unique.
-                boolean checkItem = true;
-                if(
-                  identifierForObjectJustFixatedOn.equals(Scene.getBlindSquareToken()) ||
-                  identifierForObjectJustFixatedOn.equals(Scene.getEmptySquareToken())
-                ){
-                  checkItem = false;
-                }
+                this.printDebugStatement("   ~ Identifier for SceneObject fixated on: " + identifierForObjectJustFixatedOn);
+                this.printDebugStatement("   ~ Square fixated on: (" + fixationJustPerformedDomainSpecificCol + ", " + fixationJustPerformedDomainSpecificRow + ")");
                 
                 List<Fixation> mostRecentFixations = perceiver.getFixations(time);
                 for(int j = perceiver.getFixationToLearnFrom(); j < mostRecentFixations.size(); j++){
                   Fixation f = mostRecentFixations.get(j);
+                  
                   if(f.hasBeenPerformed()){
+                    this.printDebugStatement("      + Fixation with reference " + f.getReference() + " has been performed and will be checked");
                     String identifierForObjectFixatedOn = f.getObjectSeen().getIdentifier();
                     int fixationDomainSpecificCol = f.getScene().getDomainSpecificColFromSceneSpecificCol(f.getColFixatedOn());
                     int fixationDomainSpecificRow = f.getScene().getDomainSpecificRowFromSceneSpecificRow(f.getRowFixatedOn());
-
-                    if(
-                      (checkItem && identifierForObjectFixatedOn.equals(identifierForObjectJustFixatedOn)) ||
+                    this.printDebugStatement("         > Identifier for SceneObject fixated on: " + identifierForObjectFixatedOn);
+                    this.printDebugStatement("         > Square fixated on: (" + fixationDomainSpecificCol + ", " + fixationDomainSpecificRow + ")");
+                
+                    if( 
+                      identifierForObjectFixatedOn.equals(identifierForObjectJustFixatedOn) ||
                       (
                         fixationDomainSpecificCol == fixationJustPerformedDomainSpecificCol &&
                         fixationDomainSpecificRow == fixationJustPerformedDomainSpecificRow
                       )
                     ){
+                      this.printDebugStatement("      + SceneObject or Square has been fixated on before");
                       objectOrLocationFixatedOnAgain = true;
                       break;
                     }
                   }
                 }
               }
+              else{
+                throw new IllegalStateException(
+                  "The Fixation performed has not had all relevant variables " +
+                  "set, i.e. Scene fixated on, SceneObject fixated on, Scene " +
+                  "column fixated on and Scene row fixated on.  Fixation " +
+                  "details:" + fixation.toString()
+                );
+              }
               
+              this.printDebugStatement(
+                "   ~ Checking if the current DomainSpecifics (" + 
+                this.getDomainSpecifics().getClass().getSimpleName() + ") " +
+                "stipulates that Fixations should be learned from now or " +
+                "the SceneObject/Square just fixated on has been fixated on " +
+                "before."
+              );
               if(
                 this.getDomainSpecifics().shouldLearnFromNewFixations(time) ||
                 objectOrLocationFixatedOnAgain
               ){
+                this.printDebugStatement("   + Fixations will be learned from");
                 this.getPerceiver().learnFromNewFixations(time);
+              }
+              else{
+                this.printDebugStatement("   + Fixations will not be learned from");
               }
             }
             
@@ -3226,35 +3455,260 @@ public class Chrest extends Observable {
             /////////////////////////////////////
             
             //Now, add the new Fixation after learning others since this 
-            //Fixation may contain a duplicate object/location.  COnsequently, 
+            //Fixation may contain a duplicate object/location.  Consequently, 
             //when this function is called again, the "fixation to learn from" 
             //Perceiever index will start from the Fixation just performed and 
             //will not throw a duplicate object/location exception when 
             //"this.getPerceiver().learnFromNewFixations(time);" is called above
+            this.printDebugStatement("- Adding Fixation to Perceiver's Fixation data structure");
             perceiver.addFixation(fixation);
             
-            /////////////////////////////////////////////////////////////
-            ///// CHECK IF FIXATIONS COMPLETE AND SHOULD BE CLEARED /////
-            /////////////////////////////////////////////////////////////
+            ////////////////////////////////////////////////////
+            ///// TAG RECOGNISED VisualSpatialFieldObjects /////
+            ////////////////////////////////////////////////////
+            
+            if(fixation.hasBeenPerformed()){
+              this.printDebugStatement(
+                "- Since Fixation was performed, the Scene fixated on will be " +
+                "checked to see if it represents a VisualSpatialField and any " +
+                "VisualSpatialFieldObjects that may have been recognised will " +
+                "be tagged accordingly."
+              );
+              
+              //Get the VisualSpatialField that the Scene fixated on represents.
+              //The conditional below is set up to "short-circuit" if the Fixation 
+              //has not been performed so, if it has, performing a null check on
+              //the Scene fixated on is pointless since an exception would have
+              //been thrown when determining if Fixations should be learned from
+              //above.
+              Scene sceneFixatedOn = fixation.getScene();
+              VisualSpatialField visualSpatialFieldRepresented = sceneFixatedOn.getVisualSpatialFieldRepresented();
+              this.printDebugStatement("   ~ Checking if Fixation was made on a Scene that represents a VisualSpatialField");
+              if(visualSpatialFieldRepresented != null){
+                this.printDebugStatement("      + Fixation was made on a Scene that represents a VisualSpatialField");
+                
+                //Get any new Nodes that may have been recognised by performing 
+                //the Fixation.
+                List<Node> visualStmBeforeRecognition = this.getStm(Modality.VISUAL).getContents(fixation.getPerformanceTime());
+                List<Node> visualStmAfterRecognition = this.getStm(Modality.VISUAL).getContents(this._attentionClock);
+                List<Node> newNodesRecognised = new ArrayList();
+                this.printDebugStatement("   ~ Nodes in visual STM before Fixation performed:");
+                if(this._debug){
+                  for(Node node : visualStmBeforeRecognition){
+                    System.out.println("      + " + node.getReference());
+                  }
+                }
+                
+                this.printDebugStatement("   ~ Nodes in visual STM after Fixation performed and visual STM updated:");
+                if(this._debug){
+                  for(Node node : visualStmAfterRecognition){
+                    System.out.println("      + " + node.getReference());
+                  }
+                }
+
+                if(visualStmBeforeRecognition == null || !visualStmBeforeRecognition.isEmpty()){
+                  for(Node nodeRecognised : visualStmAfterRecognition){
+                    newNodesRecognised.add(nodeRecognised);
+                  }
+                }
+                else{
+                  for(Node nodeRecognised : visualStmAfterRecognition){
+                    if(!visualStmBeforeRecognition.contains(nodeRecognised)){
+                      newNodesRecognised.add(nodeRecognised);
+                    }
+                  }
+                }
+                
+                //Remove root Nodes from newNodesRecognised since these will 
+                //cause problems
+                for(int n = 0; n < newNodesRecognised.size(); n++){
+                  if(newNodesRecognised.get(n).isRootNode()) newNodesRecognised.remove(n);
+                }
+                
+                this.printDebugStatement("   ~ Nodes added after Fixation performance:");
+                if(this._debug){
+                  for(Node node : newNodesRecognised){
+                    System.out.println("      + " + node.getReference());
+                  }
+                }
+
+                //Process each Node recognised.  
+                for(Node nodeRecognised : newNodesRecognised){
+                  this.printDebugStatement("   ~ Processing Node " + nodeRecognised.getReference());
+
+                  //Combine the contents and image of the Node so that all objects
+                  //referenced will be processed. Contents and image are combined
+                  //since, if the image is empty, the contents should still be
+                  //considered and, if the image is not empty, all objects 
+                  //referenced in the image should be processed.  Note: if the
+                  //image is not empty, the content will be present so remove it
+                  //to prevent duplication and processing time (micro-optimisation
+                  //but they all add up!).
+                  ListPattern contents = nodeRecognised.getContents();
+                  ListPattern image = nodeRecognised.getImage(this._attentionClock).remove(contents);
+                  ListPattern objectsRecognised = contents.append(image);
+                  this.printDebugStatement("      + Node contents and image: " + objectsRecognised.toString());
+
+                  //Determining if this CHREST model is learning object locations 
+                  //relative to the agent equipped with this model.  If this is 
+                  //the case, convert the agent-relative coordinates that will be 
+                  //present in the ItemSquarePatterns of the content/image 
+                  //ListPattern to domain-specific coordinates so that the 
+                  //relevant VisualSpatialField coordinates can be identified.
+                  for(PrimitivePattern objectRecognised : objectsRecognised){
+                    ItemSquarePattern objectRec = (ItemSquarePattern)objectRecognised;
+                    int col = objectRec.getColumn();
+                    int row = objectRec.getRow();
+
+                    if(this.isLearningObjectLocationsRelativeToAgent()){
+                      Square locationOfCreator = sceneFixatedOn.getLocationOfCreator();
+                      int locationOfCreatorCol = sceneFixatedOn.getDomainSpecificColFromSceneSpecificCol(locationOfCreator.getColumn());
+                      int locationOfCreatorRow = sceneFixatedOn.getDomainSpecificRowFromSceneSpecificRow(locationOfCreator.getRow());
+                      col = locationOfCreatorCol + col;
+                      row = locationOfCreatorRow + row;
+                    }
+
+                    col = visualSpatialFieldRepresented.getVisualSpatialFieldColFromDomainSpecificCol(col);
+                    row = visualSpatialFieldRepresented.getVisualSpatialFieldRowFromDomainSpecificRow(row);
+                    this.printDebugStatement(
+                      "      + VisualSpatialFieldCoordinates referenced by " + 
+                      objectRec.toString() + ": (" + col + ", " + row + ")"
+                    );
+
+                    //Cycle through all VisualSpatialFieldObjects on the 
+                    //coordinates and check if they are alive and of the same type
+                    //as that defined by the ItemSquarePattern in the 
+                    //content/image ListPattern.  If so, tag them as recognised.
+                    //
+                    //NOTE: there may be more than one VisualSpatialFieldObject 
+                    //that is alive and has the same type on the coordinates.  All
+                    //such VisualSpatialFieldObjects will be tagged as recognised.
+                    List<VisualSpatialFieldObject> coordinateContents = visualSpatialFieldRepresented.getCoordinateContents(col, row);
+                    for(VisualSpatialFieldObject objectOnVisualSpatialFieldCoordinates : coordinateContents){
+                      
+                      this.printDebugStatement(
+                        "      + Checking if the following " +
+                        "VisualSpatialFieldObject on these coordinates is " +
+                        "alive and if its object type matches the item " +
+                        "referenced in " + objectRec.toString()
+                      );
+                      
+                      if(
+                        objectOnVisualSpatialFieldCoordinates.isAlive(this._attentionClock) && 
+                        objectOnVisualSpatialFieldCoordinates.getObjectType().equals(objectRec.getItem())
+                      ){
+                        this.printDebugStatement(
+                          "         > VisualSpatialFieldObject matches, " +
+                          "setting recognised status to true at time it is " + 
+                          "recognised (" + this._attentionClock + ")"
+                        );
+                        objectOnVisualSpatialFieldCoordinates.setRecognised(this._attentionClock, true);
+                        this._recognisedVisualSpatialFieldObjectIdentifiers.add(objectOnVisualSpatialFieldCoordinates.getIdentifier());
+                      }
+                    }
+                  }
+                }
+              }
+              else{
+                this.printDebugStatement("      + Fixation was not made on a Scene that represents a VisualSpatialField");
+              }
+            }
+            
+            //////////////////////////////
+            ///// FIXATIONS COMPLETE /////
+            //////////////////////////////
+            
+            this.printDebugStatement(
+              "- Checking if Fixation set complete, i.e. have the maximum number " +
+              "of Fixations been attempted (Fixations attempted: " + 
+              perceiver.getFixations(time).size() + ", maximum Fixations that " + 
+              "can be attempted: " + this.getDomainSpecifics().getMaximumFixationsInSet() + 
+              ")" + " or does the DomainSpecifics (" + this.getDomainSpecifics().getClass().getSimpleName() + 
+              ") specify that the Fixation set is now complete?"
+            );
             
             if(
               perceiver.getFixations(time).size() >= this.getDomainSpecifics().getMaximumFixationsInSet() ||
               this.getDomainSpecifics().isFixationSetComplete(time)
             ){
+              this.printDebugStatement("   + Fixation set complete");
               
-              //If fixations are complete, try to learn from them before 
-              //clearing.
+              //////////////////////////////////////////////////////
+              ///// TAG UNRECOGNISED VisualSpatialFieldObjects /////
+              //////////////////////////////////////////////////////
+              
+              this.printDebugStatement(
+                "- Checking if the Scene fixated on represents a " +
+                "VisualSpatialField and whether any VisualSpatialFieldObjects " +
+                "should be tagged as being unrecognised"
+              );
+              if(!this._recognisedVisualSpatialFieldObjectIdentifiers.isEmpty()){
+                this.printDebugStatement(
+                  "   + Applicable, getting the latest time after comparing " +
+                  "the attention clock (" + this._attentionClock + ") and the " +
+                  "current time (" + time + ") since recognition may or may " +
+                  "not have occurred " 
+                    
+                );
+                int latestTime = Math.max(this._attentionClock, time);
+                
+                VisualSpatialField visualSpatialFieldRepresented = fixation.getScene().getVisualSpatialFieldRepresented();
+                for(int col = 0; col < visualSpatialFieldRepresented.getWidth(); col++){
+                  for(int row = 0; row < visualSpatialFieldRepresented.getHeight(); row++){
+                    for(VisualSpatialFieldObject visualSpatialFieldObject : visualSpatialFieldRepresented.getCoordinateContents(col, row, time, false)){
+
+                      if(
+                        visualSpatialFieldObject.isAlive(latestTime) && 
+                        !visualSpatialFieldObject.getObjectType().equals(Scene.getCreatorToken()) &&
+                        !this._recognisedVisualSpatialFieldObjectIdentifiers.contains(visualSpatialFieldObject.getIdentifier())
+                      ){
+                        this.printDebugStatement(
+                          "   + The following VisualSpatialFieldObject will have " +
+                          "its recognised status set to false at time " + 
+                          latestTime + visualSpatialFieldObject.toString()
+                        );
+                        visualSpatialFieldObject.setUnrecognised(latestTime, true);
+                      }
+                    }
+                  }
+                }
+              }
+              else{
+                this.printDebugStatement("   + Not applicable");
+              }
+              
+              //If fixations are complete, try to learn from them and 
+              //instantiate a visual-spatial field with them (if specified) 
+              //before clearing them.
+              this.printDebugStatement("- Learning from Fixations performed");
               perceiver.learnFromNewFixations(time);
+              if(constructVisualSpatialField){
+                this.printDebugStatement("- VisualSpatialField should be constructed");
+                constructVisualSpatialField(this._attentionClock);
+              }
+              else{
+                this.printDebugStatement("- VisualSpatialField will not be constructed");
+              }
               
               //Clear the Perceiver's fixation data structure 1ms "in the 
               //future".  Its not possible, nor desirable, to clear the 
               //Perceiver's fixations now due to the constraints on the "put"
               //mechanism of HistoryTreeMap's (the type of structure the 
               //Perceiver's fixation data structure is).
+              this.printDebugStatement("- Clearing Perceiver's Fixation data structure at time " + (time + 1));
               this.getPerceiver().clearFixations(time + 1);
+              
+              //Reset variables associated with fixation sets.
+              this.printDebugStatement("- Resetting Fixation variables");
               this._fixationsScheduledForDeliberation = 0;
+              this._recognisedVisualSpatialFieldObjectIdentifiers.clear();
               fixationsToMakeAtTime.clear();
+              
+              //Set the flag that indicates a fixation set is complete to true.
               fixationSetComplete = true;
+            }
+            else{
+              this.printDebugStatement("   + Fixation set not complete");
             }
           }
           else if(performanceTime < time){
@@ -3264,11 +3718,19 @@ public class Chrest extends Observable {
               " but wasn't."
             );
           }
+          else{
+            this.printDebugStatement("      + Fixation performance time set but not reached yet.  Fixation will not be performed.");
+          }
+        }
+        else{
+          this.printDebugStatement("      + Fixation performance time not set.  Fixation will not be performed.");
         }
       }
       
+      this.printDebugStatement("- Checking if Fixation set complete");
       if(!fixationSetComplete){
-      
+        this.printDebugStatement("   + Fixation set not complete");
+        
         //////////////////////////////////////////////
         ///// SCHEDULE FIXATIONS FOR PERFORMANCE /////
         //////////////////////////////////////////////
@@ -3277,19 +3739,41 @@ public class Chrest extends Observable {
         //has been decided on at or before the time passed but the perceptual
         //resource is busy at the time it was decided upon, it can be removed 
         //safely whilst iterating through the fixationsToMakeAtTime.
+        this.printDebugStatement("- Scheduling any Fixations to make for performance");
         for(int i = 0; i < fixationsToMakeAtTime.size(); i++){
           Fixation fixation = fixationsToMakeAtTime.get(i);
-
+          this.printDebugStatement(
+            "   ~ Checking if Fixation with reference " + fixation.getReference() + 
+            " should be scheduled for performance"
+          );
+          
           //Only process fixations that aren't scheduled for performance yet.
           if(fixation.getPerformanceTime() == null){
             int timeDecidedUpon = fixation.getTimeDecidedUpon();
-
+            this.printDebugStatement(
+              "      + Fixation's performance time not yet set, checking if " +
+              "the current time (" + time + ") is equal to the time the Fixation " + 
+              "is decided upon (" + timeDecidedUpon + ")"
+            );
+            
             if(timeDecidedUpon == time){
-              if(this.perceiverFree(time)){
+              this.printDebugStatement(
+                "         > Fixation is decided upon now, checking if Perceiver " +
+                "is free"
+              );
+              
+              if(this.isPerceiverFree(time)){
+                this.printDebugStatement(
+                  "            = Perceiver free, scheduling Fixation for " +
+                  "performance at the current time (" + time + ") plus the " +
+                  "time taken to perform a saccade (" + this._saccadeTime + ") " +
+                  "and consuming the Perceiver resource until this time"
+                );
                 fixation.setPerformanceTime(time + this._saccadeTime);
                 this._perceiverClock = fixation.getPerformanceTime();
               }
               else {
+                this.printDebugStatement("            = Perceiver not free, abandoning Fixation");
                 fixationsToMakeAtTime.remove(i);
               }
             }
@@ -3301,486 +3785,1425 @@ public class Chrest extends Observable {
               );
             }
           }
+          else{
+            this.printDebugStatement("      + Fixation's performance time already set");
+          }
         }
 
         /////////////////////////////
         ///// ADD NEW FIXATIONS /////
         /////////////////////////////
-
-        if(this.getDomainSpecifics().shouldAddNewFixation(time) && this.attentionFree(time)){
-          Fixation newFixation = 
-            (this._fixationsScheduledForDeliberation == 0 ?
-              this.getDomainSpecifics().getInitialFixationInSet(time) :
-              this.getDomainSpecifics().getNonInitialFixationInSet(time)
-            );
+        
+        List<Fixation> fixationsToMake = this.getFixationsToMake(time);
+        List<Fixation> fixationsAttempted = perceiver.getFixations(time);
+        int a = (fixationsToMake == null ? 0 : fixationsToMake.size());
+        int b = (fixationsAttempted == null ? 0 : fixationsAttempted.size());
+        
+        this.printDebugStatement(
+          "- Checking if a new Fixation should be added, i.e. after summing the " +
+          "number of Fixations scheduled (" + a + ") and the number of " +
+          "Fixations attempted (" + b + "), is the total less than the maximum " +
+          "number of Fixations allowed according to the current domain (" + 
+          this.getDomainSpecifics().getMaximumFixationsInSet() + ") and does the " +
+          "current domain stipulate that addition can occur and is attention " +
+          "free at current time (time: " + time + ", attention free: " + 
+          this._attentionClock + ")?"
+        );
+        
+//        this.printDebugStatement(
+//          "- Checking if a new Fixation should be added, i.e. do the following " +
+//          "statements all evaluate to true:" + 
+//          "\n   1. The number of Fixations attempted (" + b + ") is less than " +
+//          "the maximum number of Fixations allowed to be attempted according " +
+//          "to the current domain (" + 
+//          this.getDomainSpecifics().getMaximumFixationsInSet() + ")" +
+//          "\n   2. The current domain stipulates that addition can occur" + 
+//          "\n   3. Attention is free at current time (time: " + time + ", " +
+//          "attention free: " + this._attentionClock + ")"
+//        );
+        
+        if(
+          a + b < this.getDomainSpecifics().getMaximumFixationsInSet() &&
+          this.getDomainSpecifics().shouldAddNewFixation(time) && 
+          this.isAttentionFree(time)
+        ){
+          Fixation newFixation;
+          this.printDebugStatement("   ~ New Fixation will be added.");
+          
+          if(this._fixationsScheduledForDeliberation == 0){
+            this.printDebugStatement("   ~ This is the first Fixation in a new set to visual STM will be cleared");
+            this.getStm(Modality.VISUAL).clear(time);
+            newFixation = this.getDomainSpecifics().getInitialFixationInSet(time);
+          }
+          else{
+            this.printDebugStatement("   ~ This is not the first Fixation in a new set");
+            newFixation = this.getDomainSpecifics().getNonInitialFixationInSet(time);
+          }
 
           //A Fixation should always be returned but, just in case, perform a 
           //null check on newFixation before altering relevant variables.
           if(newFixation != null){
+            this.printDebugStatement("   ~ Fixation to add:" + newFixation.toString());
             this._attentionClock = newFixation.getTimeDecidedUpon();
             fixationsToMakeAtTime.add(newFixation);
             this._fixationsScheduledForDeliberation++;
           }
         }
+        else{
+          this.printDebugStatement("   ~ New Fixation will not be added.");
+        }
+      }
+      else{
+        this.printDebugStatement("   + Fixation set complete");
       }
 
       this._fixationsToMake.put(time, fixationsToMakeAtTime);
       
     }
-    
+    else{
+      this.printDebugStatement("   ~ Model does not exist at the time the function is requested, exiting.");
+    }
+
+    this.printDebugStatement("- Returning boolean " + fixationSetComplete);
+    this.printDebugStatement("===== RETURN =====");
     return fixationSetComplete;
   }
-
-//  /**
-//   *
-//   * @param numFixations The number of fixations the {@link jchrest.architecture.Perceiver} should perform on the {@link jchrest.lib.Scene}.
-//   * @param time The time this function is invoked.
-//   * @return The times that {@link jchres}
-//   */
-//  public List<Integer> requestToLearnFromVision(int numFixations, int time) {
-//    List<Integer> fixationTimes = new ArrayList();
-//    if(this.isPerceiverFree(time)){
-//      fixationTimes.add(time + this._salientObjectSelectionTime);
-//      
-////      _perceiver.setScene (scene);
-////      _perceiver.start(numFixations, time);
-//
-////      for(int i = 0; i < numFixations; i++, time += this.getSaccadeTime()) {
-////        _perceiver.moveEyeAndLearn(time);
-////      }
-//      
-//      this._perceiverClock = time;
-//    }
-//    
-//    return fixationTimes;
-//  }
+  
+  /**********************************************/
+  /***** Visual-Spatial Field Functionality *****/
+  /**********************************************/
   
   /**
-   * Scans the {@link jchrest.lib.Scene} specified using the {@link 
-   * jchrest.architecture.Perceiver} associated with this {@link #this} model
-   * if its perceptual resources aren't busy at the time this function is 
-   * requested.
+   * Attempts to create and associate a new {@link 
+   * jchrest.architecture.VisualSpatialField} with {@link #this}.
+   * <p>
+   * If a {@link jchrest.architecture.VisualSpatialField} is successfully
+   * created, it will be added to the database of {@link 
+   * jchrest.architecture.VisualSpatialField VisualSpatialFields} associated 
+   * with {@link #this} at the {@code time} specified.
+   * <p>
+   * The {@link jchrest.architecture.VisualSpatialField} created represents what
+   * has been "seen" by {@link #this} based upon the results of passing the 
+   * {@code time} specified as an input parameter to {@link 
+   * jchrest.architecture.Stm#getContents(int)} in context of {@link 
+   * jchrest.lib.Modality#VISUAL} {@link jchrest.architecture.Stm} and 
+   * {@link jchrest.architecture.Perceiver#getFixationsPerformed(int)}.  
+   * <p>
+   * {@link jchrest.domainSpecifics.SceneObject SceneObjects} that have been 
+   * fixated on and recognised are encoded as {@link 
+   * jchrest.lib.VisualSpatialFieldObject VisualSpatialFieldObjects} first.  To 
+   * do this, all {@link jchrest.lib.ItemSquarePattern ItemSquarePatterns} in 
+   * the {@link jchrest.lib.ListPattern ListPatterns} present in the result of 
+   * invoking {@link jchrest.architecture.Node#getContents()} or {@link 
+   * jchrest.architecture.Node#getImage(int)} on each {@link 
+   * jchrest.architecture.Node} returned by invoking {@link 
+   * jchrest.architecture.Stm#getContents(int)} on {@link 
+   * jchrest.lib.Modality#VISUAL} {@link jchrest.architecture.Stm} are checked 
+   * to see if the {@link jchrest.domainSpecifics.SceneObject} referenced is
+   * present on the {@link jchrest.lib.Square} referenced.  If not, and the 
+   * {@link jchrest.lib.Square} referenced is represented in the {@link 
+   * jchrest.architecture.VisualSpatialField} constructed, a new recognised 
+   * {@link jchrest.lib.VisualSpatialFieldObject} is created to represent the
+   * {@link jchrest.domainSpecifics.SceneObject} referenced.  In addition, any
+   * {@link jchrest.lib.VisualSpatialFieldObject VisualSpatialFieldObjects} 
+   * on coordinates within the {@link 
+   * jchrest.architecture.Perceiver#getFixationFieldOfView()} on the {@link 
+   * jchrest.architecture.VisualSpatialField} will have their termini refreshed.
+   * If the {@link jchrest.lib.Square} referenced already contains a {@link 
+   * jchrest.lib.VisualSpatialFieldObject} in the {@link 
+   * jchrest.architecture.VisualSpatialField} being constructed, no new {@link 
+   * jchrest.lib.VisualSpatialFieldObject} is constructed but {@link 
+   * jchrest.lib.VisualSpatialFieldObject VisualSpatialFieldObjects} within the
+   * {@link jchrest.architecture.Perceiver#getFixationFieldOfView()} on the
+   * {@link jchrest.architecture.VisualSpatialField} coordinates referenced by
+   * the location of the {@link jchrest.domainSpecifics.SceneObject} will have
+   * their termini refreshed.
+   * <p>
+   * Unrecognised {@link jchrest.domainSpecifics.SceneObject SceneObjects} are
+   * then processed in a similar fashion except they are encoded as {@link 
+   * jchrest.lib.VisualSpatialFieldObject VisualSpatialFieldObjects} in order of 
+   * their appearance in the result of {@link 
+   * jchrest.architecture.Perceiver#getFixationsPerformed(int)}; unrecognised 
+   * {@link jchrest.domainSpecifics.SceneObject SceneObjects} in the most recent 
+   * {@link jchrest.lib.Fixation} performed are encoded as {@link 
+   * jchrest.lib.VisualSpatialFieldObject VisualSpatialFieldObjects} first.
    * 
-   * This will populate the visual {@link jchrest.architecture.Stm} of this
-   * {@link #this} model with recognised information and various other instance
-   * variables of the {@link jchrest.architecture.Perceiver} associated with
-   * this {@link #this} model.
-   * 
-   * @param scene The {@link jchrest.lib.Scene} to scan.
-   * @param numFixations Number of fixations this {@link #this} model's {@link
-   * jchrest.architecture.Perceiver} should perform on the {@link 
-   * jchrest.lib.Scene}.
-   * @param time The time this function is invoked.
-   * @return A {@link java.lang.Boolean} value indicating whether the {@link 
-   * jchrest.lib.Scene} specified was "looked at" or not.  {@link 
-   * java.lang.Boolean#TRUE} will be returned if this {@link #this} model's 
-   * perceptual resources are not busy at the time this function is invoked.
-   * {@link java.lang.Boolean#FALSE} will be returned if this {@link #this} 
-   * model's perceptual resources are busy at the time this function is invoked.
-   */
-//  public boolean scanScene(Scene scene, int numFixations, int time){
-//    String func = "- scanScene: ";
-//    
-//    if(this.perceiverFree(time)){
-//      this.printDebugStatement(func + "Perceiver resource free @ time " + time);
-//      
-//      _perceiver.setScene (scene); //Also clears any previous fixations
-//      _perceiver.start (numFixations, time);
-//      
-//      if(timeSceneSeenUntil == null){
-//        this.printDebugStatement(func + "Making fixations until I've fixated " + numFixations + " times");
-//        for (int i = 0; i < numFixations; i++, time += this.getSaccadeTime()) {
-//          this.printDebugStatement(func + "Making " + (i + 1) + " of " + numFixations + " fixations @ time " + time);
-//          _perceiver.moveEye (time, debug);
-//        }
-//      }
-//      else{
-//        this.printDebugStatement(func + "Making fixations until I've fixated " + numFixations + " times or time > the time the scene can be seen until (" + timeSceneSeenUntil + ")");
-//        for (int i = 0; i < numFixations || time <= timeSceneSeenUntil; i++, time += this.getSaccadeTime()) {
-//          if(debug) System.out.println("   - Making " + (i+1) + " of " + numFixations + " fixations @ time " + time);
-//          _perceiver.moveEye (time, debug);
-//        }
-//      }
-//      
-//      this._perceiverClock = time;
-//      if(debug) System.out.println("   - Finished fixations, perceiver resource will be busy until " + this._perceiverClock);
-//      if(debug) System.out.println("   - Returning true");
-//      return true;
-//    }
-//    
-//    this.printDebugStatement(func + "Perceiver resource not free @ time " + time + ", returning false");
-//    return false;
-//  }
-  
-  /** 
-   * Scan given {@link jchrest.lib.Scene}, <i>s</i>, at the time specified and 
-   * create a new {@link jchrest.lib.Scene}, <i>s*</i>, that contains 
-   * information recognised in <i>s</i>.
-   * 
-   * Default behaviour is to clear the visual {@link jchrest.architecture.Stm}
-   * associated with this {@link #this} before scanning the 
-   * {@link jchrest.lib.Scene} specified and to not print debugging information.
-   * Use {@link jchrest.architecture.Chrest#scanScene(jchrest.lib.Scene, int, 
-   * boolean, int, boolean) if control over clearing visual {@link 
-   * jchrest.architecture.Stm} and debugging is required.
-   * 
-   * @param scene The {@link jchrest.lib.Scene} to scan and recall.
-   * @param numFixations Number of fixations this {@link #this} model's {@link
-   * jchrest.architecture.Perceiver} should perform on the {@link 
-   * jchrest.lib.Scene}.
-   * @param time The time this function is invoked.
-   * @param timeSceneSeenUntil The time that this {@link #this} model can no 
-   * longer "see" the {@link jchrest.lib.Scene} to scan and recall.  If there is
-   * no time limit on how long the {@link jchrest.lib.Scene} can be "seen" for 
-   * then pass null.
-   * 
-   * @return A {@link jchrest.lib.Scene} containing {@link 
-   * jchrest.lib.SceneObject}s that this {@link #this} model recognises in the 
-   * {@link jchrest.lib.Scene} passed or null if this {@link #this} model's 
-   * perceptual resources are busy. 
-   */
-//  public Scene scanAndRecallScene (Scene scene, int numFixations, int time, Integer timeSceneSeenUntil) {  
-//    return scanAndRecallScene (scene, numFixations, true, time, timeSceneSeenUntil, false);
-//  }
-  
-  /** 
-   * Scan given {@link jchrest.lib.Scene}, <i>s</i>, at the time specified and 
-   * create a new {@link jchrest.lib.Scene}, <i>s*</i>, that contains 
-   * information recognised in <i>s</i>.
-   * 
-   * @param scene The {@link jchrest.lib.Scene} to scan and recall.
-   * @param numFixations Number of fixations this {@link #this} model's {@link
-   * jchrest.architecture.Perceiver} should perform on the {@link 
-   * jchrest.lib.Scene}.
-   * @param clearVisualStm Set to {@link java.lang.Boolean#TRUE} to clear the
-   * visual {@link jchrest.architecture.Stm} associated with this {@link #this}
-   * model before scanning the {@link jchrest.lib.Scene}.  Set to {@link 
-   * java.lang.Boolean#FALSE} to not clear visual {@link 
-   * jchrest.architecture.Stm}.
-   * @param time The time this function is invoked.
-   * @param timeSceneSeenUntil The time that this {@link #this} model can no 
-   * longer "see" the {@link jchrest.lib.Scene} to scan and recall.  If there is
-   * no time limit on how long the {@link jchrest.lib.Scene} can be "seen" for 
-   * then pass null.
-   * @param debug
-   * 
-   * @return A {@link jchrest.lib.Scene} containing {@link 
-   * jchrest.lib.SceneObject}s that this {@link #this} model recognises in the 
-   * {@link jchrest.lib.Scene} passed or null if this {@link #this} model's 
-   * perceptual resources are busy.  
-   */
-//  public Scene scanAndRecallScene(Scene scene, int numFixations, boolean clearVisualStm, int time, Integer timeSceneSeenUntil, boolean debug) {
-//    
-//    if(debug) System.out.println("=== Chrest.scanScene() ===");
-//    if(debug) System.out.println("- Requested to scan scene with name '" + scene.getName() + "' at time " + time);
-//    
-//    // only clear STM if flag is set
-//    if (clearVisualStm) {
-//      if(debug) System.out.println("- Clearing STM");
-//      _visualStm.clear (time);
-//    }
-//
-//    //Get the VisualSpatialField associated with the Scene to be scanned.  If
-//    //there is an associated VisualSpatialField, SceneObjects that are 
-//    //recognised when scanning the Scene below will have their corresponding
-//    //VisualSpatialFieldObject recognised status updated since the 
-//    //VisualSpatialField is essentially being looked at if the Scene to be 
-//    //scanned is associated with one.
-//    VisualSpatialField associatedVisualSpatialField = scene.getVisualSpatialFieldGeneratedFrom();
-//    if(debug) System.out.println("- Does the Scene to be scanned represent a VisualSpatialField? " + (associatedVisualSpatialField  != null));
-//
-//    //Create a data structure to the identifiers of objects that are recognised
-//    //when scanning the Scene.  This will be used to determine what objects are
-//    //unrecognised if the Scene represents a VisualSpatialField.
-//    ArrayList<String> recognisedObjectIdentifiers = new ArrayList<>();
-//
-//    //Instantiate recalled Scene, this will be a "blind" canvas initially.
-//    Scene recalledScene = new Scene (
-//      "Recalled scene of " + scene.getName (), 
-//      scene.getWidth (), 
-//      scene.getHeight (),
-//      scene.getVisualSpatialFieldGeneratedFrom()
-//    );
-//
-//    //Scan the scene.
-//    if(this.scanScene(scene, numFixations, time, timeSceneSeenUntil, debug)){
-//
-//      // -- get items from image in STM, and optionally template slots
-//      // TODO: use frequency count in recall
-//      if(debug) System.out.println("- Processing recognised chunks");
-//      for (Node node : _visualStm) {
-//
-//        ListPattern nodeImage = node.getImage(time);
-//
-//        //If the node isn't the visual LTM root node (nothing recognised) then,
-//        //continue.
-//        if(!node.isRootNode()){
-//
-//          if(debug) System.out.println("   - Processing chunk: " + nodeImage.toString());
-//          if (_canCreateTemplates) { // check if templates needed
-//            if(debug) System.out.println("   - Templates are enabled, so append any filled slot information to the chunk");
-//            nodeImage = nodeImage.append(node.getFilledSlots (time));
-//          }
-//
-//          if(debug) System.out.println("   - Processing chunk with image: '" + nodeImage.toString() + "'");
-//
-//          nodeImage = this.getDomainSpecifics().convertDomainSpecificCoordinatesToSceneSpecificCoordinates(nodeImage, scene);
-//          if(debug) System.out.println("      - Image with scene-specific coordinates: '" + nodeImage.toString() + "'");
-//
-//          //Add all recognised items to the scene to be returned and flag the 
-//          //corresponding VisualSpatialFieldObjects as being recognised.
-//          for (int i = 0; i < nodeImage.size(); i++){
-//            PrimitivePattern item = nodeImage.getItem(i);
-//
-//            if (item instanceof ItemSquarePattern) {
-//              ItemSquarePattern ios = (ItemSquarePattern)item;
-//              int col = ios.getColumn ();
-//              int row = ios.getRow ();
-//
-//              if(debug) System.out.println("      - Processing object " + ios.toString() );
-//
-//              //Get the SceneObject that represents the recalled object
-//              SceneObject recognisedObject = scene.getSquareContents(col, row);
-//              //TODO: Write a test that checks for the null check below preventing
-//              //      this function from erroring-out when the recognisedObject is 
-//              //      set to null (picked up in Netlogo where a turtle learned a
-//              //      ListPattern like <[H 0 -2][T -2 -1]> and recognised this 
-//              //      when it was at the edge of a Scene and a hole was in the
-//              //      location specified in the ListPattern but the tile wasn't
-//              //      since that location was not represented since the "self" was
-//              //      on the western-most point of the Scene scanned).
-//              if(debug) System.out.println("         ~ Equivalent of object in scene scanned");
-//
-//              //The recalled object may be a ghost (part of a LTM chunk but doesn't exist in the
-//              //scene being scanned) so check for this here lest a NullPointerException be thrown.
-//              if(recognisedObject != null){
-//
-//                if(debug){
-//                  System.out.println("            = ID: " + recognisedObject.getIdentifier());
-//                  System.out.println("            = Class: " + recognisedObject.getObjectClass());
-//                  System.out.println("         ~ Adding object to col " + col + ", row " + row + " in the Scene recalled");
-//                }
-//
-//                recalledScene.addItemToSquare(col, row, recognisedObject.getIdentifier(), recognisedObject.getObjectClass());
-//
-//                if(associatedVisualSpatialField != null){
-//                  if(debug) System.out.println("         ~ Updating object in associated visual-spatial field");
-//                  for(VisualSpatialFieldObject objectOnVisualSpatialSquare : associatedVisualSpatialField.getSquareContents(col, row, time)){
-//                    if(objectOnVisualSpatialSquare.getIdentifier().equals(recognisedObject.getIdentifier())){
-//                      objectOnVisualSpatialSquare.setRecognised(time, true);
-//                      recognisedObjectIdentifiers.add(objectOnVisualSpatialSquare.getIdentifier());
-//
-//                      if(debug){
-//                        System.out.println("            ID: " + objectOnVisualSpatialSquare.getIdentifier());
-//                        System.out.println("            Class: " + objectOnVisualSpatialSquare.getObjectClass());
-//                        System.out.println("            Created at: " + objectOnVisualSpatialSquare.getTimeCreated());
-//                        System.out.println("            Terminus: " + objectOnVisualSpatialSquare.getTerminus());
-//                        System.out.println("            Recognised: " + objectOnVisualSpatialSquare.recognised(time));
-//                        System.out.println("            Ghost: " + objectOnVisualSpatialSquare.isGhost());
-//                      }
-//                    }
-//                  }
-//                }
-//              }
-//              else if(debug){
-//                System.out.println("            = There is no equivalent object (recognised object must be a ghost)");
-//              }
-//            }
-//          }
-//        }
-//      }
-//
-//      //Process unrecognised objects in the associated visual-spatial field.
-//      if(associatedVisualSpatialField != null){
-//        if(debug) System.out.println("- Processing unrecognised objects in associated visual-spatial field");
-//        for(int row = 0; row < associatedVisualSpatialField.getHeight(); row++){
-//          for(int col = 0; col < associatedVisualSpatialField.getWidth(); col++){
-//            if(debug) System.out.println("   - Processing objects on col " + col + ", row " + row);
-//
-//            for(VisualSpatialFieldObject object : associatedVisualSpatialField.getSquareContents(col, row, time)){  
-//              if(!recognisedObjectIdentifiers.contains(object.getIdentifier())){
-//                if(debug){
-//                  System.out.println("      - Object unrecognised.  Current status:");
-//                  System.out.println("         ID: " + object.getIdentifier());
-//                  System.out.println("         Class: " + object.getObjectClass());
-//                  System.out.println("         Created at: " + object.getTimeCreated());
-//                  System.out.println("         Terminus: " + object.getTerminus());
-//                  System.out.println("         Recognised: " + object.recognised(time));
-//                  System.out.println("         Ghost: " + object.isGhost());
-//                }
-//
-//                //Squares that contain blind objects and the creator's avatar will 
-//                //have null termini so do not overwrite these.
-//                if(object.getTerminus() == null){
-//                  object.setUnrecognised(time, false);
-//                }else{
-//                  object.setUnrecognised(time, true);
-//                }
-//
-//                if(debug){
-//                  System.out.println("         - After processing:");
-//                  System.out.println("            ID: " + object.getIdentifier());
-//                  System.out.println("            Class: " + object.getObjectClass());
-//                  System.out.println("            Created at: " + object.getTimeCreated());
-//                  System.out.println("            Terminus: " + object.getTerminus());
-//                  System.out.println("            Recognised: " + object.recognised(time));
-//                  System.out.println("            Ghost: " + object.isGhost());
-//                }
-//              }
-//            }
-//          }
-//        }
-//      }
-//
-//      //If the creator of the scene was identified in the original scene then add
-//      //it into the recalled scene.
-//      Square creatorLocation = scene.getLocationOfCreator();
-//      if(creatorLocation != null){
-//        SceneObject self = scene.getSquareContents(creatorLocation.getColumn(), creatorLocation.getRow());
-//        recalledScene.addItemToSquare(creatorLocation.getColumn(), creatorLocation.getRow(), self.getIdentifier(), self.getObjectClass());
-//      }
-//      
-//      return recalledScene;
-//    }
-//    
-//    return null;
-//  }
-  
-  /**
-   * A predicted move is defined as being a production associated with a visual 
-   * {@link jchrest.architecture.Node} recognised after scanning the {@link 
-   * jchrest.lib.Scene} passed.  A move is the image of the action {@link 
-   * jchrest.architecture.Node} that forms a production.
-   * 
-   * @param scene
-   * @param numFixations
-   * @param colour
    * @param time
-   * @param timeSceneSeenUntil The time that this {@link #this} model can no 
-   * longer "see" the {@link jchrest.lib.Scene} to predict moves in context of.  
-   * If there is no time limit on how long the {@link jchrest.lib.Scene} can be 
-   * "seen" for then pass null.
-   * 
-   * @return If this {@link jchrest.architecture.Chrest} model's {@link 
-   * jchrest.architecture.Perceiver} is free, a map of predicted moves vs their 
-   * frequency of occurrence in visual {@link jchrest.architecture.Stm} after 
-   * scanning the {@link jchrest.lib.Scene} passed using {@link 
-   * jchrest.architecture.Chrest#scanScene(jchrest.lib.Scene, int, int, int, 
-   * boolean)} is returned.  If the {@link jchrest.architecture.Perceiver} is 
-   * not free, null is returned.
    */
-//  public Map<ListPattern, Integer> getMovePredictions (Scene scene, int numFixations, String colour, int time, int timeSceneSeenUntil) {
-//    
-//    if(this.scanScene (scene, numFixations, time, timeSceneSeenUntil, false)){
-//      
-//      Map<ListPattern, Integer> moveFrequencies = new HashMap<ListPattern, Integer> ();
-//      for (Node node : _visualStm) {
-//        
-//        HashMap<Node, Double> productions = node.getProductions (time);
-//        if(productions != null){
-//          for (Node action : productions.keySet()) {
-//            if (sameColour(action.getImage(time), colour)) {
-//              if (moveFrequencies.containsKey(action.getImage (time))) {
-//                moveFrequencies.put (
-//                    action.getImage (time), 
-//                    moveFrequencies.get(action.getImage (time)) + 1
-//                    );
-//              } else {
-//                moveFrequencies.put (action.getImage (time), 1);
-//              }
-//            }
-//          }
-//        }
-//      }
-//      return moveFrequencies;
-//    }
-//    
-//    return null;
-//  }
+  //TODO: Currently, the "make_fixations_in_chess_domain" checks that the 
+  //      function handles root Nodes correctly when processing recognised 
+  //      objects but it would be better if there were an explicit check in the 
+  //      test that validates this directly.
+  private void constructVisualSpatialField(int time){
+    String func = "- instantiateVisualSpatialField: ";
+    this.printDebugStatement("===== Chrest.instantiateVisualSpatialField() =====");
+    
+    //Attention must be free to start constructing a visual-spatial field.
+    this.printDebugStatement("- Checking if attention is free at time " + time);
+    if(this.isAttentionFree(time)){
+      
+      this.printDebugStatement("- Attention is free, checking if any Fixations have been performed at time " + time);
+      List<Fixation> fixationsPerformed = this.getPerceiver().getFixationsPerformed(time);
+      if(fixationsPerformed != null && !fixationsPerformed.isEmpty()){
+      
+        this.printDebugStatement("- Fixations have been performed, instantiating VisualSpatialField");
+        
+        //////////////////////////////////////////
+        ///// CONSTRUCT VISUAL-SPATIAL FIELD /////
+        //////////////////////////////////////////
+        
+        //Need to construct a new VisualSpatialField that represents the Scenes 
+        //successfully fixated on.  To do this, get the min and max 
+        //domain-specific col/row from the Scenes fixated on successfully (this
+        //can allow the VisualSpatialField space to be bigger than what can be
+        //seen "physically").
+        this.printDebugStatement("\n===== Constructing visual-spatial field");
+        ArrayList<Integer> domainSpecificColumnsFixatedOn = new ArrayList();
+        ArrayList<Integer> domainSpecificRowsFixatedOn = new ArrayList();
+        for(Fixation fixationPerformed : fixationsPerformed){
+          Scene sceneFixatedOn = fixationPerformed.getScene();
+          
+          //Add min col/row of Scene fixated on.
+          domainSpecificColumnsFixatedOn.add(sceneFixatedOn.getMinimumDomainSpecificColumn());
+          domainSpecificRowsFixatedOn.add(sceneFixatedOn.getMinimumDomainSpecificRow());
+          
+          //Add max col/row of Scene fixated on.
+          domainSpecificColumnsFixatedOn.add( (sceneFixatedOn.getMinimumDomainSpecificColumn() + sceneFixatedOn.getWidth()) - 1 );
+          domainSpecificRowsFixatedOn.add( (sceneFixatedOn.getMinimumDomainSpecificRow() + sceneFixatedOn.getHeight()) - 1 );
+          
+          this.printDebugStatement(
+            "- Fixated on Scene with name '" + sceneFixatedOn.getName() + "'" +
+            "\n   ~ Min col: " + domainSpecificColumnsFixatedOn.get(0) +
+            "\n   ~ Min row: " + domainSpecificRowsFixatedOn.get(0) +
+            "\n   ~ Max col: " + domainSpecificColumnsFixatedOn.get(1) +
+            "\n   ~ Max row: " + domainSpecificRowsFixatedOn.get(1)
+          );
+        }
+        
+        Integer minDomainSpecificColOfSceneFixatedOn = Collections.min(domainSpecificColumnsFixatedOn);
+        Integer minDomainSpecificRowOfSceneFixatedOn = Collections.min(domainSpecificRowsFixatedOn);
+        Integer maxDomainSpecificColOfSceneFixatedOn = Collections.max(domainSpecificColumnsFixatedOn);
+        Integer maxDomainSpecificRowOfSceneFixatedOn = Collections.max(domainSpecificRowsFixatedOn);
+        this.printDebugStatement(
+          "\n- Minimum and maximum domain-specific column and row fixated on:" +
+          "\n   ~ Min col: " + minDomainSpecificColOfSceneFixatedOn +
+          "\n   ~ Min row: " + minDomainSpecificRowOfSceneFixatedOn +
+          "\n   ~ Max col: " + maxDomainSpecificColOfSceneFixatedOn +
+          "\n   ~ Max row: " + maxDomainSpecificRowOfSceneFixatedOn
+        );
+        
+        //To understand why 1 is added: consider a case where the max col is 4
+        //and the min col is 1, the width should be 4 but 4 - 1 = 3.
+        int width = (maxDomainSpecificColOfSceneFixatedOn - minDomainSpecificColOfSceneFixatedOn) + 1;
+        int height = (maxDomainSpecificRowOfSceneFixatedOn - minDomainSpecificRowOfSceneFixatedOn) + 1;
+          
+        //Get the location of the creator, if required.
+        List creatorDetails = null;
+        if(this.isLearningObjectLocationsRelativeToAgent()){
+          this.printDebugStatement(
+            "\n- CHREST model is learning object locations relative to itself so " +
+            "the identifier and location of the agent equipped with CHREST needs " +
+            "to be encoded in the VisualSpatialField being instantiated.  The " + 
+            "location encoded will be the location of the agent in the most " +
+            "recent Fixation performed."
+          );
+          
+          creatorDetails = new ArrayList();
+          
+          //Get the most recent Fixation performed.  No need for a null check 
+          //since the function has already established by this point that 
+          //Fixations have been performed.
+          Fixation mostRecentFixation = fixationsPerformed.get(fixationsPerformed.size() - 1);
+          
+          //Get the Scene that the most recently performed Fixation was made in
+          //context of since this is needed to get the domain-specific 
+          //coordinates of the agent.  This shouldn't return null but check 
+          //any way (better to be safe than sorry!).
+          Scene mostRecentlyFixatedOnScene = mostRecentFixation.getScene();
+          if(mostRecentlyFixatedOnScene != null){
+          
+            //Scene is OK so the agent's location should be able to be 
+            //retrieved but perform a null check anyway (better to be safe than 
+            //sorry!).
+            Square mostRecentLocationOfCreator = mostRecentFixation.getScene().getLocationOfCreator();
+            if(mostRecentLocationOfCreator != null){
+          
+              //Get the Scene-specific column and row of the creator and use
+              //this information to extract the creator's identifer and its 
+              //domain-specific coordinates.
+              int mostRecentLocationOfCreatorCol = mostRecentLocationOfCreator.getColumn();
+              int mostRecentLocationOfCreatorRow = mostRecentLocationOfCreator.getRow();
+              
+              int domainSpecificColAgentLocation = mostRecentlyFixatedOnScene.getDomainSpecificColFromSceneSpecificCol(mostRecentLocationOfCreatorCol);
+              int domainSpecificRowAgentLocation = mostRecentlyFixatedOnScene.getDomainSpecificRowFromSceneSpecificRow(mostRecentLocationOfCreatorRow);
 
+              Integer agentLocationInVisualSpatialFieldCol = domainSpecificColAgentLocation - minDomainSpecificColOfSceneFixatedOn;
+              Integer agentLocationInVisualSpatialFieldRow = domainSpecificRowAgentLocation - minDomainSpecificRowOfSceneFixatedOn;
+              String agentIdentifier = mostRecentlyFixatedOnScene.getSquareContents(mostRecentLocationOfCreatorCol, mostRecentLocationOfCreatorRow).getIdentifier();
+              
+              this.printDebugStatement(
+                "   ~ The agent's identifier is '" + agentIdentifier + "' " +
+                "and its location in the domain according to the most recent " +
+                "Fixation performed is (" + domainSpecificColAgentLocation + ", " + 
+                domainSpecificRowAgentLocation + ").  This means that the " +
+                "agent will be encoded on VisualSpatialField coordinates (" +
+                agentLocationInVisualSpatialFieldCol + ", " + 
+                agentLocationInVisualSpatialFieldRow + ")."
+              );
+
+              //Add the information to the data structure containing the 
+              //creator's details.
+              creatorDetails.add(agentIdentifier);
+              creatorDetails.add(new Square(agentLocationInVisualSpatialFieldCol, agentLocationInVisualSpatialFieldRow));
+            }
+            else {
+              throw new IllegalStateException(
+                "CHREST is learning object locations relatibe to the agent " +
+                "equipped with CHREST but the agent's location has not been " +
+                "specified in the Scene that the most recent Fixation was " +
+                "performed in context of.  Fixation details:\n" + 
+                mostRecentFixation.toString()
+              );
+            }
+          }
+          else{
+            throw new IllegalStateException(
+              "CHREST is learning object locations relative to the agent " +
+              "equipped with CHREST but the most recent Fixation performed " +
+              "does not have a Scene set.  Fixation details:\n" + 
+              mostRecentFixation.toString()
+            );
+          }
+        }
+        
+        this.printDebugStatement(
+          "\n- Instantiating VisualSpatialField that is " + width + " columns by " +
+          height + " rows and will represent domain-specific coordinates from " + 
+          "(" + minDomainSpecificColOfSceneFixatedOn + ", " + minDomainSpecificColOfSceneFixatedOn + ") to " +
+          "(" + maxDomainSpecificColOfSceneFixatedOn + ", " + maxDomainSpecificColOfSceneFixatedOn + ")" +
+          (creatorDetails == null ? 
+            "" : 
+            "and the agent creating the VisualSpatialField has identifier: '" +
+            (String)creatorDetails.get(0) + "' and will be located on coordinates " +
+            ((Square)creatorDetails.get(1)).toString() + " in the " +
+            "VisualSpatialField."
+          )
+        );
+        
+        //VisualSpatialField is entirely unknown when constructed with the 
+        //exception of the coordinates containing the creator (if specified).
+        VisualSpatialField visualSpatialField = new VisualSpatialField(
+          "Visual-Spatial Field @ " + time + " ms", 
+          width, 
+          height, 
+          minDomainSpecificColOfSceneFixatedOn,
+          minDomainSpecificRowOfSceneFixatedOn,
+          this,
+          creatorDetails,
+          time
+        );
+        
+        this.printDebugStatement(
+          "\n- Adding the VisualSpatialField to this model's " +
+          "database of VisualSpatialFields at time " + time
+        );
+        this._visualSpatialFields.put(time, visualSpatialField);
+        
+        ///////////////////////////////////////
+        ///// GET SceneObjects FIXATED ON /////
+        ///////////////////////////////////////
+        
+        //When Fixations are stored by the Perceiver, any SceneObjects found in
+        //the coordinates around the Fixation point (dictated by the Perceiver's
+        //"fixation field of view" parameter) are also "seen" but this 
+        //information is not recorded.  So, to determine all SceneObjects that
+        //have actually been "seen" by this CHREST model in the set of Fixations
+        //used in this function, the Fixations need to be recreated.
+        //
+        //Create HashMap containing the identifier of each SceneObject fixated 
+        //on and the Scene it was fixated on in context of.  This will provide 
+        //all the information required to construct VisualSpatialFieldObject 
+        //representations for each SceneObject fixated on.
+        this.printDebugStatement("\n===== Getting SceneObjects fixated on");
+        List<HashMap<SceneObject, Scene>> sceneObjectsSeenInfo = new ArrayList();
+        Map<Square, Scene> coordinatesFixatedOn = new HashMap();
+        
+        for(int fixation = 0; fixation < fixationsPerformed.size(); fixation++){
+          Fixation fixationPerformed = fixationsPerformed.get(fixation);
+          this.printDebugStatement("\n- Processing Fixation " + (fixation + 1) + ":\n" + fixationPerformed.toString());
+          
+          ListPattern objectsSeenInFixationFieldOfView = this.getPerceiver().getObjectsSeenInFixationFieldOfView(fixationPerformed);
+          this.printDebugStatement("   ~ This ListPattern was generated when this Fixation was performed: " + objectsSeenInFixationFieldOfView.toString());
+          
+          this.printDebugStatement("   ~ Using this ListPattern's primitives to get required information");
+          for(int primitive = 0; primitive < objectsSeenInFixationFieldOfView.size(); primitive++){
+            
+            PrimitivePattern sceneObjectSeen = objectsSeenInFixationFieldOfView.getItem(primitive);
+              
+            //Get SceneObject from Scene that the current Fixation was performed 
+            //on by converting the domain-specific/agent-relative coordinates of 
+            //PrimitivePattern to coordinates specific to the Scene the Fixation
+            //was performed in context of.
+            ItemSquarePattern sceneObjectSeenIsp = (ItemSquarePattern)sceneObjectSeen;
+            Scene sceneFixationPerformedOn = fixationPerformed.getScene();
+            Integer sceneSpecificCol;
+            Integer sceneSpecificRow;
+            
+            coordinatesFixatedOn.put(
+              new Square(sceneObjectSeenIsp.getColumn(), sceneObjectSeenIsp.getRow()), 
+              sceneFixationPerformedOn
+            );
+            
+            if(this.isLearningObjectLocationsRelativeToAgent()){
+              Square locationOfCreator = sceneFixationPerformedOn.getLocationOfCreator();
+              sceneSpecificCol = locationOfCreator.getColumn() + sceneObjectSeenIsp.getColumn();
+              sceneSpecificRow = locationOfCreator.getRow() + sceneObjectSeenIsp.getRow();
+            }
+            else{
+              sceneSpecificCol = sceneFixationPerformedOn.getSceneSpecificColFromDomainSpecificCol(sceneObjectSeenIsp.getColumn());
+              sceneSpecificRow = sceneFixationPerformedOn.getSceneSpecificRowFromDomainSpecificRow(sceneObjectSeenIsp.getRow());
+            }
+            this.printDebugStatement("      + Primitive " + primitive + "'s scene-specific coordinates: (" + sceneSpecificCol + ", " + sceneSpecificRow +")");
+            
+            
+            //Now that scene-specific coordinates for the SceneObject fixated on
+            //have been calculated, retrieve the SceneObject and add an entry to 
+            //the sceneObjectsSeenInfo data structure.
+            SceneObject sceneObject = sceneFixationPerformedOn.getSquareContents(sceneSpecificCol, sceneSpecificRow);
+            HashMap sceneObjectSeenInfo = new HashMap();
+            sceneObjectSeenInfo.put(sceneObject, sceneFixationPerformedOn);
+            sceneObjectsSeenInfo.add(sceneObjectSeenInfo);
+            this.printDebugStatement("      + SceneObject on these coordinates has " + sceneObject.toString());
+            this.printDebugStatement("      + Name of Scene that SceneObject was fixated on in context of: " + sceneFixationPerformedOn.getName());
+          }
+        }
+        this.printDebugStatement("\n- SceneObjects seen information: ");
+        if(this.debug()){
+          for(HashMap<SceneObject, Scene> sceneObjectSeenInfo : sceneObjectsSeenInfo){
+            for(Entry<SceneObject, Scene> info : sceneObjectSeenInfo.entrySet()){
+              this.printDebugStatement("   ~ " + info.getKey().toString());
+              this.printDebugStatement("   ~ Name of Scene fixated on in context of: " + info.getValue().getName());
+            }
+          }
+        }
+        
+        /////////////////////////////////////////////////////////////
+        ///// DETERMINE RECOGNISED SceneObjects AND COORDINATES /////
+        /////////////////////////////////////////////////////////////
+        
+        //A SceneObject/coordinate is recognised if it is present in a STM 
+        //Node's contents/image.  If a SceneObject is recognised, an attempt to 
+        //construct a VisualSpatialFieldObject representation of it will be 
+        //made.  If the coordinates referenced by the SceneObject are 
+        //recognised, any VisualSpatialFieldObjects on the relevant 
+        //VisualSpatialField coordinates and coordinates in scope of the 
+        //Fixation field of view around this coordinate will have their termini
+        //extended.
+        this.printDebugStatement("\n===== Encoding recognised SceneObjects");
+        List<Node> visualStmContentsAtCurrentTime = this.getStm(Modality.VISUAL).getContents(time);
+        this.printDebugStatement("- State of visual STM at time " + time + " (hypothesis first):");
+        if(this.debug()){
+          for(int n = 0; n < visualStmContentsAtCurrentTime.size(); n++){
+            Node stmNode = visualStmContentsAtCurrentTime.get(n);
+            this.printDebugStatement(
+              "   ~ STM Node " + n + " contents: " + stmNode.getContents().toString() + ", image: " + stmNode.getImage(time).toString()
+            );
+          }
+        }
+        
+        //Remove root Nodes from STM since these will cause problems if 
+        //processed
+        for(int n = 0; n < visualStmContentsAtCurrentTime.size(); n++){
+          Node node = visualStmContentsAtCurrentTime.get(n);
+          if(node.isRootNode()) visualStmContentsAtCurrentTime.remove(n);
+        }
+        
+        //This will be used to control two loops below.  Ensures consistency of
+        //function behaviour.
+        int numberNodesInVisualStm = visualStmContentsAtCurrentTime.size();
+        
+        //Data structure below will be populated with SceneObjects recognised 
+        //and will allow the function to also determine what SceneObjects are
+        //unrecognised. The List elements reflect the STM Node that each 
+        //SceneObject recognised was recognised in context of (important when
+        //handling encoding times later).
+        List<Map<SceneObject, Scene>> sceneObjectsRecognisedInStmNodes = new ArrayList();
+        List<List<Square>> domainSpecificCoordinatesRecognisedInStmNodes = new ArrayList();
+        
+        //Process most recent STM Node first.
+        for(int n = 0; n < numberNodesInVisualStm; n++){
+          this.printDebugStatement("\n- STM Node " + n);
+          
+          //Will be added to the recognised SceneObject list.
+          Map<SceneObject, Scene> sceneObjectRecognisedInfo = new HashMap();
+          List<Square> domainSpecificCoordinatesRecognised = new ArrayList();
+          
+          //Get the contents and image of the current STM Node.  These will be
+          //used to determine if any SceneObjects or coordinates are recognised.
+          Node stmNode = visualStmContentsAtCurrentTime.get(n);
+          ListPattern content = stmNode.getContents();
+          ListPattern image = stmNode.getImage(time);
+          
+          //Check if each of the SceneObjects or coordinates fixated on are
+          //recognised.
+          for(HashMap<SceneObject, Scene> sceneObjectSeenInfo : sceneObjectsSeenInfo){
+            for(Entry<SceneObject, Scene> info : sceneObjectSeenInfo.entrySet()){
+              
+              SceneObject sceneObject = info.getKey();
+              Scene sceneThatSceneObjectWasFixatedOnInContextOf = info.getValue();
+              
+              //To check if the SceneObject is recognised, its coordinates need
+              //to either be domain-specific if object loctaions are not being
+              //learned relative to the agent equipped with CHREST or 
+              //agent-relative if they are (they need to match what is in LTM, 
+              //essentially.  To do this, get the coordinates of the SceneObject 
+              //relative to the Scene it was seen in first. These can either be
+              //used directly if object loctaions are not being learned relative 
+              //to the agent equipped with CHREST or can be used to calculate
+              //agent-relative coordinates if object locations are being learned
+              //relative to the agent equipped with CHREST.
+              Square domainSpecificLocationOfSceneObjectSeen = null;
+              for(int col = 0; col < sceneThatSceneObjectWasFixatedOnInContextOf.getWidth(); col++){
+                for(int row = 0; row < sceneThatSceneObjectWasFixatedOnInContextOf.getHeight(); row++){
+                  if(sceneThatSceneObjectWasFixatedOnInContextOf.getSquareContents(col, row).getIdentifier().equals(sceneObject.getIdentifier())){
+                    domainSpecificLocationOfSceneObjectSeen = new Square(
+                      sceneThatSceneObjectWasFixatedOnInContextOf.getDomainSpecificColFromSceneSpecificCol(col),
+                      sceneThatSceneObjectWasFixatedOnInContextOf.getDomainSpecificRowFromSceneSpecificRow(row)
+                    );
+                  }
+                }
+              }
+
+              if(domainSpecificLocationOfSceneObjectSeen != null){
+                
+                //Create a data structure to store a List of Squares whose 
+                //column and row values will be formatted in the same way as 
+                //they would be in S/LTM.  A List is used since, if object 
+                //locations are agent-relative, the agent may have moved around
+                //whilst making Fixations so, for each of its past loctaions, 
+                //the SceneObject will have been in a different place.
+                List<Square> colsAndRowsToSearchFor = new ArrayList();
+
+                if(this.isLearningObjectLocationsRelativeToAgent()){
+                  
+                  //For each location of the agent, calculate where the 
+                  //sceneObjectSeen would have been relative to it.
+                  for(HashMap<SceneObject, Scene> sceneObjectSeen : sceneObjectsSeenInfo){
+                    for(Scene sceneFixatedOn: sceneObjectSeen.values()){
+                      Square locationOfCreator = sceneFixatedOn.getLocationOfCreator();
+                      int locationOfCreatorCol = sceneFixatedOn.getDomainSpecificColFromSceneSpecificCol(locationOfCreator.getColumn());
+                      int locationOfCreatorRow = sceneFixatedOn.getDomainSpecificRowFromSceneSpecificRow(locationOfCreator.getRow());
+                      Square colAndRowToSearchFor = new Square(
+                        domainSpecificLocationOfSceneObjectSeen.getColumn() - locationOfCreatorCol,
+                        domainSpecificLocationOfSceneObjectSeen.getRow() - locationOfCreatorRow
+                      );
+                      if(!colsAndRowsToSearchFor.contains(colAndRowToSearchFor)) colsAndRowsToSearchFor.add(colAndRowToSearchFor);
+                    }
+                  }
+                }
+                else{
+                  colsAndRowsToSearchFor.add(new Square(
+                    domainSpecificLocationOfSceneObjectSeen.getColumn(),
+                    domainSpecificLocationOfSceneObjectSeen.getRow()
+                  ));
+                }
+
+                for(Square colAndRowToSearchFor : colsAndRowsToSearchFor){
+                  int colToSearchFor = colAndRowToSearchFor.getColumn();
+                  int rowToSearchFor = colAndRowToSearchFor.getRow();
+                  
+                  //Create an ItemSquarePattern using the col and row to search
+                  //for that will potentially match an ItemSquarePattern in 
+                  //the Node's content/image.
+                  ItemSquarePattern stmNodeCompatibleIsp = new ItemSquarePattern(
+                    sceneObject.getObjectType(),
+                    colToSearchFor,
+                    rowToSearchFor
+                  );
+
+                  //If the exact ItemSqarePattern created above is present in
+                  //the contents or image of this STM Node, add the 
+                  //SceneObject and the Scene it was fixated on in context of
+                  //to the recognised sceneObjects List.
+                  if(content.contains(stmNodeCompatibleIsp) || image.contains(stmNodeCompatibleIsp)){
+                    sceneObjectRecognisedInfo.putIfAbsent(sceneObject, sceneThatSceneObjectWasFixatedOnInContextOf);
+                  }
+                  
+                  for(PrimitivePattern contentPrim : content){
+                    ItemSquarePattern contentIsp = (ItemSquarePattern)contentPrim;
+                    if(
+                      contentIsp.getColumn() == colToSearchFor && 
+                      contentIsp.getRow() == rowToSearchFor && 
+                      !domainSpecificCoordinatesRecognised.contains(colAndRowToSearchFor)
+                    ){
+                      domainSpecificCoordinatesRecognised.add(colAndRowToSearchFor);
+                    }
+                  }
+
+                  for(PrimitivePattern imagePrim : image){
+                    ItemSquarePattern imageIsp = (ItemSquarePattern)imagePrim;
+                    if(
+                      imageIsp.getColumn() == colToSearchFor && 
+                      imageIsp.getRow() == rowToSearchFor &&
+                      !domainSpecificCoordinatesRecognised.contains(colAndRowToSearchFor)
+                    ){
+                      domainSpecificCoordinatesRecognised.add(colAndRowToSearchFor);
+                    }
+                  }
+                }
+              }
+            }
+          }
+          
+          this.printDebugStatement("   ~ " + sceneObjectRecognisedInfo.size() + " SceneObjects recognised:");
+          if(this.debug()){
+            for(SceneObject recognisedSceneObject : sceneObjectRecognisedInfo.keySet()){
+              this.printDebugStatement("      + " + recognisedSceneObject.toString());
+            }
+          }
+          
+          this.printDebugStatement("   ~ " + domainSpecificCoordinatesRecognised.size() + " coordinates recognised:");
+          if(this.debug()){
+            for(Square coordinatesRecognised : domainSpecificCoordinatesRecognised){
+              this.printDebugStatement("      + " + coordinatesRecognised.toString());
+            }
+          }
+          
+          sceneObjectsRecognisedInStmNodes.add(sceneObjectRecognisedInfo);
+          domainSpecificCoordinatesRecognisedInStmNodes.add(domainSpecificCoordinatesRecognised);
+        }
+        
+        /////////////////////////////////////////////////////////////////
+        ///// ENCODE RECOGNISED SceneObjects AND REFRESH TERMINI OF /////
+        /////  VisualSPatialFieldObjects ON RECOGNISED COORDINATES  /////
+        /////////////////////////////////////////////////////////////////
+        
+        //Now, encode recognised SceneObjects and refresh termini of 
+        //SceneObjects on coordinates recognised.
+        for(int node = 0; node < numberNodesInVisualStm; node++){
+          this.printDebugStatement("\n===== Encoding recognised SceneObjects and refreshing termini of VisualSpatialFieldObjects on recognised coordinates");
+          this.printDebugStatement("- Processing SceneObjects and coordinates recognised in STM Node " + node);
+          this.printDebugStatement("- Incrementing current time (" + time + ") by time taken to retreieve a Node from STM (" + this._timeToRetrieveItemFromStm + ")");
+          time += this._timeToRetrieveItemFromStm;
+          
+          boolean visualSpatialFieldObjectEncoded = false;
+          
+          this.printDebugStatement("- If any SceneObjects recognised in this Node are to be encoded, " +
+            "they will all be encoded at the same time, i.e. the current time (" + 
+            time + ") plus the time taken to encode a recognised SceneObject (" +
+            this._timeToEncodeRecognisedSceneObjectAsVisualSpatialFieldObject + "), in other words, at time "
+            + (time + this._timeToEncodeRecognisedSceneObjectAsVisualSpatialFieldObject)
+          );
+          int visualSpatialFieldObjectEncodingTime = time + this._timeToEncodeRecognisedSceneObjectAsVisualSpatialFieldObject;
+          
+          this.printDebugStatement("- Encoding any recognised SceneObjects first (if there are any)");
+          for(Entry<SceneObject, Scene> recognisedSceneObjectInfo : sceneObjectsRecognisedInStmNodes.get(node).entrySet()){
+            SceneObject recognisedSceneObject = recognisedSceneObjectInfo.getKey();
+            Scene sceneThatRecognisedSceneObjectWasFixatedOnInContextOf = recognisedSceneObjectInfo.getValue();
+            
+            Integer visualSpatialFieldCol = null;
+            Integer visualSpatialFieldRow = null;
+            for(int col = 0; col < sceneThatRecognisedSceneObjectWasFixatedOnInContextOf.getWidth(); col++){
+              for(int row = 0; row < sceneThatRecognisedSceneObjectWasFixatedOnInContextOf.getHeight(); row++){
+                if(sceneThatRecognisedSceneObjectWasFixatedOnInContextOf.getSquareContents(col, row).getIdentifier().equals(recognisedSceneObject.getIdentifier())){
+
+                  visualSpatialFieldCol = visualSpatialField.getVisualSpatialFieldColFromDomainSpecificCol(
+                    sceneThatRecognisedSceneObjectWasFixatedOnInContextOf.getDomainSpecificColFromSceneSpecificCol(col)
+                  );
+
+                  visualSpatialFieldRow = visualSpatialField.getVisualSpatialFieldRowFromDomainSpecificRow(
+                    sceneThatRecognisedSceneObjectWasFixatedOnInContextOf.getDomainSpecificRowFromSceneSpecificRow(row)
+                  );
+                }
+              }
+            }
+            
+            this.printDebugStatement(
+              "   ~ Attempting to encode SceneObject " + recognisedSceneObject + 
+              " on visual-spatial field coordinates (" + visualSpatialFieldCol + 
+              ", " + visualSpatialFieldRow + ")"
+            );
+        
+            boolean visualSpatialFieldObjectCreated = this.encodeVisualSpatialFieldObjectDuringVisualSpatialFieldConstruction(
+              visualSpatialField,
+              visualSpatialFieldCol,
+              visualSpatialFieldRow,
+              recognisedSceneObject,
+              visualSpatialFieldObjectEncodingTime,
+              true
+            );
+            
+            this.printDebugStatement("   ~ SceneObject encoding successful? " + visualSpatialFieldObjectCreated);
+            if(visualSpatialFieldObjectCreated) visualSpatialFieldObjectEncoded = true;
+          }
+          
+          this.printDebugStatement("\n- Refreshing VisualSpatialFieldObjects on recognised coordinates (if there are any)");
+          for(Square domainSpecificCoordinatesRecognised : domainSpecificCoordinatesRecognisedInStmNodes.get(node)){
+            Integer visualSpatialFieldCol = visualSpatialField.getVisualSpatialFieldColFromDomainSpecificCol(domainSpecificCoordinatesRecognised.getColumn()); 
+            Integer visualSpatialFieldRow = visualSpatialField.getVisualSpatialFieldRowFromDomainSpecificRow(domainSpecificCoordinatesRecognised.getRow());
+            if(visualSpatialFieldCol != null && visualSpatialFieldRow != null){
+              this.refreshVisualSpatialFieldObjectTermini(
+                visualSpatialField, 
+                visualSpatialFieldCol,
+                visualSpatialFieldRow,
+                time
+              );
+            }
+          }
+          
+          
+          if(visualSpatialFieldObjectEncoded){
+            this.printDebugStatement("\n- Since a SceneObject was encoded, the current time will be set to " + visualSpatialFieldObjectEncodingTime);
+            time = visualSpatialFieldObjectEncodingTime;
+          }
+          this.printDebugStatement("\n- Finished processing SceneObjects and coordinates in STM Node " + node + " at time " + time);
+        }
+        
+        ////////////////////////////////////////////
+        ///// ENCODE UNRECOGNISED SceneObjects /////
+        ////////////////////////////////////////////
+        
+        //Determine unrecognised SceneObjects. 
+        List<HashMap<SceneObject, Scene>> unrecognisedSceneObjectsInfo = new ArrayList();
+        for(HashMap<SceneObject, Scene> sceneObjectSeenInfo : sceneObjectsSeenInfo){
+          for(Entry<SceneObject, Scene> info : sceneObjectSeenInfo.entrySet()){
+            boolean sceneObjectSeenRecognised = false;
+
+            for(Map<SceneObject, Scene> sceneObjectInfoRecognisedInStmNode : sceneObjectsRecognisedInStmNodes){
+              for(SceneObject sceneObjectRecognised : sceneObjectInfoRecognisedInStmNode.keySet()){
+                if(sceneObjectRecognised.getIdentifier().equals(info.getKey().getIdentifier())){
+                  sceneObjectSeenRecognised = true;
+                  break;
+                }
+              }
+            }
+
+            if(!sceneObjectSeenRecognised){
+              HashMap<SceneObject, Scene> unrecognisedSceneObjectInfo = new HashMap();
+              unrecognisedSceneObjectInfo.put(info.getKey(), info.getValue());
+              unrecognisedSceneObjectsInfo.add(unrecognisedSceneObjectInfo);
+            }
+          }
+        }
+        
+        if(!unrecognisedSceneObjectsInfo.isEmpty()){
+          this.printDebugStatement("\n===== Processing unrecognised SceneObjects");
+          
+          //Encode from most -> least recent (last to first).  To do this, 
+          //convert the HashMap containing the unrecognised SceneObject info
+          //to an Array (HashMap's don't have numbered elements).  Now we can
+          //go backwards through data.
+          //
+          //TODO: put in a parameter for how many unrecognised SceneObjects can 
+          //      be processed. 
+          for(int object = unrecognisedSceneObjectsInfo.size() - 1; object >= 0; object--){
+            
+            this.printDebugStatement("   ~ Incrementing current time (" + time + ") by the time taken " +
+              "to process an unrecognised VisualSptialFieldObject (" + 
+              this._timeToProcessUnrecognisedSceneObjectDuringVisualSpatialFieldConstruction + ")"
+            );
+            time += this._timeToProcessUnrecognisedSceneObjectDuringVisualSpatialFieldConstruction;
+            this.printDebugStatement("   ~ Current time = " + time);
+            
+            HashMap<SceneObject, Scene> unrecognisedSceneObjectInfo = unrecognisedSceneObjectsInfo.get(object);
+            for(Entry<SceneObject, Scene> info : unrecognisedSceneObjectInfo.entrySet()){
+              SceneObject unrecognisedSceneObject = info.getKey();
+              Scene sceneThatUnrecognisedSceneObjectWasFixatedOnInContextOf = info.getValue();
+
+              //Get visual-spatial field coordinates by getting domain-specific
+              //coordinates 
+              Integer visualSpatialFieldCol = null;
+              Integer visualSpatialFieldRow = null;
+              for(int col = 0; col < sceneThatUnrecognisedSceneObjectWasFixatedOnInContextOf.getWidth(); col++){
+                for(int row = 0; row < sceneThatUnrecognisedSceneObjectWasFixatedOnInContextOf.getHeight(); row++){
+                  if(sceneThatUnrecognisedSceneObjectWasFixatedOnInContextOf.getSquareContents(col, row).getIdentifier().equals(unrecognisedSceneObject.getIdentifier())){
+
+                    visualSpatialFieldCol = visualSpatialField.getVisualSpatialFieldColFromDomainSpecificCol(
+                      sceneThatUnrecognisedSceneObjectWasFixatedOnInContextOf.getDomainSpecificColFromSceneSpecificCol(col)
+                    );
+
+                    visualSpatialFieldRow = visualSpatialField.getVisualSpatialFieldRowFromDomainSpecificRow(
+                      sceneThatUnrecognisedSceneObjectWasFixatedOnInContextOf.getDomainSpecificRowFromSceneSpecificRow(row)
+                    );
+                  }
+                }
+              }            
+              
+              if(visualSpatialFieldCol != null && visualSpatialFieldRow != null){
+                this.printDebugStatement("   ~ Attempting to encode SceneObject with " + unrecognisedSceneObject.toString() + 
+                  " as a VisualSpatialFieldObject at the current time + "  +
+                  (unrecognisedSceneObject.getObjectType().equals(Scene.getEmptySquareToken()) ? 
+                    this._timeToEncodeUnrecognisedEmptySquareSceneObjectAsVisualSpatialFieldObject + "since this is an empty square":
+                    this._timeToEncodeUnrecognisedNonEmptySquareSceneObjectAsVisualSpatialFieldObject + "since this is a non-empty square"
+                  )
+                );
+
+                int encodingTime = time + (unrecognisedSceneObject.getObjectType().equals(Scene.getEmptySquareToken()) ? 
+                  this._timeToEncodeUnrecognisedEmptySquareSceneObjectAsVisualSpatialFieldObject :
+                  this._timeToEncodeUnrecognisedNonEmptySquareSceneObjectAsVisualSpatialFieldObject
+                );
+                this.printDebugStatement("   ~ Attempting to encode VisualSpatialFieldObject at time " + encodingTime);
+
+                boolean visualSpatialFieldObjectCreated = this.encodeVisualSpatialFieldObjectDuringVisualSpatialFieldConstruction(
+                  visualSpatialField,
+                  visualSpatialFieldCol,
+                  visualSpatialFieldRow,
+                  unrecognisedSceneObject,
+                  encodingTime, 
+                  false
+                );
+                
+                this.refreshVisualSpatialFieldObjectTermini(visualSpatialField, visualSpatialFieldCol, visualSpatialFieldRow, time);
+
+                if(visualSpatialFieldObjectCreated){
+                  time = encodingTime;
+                  this.printDebugStatement(
+                    "   ~ VisualSpatialFieldObject encoded, setting current " +
+                    "time to the time the VisualSpatialFieldObject was encoded (" +
+                    time + ")"
+                  );
+                }
+              }
+            }
+            
+            this.printDebugStatement("- Time after processing unrecognised SceneObject = " + time);
+          } 
+        }
+        this._attentionClock = time;
+      }
+      this.printDebugStatement(func + "Attention clock set to time " + this._attentionClock);
+      
+    }
+    this.printDebugStatement(func + "RETURN");
+  }
+  
   /**
-   * Predict a move using a CHUMP-like mechanism.
+   * Moves {@link jchrest.lib.VisualSpatialFieldObject 
+   * VisualSpatialFieldObjects} on the {@link 
+   * jchrest.architecture.VisualSpatialField} present at the {@code time} 
+   * specified according to the {@code moveSequences} specified.  
+   * <p>
+   * {@link jchrest.lib.VisualSpatialFieldObject VisualSpatialFieldObject}
+   * movement can only occur if the attention of {@link #this} is free.  If all 
+   * moves are successful, the attention clock of {@link #this} will be set to 
+   * the sum of {@link #this#getTimeToAccessVisualSpatialField()} and the number 
+   * of moves performed multiplied by {@link 
+   * #this#getTimeToMoveVisualSpatialFieldObject()}.
+   * <p>
+   * The number of {@link jchrest.lib.Square Squares} moved by a {@link 
+   * jchrest.lib.VisualSpatialFieldObject} is not constrained by this method.  
+   * Therefore, according to this method, it takes the same amount of time to 
+   * move a {@link jchrest.lib.VisualSpatialFieldObject} across 5 {@link 
+   * jchrest.lib.Square Squares }as it does to move it across 1.  Any movement 
+   * constraints of this sort should be denoted by the moves specified.
+   * <p>
+   * If a {@link jchrest.lib.VisualSpatialFieldObject} is moved to a {@link 
+   * jchrest.lib.Square} on a {@link jchrest.architecture.VisualSpatialField}
+   * that is already occupied then the two {@link 
+   * jchrest.lib.VisualSpatialFieldObject VisualSpatialFieldObjects} will 
+   * co-exist on the {@link jchrest.lib.Square} unless the square contains a
+   * {@link jchrest.lib.VisualSpatialFieldObject} whose {@link 
+   * jchrest.lib.VisualSpatialFieldObject#getObjectType()} is equal to {@link 
+   * jchrest.domainSpecifics.Scene#getEmptySquareToken()} or {@link 
+   * jchrest.lib.VisualSpatialFieldObject#getUnknownSquareToken()}.
+   * <p>
+   * {@link jchrest.lib.VisualSpatialFieldObject} movement occurs in two phases:
+   * "pick-up" and "put-down".  In both phases, any {@link 
+   * jchrest.lib.VisualSpatialFieldObject VisualSpatialFieldObjects} on 
+   * coordinates that fall within {@link 
+   * jchrest.architecture.Perceiver#getFixationFieldOfView()} on the relevant 
+   * {@link jchrest.architecture.VisualSpatialField} around the {@link 
+   * jchrest.lib.VisualSpatialFieldObject} being moved will have their termini
+   * refreshed since attention will be focused upon them.
+   * <p>
+   * Note that the function will handle {@link 
+   * jchrest.lib.VisualSpatialFieldObject} movement to coordinates not 
+   * represented in the relevant {@link jchrest.architecture.VisualSpatialField}
+   * gracefully, i.e. if a {@link jchrest.lib.VisualSpatialFieldObject} is moved
+   * to coordinates outside the range encoded by the relevant {@link 
+   * jchrest.architecture.VisualSpatialField} and subsequent moves have been 
+   * specified in {@code moveSequences}, these will not be implemented and the
+   * next {@link jchrest.architecture.VisualSpatialFieldObject} move sequence
+   * will be processed (if present).
    * 
-   * TODO: Improve the heuristics here.
+   * @param moveSequences A 2D {@link java.util.List} whose first dimension 
+   * elements should contain {@link java.util.List Lists} of {@link 
+   * jchrest.lib.ItemSquarePattern ItemSquarePatterns} that prescribe a sequence 
+   * of moves for one {@link jchrest.lib.VisualSpatialFieldObject} using 
+   * coordinates relative to the {@link jchrest.architecture.VisualSpatialField}
+   * it is located on.  It is <b>imperative</b> that:
+   * <ol type="1">
+   *  <li>
+   *    The first {@link jchrest.lib.ItemSquarePattern} specifies the current
+   *    location of the {@link jchrest.lib.VisualSpatialFieldObject} to move.
+   *  </li>
+   *  <li>
+   *    {@link jchrest.lib.VisualSpatialFieldObject VisualSpatialFieldObjects} 
+   *    are identified using their identifier (see {@link 
+   *    jchrest.lib.VisualSpatialFieldObject#getIdentifier()}) rather than their 
+   *    type (see {@link jchrest.lib.VisualSpatialFieldObject#getObjectClass()}).
+   *  </li>
+   * </ol>
+   * For example, if two {@link jchrest.lib.VisualSpatialFieldObject 
+   * VisualSpatialFieldObjects} return the same value for {@link 
+   * jchrest.lib.VisualSpatialFieldObject#getObjectClass()} ("A", for example)
+   * but have different results for {@link 
+   * jchrest.lib.VisualSpatialFieldObject#getIdentifier()} ("0" and "1", for 
+   * example) and both are to be moved, "0" before "1", then the {@link 
+   * java.util.List} passed should be of the form: 
+   * <p>
+   * {
+   *  {[0 sourceX sourceY], [0 destinationX desitinationY]}, 
+   *  {[1 sourceX sourceY], [1 desitinationX destinationY]}
+   * }
    * 
-   * @param scene
-   * @param numFixations
-   * @param time
-   * @param timeSceneSeenUntil The time that this {@link #this} model can no 
-   * longer "see" the {@link jchrest.lib.Scene} to predict moves in context of.  
-   * If there is no time limit on how long the {@link jchrest.lib.Scene} can be 
-   * "seen" for then pass null.
+   * @param time The current time (in milliseconds) in the domain when object
+   * movement is requested.
    * 
-   * @return 
+   * @throws jchrest.lib.VisualSpatialFieldException If {@code moveSequences} 
+   * cause any of the following statements to evaluate to {@link 
+   * java.lang.Boolean#TRUE}:
+   * <ol type="1">
+   *  <li>
+   *    More than one {@link jchrest.lib.VisualSpatialFieldObject} is moved 
+   *    within the same sequence; object movement should be strictly serial.
+   *    Therefore, whereas {{[0 1 1][0 2 2]}{[1 2 3][1 4 5]}} is valid,
+   *    {{[0 1 1][5 2 2]}{[1 2 3][1 4 5]}} is not since an attempt is made to
+   *    move "5" during "0"s movement specification.
+   *  </li>
+   *  <li>
+   *    The initial {@link jchrest.lib.ItemSquarePattern} in a move sequence 
+   *    does not correctly identify where the 
+   *    {@link jchrest.lib.VisualSpatialFieldObject} is located.
+   *  </li>
+   *  <li>
+   *    Only the initial location of a 
+   *    {@link jchrest.lib.VisualSpatialFieldObject} is specified.
+   *  </li>
+   * </ol>
    */
-//  public Move predictMove (Scene scene, int numFixations, int time, Integer timeSceneSeenUntil) {
-//    Map<ListPattern, Integer> moveFrequencies = getMovePredictions (scene, numFixations, null, time, timeSceneSeenUntil);
-//    
-//    if(moveFrequencies != null){
-//      // find the most frequent pattern
-//      ListPattern best = null;
-//      int bestFrequency = 0;
-//      for (ListPattern key : moveFrequencies.keySet ()) {
-//        if (moveFrequencies.get (key) > bestFrequency) {
-//          best = key;
-//          bestFrequency = moveFrequencies.get (key);
-//        }
-//      }
-//      // create a move to return
-//      // list pattern should be one item long, with the first item being an ItemSquarePattern
-//      if (best != null && (best.size () == 1) && (best.getItem(0) instanceof ItemSquarePattern)) {
-//        ItemSquarePattern move = (ItemSquarePattern)best.getItem (0);
-//        return new Move (move.getItem (), move.getRow (), move.getColumn ());
-//      }
-//    }
-//    
-//    return new Move ("UNKNOWN", 0, 0);
-//  }
+  public void moveObjectsInVisualSpatialField(ArrayList<ArrayList<ItemSquarePattern>> moveSequences, int time) throws VisualSpatialFieldException {
+    
+    this.printDebugStatement("===== Chrest.moveObjects() =====");
+    Entry<Integer, VisualSpatialField> mostRecentVisualSpatialFieldEntryWhenFunctionInvoked = this.getVisualSpatialFields().floorEntry(time);
+    
+    //Check that attention is free, if so, continue.
+    this.printDebugStatement("- Checking if attention is free at time function invoked (" + time + ")");
+    if(this.isAttentionFree(time)){
+      
+      this.printDebugStatement("- Attention is free");
+      
+      //Clone the current VisualSpatialField so that if any moves are illegal, 
+      //all moves performed up until the illegal move can be reversed.
+      this.printDebugStatement(
+        "- Cloning most recent visual-spatial field stored relative to when " +
+        "this function was invoked so, if any moves are illegal, the " +
+        "visual-spatial field state will be reverted."
+      );
+      
+      Integer timeMostRecentVisualSpatialFieldCreated = mostRecentVisualSpatialFieldEntryWhenFunctionInvoked.getKey();
+      VisualSpatialField visualSpatialField = mostRecentVisualSpatialFieldEntryWhenFunctionInvoked.getValue();
+      
+      VisualSpatialField visualSpatialFieldBeforeMovesApplied = new VisualSpatialField(
+        visualSpatialField.getName(),
+        visualSpatialField.getWidth(),
+        visualSpatialField.getHeight(),
+        visualSpatialField.getMinimumDomainSpecificCol(),
+        visualSpatialField.getMinimumDomainSpecificRow(),
+        this,
+        visualSpatialField.getCreatorDetails(timeMostRecentVisualSpatialFieldCreated),
+        timeMostRecentVisualSpatialFieldCreated
+      );
+      
+      for(int col = 0; col < visualSpatialField.getWidth(); col++){
+        for(int row = 0; row < visualSpatialField.getHeight(); row++){
+          this.printDebugStatement("   ~ Cloning contents of visual-spatial field coordinates (" + col + ", " + row + ")");
+          List<VisualSpatialFieldObject> coordinateContents = visualSpatialField.getCoordinateContents(col, row);
+          for(int object = 0; object < coordinateContents.size(); object++){
+            
+            this.printDebugStatement(
+              "      + Checking if VisualSpatialFieldObject " + object + " is " +
+              "the creator if so, its already been cloned when the cloned " +
+              "VisualSpatialField was created"
+            );
+            VisualSpatialFieldObject original = coordinateContents.get(object);
+            this.printDebugStatement("      + VisualSpatialFieldObject details:" + original.toString());
+            
+            if(!original.getObjectType().equals(Scene.getCreatorToken())){
+              this.printDebugStatement(
+                "      + VisualSpatialFieldObject isn't the creator so it will " +
+                "be cloned and added to the cloned VisualSpatialField"
+              );
+              VisualSpatialFieldObject clone = original.createClone();
+              visualSpatialFieldBeforeMovesApplied.addObjectToCoordinates(col, row, clone, time);
+            }
+          }
+        }
+      }
+      
+      //Track the time taken so far to process the object moves.  Used to 
+      //assign terminus values for VisualSpatialFieldObjects moved and to update 
+      //the attention clock.
+      time += this._timeToAccessVisualSpatialField;   
+      this.printDebugStatement("- Time moves begin: " + time);
+      
+      //Process each object move sequence.
+      try{
+        for(int objectMoveSequence = 0; objectMoveSequence < moveSequences.size(); objectMoveSequence++){
 
+          //Get the first move sequence for an object and check to see if at 
+          //least one movement has been specified for it.
+          ArrayList<ItemSquarePattern> moveSequence = moveSequences.get(objectMoveSequence);
+          this.printDebugStatement("- Processing move sequence " + objectMoveSequence);
+          
+          if(moveSequence.size() >= 2){
+            this.printDebugStatement("   ~ Move sequence has more than 1 move");
+
+            //Extract the information for the object to move.
+            ItemSquarePattern moveFromDetails = moveSequence.get(0);
+            String moveFromIdentifier = moveFromDetails.getItem();
+            int colToMoveFrom = moveFromDetails.getColumn();
+            int rowToMoveFrom = moveFromDetails.getRow();
+
+            //Process each move for this object starting from the first element of 
+            //the current second dimension array.
+            for(int movement = 1; movement < moveSequence.size(); movement++){
+              
+              //Get the details of the object movement.
+              ItemSquarePattern moveToDetails = moveSequence.get(movement);
+              String moveToIdentifier = moveToDetails.getItem();
+              int colToMoveTo = moveToDetails.getColumn();
+              int rowToMoveTo = moveToDetails.getRow();
+              
+              this.printDebugStatement("   ~ Move from details: " + moveFromDetails.toString());
+              this.printDebugStatement("   ~ Move to details: " + moveToDetails.toString());
+              
+              //Check to see if the identifier given for this move is the same
+              //as that declared initially. If it isn't, serial movement is not
+              //implemented so the entire move sequence should fail.
+              if( moveFromIdentifier.equals(moveToIdentifier) ){
+                this.printDebugStatement("   ~ Move refers to the same VisualSpatialFieldObject");
+
+                List<VisualSpatialFieldObject> objectsOnSquareToMoveFrom = visualSpatialField.getCoordinateContents(colToMoveFrom, rowToMoveFrom, time, false);
+                VisualSpatialFieldObject objectToMove = null;
+                this.printDebugStatement("   ~ Checking for VisualSpatialFieldObject on VisualSpatialField coordinates to move from");
+                
+                for(VisualSpatialFieldObject objectOnSquareToMoveFrom : objectsOnSquareToMoveFrom){
+                  this.printDebugStatement("      + Checking VisualSpatialFieldObject with details:" + objectOnSquareToMoveFrom.toString());
+                  
+                  if(
+                    objectOnSquareToMoveFrom.getIdentifier().equals(moveFromIdentifier) &&
+                    objectOnSquareToMoveFrom.isAlive(time)
+                  ){
+                    this.printDebugStatement("         = This is the VisualSpatialFieldObject to move and it is alive so it will be moved.");
+                    objectToMove = objectOnSquareToMoveFrom;
+                    break;
+                  }
+                }
+                
+                if(objectToMove != null){
+                    
+                  //Refresh the termini of any VisualSpatialFieldObjects on
+                  //the coordinates to move the VisualSpatialFieldObject from
+                  //now, before time is incremented by the time taken by this
+                  //CHREST model to move a VisualSpatialFieldObject in a 
+                  //VisualSpatialField.
+                  this.refreshVisualSpatialFieldObjectTermini(visualSpatialField, colToMoveFrom, rowToMoveFrom, time);
+                    
+                  //Remove the object from the visual-spatial coordinates at
+                  //this time by setting its terminus to the time the 
+                  //visual-spatial field is accessed.
+                  objectToMove.setTerminus(time, true);
+                  this.printDebugStatement("         = Terminus of VisualSpatialFieldObject to move set to " + objectToMove.getTerminus());
+                    
+                  //Check to see if the VisualSpatialField coordinates should 
+                  //be re-encoded as an empty square. This should occur if the 
+                  //VisualSpatialFieldObject being moved is not co-habiting 
+                  //the square with any VisualSpatialFieldObjects that denote 
+                  //physical (non-empty square) VisualSpatialFieldObjects that 
+                  //are currently alive.
+                  this.printDebugStatement(
+                    "         = Checking if the VisualSpatialField " +
+                    "coordinates should be encoded as an empty square.  " +
+                    "This will not occur if any VisualSpatialFieldObject on " +
+                    "the coordinates is not the VisualSpatialFieldObject " +
+                    "being moved and is alive at time " + time + " or is the " +
+                     "creator and its terminus has not yet been set"
+                  );
+                  
+                  boolean makeSquareToMoveFromEmpty = true;
+                  for(VisualSpatialFieldObject objectToCheck : objectsOnSquareToMoveFrom){
+                    this.printDebugStatement("            > Checking VisualSpatialObject:" + objectToCheck.toString());
+
+                    if(
+                      (
+                        !objectToCheck.getIdentifier().equals(objectToMove.getIdentifier()) &&
+                        objectToCheck.isAlive(time)
+                      )
+                      ||
+                      (
+                        objectToCheck.getIdentifier().equals(Scene.getCreatorToken()) &&
+                        objectToCheck.getTerminus() == null
+                      )
+                    ){
+                      this.printDebugStatement(
+                        "         = This is not the VisualSpatialFieldObject " +
+                        "to move and is alive at time " + time + " or is the " +
+                        "creator and its terminus has not been set so the " +
+                        "coordinates to move the VisualSpatialFieldObject from " +
+                        "should not be encoded as an empty square"
+                      );
+                      makeSquareToMoveFromEmpty = false;
+                      break;
+                    }
+                  }
+                  this.printDebugStatement(
+                    "         = The coordinates will " + (makeSquareToMoveFromEmpty ? "" : "not") +
+                    "be encoded as an empty square after the VisualSpatialFieldObject has been moved"
+                  );
+                    
+                  if(makeSquareToMoveFromEmpty){
+                    VisualSpatialFieldObject emptySquare = new VisualSpatialFieldObject(
+                      Scene.getEmptySquareToken(),
+                      this,
+                      visualSpatialField,
+                      time,
+                      false,
+                      true
+                    );
+
+                    visualSpatialField.addObjectToCoordinates(colToMoveFrom, rowToMoveFrom, emptySquare, time);
+                  }
+                    
+                  //Increment the time by the time taken by this model to move 
+                  //a VisualSpatialFieldObject in a VisualSpatialField.  Do 
+                  //this now since it should still take time to move a 
+                  //VisualSpatialFieldObject even if it is moved to 
+                  //VisualSpatialField coordinates not represented in the 
+                  //VisualSpatialField (the "putting-down" step of the move is 
+                  //not actually performed in this case).
+                  this.printDebugStatement("\n      + Incrementing current time (" + time + ") by the " +
+                    "time taken by this CHREST model to move a " +
+                    "VisualSpatialFieldObject (" + 
+                    this._timeToMoveVisualSpatialFieldObject + ")"
+                  );
+                  time += this._timeToMoveVisualSpatialFieldObject;
+                  this.printDebugStatement("      + Time now equal to " + time);
+                    
+                  //Create a new VisualSpatialFieldObject that represents the 
+                  //VisualSpatialFieldObject after the move.  It is assumed 
+                  //that the VisualSpatialFieldObject is unrecognised.
+                  objectToMove = new VisualSpatialFieldObject(
+                    objectToMove.getIdentifier(),
+                    objectToMove.getObjectType(),
+                    this,
+                    visualSpatialField,
+                    time,
+                    false,
+                    true
+                  );
+                    
+                  this.printDebugStatement(
+                    "      + Created the VisualSpatialFieldObject to be " + 
+                    "added to the VisualSpatialField coordinates to move " +
+                    "the VisualSpatialFieldObject to:" + objectToMove.toString()
+                  );
+                
+                  this.printDebugStatement("   ~ VisualSpatialFieldObject 'picked-up' successfully");
+                  
+                  List<VisualSpatialFieldObject> contentsOfCoordinatesToMoveTo = visualSpatialField.getCoordinateContents(colToMoveTo, rowToMoveTo, time, false);               
+                  if(contentsOfCoordinatesToMoveTo != null){
+                    
+                    this.printDebugStatement(
+                      "   ~ VisualSpatialField coordinates to move the " + 
+                      "VisualSpatialFieldObject to (" + colToMoveTo + ", " + 
+                      rowToMoveTo + ") are represented in the VisualSpatialField " +
+                      "so the VisualSpatialFieldObject will be moved there"
+                    );
+                    
+                    //Process the termini of objects on the square to be moved
+                    //to.
+                    this.printDebugStatement("   ~ Updating termini of VisualSpatialFieldObjects on VisualSpatialFieldcoordinates to move to");
+                    this.refreshVisualSpatialFieldObjectTermini(visualSpatialField, colToMoveTo, rowToMoveTo, time);
+                    
+                    //Now, "move" the object to be moved to its destination 
+                    //coordinates.
+                    visualSpatialField.addObjectToCoordinates(colToMoveTo, rowToMoveTo, objectToMove, time);
+                    if(this.debug()){
+                      this.printDebugStatement("   ~ Added VisualSpatialFieldObject to VisualSpatialFieldCoordinates to move to.  Coordinate content:");
+                      for(VisualSpatialFieldObject objectOnSquareToMoveTo : visualSpatialField.getCoordinateContents(colToMoveTo, rowToMoveTo, time, false)){
+                        this.printDebugStatement("\n" + objectOnSquareToMoveTo.toString());
+                      }
+                    }
+                  }
+                  else{
+                    this.printDebugStatement(
+                      "   ~ Coordinates to move VisualSpatialFieldObject to " +
+                      "are not represented in the VisualSpatialField so the " +
+                      "VisualSpatialFieldObject will not be 'put-down'.  Skipping " +
+                      "remaining moves for this VisualSpatialFieldObject now"
+                    );
+                    break;
+                  }
+                  
+                  //Set the current location of the VisualSpatialFieldObject to 
+                  //be its destination so that the next move can be processed 
+                  //correctly.
+                  moveFromDetails = moveToDetails;
+                }
+                //The object is not at the location specified.
+                else{
+                  this.printDebugStatement("   ~ VisualSpatialFieldObject not found");
+                  
+                  //If this is the first movement then the actual 
+                  //VisualSpatialFieldObject location specification is incorrect 
+                  //so throw an exception since this may indicate an issue with 
+                  //coordinate translation or experiment code.
+                  if(movement == 1){
+                    this.printDebugStatement("      + This is the first move so the initial location must be incorrect, exiting");
+                    throw new VisualSpatialFieldException(
+                      "The initial location specified for the " +
+                      "VisualSpatialFieldObject with identifier " + 
+                      moveFromIdentifier + " does not contain this " +
+                      "VisualSpatialFieldObject"
+                    );                
+                  }
+                  //Otherwise, the object has decayed since a number of other
+                  //moves have been performed
+                  else{
+                    this.printDebugStatement("      + This isn't the first move so the VisualSpatialFieldObject may have decayed");
+                    this.printDebugStatement("      + Skipping to the next move in the sequence");
+                    break;
+                  }
+                }
+              }
+              else{
+                this.printDebugStatement("- The VisualSpatialFieldObject to move is not consistently referred to in the sequence being processed, exiting");
+                throw new VisualSpatialFieldException(
+                  "Sequence " + objectMoveSequence + " does not consistently " +
+                  "refer to the same VisualSpatialFieldObject (move " + movement + " refers to " +
+                  moveToIdentifier + " so serial movement not implemented."
+                );
+              }
+            }//End move for an object.
+          }//End check for number of object moves being greater than or equal to 2.
+          else{
+            this.printDebugStatement("- VisualSpatialFieldObject move sequence only contains the initial location for a VisualSpatialFieldObject, exiting");
+            throw new VisualSpatialFieldException(
+              "The move sequence " + moveSequence.toString() + " does not " +
+              "contain any moves after the current location of the " +
+              "VisualSpatialFieldObject is specified."
+            );
+          }
+        }//End entire movement sequence for all objects.
+      } 
+      catch (VisualSpatialFieldException e){
+        this.printDebugStatement(
+          "   - VisualSpatialFieldObjectMoveException thrown, reverting " +
+          "VisualSpatialField to its state before moves were processed.  " +
+          "Attention clock will remain unchanged."
+        );
+        
+        this._visualSpatialFields.replace(this._visualSpatialFields.lastEntry().getKey(), visualSpatialFieldBeforeMovesApplied);
+        throw e;
+      }
+    }
+    else{
+      this.printDebugStatement("- Attention is not free, exiting");
+    }
+    
+    this.printDebugStatement(
+      "- VisualSpatialFieldObject move sequence processed successfully.  " +
+      "Setting attention clock to time " + time
+    );
+    this._attentionClock = time;
+    this.printDebugStatement("===== RETURN =====");
+  }
+  
+     /**
+   * Intended for use during {@link jchrest.architecture.VisualSpatialField}
+   * construction: encodes a {@link jchrest.domainSpecifics.SceneObject} as a 
+   * {@link jchrest.lib.VisualSpatialFieldObject} on the {@link 
+   * jchrest.architecture.VisualSpatialField} coordinates specified at the 
+   * {@code encodingTime} specified if there are no other {@link 
+   * jchrest.lib.VisualSpatialFieldObject VisualSpatialFieldObjects} occupying
+   * these coordinates (usually, a {@link 
+   * jchrest.architecture.VisualSpatialField} can accommodate multiple {@link 
+   * jchrest.lib.VisualSpatialFieldObject VisualSpatialFieldObjects} on the same
+   * coordinates).
+   * <p>
+   * If a new {@link jchrest.lib.VisualSpatialFieldObject} is encoded, its 
+   * creation time will be set to the {@code time} specified and its 
+   * terminus will be set according to the values of the {@code time} and {@code 
+   * sceneObjectRecognised} specified: if {@code sceneObjectRecognised} is set 
+   * to {@link java.lang.Boolean#TRUE} the {@link 
+   * jchrest.lib.VisualSpatialFieldObject VisualSpatialFieldObject's} terminus 
+   * will be set to the sum of {@code time} and {@link 
+   * #this#getRecognisedVisualSpatialFieldObjectLifespan()}, if {@code 
+   * sceneObjectRecognised} is set to {@link java.lang.Boolean#FALSE} the {@link 
+   * jchrest.lib.VisualSpatialFieldObject VisualSpatialFieldObject's} terminus 
+   * will be set to the sum of {@code time} and {@link 
+   * #this#getUnrecognisedVisualSpatialFieldObjectLifespan()}.
+   * 
+   * @param visualSpatialField The {@link 
+   * jchrest.architecture.VisualSpatialField} to encode the new {@link 
+   * jchrest.lib.VisualSpatialFieldObject} on, if applicable.
+   * @param col The column in the {@link 
+   * jchrest.architecture.VisualSpatialField} to encode the new {@link 
+   * jchrest.lib.VisualSpatialFieldObject} on, if applicable.
+   * @param row The row in the {@link 
+   * jchrest.architecture.VisualSpatialField} to encode the new {@link 
+   * jchrest.lib.VisualSpatialFieldObject} on, if applicable.
+   * @param sceneObjectToEncode
+   * @param time The creation time of the new {@link 
+   * jchrest.lib.VisualSpatialFieldObject}.
+   * @param sceneObjectRecognised Determines the recognised status of the {@link
+   * jchrest.lib.VisualSpatialFieldObject} to be encoded.  Set to {@link 
+   * java.lang.Boolean#TRUE} to specify that the {@link
+   * jchrest.lib.VisualSpatialFieldObject} to be encoded is recognised, set to 
+   * {@link java.lang.Boolean#FALSE} to specify that it is unrecognised (see
+   * {@link jchrest.lib.VisualSpatialFieldObject#setRecognised(int, boolean)).
+   * 
+   * @return {@link java.lang.Boolean#TRUE} if a new {@link 
+   * jchrest.lib.VisualSpatialFieldObject} was encoded or {@link 
+   * java.lang.Boolean#FALSE} if not.
+   */
+  private boolean encodeVisualSpatialFieldObjectDuringVisualSpatialFieldConstruction(
+    VisualSpatialField visualSpatialField,
+    int col,
+    int row,
+    SceneObject sceneObjectToEncode,
+    int time,
+    boolean sceneObjectRecognised
+  ){
+    this.printDebugStatement("\n===== Chrest.encodeVisualSpatialFieldObjectDuringVisualSpatialFieldConstruction() =====");
+    this.printDebugStatement("- Checking if the SceneObject should have a VisualSpatialFieldObject " +
+      "representation encoded on visual-spatial coordinates (" + col +
+      ", " + row + ")");
+    
+    boolean visualSpatialFieldObjectCreated = false;
+
+    
+    List<VisualSpatialFieldObject> coordinateContents = visualSpatialField.getCoordinateContents(col, row, time, false);
+    this.printDebugStatement("- Contents of coordinates:");
+    if(this.debug()){
+      for(VisualSpatialFieldObject coordinateContent : coordinateContents){
+        this.printDebugStatement(coordinateContent.toString());
+      }
+    }
+
+    if(coordinateContents.isEmpty()){
+
+      this.printDebugStatement("\n- Attempting to create a VisualSpatialObject representing the " +
+        "SceneObject with " + sceneObjectToEncode.toString() + " at time " + 
+        time
+      );
+
+      VisualSpatialFieldObject visualSpatialFieldObject = new VisualSpatialFieldObject(
+        sceneObjectToEncode.getIdentifier(),
+        sceneObjectToEncode.getObjectType(),
+        this,
+        visualSpatialField,
+        time,
+        sceneObjectRecognised,
+        true
+      );
+
+      this.printDebugStatement("- VisualSpatialFieldObject created:\n" + visualSpatialFieldObject.toString());
+
+      try {
+        visualSpatialFieldObjectCreated = visualSpatialField.addObjectToCoordinates(
+          col,
+          row,
+          visualSpatialFieldObject,
+          time
+        );
+      } catch (VisualSpatialFieldException ex) {
+        Logger.getLogger(Chrest.class.getName()).log(Level.SEVERE, null, ex);
+      }
+    }
+    
+    this.printDebugStatement("===== RETURN =====");
+    return visualSpatialFieldObjectCreated;
+  }
+  
   /**
-   * Predict a move using a CHUMP-like mechanism.
+   * Updates the terminus of all {@link jchrest.lib.VisualSpatialFieldObject 
+   * VisualSpatialFieldObjects} that are on all coordinates specified by 
+   * subtracting/adding the result of invoking {@link 
+   * jchrest.architecture.Perceiver#getFixationFieldOfView()} in context of the
+   * {@link jchrest.architecture.Perceiver} associated with {@link #this} from 
+   * the {@code visualSpatialFieldCol} and {@code visualSpatialFieldRow} 
+   * specified at the {@code time} specified.
+   * <p>
+   * So, if {@code visualSpatialFieldCol} and {@code visualSpatialFieldRow} are
+   * equal to 2, the {@code visualSpatialField} specified has dimensions 5 * 5 
+   * and {@link jchrest.architecture.Perceiver#getFixationFieldOfView()} returns 
+   * 2, all {@link jchrest.lib.VisualSpatialFieldObject 
+   * VisualSpatialFieldObjects} in the {@code visualSpatialField} specified will
+   * have their terminus updated if they are "alive" (see {@link 
+   * jchrest.lib.VisualSpatialFieldObject#isAlive(int)}) at {@code time}.
    * 
-   * TODO: Improve the heuristics here.
-   * 
-   * @param scene
-   * @param numFixations
-   * @param colour
-   * @param time
-   * @param timeSceneSeenUntil The time that this {@link #this} model can no 
-   * longer "see" the {@link jchrest.lib.Scene} to predict moves in context of.  
-   * If there is no time limit on how long the {@link jchrest.lib.Scene} can be 
-   * "seen" for then pass null.
-   * 
-   * @return
+   * @param visualSpatialField
+   * @param visualSpatialFieldCol
+   * @param visualSpatialFieldRow
+   * @param time 
    */
-//  public Move predictMove (Scene scene, int numFixations, String colour, int time, Integer timeSceneSeenUntil) {
-//    Map<ListPattern, Integer> moveFrequencies = getMovePredictions (scene, numFixations, colour, time, timeSceneSeenUntil);
-//    
-//    if(moveFrequencies != null){
-//      // find the most frequent pattern
-//      ListPattern best = null;
-//      int bestFrequency = 0;
-//      for (ListPattern key : moveFrequencies.keySet ()) {
-//        if (moveFrequencies.get (key) > bestFrequency) {
-//          best = key;
-//          bestFrequency = moveFrequencies.get (key);
-//        }
-//      }
-//      // create a move to return
-//      // list pattern should be one item long, with the first item being an ItemSquarePattern
-//      if (best != null && (best.size () == 1) && (best.getItem(0) instanceof ItemSquarePattern)) {
-//        ItemSquarePattern move = (ItemSquarePattern)best.getItem (0);
-//        return new Move (move.getItem (), move.getRow (), move.getColumn ());
-//      }
-//    }
-//    
-//    return new Move ("UNKNOWN", 0, 0);
-//  }
-  
-  
+  void refreshVisualSpatialFieldObjectTermini(
+    VisualSpatialField visualSpatialField,
+    int visualSpatialFieldCol, 
+    int visualSpatialFieldRow, 
+    int time
+  ){
+    this.printDebugStatement("\n===== Chrest.refreshVisualSpatialFieldObjectTermini() =====");
+    this.printDebugStatement(
+      "- Refreshing termini of VisualSpatialFieldObjects alive at time " + time + 
+      " on visual-spatial field coordinates that are " + 
+      this.getPerceiver().getFixationFieldOfView() + " square around " +
+      "coordinates being processed (" + visualSpatialFieldCol + ", " +
+      visualSpatialFieldRow + ")"
+    );
+    
+    TreeMap<Double, String> unknownProbabilities = new TreeMap();
+    unknownProbabilities.put(1.0, Scene.getBlindSquareToken());
+    Scene visualSpatialFieldAsScene = visualSpatialField.getAsScene(time, unknownProbabilities);
+    ListPattern visualSpatialFieldObjectsInScope = visualSpatialFieldAsScene.getItemsInScopeAsListPattern(
+      visualSpatialFieldCol,
+      visualSpatialFieldRow,
+      this.getPerceiver().getFixationFieldOfView()
+    );
 
-  
+    for(PrimitivePattern visualSpatialFieldObjectInScope : visualSpatialFieldObjectsInScope){
+      ItemSquarePattern visualSpatialFieldObject = (ItemSquarePattern)visualSpatialFieldObjectInScope;
+      
+      int domainSpecificCol = visualSpatialFieldAsScene.getDomainSpecificColFromSceneSpecificCol(visualSpatialFieldObject.getColumn());
+      int domainSpecificRow = visualSpatialFieldAsScene.getDomainSpecificRowFromSceneSpecificRow(visualSpatialFieldObject.getRow());
 
+      Integer visualSpatialCol = visualSpatialField.getVisualSpatialFieldColFromDomainSpecificCol(domainSpecificCol);
+      Integer visualSpatialRow = visualSpatialField.getVisualSpatialFieldRowFromDomainSpecificRow(domainSpecificRow);
+      
+      this.printDebugStatement("   ~ Processing VisualSpatialObjects on coordinates (" + visualSpatialCol + ", " + visualSpatialRow + ")");
+      List<VisualSpatialFieldObject> objectsOnCoordinates = visualSpatialField.getCoordinateContents(
+        visualSpatialCol,
+        visualSpatialRow,
+        time, 
+        false
+      );
+      
+      for(VisualSpatialFieldObject objectOnCoordinates : objectsOnCoordinates){
+        this.printDebugStatement("   ~ Processing VisualSpatialFieldObject:\n" + objectOnCoordinates.toString());
+        this.printDebugStatement("\n   ~ Checking if this VisualSpatialFieldObject is alive and doesn't have a null terminus");
+        if(objectOnCoordinates.isAlive(time) && objectOnCoordinates.getTerminus() != null){
+          this.printDebugStatement("   ~ VisualSpatialFieldObject is alive and doesn't have a null terminus. Refreshing terminus at time " + time + ".");
+          objectOnCoordinates.setTerminus(time, false);
+          this.printDebugStatement("   ~ Terminus = " + objectOnCoordinates.getTerminus());
+        }
+      }
+    }
+    
+    this.printDebugStatement("===== RETURN =====");
+  }
+  
   /** 
    * Clear the STM and LTM of this {@link #this} model.
    */
@@ -3932,17 +5355,9 @@ public class Chrest extends Observable {
     }
   }
   
-  
-  
-  public int getCognitionClock(){
-    return this._cognitionClock;
-  }
-  
   /**
-   * Returns all instance variables ending with "Clock" for this {@link #this}
+   * @return All instance variables ending with "Clock" for this {@link #this}
    * instance.
-   * 
-   * @return 
    */
   private ArrayList<Field> getClockInstanceVariables(){
     ArrayList<Field> clockInstanceVariables = new ArrayList<>();
@@ -3962,8 +5377,7 @@ public class Chrest extends Observable {
   }
   
   /**
-   * Returns the value of the clock with the maximum value 
-   * @return 
+   * @return The value of the clock with the maximum value 
    */
   public int getMaximumClockValue(){
     ArrayList<Integer> clockValues = new ArrayList<>();
@@ -3998,419 +5412,5 @@ public class Chrest extends Observable {
         Logger.getLogger(Chrest.class.getName()).log(Level.SEVERE, null, ex);
       }
     }
-  }
-  
-  public int getTimeToUpdateStm() {
-    return _timeToUpdateStm;
-  }
-  
-  /****************************************************************************/
-  /****************************************************************************/
-  /*********************** VISUAL-SPATIAL FIELD METHODS ***********************/
-  /****************************************************************************/
-  /****************************************************************************/
-  
-  /**
-   * @param time
-   * @return
-   */
-  public Integer getRecognisedVisualSpatialObjectLifespan(int time){
-    return this._recognisedVisualSpatialObjectLifespan;
-  }
-  
-  /**
-   * @param time
-   * @return 
-   */
-  public Integer getUnrecognisedVisualSpatialObjectLifespan(int time){
-    return this._unrecognisedVisualSpatialObjectLifespan;
-  }
-  
-  /**
-   * @param time
-   * @return
-   */
-  public Integer getVisualSpatialFieldPhysicalObjectEncodingTime(int time){
-    return this._visualSpatialFieldPhysicalObjectEncodingTime;
-  }
-  
-  /**
-   * @param time
-   * @return 
-   */
-  public Integer getVisualSpatialFieldEmptySquareEncodingTime(int time){
-    return this._visualSpatialFieldEmptySquareEncodingTime;
-  }
-  
-  /**
-   * @param time
-   * @return 
-   */
-  public Integer getVisualSpatialFieldAccessTime(int time){
-    return this._visualSpatialFieldAccessTime;
-  }
-  
-  /**
-   * @param time
-   * @return
-   */
-  public Integer getVisualSpatialFieldObjectMovementTime(int time){
-    return this._visualSpatialFieldObjectMovementTime;
-  }
-  
-  /**
-   * Sets the lifespan for any new, recognised {@link 
-   * jchrest.architecture.VisualSpatialFieldObject}s.
-   * 
-   * @param lifespan
-   */
-  public void setLifespanForRecognisedVisualSpatialObjects(int lifespan){
-    this._recognisedVisualSpatialObjectLifespan = lifespan;
-  }
-  
-  /**
-   * Sets the lifespan for any new, unrecognised {@link 
-   * jchrest.architecture.VisualSpatialFieldObject}s.
-   * 
-   * @param lifespan
-   */
-  public void setLifespanForUnrecognisedVisualSpatialObjects(int lifespan){
-    this._unrecognisedVisualSpatialObjectLifespan = lifespan;
-  }
-  
-  /**
-   * Sets the encoding time for any new {@link 
-   * jchrest.lib.VisualSpatialFieldObject}s that represent physical {@link 
-   * jchrest.domainSpecifics.SceneObject}s, i.e. non-empty and non-blind {@link 
-   * jchrest.lib.VisualSpatialFieldObject}s.
-   * 
-   * @param encodingTime
-   */
-  public void setVisualSpatialFieldPhysicalObjectEncodingTime(int encodingTime){
-    this._visualSpatialFieldPhysicalObjectEncodingTime = encodingTime;
-  }
-  
-  /**
-   * Sets the encoding time for any new {@link 
-   * jchrest.lib.VisualSpatialFieldObject}s that represent empty squares in a 
-   * {@link jchrest.lib.Scene}.
-   * 
-   * @param encodingTime
-   */
-  public void setVisualSpatialFieldEmptySquareEncodingTime(int encodingTime){
-    this._visualSpatialFieldEmptySquareEncodingTime = encodingTime;
-  }
-  
-  /**
-   * Sets the base time for accessing a {@link 
-   * jchrest.architecture.VisualSpatialField} associated with {@link #this}.
-   * 
-   * @param accessTime
-   */
-  public void setVisualSpatialFieldAccessTime(int accessTime){
-    this._visualSpatialFieldAccessTime = accessTime;
-  }
-  
-  /**
-   * Set the time to move a {@link 
-   * jchrest.architecture.VisualSpatialFieldObject} on a {@link 
-   * jchrest.architecture.VisualSpatialField} associated with {@link #this}.
-   * 
-   * @param movementTime
-   */
-  public void setVisualSpatialFieldObjectMovementTime(int movementTime){
-    this._visualSpatialFieldObjectMovementTime = movementTime;
-  }
-  
-  
-  /**
-   * Attempts to create and associate a new {@link 
-   * jchrest.architecture.VisualSpatialField} with this {@link #this} model.
-   * If the {@link jchrest.architecture.VisualSpatialField} is successfully
-   * created, it will be added to the database of {@link 
-   * jchrest.architecture.VisualSpatialField}s associated with this {@link 
-   * #this} model at the time its instantiation is complete i.e. the sum of:
-   * <ul>
-   *  <li>The time this function is invoked</li>
-   *  <li>
-   *    The time taken to scan the {@link jchrest.lib.Scene} to encode into
-   *    the {@link jchrest.architecture.VisualSpatialField} to be created.
-   *  </li>
-   *  <li>
-   *    The time taken to access the {@link 
-   *    jchrest.architecture.VisualSpatialField} so it can be instantiated.
-   *  </li>
-   *  <li>
-   *    The time taken to encode any empty squares and {@link 
-   *    jchrest.domainSpecifics.SceneObject}s in the {@link jchrest.lib.Scene} to encode 
-   *    into the {@link jchrest.architecture.VisualSpatialField} to be created.
-   *  </li>
-   * </ul>
-   * 
-   * @param sceneToEncode
-   * 
-   * @param timeSceneToEncodeCanBeSeenUntil  The time that this {@link #this} 
-   * model can no longer "see" the {@link jchrest.lib.Scene} to be encoded into
-   * the {@link jchrest.architecture.VisualSpatialField} to be created.  If 
-   * there is no time limit on how long the {@link jchrest.lib.Scene} can be 
-   * "seen" for then pass null. 
-   * 
-   * @param objectEncodingTime How long it takes to encode an object in the 
-   * {@link jchrest.architecture.VisualSpatialField} to be created.
-   * 
-   * @param emptySquareEncodingTime How long it takes to encode an empty square
-   * in the {@link jchrest.architecture.VisualSpatialField} to be created.
-   * 
-   * @param accessTime How long it takes to access the {@link 
-   * jchrest.architecture.VisualSpatialField} to be created.
-   * 
-   * @param objectMovementTime How long it takes to move a {@link 
-   * jchrest.architecture.VisualSpatialFieldObject} irrespective of the 
-   * "distance" moved in the {@link jchrest.architecture.VisualSpatialField} to 
-   * be created.
-   * 
-   * @param lifespanForRecognisedObjects How long {@link 
-   * jchrest.architecture.VisualSpatialFieldObject}s will exist for after being
-   * recognised in the {@link jchrest.architecture.VisualSpatialField} to be 
-   * created.
-   * 
-   * @param lifespanForUnrecognisedObjects How long {@link 
-   * jchrest.architecture.VisualSpatialFieldObject}s will exist for if they are
-   * not recognised in the {@link jchrest.architecture.VisualSpatialField} to be 
-   * created.
-   * 
-   * @param numberFixations The number of fixations to be made by the {@link 
-   * jchrest.architecture.Perceiver} associated with this {@link #this} model
-   * when scanning the {@link jchrest.lib.Scene} to encode into the {@link 
-   * jchrest.architecture.VisualSpatialField} to be created.
-   * 
-   * @param time The time this function is invoked.
-   * 
-   * @param encodeGhostObjects Whether or not to encode {@link 
-   * jchrest.architecture.SceneObject}s that do not exist in the
-   * {@link jchrest.lib.Scene} to encode into the {@link 
-   * jchrest.architecture.VisualSpatialField} to be created but are recognised 
-   * by virtue of other {@link jchrest.architecture.SceneObject}s that exist and 
-   * are recognised in the {@link jchrest.lib.Scene} to encode when the {@link 
-   * jchrest.lib.Scene} to encode is scanned during creation of the {@link 
-   * jchrest.architecture.VisualSpatialField} to be created.
-   * 
-   * @param debug Set to true to output debug messages to 
-   * {@link java.lang.System#out}.
-   * 
-   * @return {@link java.lang.Boolean#FALSE} if any of the following conditions
-   * are true, {@link java.lang.Boolean#TRUE} otherwise:
-   * <ul>
-   *  <li>
-   *    This {@link #this} model's perceptual resources are not free at the time 
-   *    this function is invoked.
-   *  </li>
-   *  <li>
-   *    The {@link jchrest.lib.Scene} passed is entirely blind.
-   *  </li>
-   *  <li>
-   *    Two {@link jchrest.domainSpecifics.SceneObject}s in the {@link jchrest.lib.Scene}  
-   *    passed have the same identifier.  This means that it will be impossible
-   *    to identify either {@link jchrest.domainSpecifics.SceneObject} in the {@link 
-   *    jchrest.architecture.VisualSpatialField} to be created if they are to be 
-   *    moved at any point in the future.
-   *  </li>
-   * </ul>
-   */
-  public boolean createNewVisualSpatialField(
-    Scene sceneToEncode,
-    Integer timeSceneToEncodeCanBeSeenUntil,
-    int objectEncodingTime, 
-    int emptySquareEncodingTime, 
-    int accessTime, 
-    int objectMovementTime, 
-    int lifespanForRecognisedObjects, 
-    int lifespanForUnrecognisedObjects, 
-    int numberFixations, 
-    int time,
-    boolean encodeGhostObjects,
-    boolean debug
-  ){
-    
-    //Attention and perceptual resources must be free to start constructing a 
-    //visual-spatial field.
-    if(this.attentionFree(time) && this.perceiverFree(time)){
-        
-      /******************************************/
-      /***** CHECK FOR ENTIRELY BLIND SCENE *****/
-      /******************************************/
-
-      //If the scene to encode is entirely blind, the constructor will hang when 
-      //the scene to encode is scanned for recognised chunks below so this check 
-      //prevents this from happening.
-      if(debug) System.out.println("- Checking if the scene to encode is entirely blind...");
-
-      //Create a boolean variable that is only set to true if a non-blind object
-      //exists in the scene to encode.
-      boolean realityIsBlind = true;
-
-      //Check sceneToEncode for a non-blind object that is not the scene creator.
-      for(int col = 0; col < sceneToEncode.getWidth() && realityIsBlind; col++){
-        for(int row = 0; row < sceneToEncode.getHeight() && realityIsBlind; row++){
-          String objectClass = sceneToEncode.getSquareContents(col, row).getObjectType();
-          if(
-            !objectClass.equals(Scene.getBlindSquareToken()) &&
-            !objectClass.equals(Scene.getCreatorToken())
-          ){
-            if(debug) System.out.println("   - Col " + col + ", row " + row + " contains an object with class '" + objectClass + "'.");
-            realityIsBlind = false;
-            break;
-          }
-        }
-      }
-
-      if(!realityIsBlind){
-        if(debug) if(debug) System.out.println("- Scene to encode isn't entirely blind");
-
-        VisualSpatialField visualSpatialField = new VisualSpatialField(this, sceneToEncode, time);
-
-        //Encode the objects here since getting and setting STM info needs to
-        //be interspersed.
-        
-
-      }
-        
-////        VisualSpatialField visualSpatialField = new VisualSpatialField(
-////          this,
-////          sceneToEncode,
-////          timeSceneToEncodeCanBeSeenUntil,
-////          objectEncodingTime,
-////          emptySquareEncodingTime,
-////          accessTime,
-////          objectMovementTime,
-////          lifespanForRecognisedObjects,
-////          lifespanForUnrecognisedObjects,
-////          numberFixations,
-////          time,
-////          encodeGhostObjects,
-////          debug
-////        );
-////      
-////        int instantiationCompleteTime = visualSpatialField.getTimeInstantiationComplete();
-//        this._attentionClock = instantiationCompleteTime;
-//        this._visualSpatialFields.put(instantiationCompleteTime, visualSpatialField);
-//        return true;
-//      }
-//      
-//      //Perceptual resources not free
-//      return false;
-//    } catch (VisualSpatialFieldException ex) {
-//      Logger.getLogger(Chrest.class.getName()).log(Level.SEVERE, null, ex);
-//      return false;
-    }
-    
-    return false;
-  }
-  
-  /**
-   * Moves {@link jchrest.lib.VisualSpatialFieldObject}s on the relevant 
-   * {@link jchrest.architecture.VisualSpatialField} according to the sequence 
-   * of moves specified.  {@link jchrest.lib.VisualSpatialFieldObject} movement 
-   * can only occur if the attention of this {@link #this} model is free.  
-   * 
-   * If all moves are successful, the attention clock of this {@link #this} 
-   * model will be set to the time this function is invoked plus the time taken
-   * to access the relevant {@link jchrest.architecture.VisualSpatialField} plus 
-   * the product of the number of moves performed multiplied by the time 
-   * specified to move an object in the relevant {@link 
-   * jchrest.architecture.VisualSpatialField}.
-   * 
-   * This method does not constrain the number of squares moved by a {@link 
-   * jchrest.lib.VisualSpatialFieldObject} in a {@link 
-   * jchrest.architecture.VisualSpatialField}.  Essentially, it takes the same 
-   * amount of time to move a {@link jchrest.lib.VisualSpatialFieldObject} 
-   * across 5 squares in a {@link jchrest.architecture.VisualSpatialField} as it 
-   * does to move it across one.  If movements need to be time-constrained in 
-   * this way then these constraints should be reflected in the moves specified.
-   * 
-   * Note that if a {@link jchrest.lib.VisualSpatialFieldObject} is moved to 
-   * coordinates in the {@link jchrest.architecture.VisualSpatialField} 
-   * that are already occupied then the two {@link 
-   * jchrest.lib.VisualSpatialFieldObject}s will co-exist on the coordinates.
-   * 
-   * @param moveSequences A 2D {@link java.util.ArrayList} whose first dimension 
-   * elements should contain {@link java.util.ArrayList}s of {@link 
-   * jchrest.lib.ItemSquarePattern} instances that prescribe a sequence of moves 
-   * for one {@link jchrest.lib.VisualSpatialFieldObject} using zero-indexed,
-   * {@link jchrest.architecture.VisualSpatialField} coordinates rather than 
-   * coordinates used in the external domain or relative to the "mover".  It is 
-   * <b>imperative</b> that {@link jchrest.lib.VisualSpatialFieldObject}s to be 
-   * moved are identified using their unique identifier (see {@link 
-   * jchrest.lib.VisualSpatialFieldObject#getIdentifier()}) rather than their 
-   * object class (see {@link 
-   * jchrest.lib.VisualSpatialFieldObject#getObjectClass()}). For example, if 
-   * two {@link jchrest.lib.VisualSpatialFieldObject}s have the same object 
-   * class, A, but have unique identifiers, 0 and 1, and both are to be moved, 0 
-   * before 1, then the {@link java.util.ArrayList} passed should specify: 
-   * <pre>
-   * [ <i>First dimension {@link java.util.ArrayList}</i>
-   *    [ <i>Second dimension {@link java.util.ArrayList}</i>
-   *      [0 sourceX sourceY], <i>{@link jchrest.lib.ItemSquarePattern}</i>
-   *      [0 destinationX desitinationY] <i>{@link jchrest.lib.ItemSquarePattern}</i>
-   *    ],
-   *    [ <i>Second dimension {@link java.util.ArrayList}</i>
-   *      [1 sourceX sourceY], <i>{@link jchrest.lib.ItemSquarePattern}</i>
-   *      [1 desitinationX destinationY] <i>{@link jchrest.lib.ItemSquarePattern}</i>
-   *    ]
-   * ]
-   * <pre/>
-   * 
-   * @param time The time (in milliseconds) when this function is invoked.
-   * @param debug
-   * 
-   * @return {@link java.lang.Boolean#TRUE} if the attention resource of this
-   * {@link #this} model is free at the time the function is invoked and a 
-   * {@link jchrest.lib.VisualSpatialFieldException} is not thrown, {@link 
-   * java.lang.Boolean#FALSE} otherwise.
-   * 
-   * @throws jchrest.lib.VisualSpatialFieldException If any of the moves 
-   * specified cause any of the following apply to the moves specified:
-   * <ol type="1">
-   *  <li>
-   *    More than one object is moved within the same sequence; object movement 
-   *    should be strictly serial.
-   *  </li>
-   *  <li>
-   *    The initial {@link jchrest.lib.ItemSquarePattern} in a move sequence 
-   *    does not correctly identify where the 
-   *    {@link jchrest.lib.VisualSpatialFieldObject} is located in this 
-   *    {@link #this}.  If the {@link jchrest.lib.VisualSpatialFieldObject} has 
-   *    previously been moved in this {@link #this}, the initial location should 
-   *    be its current location in this {@link #this}.
-   *  </li>
-   *  <li>
-   *    Only the initial location of a 
-   *    {@link jchrest.lib.VisualSpatialFieldObject} is specified.
-   *  </li>
-   * </ol>
-   */
-  public boolean moveVisualSpatialFieldObjects(ArrayList<ArrayList<ItemSquarePattern>> moveSequences, int time, boolean debug) throws VisualSpatialFieldException{
-//    if(this._attentionClock < time){
-//      
-//      try{
-//        this._attentionClock = this.getVisualSpatialFields().floorEntry(time).getValue().moveObjects(moveSequences, time, debug);
-//        return true;
-//      }
-//      catch(VisualSpatialFieldException e){
-//        return false;
-//      }
-//    }
-    
-    return false;
-  }
-  
-  /**
-   * Returns this {@link #this} database of 
-   * {@link jchrest.architecture.VisualSpatialField}s.
-   * 
-   * @return 
-   */
-  public TreeMap<Integer,VisualSpatialField> getVisualSpatialFields(){
-    return this._visualSpatialFields;
   }
 }

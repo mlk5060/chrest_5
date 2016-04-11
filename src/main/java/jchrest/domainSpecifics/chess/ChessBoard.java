@@ -1,6 +1,5 @@
 package jchrest.domainSpecifics.chess;
 
-import jchrest.architecture.VisualSpatialField;
 import jchrest.domainSpecifics.Scene;
 
 /**
@@ -10,8 +9,8 @@ import jchrest.domainSpecifics.Scene;
  */
 public class ChessBoard extends Scene{
   
-  public ChessBoard(String boardName, VisualSpatialField associatedVisualSpatialField){
-    super(boardName, 8, 8, 1, 1, associatedVisualSpatialField);
+  public ChessBoard(String boardName){
+    super(boardName, 8, 8, 1, 1, null);
   }
   
   @Override

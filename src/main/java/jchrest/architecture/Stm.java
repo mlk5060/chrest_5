@@ -291,7 +291,7 @@ public class Stm implements Iterable<Node> {
     Entry floorEntry = this._itemHistory.floorEntry(time);
     return floorEntry == null ? null : (List<Node>)floorEntry.getValue();
   }
-
+  
   /**
    * @param time
    * @return The number of {@link jchrest.architecture.Node}s in {@link #this} 

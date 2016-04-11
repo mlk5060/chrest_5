@@ -128,6 +128,10 @@
 # 
 unit_test "constructor" do
   
+  Scene.class_eval{
+    field_accessor :_scene
+  }
+  
   # Need access to all private Fixation instance variables except 
   # "_timeDecidedUpon" so make them all writable from Ruby.
   Fixation.class_eval{ 
@@ -238,11 +242,8 @@ unit_test "constructor" do
       if scenario == 1
         for col in 0...scene_to_make_fixation_in_context_of.getWidth()
           for row in 0...scene_to_make_fixation_in_context_of.getHeight()
-            piece = ChessObject.new( 
-              Scene.getBlindSquareToken(), 
-              Scene.getBlindSquareToken()
-            )
-            scene_to_make_fixation_in_context_of.addItemToSquare(col, row, piece)
+            piece = ChessObject.new(Scene.getBlindSquareToken())
+            scene_to_make_fixation_in_context_of._scene.get(col).set(row, piece)
           end
         end 
       end
@@ -259,12 +260,11 @@ unit_test "constructor" do
             # of the chess board.
             if(!piece_to_fixate_on_location.equals(Square.new(col, row)))
               piece = ChessObject.new( 
-                (col + row).to_s, 
                 piece_to_fixate_on_colour == Color::WHITE ?
                   "P" : 
                   "p"
               )
-              scene_to_make_fixation_in_context_of.addItemToSquare(col, row, piece)
+              scene_to_make_fixation_in_context_of._scene.get(col).set(row, piece)
             end
           end
         end 
@@ -296,8 +296,8 @@ unit_test "constructor" do
         if scenario == 5 then first_fixation._rowFixatedOn = nil end
         if scenario == 6 then first_fixation._objectSeen = nil end
         if scenario == 7 then first_fixation._objectSeen = SceneObject.new("0", "K") end
-        if scenario == 8 then first_fixation._objectSeen = ChessObject.new("0", Scene.getBlindSquareToken()) end
-        if scenario == 9 then first_fixation._objectSeen = ChessObject.new("0", Scene.getEmptySquareToken()) end
+        if scenario == 8 then first_fixation._objectSeen = ChessObject.new(Scene.getBlindSquareToken()) end
+        if scenario == 9 then first_fixation._objectSeen = ChessObject.new(Scene.getEmptySquareToken()) end
       end
 
       time += 100
@@ -582,6 +582,10 @@ end
 #   - Have the Square to fixate on not be a blind square.
 unit_test "make" do
   
+  Scene.class_eval{
+    field_accessor :_scene
+  }
+  
   # Need access to the private AttackDefenseFixation instance variable that 
   # stores the Square to fixate on
   AttackDefenseFixation.class_eval{
@@ -611,7 +615,7 @@ unit_test "make" do
     if scenario == 2
       for col in 0...chess_board_that_fixation_is_to_be_made_in_context_of.getWidth()
         for row in 0...chess_board_that_fixation_is_to_be_made_in_context_of.getHeight()
-          chess_board_that_fixation_is_to_be_made_in_context_of.addItemToSquare(col, row, "", Scene.getBlindSquareToken())
+          chess_board_that_fixation_is_to_be_made_in_context_of._scene.get(col).set(row, SceneObject.new(Scene.getBlindSquareToken()))
         end
       end
     end
@@ -620,7 +624,7 @@ unit_test "make" do
       object = nil
       
       if scenario == 4 
-        object = ChessObject.new("", Scene.getEmptySquareToken())
+        object = ChessObject.new(Scene.getEmptySquareToken())
       else
         # Need to ensure that the "equal" condition passes in the "make" 
         # function to ensure that the blind square conditional is working 
@@ -646,7 +650,7 @@ unit_test "make" do
         #    object to the value of the "_identifier" for the pawn ChessObject
         #    on Square [0, 6] in the Scene used in the constructor to the
         #    AttackDefenseFixation constructor.
-        object = ChessObject.new("", Scene.getBlindSquareToken())
+        object = ChessObject.new(Scene.getBlindSquareToken())
         id_field = object.java_class().superclass().declared_field("_identifier")
         id_field.accessible = true
         id_field.set_value(object, chess_board_that_fixation_was_decided_in_context_of.getSquareContents(
@@ -654,8 +658,7 @@ unit_test "make" do
         ).getIdentifier())
       end
       
-      chess_board_that_fixation_is_to_be_made_in_context_of.addItemToSquare(
-        square_to_fixate_on.getColumn(),
+      chess_board_that_fixation_is_to_be_made_in_context_of._scene.get(square_to_fixate_on.getColumn()).set(
         square_to_fixate_on.getRow(),
         object
       )

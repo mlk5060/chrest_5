@@ -104,6 +104,11 @@ end
 # |----------|----|----|----|----|---------------------|
 # 
 unit_test "make" do
+  
+  Scene.class_eval{
+    field_accessor :_scene
+  }
+  
   for performance_time in 1..3
     for scenario in 1..19
       
@@ -145,7 +150,7 @@ unit_test "make" do
       if scenario == 4
         for col in 0...scene.getWidth()
           for row in 0...scene.getHeight()
-            scene.addItemToSquare(col, row, Scene.getBlindSquareToken(), Scene.getBlindSquareToken())
+            scene._scene.get(col).set(row, SceneObject.new(Scene.getBlindSquareToken()))
           end
         end
       end

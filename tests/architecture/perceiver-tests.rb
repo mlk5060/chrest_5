@@ -1,3 +1,5 @@
+require_relative "visual-spatial-field-tests"
+
 ################################################################################
 # Checks that the Perceiver constructor sets the "_fixations" data structure 
 # correctly, i.e. should be empty at the time of construction.
@@ -26,83 +28,123 @@ unit_test "constructor" do
 end
 
 ################################################################################
-# Uses 11 scenarios, each of which are repeated 100 times to ensure that 
+# Uses 24 scenarios, each of which are repeated 100 times to ensure that 
 # functionality is consistent, to test the "addFixation" method.  Each scenario
 # tests an individual aspect of the function (usually a sub-conditional).
 # 
-# Scenario 1: 
-#   - No performance time set for Fixation added
+# Scenario 1/13:
+#   - Fixation is null
 # 
-# Scenario 2:
-#   - Performance time set for Fixation added but this is before the creation 
-#     time of the Perceiver that the Fixation is being added by.  This ensures
-#     that the most recent fixation check fails.
+# Scenario 2/14: 
+#   - Fixation is not null
+#   - No performance time set for Fixation
+# 
+# Scenario 3/15:
+#   - Fixation is not null
+#   - Performance time set for Fixation but this is before the creation time of 
+#     the Perceiver that the Fixation is being added to.
 #     
-# Scenario 3:
+# Scenario 4/16:
+#   - Fixation is not null
 #   - Fixation performance time set to a value after the Perceiver has been 
 #     created.  
 #   - Fixation performance set to false.
-#   
-# Scenario 4: 
-#   - Fixation performance time set to a value after the Perceiver has been 
-#     created.  
-#   - Fixation performance set to true.
-#   - No scene set for fixation.
-#   
-# Scenario 5: 
-#   - Fixation performance time set to a value after the Perceiver has been 
-#     created.  
-#   - Fixation performance set to true.
-#   - Scene set for fixation.
-#   - No column set for square fixated on.
-#   
-# Scenario 6: 
-#   - Fixation performance time set to a value after the Perceiver has been 
-#     created.  
-#   - Fixation performance set to true.
-#   - Scene set for fixation.
-#   - Column set for square fixated on.
-#   - No row set for square fixated on.
-# 
-# Scenario 7: 
-#   - Fixation performance time set to a value after the Perceiver has been 
-#     created.  
-#   - Fixation performance set to true.
-#   - Scene set for fixation.
-#   - Column set for square fixated on.
-#   - Row set for square fixated on.
-#   - Visual STM has no Nodes.
-#   - CHREST model is not learning object locations relative to agent.
-#   
-# Scenario 8:
-#   - Fixation performance time set to a value after the Perceiver has been 
-#     created.  
-#   - Fixation performance set to true.
-#   - Scene set for fixation.
-#   - Column set for square fixated on.
-#   - Row set for square fixated on.
-#   - Visual STM has a hypothesis that is a template whose slot values can be
-#     filled given the Fixation added.
-#   - CHREST model is not learning object locations relative to agent.
 #     
-# Scenario 9:
-#   - As scenario 7 but CHREST model is learning object locations relative to 
-#     agent and the Scene fixated on does not contain the location of the
-#     agent that created it.
-# 
-# Scenario 10:
-#   - As scenario 9 but the Scene fixated on does contain the location of the
-#     agent that created it.
-#     
-# Scenario 11:
-#   - As scenario 8 but CHREST model is learning object locations relative to 
-#     agent
+# Scenario 5/17:
+#   - Fixation is not null
+#   - Fixation performance time set to a value after the Perceiver has been 
+#     created.  
+#   - Fixation performance set to true.
+#   - Scene fixated on set to nil
+#   
+# Scenario 6/18: 
+#   - Fixation is not null
+#   - Fixation performance time set to a value after the Perceiver has been 
+#     created.  
+#   - Fixation performance set to true.
+#   - Scene fixated on not set to nil.
+#   - Column fixated on set to nil.
+#   
+# Scenario 7/19: 
+#   - Fixation is not null
+#   - Fixation performance time set to a value after the Perceiver has been 
+#     created.  
+#   - Fixation performance set to true.
+#   - Scene fixated on not set to nil.
+#   - Column fixated on not set to nil.
+#   - Row fixated on set to nil.
+#   
+# Scenario 8/20:
+#   - Fixation is not null
+#   - Fixation performance time set to a value after the Perceiver has been 
+#     created.  
+#   - Fixation performance set to true.
+#   - Scene fixated on not set to nil.
+#   - Column fixated on not set to nil.
+#   - Row fixated on not set to nil.
+#   
+#   - CHREST model is not learning object locations relative to itself
+#   - No Nodes in visual STM.
+#
+# Scenario 9/21:
+#   - Fixation is not null
+#   - Fixation performance time set to a value after the Perceiver has been 
+#     created.  
+#   - Fixation performance set to true.
+#   - Scene fixated on not set to nil.
+#   - Column fixated on not set to nil.
+#   - Row fixated on not set to nil.
+#   
+#   - CHREST model is not learning object locations relative to itself
+#   - Template Node as visual STM hypothesis.
+#   
+# Scenario 10/22:
+#   - Fixation is not null
+#   - Fixation performance time set to a value after the Perceiver has been 
+#     created.  
+#   - Fixation performance set to true.
+#   - Scene fixated on not set to nil.
+#   - Column fixated on not set to nil.
+#   - Row fixated on not set to nil.
+#   
+#   - CHREST model is learning object locations relative to itself
+#   - Location of agent equipped with CHREST is not encoded in the Scene fixated
+#     on
+#   
+# Scenario 11/23:
+#   - Fixation is not null
+#   - Fixation performance time set to a value after the Perceiver has been 
+#     created.  
+#   - Fixation performance set to true.
+#   - Scene fixated on not set to nil.
+#   - Column fixated on not set to nil.
+#   - Row fixated on not set to nil.
+#   
+#   - CHREST model is learning object locations relative to itself
+#   - Location of agent equipped with CHREST is encoded in the Scene fixated on
+#   - No Nodes in visual STM. 
+#   
+# Scenario 12/24:
+#   - Fixation is not null
+#   - Fixation performance time set to a value after the Perceiver has been 
+#     created.  
+#   - Fixation performance set to true.
+#   - Scene fixated on not set to nil.
+#   - Column fixated on not set to nil.
+#   - Row fixated on not set to nil.
+#   
+#   - CHREST model is learning object locations relative to itself
+#   - Location of agent equipped with CHREST is encoded in the Scene fixated on
+#   - Template Node as visual STM hypothesis.
+#   
+# Scenarios 13-24 are as Scenarios 1-12 but the Scene fixated on represents a
+# VisualSpatialField.
 #     
 # NOTE: To test whether the visual STM hypotheses' slot values are filled the 
-#       function will be invoked twice in scenarios 8 and 11.  This is because
-#       the template Node must first be made the visual STM hypothesis (occurs 
-#       during the first function invocation) and the function must then be 
-#       called again to ascertain if the "fill slots" functionality operates
+#       function will be invoked twice in scenarios 8/19 and 11/22.  This is 
+#       because the template Node must first be made the visual STM hypothesis 
+#       (occurs during the first function invocation) and the function must then 
+#       be called again to ascertain if the "fill slots" functionality operates
 #       as expected.
 #
 # The Scene that the Fixations added are made in context of is shown below. 
@@ -136,6 +178,21 @@ end
 #   the Fixation.
 unit_test "add_fixation" do
   
+  Chrest.java_class{
+    field_accessor :_recognisedVisualSpatialFieldObjectLifespan, :_unrecognisedVisualSpatialFieldObjectLifespan
+  }
+  
+  vsf_field = VisualSpatialField.java_class.declared_field("_visualSpatialField")
+  vsf_field.accessible = true
+  
+  VisualSpatialFieldObject.class_eval{
+    field_accessor :_terminus
+  }
+  
+  Scene.class_eval{
+    field_accessor :_scene
+  }
+  
   # Need access to private instance variables of Fixation.
   Fixation.class_eval{
     field_accessor :_scene, :_colFixatedOn, :_rowFixatedOn, :_performanceTime, :_performed
@@ -147,65 +204,97 @@ unit_test "add_fixation" do
     field_accessor :_childHistory, :_itemSlotsHistory, :_positionSlotsHistory, :_filledItemSlotsHistory, :_filledPositionSlotsHistory, :_templateHistory
   }
   
-  for scenario in 1..11
+  for scenario in 1..24
     100.times do
       time = 0
       
       ###########################################
       ##### SET-UP CHREST MODEL & PERCEIVER #####
       ###########################################
+     
+      # Set the CHREST model's "_learnObjectLocationsRelativeToAgent" variable 
+      # to what is expected in the scenario.
+      learn_object_locations_relative_to_self = ([10,11,12,22,23,24].include?(scenario) ? true : false)
+      model = Chrest.new(time, learn_object_locations_relative_to_self)
+      
+      # Set the model's VisualSpatialFieldObject lifespan variables to very high
+      # numbers so that, if a VisualSpatialField is encoded and the 
+      # "addFixation()" function is invoked twice, the VisualSpatialFieldObjects
+      # will not have decayed by the time of the second invocation and their 
+      # termini are refreshed as expected.  The 
+      # _unrecognisedVisualSpatialFieldObjectLifespan parameter is set to a 
+      # slightly lower value to enable verification of correct termini 
+      # refreshment functionality.
+      model._recognisedVisualSpatialFieldObjectLifespan = 9999999
+      model._unrecognisedVisualSpatialFieldObjectLifespan = 9999990
 
       # Construct Perceiver (one is constructed when a CHREST model is created: 
       # easier than using reflection, see 'constructor' test above), ensure that 
       # its fixation field of view completely encompasses the Scene that the 
-      # Fixation to add is made on and set the CHREST model's 
-      # "_learnObjectLocationsRelativeToAgent" variable to what is expected in
-      # the scenario.
-      model = Chrest.new(time, (scenario.between?(9,11) ? true : false))
+      # Fixation to add is made on and 
+      
       perceiver = model.getPerceiver()
-      perceiver.setFixationFieldOfView(2) # Can see 5 * 5 squares in scene (whole scene)        
+      perceiver.setFixationFieldOfView(2) # Can see 5 * 5 squares in scene (whole scene)   
 
-      ####################################
-      ##### CONSTRUCT FIXATION SCENE #####
-      ####################################
+      #############################################################
+      ##### CONSTRUCT Scene FIXATED ON AND VisualSpatialField #####
+      #############################################################
+      
+      # The VisualSpatialField should be an exact replica of the Scene.
+      visual_spatial_field = nil
+      if(scenario > 12)
+        
+        creator_details = nil
+        if [23,24].include?(scenario)
+          creator_details = ArrayList.new()
+          creator_details.add("0")
+          creator_details.add(Square.new(2, 1))
+        end
+        visual_spatial_field = VisualSpatialField.new("", 5, 5, 1, 1, model, creator_details, time)
+        
+        #Populate VisualSpatialField with remaining VisualSpatialFieldObjects.
+        vsf = vsf_field.value(visual_spatial_field)
+        vsf.get(2).get(3).add(VisualSpatialFieldObject.new("1", "P", model, visual_spatial_field, time, true, true))
+        vsf.get(4).get(3).add(VisualSpatialFieldObject.new("2", "K", model, visual_spatial_field, time, false, true))
+        vsf.get(0).get(2).add(VisualSpatialFieldObject.new("3", "G", model, visual_spatial_field, time, true, true))
+        vsf.get(3).get(1).add(VisualSpatialFieldObject.new("4", "H", model, visual_spatial_field, time, false, true))
+      end
 
       # Minimum domain column and row coordinates should not be zero-indexed so
       # they're different to Scene-specific coordinates).
-      scene = Scene.new("", 5, 5, 1, 1, nil)
+      scene = Scene.new("", 5, 5, 1, 1, visual_spatial_field)
       
       #Add items using scene-specific coordinates.
-      if scenario != 9 then scene.addItemToSquare(2, 1, "0", Scene.getCreatorToken()) end
-      scene.addItemToSquare(2, 3, "1", "P")
-      scene.addItemToSquare(4, 3, "2", "K")
-      scene.addItemToSquare(0, 2, "3", "G")
-      scene.addItemToSquare(3, 1, "4", "H")
+      if [11,12,23,24].include?(scenario) then scene._scene.get(2).set(1, SceneObject.new("0", Scene.getCreatorToken())) end
+      scene._scene.get(2).set(3, SceneObject.new("1", "P"))
+      scene._scene.get(4).set(3, SceneObject.new("2", "K"))
+      scene._scene.get(0).set(2, SceneObject.new("3", "G"))
+      scene._scene.get(3).set(1, SceneObject.new("4", "H"))
 
       ##############################
       ##### CONSTRUCT FIXATION #####
       ##############################
 
       fixation = CentralFixation.new(time)
+      fixation._performanceTime = time + 10
+      fixation._performed = true
+      fixation._scene = scene
+      fixation._colFixatedOn = 2
+      fixation._rowFixatedOn = 2
 
-      fixation._performanceTime =
-        (scenario == 1 ? 
-          fixation._performanceTime = nil :
-          (scenario == 2 ?
-            fixation._performanceTime = time - 10 :
-            time + 10
-          )
-        )
-
-      if scenario != 3 then fixation._performed = true end
-      if scenario != 4 then fixation._scene = scene end
-      if scenario != 5 then fixation._colFixatedOn = 2 end
-      if scenario != 6 then fixation._rowFixatedOn = 2 end
+      if [1, 13].include?(scenario) then fixation = nil end
+      if [2, 14].include?(scenario) then fixation._performanceTime = nil end
+      if [3, 15].include?(scenario) then fixation._performanceTime = time - 10 end
+      if [4, 16].include?(scenario) then fixation._performed = false end
+      if [5, 17].include?(scenario) then fixation._scene = nil end
+      if [6, 18].include?(scenario) then fixation._colFixatedOn = nil end
+      if [7, 19].include?(scenario) then fixation._rowFixatedOn = nil end
 
       ###################################
       ##### CONSTRUCT TEMPLATE NODE #####
       ###################################
       
-      #Should not occur in scenarios 7, 9 and 10.
-      if ![7,9,10].include?(scenario)
+      if [9,12,21,24].include?(scenario)
 
         # Create the template node image.  This should only contain the first 
         # item in the ListPattern that will be created when the Fixation is 
@@ -220,8 +309,8 @@ unit_test "add_fixation" do
         template_node_image = ListPattern.new(Modality::VISUAL)
         template_node_image.add(ItemSquarePattern.new(
           "H",
-          (scenario.between?(7,8) ? 4 : 1), 
-          (scenario.between?(7,8) ? 2 : 0) 
+          ([9, 21].include?(scenario) ? 4 : 1), 
+          ([9, 21].include?(scenario) ? 2 : 0) 
         ))
 
         # Content of template node should be the first item that is "seen" in 
@@ -239,12 +328,12 @@ unit_test "add_fixation" do
         itemSlots.add("K")
         positionSlots = ArrayList.new()
         positionSlots.add(Square.new(
-          (scenario.between?(7,8) ? 3 : 0),
-          (scenario.between?(7,8) ? 4 : 2)
+          ([9, 21].include?(scenario) ? 3: 0),
+          ([9, 21].include?(scenario) ? 4: 2)
         ))
         positionSlots.add(Square.new(
-          (scenario.between?(7,8) ? 5 : 2), 
-          (scenario.between?(7,8) ? 4 : 2)
+          ([9, 21].include?(scenario) ? 5 : 2), 
+          ([9, 21].include?(scenario) ? 4 : 2)
         ))
 
         # Instantiate template variables for the Node (these are all set to null
@@ -274,68 +363,43 @@ unit_test "add_fixation" do
         visual_ltm_root_node_child_history.put(time, links)
         model.getLtmModalityRootNode(Modality::VISUAL)._childHistory = visual_ltm_root_node_child_history
       end
-
-      ######################################
-      ##### INVOKE FUNCTION FIRST TIME #####
-      ######################################
-      
-      list_pattern_returned = nil
-      exception_thrown = false
-      begin
-        list_pattern_returned = perceiver.addFixation(fixation)
-      rescue
-        exception_thrown = true
-      end
       
       ##################################
       ##### SET-UP EXPECTED VALUES #####
       ##################################
       
-      # Expected list pattern.  This shouldn't be null unless scenario is 7, 8, 
-      # 10 or 11.
-      expected_list_pattern_constructed = nil
+      expected_list_pattern_returned = nil
       
-      if([7,8,10,11].include?(scenario))
-        expected_list_pattern_constructed = ListPattern.new(Modality::VISUAL)
-        expected_list_pattern_constructed.add(ItemSquarePattern.new(
+      if [8,9,11,12,20,21,23,24].include?(scenario)
+        expected_list_pattern_returned = ListPattern.new(Modality::VISUAL)
+        expected_list_pattern_returned.add(ItemSquarePattern.new(
           "H",
-          (scenario.between?(7,8) ? 4 : 1), 
-          (scenario.between?(7,8) ? 2 : 0) 
+          ([11,12,23,24].include?(scenario) ? 1 : 4), 
+          ([11,12,23,24].include?(scenario) ? 0 : 2) 
         ))
       
-        expected_list_pattern_constructed.add(ItemSquarePattern.new(
+        expected_list_pattern_returned.add(ItemSquarePattern.new(
           "G",
-          (scenario.between?(7,8) ? 1 : -2), 
-          (scenario.between?(7,8) ? 3 : 1) 
+          ([11,12,23,24].include?(scenario) ? -2 : 1), 
+          ([11,12,23,24].include?(scenario) ? 1 : 3) 
         ))
         
-        expected_list_pattern_constructed.add(ItemSquarePattern.new(
+        expected_list_pattern_returned.add(ItemSquarePattern.new(
           "P",
-          (scenario.between?(7,8) ? 3 : 0), 
-          (scenario.between?(7,8) ? 4 : 2) 
+          ([11,12,23,24].include?(scenario) ? 0 : 3), 
+          ([11,12,23,24].include?(scenario) ? 2 : 4) 
         ))
       
-        expected_list_pattern_constructed.add(ItemSquarePattern.new(
+        expected_list_pattern_returned.add(ItemSquarePattern.new(
           "K",
-          (scenario.between?(7,8) ? 5 : 2), 
-          (scenario.between?(7,8) ? 4 : 2) 
+          ([11,12,23,24].include?(scenario) ? 2 : 5), 
+          ([11,12,23,24].include?(scenario) ? 2 : 4) 
         ))
       end
       
-      # Exception should only be thrown in scenarios 4, 5, 6 and 9.
-      expected_exception_thrown =
-        ([4,5,6,9].include?(scenario) ?
-          true :
-          false
-        )
+      expected_exception_thrown = ([1,4,8,9,11,12,13,16,20,21,23,24].include?(scenario) ? false : true)
 
-      # In all scenarios expect 1 and 2, the Fixation specified should be added
-      # to the "Fixations attempted" data structure in the Perceiver.
-      expected_fixations = 
-        (scenario.between?(1,2) ? 
-          [] :
-          [fixation]
-        )
+      expected_fixations = ([4,8,9,11,12,16,20,21,23,24].include?(scenario) ? [fixation] : [])
 
       # The cognition clock is expected to be equal to its initial value if the 
       # Fixation has not been performed or it has been but either the 
@@ -344,7 +408,7 @@ unit_test "add_fixation" do
       # is equipped with CHREST but the agent's location is not specified in the
       # Scene fixated on.
       # 
-      # In scenarios 7 and 10, the cognition clock will be equal to the 
+      # In scenarios 8/11/20/23, the cognition clock will be equal to the 
       # Fixation's performance time + the time taken to recognise the 
       # ListPattern generated from the field of view around the Fixation (only 1 
       # visual LTM Node: the root, so only 1 link traversed when recognition 
@@ -352,17 +416,17 @@ unit_test "add_fixation" do
       # ListPattern generated from the field of view around the Fixation will 
       # not be recognised and thus will be learned).
       #
-      # In scenarios 8 and 11, the visual LTM node has a child (the template 
+      # In scenarios 9/12/21/24, the visual LTM node has a child (the template 
       # Node) which will be traversed to since its image contains the first item 
       # of the ListPattern passed to recogniseAndlearn so 2 LTM links will be 
       # traversed instead of just 1.  The model will discriminate again since 
       # the second item in the ListPattern generated will be unrecognised.
       expected_cognition_clock = 
-        (scenario.between?(1,6) || scenario == 9 ? 
-          time - 1 :
-          (scenario == 7 || scenario == 10 ?
-            fixation._performanceTime + (model.getLtmLinkTraversalTime()) + model.getDiscriminationTime() :
-            fixation._performanceTime + (model.getLtmLinkTraversalTime() * 2) + model.getDiscriminationTime()
+        (scenario == 8 || scenario == 11 || scenario == 20 || scenario == 23 ?
+          fixation._performanceTime + (model.getLtmLinkTraversalTime()) + model.getDiscriminationTime() :
+          (scenario == 9 || scenario == 12 || scenario == 21 || scenario == 24 ?
+            fixation._performanceTime + (model.getLtmLinkTraversalTime() * 2) + model.getDiscriminationTime() :
+            time - 1
           )
         )
 
@@ -373,14 +437,49 @@ unit_test "add_fixation" do
       # Essentially, the expected attention clock value differs depending on 
       # scenario for the same reasons as the expected cognition clock value does. 
       expected_attention_clock = 
-        (scenario.between?(1,6) || scenario == 9 ? 
-          time - 1 :
-          (scenario == 7 || scenario == 10 ?
-            fixation._performanceTime + (model.getLtmLinkTraversalTime()) + model.getTimeToUpdateStm() :
-            fixation._performanceTime + (model.getLtmLinkTraversalTime() * 2) + model.getTimeToUpdateStm()
+        (scenario == 8 || scenario == 11 || scenario == 20 || scenario == 23 ?
+          fixation._performanceTime + (model.getLtmLinkTraversalTime()) + model.getTimeToUpdateStm() :
+          (scenario == 9 || scenario == 12 || scenario == 21 || scenario == 24 ?
+            fixation._performanceTime + (model.getLtmLinkTraversalTime() * 2) + model.getTimeToUpdateStm() :
+            time - 1
           )
         )
+        
+      # Set expected VisualSpatialField data
+      expected_visual_spatial_field_data = nil
       
+      if scenario > 12
+        expected_visual_spatial_field_data = Array.new(5){ Array.new(5){ Array.new }}
+        
+        if [23,24].include?(scenario)
+          expected_visual_spatial_field_data[2][1] = [["0", Scene.getCreatorToken(), false, time, nil]]
+        end
+        
+        expected_visual_spatial_field_data[2][3] = [["1", "P", true, time, time + model._recognisedVisualSpatialFieldObjectLifespan]]
+        expected_visual_spatial_field_data[4][3] = [["2", "K", false, time, time + model._unrecognisedVisualSpatialFieldObjectLifespan]]
+        expected_visual_spatial_field_data[0][2] = [["3", "G", true, time, time + model._recognisedVisualSpatialFieldObjectLifespan]]
+        expected_visual_spatial_field_data[3][1] = [["4", "H", false, time, time + model._unrecognisedVisualSpatialFieldObjectLifespan]]
+
+        if [20,21,23,24].include?(scenario)
+          expected_visual_spatial_field_data[2][3][0][4] = fixation._performanceTime + model._recognisedVisualSpatialFieldObjectLifespan
+          expected_visual_spatial_field_data[4][3][0][4] = fixation._performanceTime + model._unrecognisedVisualSpatialFieldObjectLifespan
+          expected_visual_spatial_field_data[0][2][0][4] = fixation._performanceTime + model._recognisedVisualSpatialFieldObjectLifespan
+          expected_visual_spatial_field_data[3][1][0][4] = fixation._performanceTime + model._unrecognisedVisualSpatialFieldObjectLifespan
+        end
+      end
+      
+      ######################################
+      ##### INVOKE FUNCTION FIRST TIME #####
+      ######################################
+      
+      list_pattern_returned = nil
+      exception_thrown = false
+      begin
+      list_pattern_returned = perceiver.addFixation(fixation)
+      rescue
+        exception_thrown = true
+      end
+        
       #################
       ##### TESTS #####
       #################
@@ -389,15 +488,15 @@ unit_test "add_fixation" do
       # testing.  Since this is final as well as private, can't use 
       # Perceiver.class_eval to access the variable; needs to be made accessible
       # "manually".
-      fixation_field = perceiver.java_class.declared_field("_fixations")
+      fixation_field = Perceiver.java_class.declared_field("_fixations")
       fixation_field.accessible = true
       
       assert_equal(
-        expected_list_pattern_constructed,
+        expected_list_pattern_returned,
         list_pattern_returned,
         "occurred when checking the ListPattern constructed in scenario " + scenario.to_s
       )
-      
+
       assert_equal(
         expected_exception_thrown,
         exception_thrown,
@@ -422,11 +521,20 @@ unit_test "add_fixation" do
         "occurred when checking attention clock in scenario " + scenario.to_s
       )
       
+      if expected_visual_spatial_field_data != nil
+        check_visual_spatial_field_against_expected(
+          visual_spatial_field, 
+          expected_visual_spatial_field_data, 
+          fixation != nil && fixation._performanceTime != nil ? fixation._performanceTime + 100 : time, 
+          "in scenario " + scenario.to_s
+        )
+      end
+      
       #######################################
       ##### INVOKE FUNCTION SECOND TIME #####
       #######################################
 
-      # In scenarios 8 and 11, the ability of the function to fill the slots 
+      # In scenarios 9/12/21/24, the ability of the function to fill the slots 
       # of the visual STM hypothesis needs to be tested.  The first call to 
       # "addFixation()" should have triggered the updating of STM with the 
       # template node constructed earlier (since this should have been 
@@ -437,14 +545,14 @@ unit_test "add_fixation" do
       # Therefore, the second fixation performance time is set to the clock with
       # the maximum value: cognition/attention (also ensures that a second bout
       # of learning will occur as well as slot filling).
-      if scenario == 8 || scenario == 11
+      if [9,12,21,24].include?(scenario)
         fixation._performanceTime = [model.getAttentionClock(), model.getCognitionClock()].max
         
         # Invoke function
         list_pattern_returned = nil
         exception_thrown = false
         begin
-          list_pattern_returned = perceiver.addFixation(fixation)
+        list_pattern_returned = perceiver.addFixation(fixation)
         rescue
           exception_thrown = true
         end
@@ -468,15 +576,24 @@ unit_test "add_fixation" do
         expected_visual_stm_hypothesis_filled_slots = [
           ItemSquarePattern.new(
             "P", 
-            (scenario == 8 ? 3 : 0), 
-            (scenario == 8 ? 4 : 2)
+            ([12,24].include?(scenario) ? 0 : 3), 
+            ([12,24].include?(scenario) ? 2 : 4)
           ),
           ItemSquarePattern.new(
             "K", 
-            (scenario == 8 ? 5 : 2), 
-            (scenario == 8 ? 4 : 2)
+            ([12,24].include?(scenario) ? 2 : 5), 
+            ([12,24].include?(scenario) ? 2 : 4)
           )
         ]
+        
+        # Update the expected_visual_spatial_field_data structure (if 
+        # applicable)
+        if scenario > 12
+          expected_visual_spatial_field_data[2][3][0][4] = fixation._performanceTime + model._recognisedVisualSpatialFieldObjectLifespan
+          expected_visual_spatial_field_data[4][3][0][4] = fixation._performanceTime + model._unrecognisedVisualSpatialFieldObjectLifespan
+          expected_visual_spatial_field_data[0][2][0][4] = fixation._performanceTime + model._recognisedVisualSpatialFieldObjectLifespan
+          expected_visual_spatial_field_data[3][1][0][4] = fixation._performanceTime + model._unrecognisedVisualSpatialFieldObjectLifespan
+        end
         
         #################
         ##### TESTS #####
@@ -507,15 +624,17 @@ unit_test "add_fixation" do
         
         # Perform remaining tests.
         assert_equal(
-          expected_list_pattern_constructed,
+          expected_list_pattern_returned,
           list_pattern_returned,
-          "occurred when checking the ListPattern constructed in scenario " + scenario.to_s
+          "occurred when checking the ListPattern constructed after addFixation " +
+          "is called for the second time in scenario " + scenario.to_s
         )
 
         assert_equal(
-          expected_exception_thrown,
+          false,
           exception_thrown,
-          "occurred when checking if an exception is thrown in scenario " + scenario.to_s
+          "occurred when checking if an exception is thrown after addFixation " +
+          "is called for the second time in scenario " + scenario.to_s 
         )
 
         # Another Fixation will have been added to the Perceiver's "Fixations
@@ -524,7 +643,8 @@ unit_test "add_fixation" do
         assert_equal(
           expected_fixations,
           fixation_field.value(perceiver).lastEntry().getValue(),
-          "occurred when checking Fixations data structure in scenario " + scenario.to_s
+          "occurred when checking Fixations data structure after addFixation " +
+          "is called for the second time in scenario " + scenario.to_s
         )
 
         # This time, familiarisation should occur since the second item in the
@@ -536,15 +656,26 @@ unit_test "add_fixation" do
         assert_equal(
           expected_cognition_clock,
           model.getCognitionClock,
-          "occurred when checking cognition clock in scenario " + scenario.to_s
+          "occurred when checking cognition clock after addFixation " +
+          "is called for the second time in scenario " + scenario.to_s
         )
 
         expected_attention_clock = (fixation._performanceTime + (model.getLtmLinkTraversalTime() * 2) + model.getTimeToUpdateStm())
         assert_equal(
           expected_attention_clock,
           model.getAttentionClock,
-          "occurred when checking attention clock in scenario " + scenario.to_s
+          "occurred when checking attention clock after addFixation " +
+          "is called for the second time in scenario " + scenario.to_s
         )
+        
+        if expected_visual_spatial_field_data != nil
+          check_visual_spatial_field_against_expected(
+            visual_spatial_field, 
+            expected_visual_spatial_field_data, 
+            fixation != nil && fixation._performanceTime != nil ? fixation._performanceTime + 100 : time, 
+            "after addFixation is called for the second time in scenario " + scenario.to_s
+          )
+        end
       end
     end
   end
@@ -1025,6 +1156,10 @@ unit_test "learn_from_new_fixatons" do
     field_accessor :_domainSpecifics
   }
   
+  Scene.class_eval{
+    field_accessor :_scene
+  }
+  
   # Need access to the private, non-final "_fixationToLearnFrom" Perceiver 
   # instance variable so it can be examined during testing.
   Perceiver.class_eval{
@@ -1062,7 +1197,7 @@ unit_test "learn_from_new_fixatons" do
       scene_to_fixate_on = Scene.new("test",13,13,1,1,nil)
 
       # Add the creator to the Scene.  
-      scene_to_fixate_on.addItemToSquare(6, 6, "0", Scene.getCreatorToken())
+      scene_to_fixate_on._scene.get(6).set(6, SceneObject.new("0", Scene.getCreatorToken()))
 
       #########################
       ##### SET FIXATIONS #####

@@ -1,216 +1,161 @@
 package jchrest.lib;
 
-import jchrest.domainSpecifics.Scene;
-import java.util.Map.Entry;
-import java.util.TreeMap;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 import jchrest.architecture.VisualSpatialField;
+import java.util.Map.Entry;
+import jchrest.architecture.Chrest;
+import jchrest.domainSpecifics.Scene;
+import jchrest.domainSpecifics.SceneObject;
 
 /**
  * Represents an object in a {@link jchrest.architecture.VisualSpatialField}.
+ * <p>
+ * <b>NOTE</b>: Visual-spatial field objects can not represent {@link 
+ * jchrest.domainSpecifics.SceneObject SceneObjects} whose {@link 
+ * jchrest.domainSpecifics.SceneObject#getObjectType()} returns {@link 
+ * jchrest.domainSpecifics.Scene#getBlindSquareToken()} since these {@link 
+ * jchrest.domainSpecifics.SceneObject SceneObjects} should be encoded as 
+ * "unknown" {@link jchrest.lib.VisualSpatialFieldObject 
+ * VisualSpatialFieldObjects} (see {@link 
+ * jchrest.lib.VisualSpatialFieldObject#getUnknownSquareToken()}).
  * 
  * @author Martyn Lloyd-Kelly <martynlk@liverpool.ac.uk>
  */
-public class VisualSpatialFieldObject {
-  
-  //The string used to denote a VisualSpatialFieldObject that represents an 
-  //unknown square in a VisualSpatialField.
+public class VisualSpatialFieldObject extends SceneObject{
   private static final String UNKNOWN_SQUARE_TOKEN = "-";
   
-  //Stores the VisualSpatialField associated with this object.
+  private final Chrest _associatedModel;
   private final VisualSpatialField _associatedVisualSpatialField;
   
-  //Stores whether this VisualSpatialFieldObject is a "ghost" object or not.
-  private final boolean _ghostObject;
-  
-  //Allows for the unambiguous identification and manipulation of specific
-  //VisualSpatialFieldObjects in a VisualSpatialField.
-  private final String _identifier;
-  
-  //Allows for CHREST to create chunks containing generalisable information.  
-  //For example, if a chess player were to recogniseAndLearn the position of bishops on a 
-  //chess board at a given moment, the CHREST model representing the player 
-  //could recogniseAndLearn where the bishops in the current game are positioned and use 
-  //this information in subsequent games.  This is only possible if each bishop 
-  //isn't considered to be a unique entity when its location is learned (as they
-  //would be if VisualSpatialObjects could only be represented using their 
-  //unique identifier) otherwise, information about a bishop's location in the 
-  //game would remain anchored to this particular bishop.  Thus, if another 
-  //bishop occurred in the same location in a subsequent game, the location 
-  //information learned regarding the previous bishop could not be used since 
-  //CHREST would consider the two bishops to be different.
-  private final String _objectClass;
-  
   //Maintains a history of the object's "recognised state" so that its 
-  //recognised status at any time can be determined.  Keys are times at which
-  //the VisualSPatialObject was reocgnised or unrecognised.  A TreeMap is used 
-  //for ease of value retrieval since it is possible to specify times that 
-  //aren't keys in the data structure but the closest key to the time provided 
-  //can be used. 
-  private final TreeMap<Integer,Boolean> _recognisedHistory = new TreeMap<>();
+  //recognised status at any time can be determined.
+  private final HistoryTreeMap _recognisedHistory = new HistoryTreeMap();
   
-  //Stores the time that the object will fully decay on its coordinates in the 
-  //associated VisualSpatialField.
-  private Integer _terminus = null;
-  
-  //Stores the time that the object was created on its coordinates in the
-  //associated VisualSpatialField.  Can only be set once if it is set to -1 
-  //after the value has been set by the constructor.  Note that it is not 
-  //possible to set this variable to null since it is used as a key in the 
-  //_recognisedHistory data structure and a null value causes the comparator 
-  //function called using TreeMap.put() to error out.
-  private Integer _timeCreated;
+  private Integer _terminus;
+  private int _timeCreated;
   
   /**
-   * Constructor.
+   * @return The string used to denote a {@link 
+   * jchrest.lib.VisualSpatialFieldObject} that represents a {@link 
+   * jchrest.architecture.VisualSpatialField} coordinate whose {@link 
+   * jchrest.lib.VisualSpatialFieldObject} status is currently unknown.
+   */
+  public static String getUnknownSquareToken(){
+    return VisualSpatialFieldObject.UNKNOWN_SQUARE_TOKEN;
+  }
+  
+  /**
+   * Constructor (sets {@link #this#_identifier} implicitly, see {@link 
+   * jchrest.domainSpecifics.SceneObject#SceneObject(java.lang.String)).
    * 
-   * @param associatedVisualSpatialField The 
-   * {@link jchrest.architecture.VisualSpatialField} that this {@link #this}
-   * exists on.
+   * @param objectType See {@link 
+   * jchrest.domainSpecifics.SceneObject#_objectType}.  Can not equal {@link 
+   * jchrest.domainSpecifics.Scene#getBlindSquareToken()}.
    * 
-   * @param identifier A unique identifier to allow for precise identification
-   * of this {@link #this} when manipulating it in its associated 
-   * {@link jchrest.architecture.VisualSpatialField}.
+   * @param associatedModel
    * 
-   * @param objectClass A class to allow for generalisable learning.  For 
-   * example, if this {@link #this} is to represent a bishop on a chess board, 
-   * this parameter should be set to "B" (or something similar) and all other
-   * bishops should also be set to "B".
+   * @param associatedVisualSpatialField The {@link 
+   * jchrest.architecture.VisualSpatialField} that {@link #this} exists on.
    * 
-   * @param timeCreated Set to null or -1 to enable setting later.
+   * @param timeCreated
    * 
-   * @param setTerminus Set to true to set the terminus now or false to set it
-   * later.  If this {@link #this}'s class equal to the result of
-   * {@link jchrest.lib.Scene#getBlindSquareToken()} or 
-   * {@link jchrest.lib.Scene#getCreatorToken()} and this parameter is set to
-   * true, the terminus for this object is not set (and is set to null) since 
-   * blind squares and the creator's avatar should not decay like other 
-   * {@link jchrest.lib.VisualSpatialFieldObject}s in a 
-   * {@link jchrest.architecture.VisualSpatialField}.
+   * @param recognised Whether {@link #this} is recognised.
    * 
-   * @param ghostObject If this {@link #this} represents an object in the 
-   * associated {@link jchrest.architecture.VisualSpatialField} that is not 
-   * represented as a {@link jchrest.domainSpecifics.SceneObject} in the 
-   * {@link jchrest.lib.Scene} transposed into the associated 
-   * {@link jchrest.architecture.VisualSpatialField} (the result of 
-   * {@link jchrest.architecture.VisualSpatialField#getSceneEncoded()}), then
-   * set this parameter to true.
+   * @param setTerminus Set to {@link java.lang.Boolean#TRUE} to set the 
+   * terminus of {@link #this} automatically or {@link java.lang.Boolean#FALSE}
+   * to set to {@code null} (can be set later using {@link #this#setTerminus(
+   * int, boolean)).
    */
   public VisualSpatialFieldObject(
+    String objectType,
+    Chrest associatedModel,
     VisualSpatialField associatedVisualSpatialField, 
-    String identifier, 
-    String objectClass, 
-    Integer timeCreated, 
-    boolean setTerminus,
-    boolean ghostObject
+    int timeCreated, 
+    boolean recognised,
+    boolean setTerminus
   ){
+    super(objectType);
     
-    //Determine the identifier to use and set the identifier and object class.
-    if(objectClass.equals(Scene.getBlindSquareToken())){
-      identifier = Scene.getBlindSquareToken();
-    }
-    else if(objectClass.equals(Scene.getEmptySquareToken())){
-      identifier = Scene.getEmptySquareToken();
+    if(objectType.equals(Scene.getBlindSquareToken())){
+      throw new IllegalArgumentException(
+        "Blind squares can not be encoded as VisualSpatialFieldObjects"
+      );
     }
     
-    //Determine the time for creation and set this plus the first entry in the
-    //objects recognised history.
-    if(timeCreated == null){
-      timeCreated = -1;
+    //Set instance variables.
+    this._associatedModel = associatedModel;
+    this._associatedVisualSpatialField = associatedVisualSpatialField;
+    this._recognisedHistory.put(timeCreated, recognised);
+    this._timeCreated = timeCreated;
+    
+    if(setTerminus){
+      this._terminus = timeCreated + (recognised ? 
+        associatedModel.getRecognisedVisualSpatialFieldObjectLifespan() :
+        associatedModel.getUnrecognisedVisualSpatialFieldObjectLifespan()
+      );
+    }
+  }
+  
+  /**
+   * Constructor (sets {@link #this#_identifier} explicitly).
+   * 
+   * @param identifier See {@link 
+   * jchrest.domainSpecifics.SceneObject#_identifier}.
+   * 
+   * @param objectType See {@link 
+   * jchrest.domainSpecifics.SceneObject#_objectType}. Can not equal {@link 
+   * jchrest.domainSpecifics.Scene#getBlindSquareToken()}.
+   * 
+   * @param associatedModel
+   * 
+   * @param associatedVisualSpatialField The {@link 
+   * jchrest.architecture.VisualSpatialField} that {@link #this} exists on.
+   * 
+   * @param timeCreated
+   * 
+   * @param recognised Whether {@link #this} is recognised.
+   * 
+   * @param setTerminus Set to {@link java.lang.Boolean#TRUE} to set the 
+   * terminus of {@link #this} automatically or {@link java.lang.Boolean#FALSE}
+   * to set to {@code null} (can be set later using {@link #this#setTerminus(
+   * int, boolean)).
+   */
+  public VisualSpatialFieldObject(
+    String identifier, 
+    String objectType,
+    Chrest associatedModel,
+    VisualSpatialField associatedVisualSpatialField, 
+    int timeCreated, 
+    boolean recognised,
+    boolean setTerminus
+  ){
+    super(identifier, objectType);
+    
+    if(objectType.equals(Scene.getBlindSquareToken())){
+      throw new IllegalArgumentException(
+        "Blind squares can not be encoded as VisualSpatialFieldObjects"
+      );
     }
 
     //Set instance variables.
+    this._associatedModel = associatedModel;
     this._associatedVisualSpatialField = associatedVisualSpatialField;
-    this._identifier = identifier;
-    this._objectClass = objectClass;
-    this._ghostObject = ghostObject;
-    this._recognisedHistory.put(timeCreated, Boolean.FALSE);
+    this._recognisedHistory.put(timeCreated, recognised);
     this._timeCreated = timeCreated;
-
-    //Set terminus.
-    if( 
-      ( 
-        !objectClass.equals(Scene.getBlindSquareToken()) && 
-        !objectClass.equals(Scene.getCreatorToken()) &&
-        !objectClass.equals(VisualSpatialFieldObject.getUnknownSquareToken())
-      ) || 
-      setTerminus
-    ){
-      try{
-        Integer lifespanForUnrecognisedVisualSpatialObjects = this._associatedVisualSpatialField.getAssociatedModel().getUnrecognisedVisualSpatialObjectLifespan(timeCreated);
-        if(lifespanForUnrecognisedVisualSpatialObjects == null){
-          throw new VisualSpatialFieldException("Attempted to create a VisualSpatialFieldObject at a time (" + timeCreated + ") before the associated CHREST model was created");
-        }
-        else{
-          this._terminus = timeCreated + lifespanForUnrecognisedVisualSpatialObjects;
-        }
-      } catch (VisualSpatialFieldException ex) {
-        Logger.getLogger(VisualSpatialFieldObject.class.getName()).log(Level.SEVERE, null, ex);
-      } 
+    
+    if(setTerminus){
+      this._terminus = timeCreated + (recognised ? 
+        associatedModel.getRecognisedVisualSpatialFieldObjectLifespan() :
+        associatedModel.getUnrecognisedVisualSpatialFieldObjectLifespan()
+      );
     }
   }
   
-  /**
-   * @param time The time to check this {@link #this}s "alive" status against.
-   * @return True if the terminus for this object is null or greater than the
-   * time specified and the time specified is greater than or equal to the time 
-   * the object was created.
-   */
-  public boolean alive(int time){
-    if(
-      (this._terminus == null || this._terminus > time) && 
-      time >= this._timeCreated
-    ){
-      return true;
-    }
-    else{
-      return false;
-    }
-  }
+  /**************************/
+  /***** Simple Getters *****/
+  /**************************/
   
-  /**
-   * @return An exact clone of this {@link #this} but the 
-   * {@link jchrest.lib.VisualSpatialFieldObject} will have a different 
-   * reference in memory.
-   */
-  public VisualSpatialFieldObject createClone(){
-    
-    VisualSpatialFieldObject clone = new VisualSpatialFieldObject(
-      this._associatedVisualSpatialField, 
-      this._identifier, 
-      this._objectClass, 
-      this._timeCreated, 
-      false, 
-      this._ghostObject
-    );
-    
-    //Only set the clone's terminus if the original's terminus has been set.
-    if(this._terminus != null){
-      clone.setTerminus(this._terminus, true);
-    }
-    
-    //Build the clone's "Recognised Status" history.
-    for(Entry<Integer, Boolean> history : this._recognisedHistory.entrySet()){
-      
-      //Object was recognised at the time specified by the key.
-      if(history.getValue()){
-        clone.setRecognised(history.getKey(), false);
-      }
-      //Object was unrecognised at the time specified by the key.
-      else{
-        clone.setUnrecognised(history.getKey(), false);
-      }
-    }
-    
-    return clone;
-  }
-  
-  /**
-   * @return True if this {@link #this} is a ghost object.
-   */
-  public boolean isGhost(){
-    return this._ghostObject;
+  public final Chrest getAssociatedModel(){
+    return this._associatedModel;
   }
   
   /**
@@ -222,52 +167,76 @@ public class VisualSpatialFieldObject {
   }
   
   /**
-   * @return This {@link #this}'s identifier.
-   */
-  public String getIdentifier(){
-    return this._identifier;
-  }
-  
-  /**
-   * @return This {@link #this}'s class (different from its Java class).
-   */
-  public String getObjectClass(){
-    return this._objectClass;
-  }
-  
-  /**
-   * @return This {@link #this}'s current terminus.
+   * @return The current terminus for {@link #this}, i.e. the time that {@link 
+   * #this} will decay in the {@link jchrest.architecture.VisualSpatialField} it
+   * is located on.
    */
   public Integer getTerminus(){
     return this._terminus;
   }
   
   /**
-   * @return The time that this {@link #this} was placed in its associated 
+   * @return The time that {@link #this} was placed in its associated 
    * {@link jchrest.architecture.VisualSpatialField}.
    */
   public Integer getTimeCreated(){
     return this._timeCreated;
   }
   
+  /**********************************/
+  /***** Advanced Functionality *****/
+  /**********************************/
+  
   /**
-   * @return The string used to denote an unknown square.
+   * @return An exact clone of this {@link #this} with a different object 
+   * reference, i.e. a change to the clone will not be reflected in the 
+   * original.
    */
-  public static String getUnknownSquareToken(){
-    return VisualSpatialFieldObject.UNKNOWN_SQUARE_TOKEN;
-  }
+  public VisualSpatialFieldObject createClone(){
     
+    VisualSpatialFieldObject clone = new VisualSpatialFieldObject(
+      this._identifier, 
+      this._objectType, 
+      this._associatedModel,
+      this._associatedVisualSpatialField, 
+      this._timeCreated, 
+      (boolean)this._recognisedHistory.get(this._timeCreated),
+      false
+    );
+    
+    clone._terminus = this._terminus;
+    
+    //Build the clone's "Recognised Status" history.
+    for(Entry<Integer, Object> history : this._recognisedHistory.entrySet()){
+      clone._recognisedHistory.put(history.getKey(), (boolean)history.getValue());
+    }
+    
+    return clone;
+  }
+  
+  /**
+   * @param time
+   * 
+   * @return {@link java.lang.Boolean#TRUE} if the creation time of {@link 
+   * #this} is greater than or equal to the {@code time} specified and the 
+   * terminus for {@link #this} is either equal to {@code null} or is not {@code 
+   * null} and is greater than the {@code time} specified. 
+   */
+  public boolean isAlive(int time){
+    return time >= this._timeCreated && (this._terminus == null || (this._terminus != null && this._terminus > time));
+  }
+  
   /**
    * @param time The time to check the recognised status of this {@link #this}
    * against.
    * 
-   * @return The recognised status of this {@link #this} at the time specified.  
-   * If the time specified is before the creation time of the object, false is 
-   * returned.
+   * @return The recognised status of {@link #this} at the {@code time} 
+   * specified.  If the {@code time} specified is before the creation time of 
+   * {@link #this}, {@link java.lang.Boolean#FALSE} is returned.
    */
-  public boolean recognised(int time){
+  public boolean isRecognised(int time){
     if(time >= this._timeCreated){
-      return this._recognisedHistory.floorEntry(time).getValue();
+      return (boolean)this._recognisedHistory.floorEntry(time).getValue();
     }
     else{
       return false;
@@ -275,93 +244,95 @@ public class VisualSpatialFieldObject {
   }
   
   /**
-   * Sets the recognised status of this {@link #this} to true if this 
-   * {@link #this} is alive at the time specified.
+   * Sets {@link this} as being recognised at the {@code time} specified if 
+   * {@link #this} is alive (see {@link #this#isAlive(int)} at the {@code time} 
+   * specified.
    * 
    * @param time
-   * @param updateTerminusAutomatically Set to true to update this 
-   * {@link #this}'s terminus automatically to the value of the time passed 
-   * plus the value returned from invoking 
-   * {@link jchrest.architecture.VisualSpatialField#getRecognisedObjectLifespan()}.
+   * @param updateTerminusAutomatically Set to {@link java.lang.Boolean#TRUE} 
+   * to update the terminus of {@link #this} automatically to the value of the 
+   * {@code time} specified plus the result of invoking {@link 
+   * jchrest.architecture.Chrest#getRecognisedVisualSpatialFieldObjectLifespan()
+   * } in context of the result of invoking {@link #this#getAssociatedModel()}.
    */
   public void setRecognised(int time, boolean updateTerminusAutomatically){
-    if(this.alive(time)){
+    if(this.isAlive(time)){
       this._recognisedHistory.put(time, Boolean.TRUE);
       
       if(updateTerminusAutomatically){
-        this.setTerminus(time, false);
+        this._terminus = (time + this.getAssociatedModel().getRecognisedVisualSpatialFieldObjectLifespan());
       }
     }
   }
   
   /**
-   * If this {@link #this} is alive at the time specified, this function sets 
-   * the terminus of this {@link #this} based upon the time specified.
    * 
    * @param time
-   * @param setToTime Set to true to force the terminus of this {@link #this} to 
-   * be set to the time specified.  Set to false to have the method set the
-   * terminus normally:
+   * @param setToTime Set to {@link java.lang.Boolean#TRUE} to force the 
+   * terminus of {@link #this} to be set to the {@code time} specified.  Set to 
+   * {@link java.lang.Boolean#FALSE} to have the method set the terminus 
+   * according to the recognised status of {@link #this} at the {@code time} 
+   * specified:
    * <ul>
    *  <li>
-   *    If this {@link #this} is recognised at the time specified, the terminus 
-   *    will be equal to the time specified plus the value of 
-   *    {@link jchrest.architecture.VisualSpatialField#getRecognisedObjectLifespan()}.
+   *    If this {@link #this} is recognised, the terminus will be set to the 
+   *    {@code time} specified plus the value of {@link 
+   *    jchrest.architecture.Chrest#getRecognisedVisualSpatialFieldObjectLifespan()}.
    *  </li>
    *  <li>
-   *    If this {@link #this} is unrecognised at the time specified, the 
-   *    terminus will be equal to the time specified plus the value of 
-   *    {@link jchrest.architecture.VisualSpatialField#getUnrecognisedObjectLifespan()}.
+   *    If this {@link #this} is unrecognised, the terminus will be set to the 
+   *    {@code time} specified plus the value of {@link 
+   *    jchrest.architecture.Chrest#getUnrecognisedVisualSpatialFieldObjectLifespan()}.
    *  </li>
    * </ul>
-   * If this {@link #this} represents a blind square, setting this parameter has
-   * no effect: the terminus will always be set to the time passed since blind
-   * squares do not decay after a period of time.
-   * 
    */
   public void setTerminus(int time, boolean setToTime){
-    if(this.alive(time)){
-      if(setToTime || this._objectClass.equals(Scene.getBlindSquareToken())){
-        this._terminus = time;
-      }
-      else{
-        this._terminus = time + (this.recognised(time) ? 
-          this._associatedVisualSpatialField.getAssociatedModel().getRecognisedVisualSpatialObjectLifespan(time) : 
-          this._associatedVisualSpatialField.getAssociatedModel().getUnrecognisedVisualSpatialObjectLifespan(time)
-        );
-      }
+    if(setToTime){
+      this._terminus = time;
+    }
+    else{
+      this._terminus = time + (this.isRecognised(time) ? 
+        this.getAssociatedModel().getRecognisedVisualSpatialFieldObjectLifespan() : 
+        this.getAssociatedModel().getUnrecognisedVisualSpatialFieldObjectLifespan()
+      );
     }
   }
   
   /**
-   * Sets the time that this {@link #this} was created to the time specified (if 
-   * it has not already been set).
-   * 
-   * @param timeCreated 
-   */
-  public void setTimeCreated(int timeCreated){
-    if(this._timeCreated == -1){
-      this._timeCreated = timeCreated;
-    }
-  }
-  
-  /**
-   * Sets the recognised status of this {@link #this} to false if this 
-   * {@link #this} is alive at the time specified.
+   * Sets {@link this} as being unrecognised at the {@code time} specified if 
+   * {@link #this} is alive (see {@link #this#isAlive(int)} at the {@code time} 
+   * specified.
    * 
    * @param time
-   * @param updateTerminusAutomatically Set to true to update this 
-   * {@link #this}'s terminus automatically to the value of the time passed 
-   * plus the value returned from invoking 
-   * {@link jchrest.architecture.VisualSpatialField#getUnrecognisedObjectLifespan()}.
+   * @param updateTerminusAutomatically Set to {@link java.lang.Boolean#TRUE} 
+   * to update the terminus of {@link #this} automatically to the value of the 
+   * {@code time} specified plus the result of invoking {@link 
+   * jchrest.architecture.Chrest#getUnrecognisedVisualSpatialFieldObjectLifespan()
+   * } in context of the result of invoking {@link #this#getAssociatedModel()}.
    */
   public void setUnrecognised(int time, boolean updateTerminusAutomatically){
-    if(this.alive(time)){
+    if(this.isAlive(time)){
       this._recognisedHistory.put(time, Boolean.FALSE);
       
       if(updateTerminusAutomatically){
-        this.setTerminus(time, false);
+        this._terminus = (time + this._associatedModel.getUnrecognisedVisualSpatialFieldObjectLifespan());
       }
     }
+  }
+  
+  @Override
+  public String toString(){
+    String recognisedHistory = "";
+    for(Entry entry : this._recognisedHistory.entrySet()){
+      recognisedHistory += "\n      ~ " + entry.getKey() + ": " + entry.getValue();
+    }
+      
+    return 
+      "\n   - Identifier: " + this._identifier +
+      "\n   - Type: " + this._objectType +
+      "\n   - Creation time: " + this._timeCreated +
+      "\n   - Terminus: " + this._terminus + 
+      "\n   - Recognised history: " + recognisedHistory
+      ;
   }
 }

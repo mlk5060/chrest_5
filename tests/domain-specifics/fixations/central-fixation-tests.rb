@@ -9,6 +9,11 @@ unit_test "constructor" do
 end
 
 unit_test "make" do
+  
+  Scene.class_eval{
+    field_accessor :_scene
+  }
+  
   time = 0
   fixation = CentralFixation.new(time)
   fixation.setPerformanceTime(fixation.getTimeDecidedUpon() + 100)
@@ -90,7 +95,7 @@ unit_test "make" do
   ###########################################
 
   # This portion of the test will use a ChessBoard object.
-  blind_scene = ChessBoard.new("", nil)
+  blind_scene = ChessBoard.new("")
   non_blind_standard_chess_board = ChessDomain.construct_board(
     "rbnqknbr/" + 
     "pppppppp/" +
@@ -1906,7 +1911,7 @@ def get_scenario_details(scenario)
       end
       
       if !square_should_be_blind
-        scene.addItemToSquare(col, row, empty, empty)
+        scene._scene.get(col).set(row, SceneObject.new(empty))
       end
       
     end
