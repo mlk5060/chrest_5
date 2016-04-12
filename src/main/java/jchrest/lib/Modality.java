@@ -3,5 +3,5 @@
 
 package jchrest.lib;
 
-public enum Modality { VISUAL, VERBAL, ACTION }
+public enum Modality { ACTION, VERBAL, VISUAL }
   
