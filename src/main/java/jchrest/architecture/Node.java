@@ -678,7 +678,7 @@ public class Node extends Observable {
    * specified.  If this {@link #this} did not exist at the time specified, 
    * null is returned.
    */
-  HashMap<Node, Double> getProductions(int time){
+  public HashMap<Node, Double> getProductions(int time){
     Entry entry = this._productionHistory.floorEntry(time);
     return entry == null ? null : (HashMap<Node, Double>)entry.getValue();
   }
