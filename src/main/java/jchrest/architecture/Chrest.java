@@ -1837,7 +1837,7 @@ public class Chrest extends Observable {
    * (whose {@link jchrest.lib.Modality} is assumed to be {@link 
    * jchrest.lib.Modality#ACTION}) and creates a production between them.
    */
-  private Node learnAndCreateProduction(ListPattern pattern, ListPattern actionPattern, int time) {
+  public Node learnProduction(ListPattern pattern, ListPattern actionPattern, int time) {
     Node recognisedNode = recognise (pattern, time, false);
     
     //Was cognition free?
