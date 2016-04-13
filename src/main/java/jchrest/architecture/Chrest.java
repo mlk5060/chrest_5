@@ -4953,28 +4953,36 @@ public class Chrest extends Observable {
                 }
                 //The object is not at the location specified.
                 else{
-                  this.printDebugStatement("   ~ VisualSpatialFieldObject not found");
+                  this.printDebugStatement(
+                    "   ~ VisualSpatialFieldObject not found. Checking if the " +
+                    "location specified is incorrect or if the " +
+                    "VisualSpatialFieldObject has decayed."
+                  );
                   
-                  //If this is the first movement then the actual 
-                  //VisualSpatialFieldObject location specification is incorrect 
-                  //so throw an exception since this may indicate an issue with 
-                  //coordinate translation or experiment code.
-                  if(movement == 1){
-                    this.printDebugStatement("      + This is the first move so the initial location must be incorrect, exiting");
-                    throw new VisualSpatialFieldException(
-                      "The initial location specified for the " +
-                      "VisualSpatialFieldObject with identifier " + 
-                      moveFromIdentifier + " does not contain this " +
-                      "VisualSpatialFieldObject"
-                    );                
+                  for(int col = 0; col < visualSpatialField.getWidth(); col++){
+                    for(int row = 0; row < visualSpatialField.getHeight(); row++){
+                      for(VisualSpatialFieldObject vsfo : visualSpatialField.getCoordinateContents(col, row, time, false)){
+                        if(vsfo.getIdentifier().equals(moveFromIdentifier)){
+                          throw new VisualSpatialFieldException(
+                            "The initial location specified for the following " +
+                            "VisualSpatialFieldObject is incorrect:" + 
+                            vsfo.toString() + 
+                            "\n- Initial location specified: (" +
+                            colToMoveFrom + ", " + rowToMoveFrom + ")" +
+                            "\n- Actual location: (" + col + ", " + row + ")"
+                          );
+                        }
+                      }
+                    }
                   }
-                  //Otherwise, the object has decayed since a number of other
-                  //moves have been performed
-                  else{
-                    this.printDebugStatement("      + This isn't the first move so the VisualSpatialFieldObject may have decayed");
-                    this.printDebugStatement("      + Skipping to the next move in the sequence");
-                    break;
-                  }
+                  
+                  this.printDebugStatement(
+                    "   ~ VisualSpatialFieldObject is not present on the " +
+                    "VisualSpatialField at time " + time + " so it must have " +
+                    "decayed.  Skipping to the next VisualSpatialFieldObject " +
+                    "move sequence."
+                  );
+                  break;
                 }
               }
               else{
