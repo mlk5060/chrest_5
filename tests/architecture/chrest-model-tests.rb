@@ -305,8 +305,373 @@ canonical_result_test "make_fixations_in_chess_domain" do
           fixation_classes_expected.include?(fixations_attempted.get(fixation_attempted).getClass()),
           "occurred when checking the type of fixation " + fixation_attempted.to_s + " in the Perceiver's fixations attempted data structure"
         )
+############################################################################
+# Tests that Fixation performance in Tileworld proceeds as expected, i.e.
+# 
+# 1. All Fixations can be made (if conditions are appropriate).
+# 2. Fixations are performed in the way specified in TileworldDomain.
+# 3. Fixation performance is consistent and doesn't fail at any point.
+#
+# To verify these statements, at least 1000 Fixation sets are performed on the
+# following Scene by a CHREST model whose domain is set to an TileworldDomain
+# instance of TileworldDomain. Every possible type of SceneObject is included in 
+# the Scene fixated on so all possible scenarios should be tested.
+# 
+# The test will only end after all possible Fixation types have been performed 
+# by the CHREST model and then for 1000 Fixation sets after this.
+# 
+# Scene
+# =====
+# 
+# Notation:
+#   - SceneObjects denoted by identifiers with type in parenthesis.
+#   - Agent equipped with CHREST denoted by "SELF" type.
+#   - Blind squares denoted by "*"
+#   - Empty squares denoted by "."
+#   
+# |---------|---------|---------|---------|---------|
+# |  3(O)   |   .     |    .    |    .    |   7(O)  |
+# |---------|---------|---------|---------|---------|
+# |   .     |   .     |   1(T)  |    .    |    .    |
+# |---------|---------|---------|---------|---------|
+# |   .     |  6(H)   | 0(SELF) |   2(H)  |    .    |
+# |---------|---------|---------|---------|---------|
+# |   .     |  8(O)   |    *    |    .    |    .    |
+# |---------|---------|---------|---------|---------|
+# |   .     |  4(T)   |    *    |    .    |   5(H)  |
+# |---------|---------|---------|---------|---------|
+#
+canonical_result_test "make_fixations_in_tileworld_domain" do
+  
+  #######################################################
+  ##### SET-UP ACCESS TO PRIVATE INSTANCE VARIABLES #####
+  #######################################################
+  
+  # With regard to the CHREST model used:
+  # 
+  # 1. Need to set the domain specifics of the model to TileworldDomain.
+  # 2. Need to set modify visual STM to ensure a 
+  #    HypothesisDiscriminationFixation can be performed.
+  # 3. Need to set the fixation field of view for the Perceiver associated with
+  #    the CHREST model so that PeripheralItemFixations and 
+  #    PeripheralSquareFixations are guaranteed to be made.
+  Chrest.class_eval{
+    field_accessor :_domainSpecifics, :_visualStm
+  }
+  chrest_perceiver_field = Chrest.java_class.declared_field("_perceiver")
+  chrest_perceiver_field.accessible = true
+  
+  # Need to set the fixation field of view for reasons described above.
+  Perceiver.class_eval{
+    field_accessor :_fixationFieldOfView
+  }
+  
+  # With regard to the Scene used:
+  # 
+  # 1. Need to populate the Scene with SceneObjects so it reflects the structure 
+  #    outlined in the test preamble.
+  # 2. Need to access the dimensions of the Scene constructed to enable 
+  #    randomness in STM Node images to enable/disable 
+  #    HypothesisDiscriminationFixation performance.
+  Scene.class_eval{
+    field_accessor :_scene
+  }
+  scene_height_field = Scene.java_class.declared_field("_height")
+  scene_height_field.accessible = true
+  scene_width_field = Scene.java_class.declared_field("_width")
+  scene_width_field.accessible = true
+  
+  # Need access to SceneObject types to construct STM Nodes to enable/disable 
+  # HypothesisDiscriminationFixation performance.
+  scene_object_type_field = SceneObject.java_class.declared_field("_objectType")
+  scene_object_type_field.accessible = true
+  
+  # Need access to what Fixations are performed to control test progress.
+  Fixation.class_eval{
+    field_accessor :_performed
+  }
+  
+  # Need access to ListPattern elements to construct contents and images for STM
+  # Nodes to enable/disable HypothesisDiscriminationFixation performance.
+  ListPattern.class_eval{
+    field_accessor :_list
+  }
+  
+  # Need access to STM Node's child history to enable/disable 
+  # HypothesisDiscriminationFixation performance.
+  Node.class_eval{
+    field_accessor :_childHistory
+  }
+  
+  # Need access to visual STM items to enable/disable 
+  # HypothesisDiscriminationFixation performance.
+  stm_item_history_field = Stm.java_class.declared_field("_itemHistory")
+  stm_item_history_field.accessible = true
+  
+  ##########################################
+  ##### SET-UP TEST PROGRESS VARIABLES #####
+  ##########################################
+  
+  # For each type of Fixation expected, add its class to an array along with 
+  # a boolean flag indicated whether that type of Fixation has been performed.
+  # Initially, none of the Fixation types expected will have been performed so
+  # set all boolean flags to false.
+  fixation_performance_flags = [
+    [HypothesisDiscriminationFixation.java_class, false],
+    [SalientObjectFixation.java_class, false],
+    [MovementFixation.java_class, false],
+    [PeripheralItemFixation.java_class, false],
+    [PeripheralSquareFixation.java_class, false]
+  ]
+  
+  # Set a counter since the test should be run 1000 times after all Fixations 
+  # have been performed to ensure a broad spectrum of behaviour.
+  counter = 0
+  
+  #####################
+  ##### MAIN LOOP #####
+  #####################
+  
+  until counter == 1000
+
+    time = 0
+    
+    ###########################
+    ##### CONSTRUCT MODEL #####
+    ###########################
+    
+    model = Chrest.new(time, true)
+    chrest_perceiver_field.value(model)._fixationFieldOfView = 2
+
+    ####################################
+    ##### SET-UP DOMAIN PARAMETERS #####
+    ####################################
+    
+    max_fixation_attempt = 20
+    initial_fixation_threshold = 3
+    peripheral_item_fixation_max_attempts = 3
+    
+    ###########################################################
+    ##### CONSTRUCT DOMAIN AND SET AS CHREST MODEL DOMAIN #####
+    ###########################################################
+    
+    tileworld_domain = TileworldDomain.new(
+      model, 
+      max_fixation_attempt, 
+      initial_fixation_threshold, 
+      peripheral_item_fixation_max_attempts
+    )
+
+    model._domainSpecifics = tileworld_domain
+    
+    ###########################
+    ##### CONSTRUCT SCENE #####
+    ###########################
+    
+    # Constructed as being blind, initially.
+    scene = Scene.new("", 5, 5, 0, 0, nil)
+    
+    # Place physical objects.
+    scene._scene.get(2).set(2, SceneObject.new("0", Scene.getCreatorToken()))
+    scene._scene.get(2).set(3, SceneObject.new("1", TileworldDomain::TILE_SCENE_OBJECT_TYPE_TOKEN))
+    scene._scene.get(3).set(2, SceneObject.new("2", TileworldDomain::HOLE_SCENE_OBJECT_TYPE_TOKEN))
+    scene._scene.get(0).set(4, SceneObject.new("3", TileworldDomain::OPPONENT_SCENE_OBJECT_TYPE_TOKEN ))
+    scene._scene.get(1).set(0, SceneObject.new("4", TileworldDomain::TILE_SCENE_OBJECT_TYPE_TOKEN))
+    scene._scene.get(4).set(0, SceneObject.new("5", TileworldDomain::HOLE_SCENE_OBJECT_TYPE_TOKEN))
+    scene._scene.get(1).set(2, SceneObject.new("6", TileworldDomain::HOLE_SCENE_OBJECT_TYPE_TOKEN))
+    scene._scene.get(4).set(4, SceneObject.new("7", TileworldDomain::OPPONENT_SCENE_OBJECT_TYPE_TOKEN ))
+    scene._scene.get(1).set(1, SceneObject.new("8", TileworldDomain::OPPONENT_SCENE_OBJECT_TYPE_TOKEN ))
+    
+    # Fill in empty squares.
+    for col in 0...scene_width_field.value(scene)
+      for row in 0...scene_height_field.value(scene)
+        if col != 2 && (row != 1 || row != 2)
+          
+          object_type = scene_object_type_field.value(scene._scene.get(col).get(row))
+          if object_type == Scene.getBlindSquareToken()
+            scene._scene.get(col).set(row, SceneObject.new(Scene.getEmptySquareToken))
+          end
+        end
       end
     end
+    
+    ###############################
+    ##### POPULATE VISUAL STM #####
+    ###############################
+    
+    # Populate visual STM so that HypothesisDiscriminationFixations can be 
+    # performed correctly (sometimes).  Essentially, there should be a STM Node
+    # whose content/image contains ItemSquarePatterns that will be present in
+    # ListPatterns generated after making a Fixation on the Scene and 
+    # normalising said ListPattern.  This STM Node should then have a child 
+    # whose content/image also contains ItemSquarePatterns that will be present 
+    # in ListPatterns generated after making a Fixation on the Scene and 
+    # normalising said ListPattern. Therefore, 2 Nodes will be constructed and
+    # added to STM, the Node in STM (depth 1 Node) and the Node that is a child
+    # of the Node in STM (depth 2 Node).
+    # 
+    # The test should introduce some variablity in behaviour since the handling 
+    # of Fixations that are not performed successfully needs to be checked.  
+    # Therefore, get the location of 1 randomly selected SceneObject from 
+    # the 8 in the Scene constructed that does not represent:
+    # 
+    # 1. The creator
+    # 2. Blind squares 
+    # 3. Empty squares 
+    # 
+    # These SceneObjects would be stripped from the ListPattern to learn during 
+    # normalisation along with duplicate SceneObject locations.  Therefore, 
+    # prevent such ItemSquarePatterns being considered as candidates for 
+    # ItemSquarePatterns used in construction of STM Nodes.
+    #
+    # Note that the column and row in the ItemSquarePattern should be specified 
+    # relative to the location of the agent equipped with CHREST since the 
+    # CHREST model has been set-up with the "learn object location relative to 
+    # agent" construction parameter set to true (has to be if using the 
+    # Tileworld domain). Thus, if a HypothesisDiscriminationFixation is 
+    # generated then it is guaranteed to not be performed if coordinates in STM 
+    # Node contents/images are domain-specific since CHREST will automatically 
+    # convert coordinates to agent relative ones when fixations are made and so 
+    # STM Node Link tests will never pass when making a 
+    # HypothesisDiscriminationFixation.
+    
+    ##### CONSTRUCT DEPTH 2 NODE ######
+    depth_2_node_contents_image = nil
+    4.times do 
+      
+      col = rand(0...scene_width_field.value(scene))
+      row = rand(0...scene_height_field.value(scene))
+      item = scene_object_type_field.value(scene._scene.get(col).get(row))
+      
+      # Subtract 2 from col and row to get agent relative coordinates.
+      depth_2_node_contents_image = ItemSquarePattern.new(item, col - 2, row - 2)
+      
+      while 
+        item == Scene.getBlindSquareToken() || 
+        item == Scene.getCreatorToken() || 
+        item == Scene.getEmptySquareToken()
+      ######
+        col = rand(0...scene_width_field.value(scene))
+        row = rand(0...scene_height_field.value(scene))
+        item = scene_object_type_field.value(scene._scene.get(col).get(row))
+      end
+      
+      # Subtract 2 from col and row to get agent relative coordinates.
+      depth_2_node_contents_image = ItemSquarePattern.new(item, col - 2, row - 2)
+    end
+
+    depth_2_node_contents = ListPattern.new(Modality::VISUAL)
+    depth_2_node_contents._list.add(depth_2_node_contents_image)
+    depth_2_node_image = depth_2_node_contents
+    depth_2_node = Node.new(model, depth_2_node_contents, depth_2_node_image, time)
+    depth_2_link = Link.new(depth_2_node_contents, depth_2_node, time, "")
+    
+    ##### CONSTRUCT DEPTH 1 NODE ##### 
+    depth_1_node_contents_image = nil
+    4.times do 
+      
+      col = rand(0...scene_width_field.value(scene))
+      row = rand(0...scene_height_field.value(scene))
+      item = scene_object_type_field.value(scene._scene.get(col).get(row))
+      
+      while 
+        item == Scene.getBlindSquareToken() || 
+        item == Scene.getCreatorToken() || 
+        item == Scene.getEmptySquareToken()
+      ######
+        col = rand(0...scene_width_field.value(scene))
+        row = rand(0...scene_height_field.value(scene))
+        item = scene_object_type_field.value(scene._scene.get(col).get(row))
+      end
+      
+      # Subtract 2 from col and row to get agent relative coordinates.
+      depth_1_node_contents_image = ItemSquarePattern.new(item, col - 2, row - 2)
+    end
+    
+    depth_1_node_contents = ListPattern.new(Modality::VISUAL)
+    depth_1_node_contents._list.add(depth_1_node_contents_image)
+    depth_1_node_image = depth_1_node_contents
+    depth_1_node = Node.new(model, depth_1_node_contents, depth_1_node_image, time)
+    
+    depth_1_node_children = ArrayList.new()
+    depth_1_node_children.add(depth_2_link)
+
+    time += 1
+    depth_1_node._childHistory.put(time, depth_1_node_children)
+    
+    ##### ADD NODE TO STM #####
+    time += 1
+    stm_items = ArrayList.new()
+    stm_items.add(depth_1_node)
+    stm_item_history_field.value(model._visualStm).put(time, stm_items)
+    
+    ##########################
+    ##### MAKE FIXATIONS #####
+    ##########################
+    
+    until model.scheduleOrMakeNextFixation(scene, false, time)
+      time += 1
+    end
+
+    #################
+    ##### TESTS #####
+    #################
+    
+    # Ensure the correct number of Fixations have been attempted before 
+    # continuing
+    fixations_attempted = model.getPerceiver.getFixations(time)
+    assert_equal(
+      max_fixation_attempt,
+      fixations_attempted.size(),
+      "occurred when checking the number of fixations attempted"
+    )
+
+    # Check each Fixation type according to its order of attempt.
+    for f in 0...fixations_attempted.size()
+      fixation = fixations_attempted.get(f)
+      expected_fixation_classes = []
+
+      if f == 0
+        expected_fixation_classes.push(AheadOfAgentFixation.java_class.to_s)
+      elsif f < initial_fixation_threshold
+        expected_fixation_classes.push(SalientObjectFixation.java_class.to_s)
+      elsif f == initial_fixation_threshold
+        expected_fixation_classes.push(HypothesisDiscriminationFixation.java_class.to_s)
+      else
+        expected_fixation_classes.push(HypothesisDiscriminationFixation.java_class.to_s)
+        expected_fixation_classes.push(SalientObjectFixation.java_class.to_s)
+        expected_fixation_classes.push(MovementFixation.java_class.to_s)
+        expected_fixation_classes.push(PeripheralItemFixation.java_class.to_s)
+        expected_fixation_classes.push(PeripheralSquareFixation.java_class.to_s)
+      end
+
+      assert_true(
+        expected_fixation_classes.include?(fixation.java_class.to_s), 
+        "occurred when checking if fixation " + f.to_s + " was of any of the " +
+        "following types: " + expected_fixation_classes.to_s + "\nFixation details:\n" +
+        fixation.toString()
+      )
+      
+      # If the Fixation attempted was performed successfully, set the relevant
+      # boolean flag in the test loop control data structure
+      fixation_performance_flags.each{|fixation_type| 
+        if fixation_type[0] == fixation.java_class && fixation._performed 
+          fixation_type[1] = true
+        end
+      }
+    end
+    
+    ##############################################
+    ##### MODIFY TEST LOOP CONTROL VARIABLES #####
+    ##############################################
+    
+    all_fixations_performed = true
+    fixation_performance_flags.each{|fixation_type| 
+      if !fixation_type[1]
+        all_fixations_performed = false
+      end
+    }
+    if all_fixations_performed then counter += 1 end
   end
 end
 

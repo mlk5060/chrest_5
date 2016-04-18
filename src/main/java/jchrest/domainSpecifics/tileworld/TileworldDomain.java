@@ -1,18 +1,21 @@
 package jchrest.domainSpecifics.tileworld;
 
 import jchrest.domainSpecifics.DomainSpecifics;
-import java.lang.reflect.Method;
 import java.util.HashMap;
-import java.util.Iterator;
+import java.util.List;
 import jchrest.architecture.Chrest;
 import jchrest.domainSpecifics.Fixation;
 import jchrest.lib.ExecutionHistoryOperations;
 import jchrest.lib.ItemSquarePattern;
 import jchrest.lib.ListPattern;
-import jchrest.lib.Modality;
 import jchrest.lib.PrimitivePattern;
 import jchrest.domainSpecifics.Scene;
-import jchrest.lib.VisualSpatialFieldObject;
+import jchrest.domainSpecifics.fixations.AheadOfAgentFixation;
+import jchrest.domainSpecifics.fixations.HypothesisDiscriminationFixation;
+import jchrest.domainSpecifics.fixations.PeripheralItemFixation;
+import jchrest.domainSpecifics.fixations.PeripheralSquareFixation;
+import jchrest.domainSpecifics.tileworld.fixations.MovementFixation;
+import jchrest.domainSpecifics.tileworld.fixations.SalientObjectFixation;
 
 /**
  * Used for Tileworld modelling.
@@ -21,45 +24,91 @@ import jchrest.lib.VisualSpatialFieldObject;
  */
 public class TileworldDomain extends DomainSpecifics{
   
-  //These variables should not be changed during run-time since problems with 
-  //"Scene" instances will ensue.
-  private static final String TILE_TOKEN = "T";
-  private static final String HOLE_TOKEN = "H"; 
-  private static final String OPPONENT_TOKEN = "O";
-  private final int _verticalFieldOfView;
-  private final int _horizontalFieldOfView;
+  public static final String HOLE_SCENE_OBJECT_TYPE_TOKEN = "H"; 
+  public static final String OPPONENT_SCENE_OBJECT_TYPE_TOKEN = "O";
+  public static final String TILE_SCENE_OBJECT_TYPE_TOKEN = "T";
+  
+  private final int _initialFixationThreshold;
+  private final int _peripheralItemFixationMaxAttempts;
   
   /**
    * 
    * @param model
-   * @param verticalFieldOfView How many squares ahead can be seen.
-   * @param horizontalFieldOfView How many squares to the side can be seen.
-   * @param maxFixationsInSet Used as input to {@link 
+   * 
+   * @param maxFixationsInSet See parameters for {@link 
    * jchrest.domainSpecifics.DomainSpecifics#DomainSpecifics(
    * jchrest.architecture.Chrest, java.lang.Integer)}.
+   * 
+   * @param initialFixationThreshold The number of {@link 
+   * jchrest.domainSpecifics.Fixation Fixations} that must be attempted by the
+   * {@link jchrest.architecture.Perceiver} associated with the {@link 
+   * jchrest.architecture.Chrest} model using {@link #this} before non-initial
+   * {@link jchrest.domainSpecifics.Fixation Fixations} are proposed by {@link 
+   * #this#getNonInitialFixationInSet(int)}.
+   * 
+   * @param peripheralItemFixationMaxAttempts The maximum number of attempts 
+   * that will be made if a {@link 
+   * jchrest.domainSpecifics.fixations.PeripheralItemFixation} is to be made
+   * when {@link #this#getNonInitialFixationInSet(int)} (see parameters for 
+   * {@link jchrest.domainSpecifics.fixations.PeripheralItemFixation#PeripheralItemFixation(
+   * jchrest.architecture.Chrest, int, int)}
    */
-  public TileworldDomain(Chrest model, Integer verticalFieldOfView, Integer horizontalFieldOfView, Integer maxFixationsInSet) {
+  public TileworldDomain(Chrest model, int maxFixationsInSet, int initialFixationThreshold, int peripheralItemFixationMaxAttempts) {
     super(model, maxFixationsInSet);
-    this._verticalFieldOfView = verticalFieldOfView;
-    this._horizontalFieldOfView = horizontalFieldOfView;
+    
+    //Check for CHREST model learning object locations realtive to agent
+    if(!model.isLearningObjectLocationsRelativeToAgent()){
+      throw new IllegalStateException(
+        "To use a TileworldDomain, a CHREST model must be learning object " +
+        "locations relative to an agent however, the CHREST model specified " +
+        "is not."
+      );
+    }
+    
+    //Set initial fixation threshold.
+    if(initialFixationThreshold > 0){
+      if(maxFixationsInSet < initialFixationThreshold){
+        throw new IllegalArgumentException(
+          "The maximum number of fixations to make in a set specified as a " +
+          "parameter to the " + this.getClass().getCanonicalName() + " " +
+          "constructor (" + maxFixationsInSet + ") is < the initial fixation " +
+          "threshold specified (" + initialFixationThreshold + ")."
+        );
+      }
+      else{
+        this._initialFixationThreshold = initialFixationThreshold;
+      }
+    }
+    else{
+      throw new IllegalArgumentException(
+        "The initial fixation threshold specified as a parameter to the " + 
+        this.getClass().getCanonicalName() + " constructor (" + 
+        initialFixationThreshold + ") is <= 0."
+      );
+    }
+    
+    //Set peripheral item fixation max attempts.
+    if(peripheralItemFixationMaxAttempts > 0){
+      this._peripheralItemFixationMaxAttempts = peripheralItemFixationMaxAttempts;
+    }
+    else{
+      throw new IllegalArgumentException(
+        "The maximum number of attempts to make a fixation on an item " +
+        "in the periphery specified as a parameter to the " + 
+        this.getClass().getCanonicalName() + " constructor (" + 
+        peripheralItemFixationMaxAttempts + ") is <= 0."
+      );
+    }
   }
 
   /** 
    * @param pattern
    * @return A {@link jchrest.lib.ListPattern} stripped of {@link 
-   * jchrest.lib.ItemSquarePattern}s that:
-   * 
-   * <ol type="1">
-   *  <li>
-   *    Represent the CHREST model or the agent equipped with the CHREST model.
-   *  </li>
-   *  <li> 
-   *    Blind, empty and unknown {@link jchrest.lib.ItemSquarePattern}s.
-   *  </li>
-   *  <li> 
-   *    Are duplicated in the {@link jchrest.lib.ListPattern} passed.
-   *  </li>
-   * </ol>
+   * jchrest.lib.ItemSquarePattern ItemSquarePatterns} that are duplicated 
+   * in {@code pattern} or where {@link jchrest.lib.ItemSquarePattern#getItem()} 
+   * returns {@link jchrest.domainSpecifics.Scene#getBlindSquareToken()}, {@link 
+   * jchrest.domainSpecifics.Scene#getEmptySquareToken()} or {@link 
+   * jchrest.domainSpecifics.Scene#getCreatorToken()}.
    */
   @Override
   public ListPattern normalise(ListPattern pattern) {
@@ -71,12 +120,18 @@ public class TileworldDomain extends DomainSpecifics{
       if(
         !item.equals(Scene.getBlindSquareToken()) &&
         !item.equals(Scene.getEmptySquareToken()) &&
-        !item.equalsIgnoreCase(Scene.getCreatorToken()) && 
-        !item.equalsIgnoreCase(VisualSpatialFieldObject.getUnknownSquareToken()) &&
+        !item.equalsIgnoreCase(Scene.getCreatorToken()) &&
         !result.contains(prim)
       ){
         result.add(itemDetails);
       }
+    }
+    
+    if(pattern.isFinished()){
+      result.setFinished();
+    } 
+    else{
+      result.setNotFinished();
     }
     
     if(this._associatedModel != null){
@@ -98,270 +153,198 @@ public class TileworldDomain extends DomainSpecifics{
     
     return result;
   }
-  
-//  @Override
-//  public void makeOrScheduleFixation(Scene scene, int time){
-//    Perceiver perceiver = this._associatedModel.getPerceiver();
-//    Object[] nextScheduledFixation = this._associatedModel.getNextScheduledFixation();
-//    
-//    //Attempt to make a fixation if one is scheduled at the current time.
-//    if((int)nextScheduledFixation[0] == time){
-//      
-//      switch((FixationType)nextScheduledFixation[1]){
-//        
-//        case first:
-//          perceiver.makeFirstFixation(scene, time);
-//          this._associatedModel.setNextScheduledFixation(new Object[]{
-//            time + this._salientObjectSelectionTime,
-//            FixationType.salientObject
-//          });
-//          
-//        case salientObject:
-//          if(
-//            !perceiver.makeFixationUsingSalientObjectHeuristic(scene, time) ||
-//            !perceiver.doingInitialFixations()
-//          ){
-//            this._nextScheduledFixation = new Object[]{
-//              time + this._timeToRetrieveItemFromStm,
-//              FixationType.hypothesisDiscrimination
-//            };
-//          }
-//        
-//        case hypothesisDiscrimination:
-//          if(!perceiver.makeFixationUsingHypothesisDiscriminationHeuristic(scene, time)){
-//            double r = Math.random ();
-//            
-//            if(r < 0.3333){
-//              this._nextScheduledFixation = new Object[]{
-//                time + this._movementSquareSelectionTime,
-//                FixationType.objectMovement
-//              };
-//            }
-//            else if (r >= 0.3333 && r < 0.6667) {
-//              this._nextScheduledFixation = new Object[]{
-//                time + this._randomSquareSelectionTime,
-//                FixationType.peripheralObject
-//              };
-//            }
-//            else if(this.isExperienced(time)){
-//              this._nextScheduledFixation = new Object[]{
-//                time + this.getDomainSpecifics().getTimeToUseGlobalStrategy(),
-//                FixationType.globalStrategy
-//              };
-//            }
-//            else{
-//              this._nextScheduledFixation = new Object[]{
-//                time + this._randomSquareSelectionTime,
-//                FixationType.peripheralSquare
-//              };
-//            }
-//          }
-//        
-//        case objectMovement:
-//          perceiver.makeFixationUsingObjectMovementHeuristic(scene, time);
-//          
-//        case peripheralSquare:
-//          perceiver.makeFixationUsingPeripheralLocationHeuristic(scene, time);
-//          
-//        case globalStrategy:
-//          
-//        case peripheralObject:
-//          perceiver.makeFixationUsingPeripheralObjectHeuristic(scene, time);
-//          
-//        //TODO: learn fixation after it is made, could put the following in
-//        //      Perceiver.addFixation():
-//        //      ListPattern listPatternToRecognise = _model.getDomainSpecifics().normalise (
-////          _model.getDomainSpecifics().convertSceneSpecificCoordinatesToDomainSpecificCoordinates(
-////            _currentScene.getItemsInScopeAsListPattern (_fixationX, _fixationY, this.getFieldOfView(), true),
-////            this._currentScene
-////          )
-////        );
-//      }
-//      
-//    }
-//    //No fixation is to be made so check if the perceiver resource is free.  If
-//    //it is, schedule a new fixation.
-//    else if(this.perceiverFree(time)){
-//      
-//      
-//      //If no fixations have yet been made, this is the start of a new fixation
-//      //set so make the initial fixation, this incurs no time cost.
-//      if(perceiver.getFixations(time).isEmpty()){
-//        
-//        //If there has been a fixation previously scheduled and the required
-//        //amount of time to move the eye back to the "default" position hasn't
-//        //elapsed, schedule the initial fixation.  Otherwise, make it now.
-//        if(
-//          this._nextScheduledFixation[0] != null &&
-//          (int)this._nextScheduledFixation[0] + this._saccadeTime < time 
-//        ){
-//         this._nextScheduledFixation = new Object[]{
-//           (int)this._nextScheduledFixation[0] + this._saccadeTime,
-//           FixationType.first
-//         };
-//        }
-//        else{
-//          perceiver.makeFirstFixation(scene, time);
-//          this._nextScheduledFixation = new Object[]{
-//            time + this._salientObjectSelectionTime, 
-//            FixationType.salientObject
-//          };
-//        }
-//      }
-//    }
-//  }
-  
-  /** 
-   * Make the first fixation in a set (see {@link 
-   * jchrest.lib.DomainSpecifics#getFirstFixation(jchrest.lib.Scene)} for the
-   * result of invoking {@link jchrest.architecture.Chrest#getDomainSpecifics()}
-   * on the {@link jchrest.architecture.Chrest} model associated with {@link 
-   * #this}.
-   * 
-   * <b>NOTE:</b> Since this is a domain-specific heuristic, it is assumed that
-   * {@link jchrest.lib.Square Squares} proposed for {@link jchrest.domainSpecifics.chess.fixationTypes.Fixation
-   * Fixations} to make are not blind.
-   * 
-   * @param scene The scene to make the {@link jchrest.domainSpecifics.chess.fixationTypes.Fixation} in context
-   * of.  If this contains only blind {@link jchrest.lib.SceneObject 
-   * SceneObjects} then no fixation will be made.
-   * 
-   * @param time
-   */
-//  public void makeFirstFixation(Scene scene, int time) {
-//    //_recognisedNodes.clear();
-//    
-//    if(!scene.isEntirelyBlind()){
-//      Square firstFixation = _associatedChrestModel.getDomainSpecifics().getFirstFixation(scene);    
-//      this.addFixation(
-//        new Fixation(jchrest.domainSpecifics.chess.FixationType.first, firstFixation.getColumn(), firstFixation.getRow(), time),
-//        scene,
-//        time
-//      );
-//    }
-//  }
-  
-  /**
-   * @param scene
-   * @return The {@link jchrest.lib.Square} immediately ahead of a player along 
-   * their current heading.  Note that {@code null} may be returned if {@link 
-   * #this#setMethodToDetermineSquareAheadOfPlayer(java.lang.reflect.Method, 
-   * java.lang.Object, java.lang.Object...)} has not been used to set the 
-   * parameters required to determine what the {@link jchrest.lib.Square} 
-   * immediately ahead of a player along their current heading is.
-   */
-//  @Override
-//  public Square getFirstFixation(Scene scene){
-//    Square initialFixation = null;
-//      
-//    try {
-//      initialFixation = (Square)this._getSquareAheadOfPlayerMethod.invoke(this._player, this._getSquareAheadOfPlayerMethodArguments);
-//    } catch (IllegalAccessException | IllegalArgumentException | InvocationTargetException ex) {
-//      Logger.getLogger(TileworldDomain.class.getName()).log(Level.SEVERE, null, ex);
-//    }
-//    
-//    return initialFixation;
-//  }
-
-  /**
-   * @param scene
-   * @param model
-   * @return A {@link jchrest.lib.Square} in the {@link jchrest.lib.Scene} 
-   * passed that isn't blind, empty or occupied by the creator of the {@link 
-   * jchrest.lib.Scene}.
-   */
-//  @Override
-//  public Set<Square> getSalientObjectFixations(Scene scene, Chrest model, int time) {
-//    Set<Square> result = new HashSet<> ();
-//    
-//    int randomCol = new java.util.Random().nextInt(scene.getWidth ());
-//    int randomRow = new java.util.Random().nextInt(scene.getHeight ());
-//
-//    String objectOnSquare = scene.getSquareContents(randomCol, randomRow).getObjectClass();
-//    while( 
-//      objectOnSquare.equals(Scene.getBlindSquareToken()) ||
-//      objectOnSquare.equals(Scene.getCreatorToken()) ||
-//      objectOnSquare.equals(Scene.getEmptySquareToken())
-//    ){
-//      randomCol = new java.util.Random().nextInt(scene.getWidth ());
-//      randomRow = new java.util.Random().nextInt(scene.getHeight ());
-//      objectOnSquare = scene.getSquareContents(randomCol, randomRow).getObjectClass();
-//    }
-//
-//    result.add (new Square(randomCol, randomRow));
-//    return result;
-//  }
-
-  /**
-   * If the {@link jchrest.lib.Square} passed on the {@link jchrest.domainSpecifics.Scene} 
-   * passed contains a tile, opponent or the scene creator, then the 
-   * {@link jchrest.lib.Square}s that are 1 square north, east, south and west 
-   * of the passed {@link jchrest.lib.Square} will be added to the 
-   * {@link java.util.List} of {@link jchrest.lib.Square}s returned.
-   * 
-   * @param scene
-   * @param square
-   * @return 
-   */
-//  @Override
-//  public List<Square> proposeMovementFixations(Scene scene, Square square) {
-//    ArrayList<Square> movementFixations = new ArrayList<>();
-//    int col = square.getColumn();
-//    int row = square.getRow();
-//    
-//    SceneObject objectOnSquare = scene.getSquareContents(col, row);
-//    
-//    if(objectOnSquare != null){
-//      String objectOnSquareClass = objectOnSquare.getObjectClass();
-//      if(
-//        objectOnSquareClass.equals(TILE_TOKEN) ||
-//        objectOnSquareClass.equals(Scene.getCreatorToken()) ||
-//        objectOnSquareClass.equals(OPPONENT_TOKEN)
-//      ){
-//        if ((row + 1 >= 0) && (row + 1 < scene.getHeight())) movementFixations.add(new Square(col, row + 1)); //North
-//        if ((col + 1 >= 0) && (col + 1 < scene.getWidth())) movementFixations.add(new Square(col + 1, row));//East
-//        if ((row - 1 >= 0) && (row - 1 < scene.getHeight())) movementFixations.add(new Square(col, row - 1));//South
-//        if ((col - 1 >= 0) && (col - 1 < scene.getWidth())) movementFixations.add(new Square(col - 1, row));//West
-//      }
-//    }
-//    
-//    return movementFixations;
-//  }
-  
-  public static String getHoleIdentifier(){
-    return HOLE_TOKEN;
-  }
-  
-  public static String getOpponentIdentifier(){
-    return OPPONENT_TOKEN;
-  }
-  
-  public static String getTileIdentifier(){
-    return TILE_TOKEN;
-  }
 
   @Override
   public Fixation getInitialFixationInSet(int time) {
-    throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+    return new AheadOfAgentFixation(time + 150);
   }
 
+  /**
+   * 
+   * @param time
+   * 
+   * @return A new {@link jchrest.domainSpecifics.Fixation} whose type is 
+   * determined by comparing <i>n</i> (the sum of the number of {@link 
+   * jchrest.domainSpecifics.Fixation Fixations} to make and the number of {@link 
+   * jchrest.domainSpecifics.Fixation Fixations} attempted at the {@code time} 
+   * specified) to <i>t</i> (the initial {@link 
+   * jchrest.domainSpecifics.Fixation} threshold specified as a parameter to 
+   * {@link #this#TileworldDomain(jchrest.architecture.Chrest, int, int, int)}):
+   * 
+   * <ol type="1">
+   *  <li>
+   *    If <i>n</i> &lt; <i>t</i> a {@link 
+   *    jchrest.domainSpecifics.tileworld.fixations.SalientObjectFixation} is
+   *    returned.
+   *  </li>
+   *  <li>
+   *    If <i>n</i> &gt;&#61; <i>t</i>, the {@link 
+   *    jchrest.domainSpecifics.Fixation Fixations} scheduled to be performed 
+   *    and the most recent {@link jchrest.domainSpecifics.Fixation} attempted
+   *    by the {@link jchrest.architecture.Chrest} model using {@link #this} are
+   *    retrieved in context of the {@code time} specified. 
+   *    <ol type="1">
+   *      <li>
+   *        If there is no {@link 
+   *        jchrest.domainSpecifics.fixations.HypothesisDiscriminationFixation} 
+   *        scheduled to be performed or the most recently attempted {@link 
+   *        jchrest.domainSpecifics.Fixation} was a {@link 
+   *        jchrest.domainSpecifics.fixations.HypothesisDiscriminationFixation} 
+   *        whose performance was unsuccessful, a {@link 
+   *        jchrest.domainSpecifics.fixations.HypothesisDiscriminationFixation} 
+   *        is returned.
+   *      </li>
+   *      <li>
+   *        If there is a {@link 
+   *        jchrest.domainSpecifics.fixations.HypothesisDiscriminationFixation} 
+   *        scheduled to be performed or the most recently attempted {@link 
+   *        jchrest.domainSpecifics.Fixation} was a {@link 
+   *        jchrest.domainSpecifics.fixations.HypothesisDiscriminationFixation} 
+   *        that was performed successfully, one of the following {@link 
+   *        jchrest.domainSpecifics.Fixation Fixations} are returned with equal
+   *        probability:
+   *        <ul>
+   *          <li>{@link jchrest.domainSpecifics.tileworld.fixations.SalientObjectFixation}</li>
+   *          <li>{@link jchrest.domainSpecifics.tileworld.fixations.MovementFixation}</li>
+   *          <li>{@link jchrest.domainSpecifics.fixations.PeripheralItemFixation}</li>
+   *          <li>{@link jchrest.domainSpecifics.fixations.PeripheralSquareFixation}</li>
+   *        </ul>
+   *      </li>
+   *    </ol>
+   *  </li>
+   * </ol>
+   */
   @Override
   public Fixation getNonInitialFixationInSet(int time) {
-    throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+    List<Fixation> fixationsToMake = this._associatedModel.getFixationsToMake(time);
+    List<Fixation> fixationsAttempted = this._associatedModel.getPerceiver().getFixations(time);
+    int numberFixationsToMake = (fixationsToMake == null ? 0 : fixationsToMake.size());
+    int numberFixationsAttempted = (fixationsAttempted == null ? 0 : fixationsAttempted.size());
+    
+    if((numberFixationsToMake + numberFixationsAttempted) < this._initialFixationThreshold){
+      return new SalientObjectFixation(time + 150);
+    }
+    else{
+      
+      //In this case, a HypothesisDiscriminationFixation should always be 
+      //attempted unless:
+      //
+      // 1. There is such a Fixation already being deliberated on but hasn't 
+      //    been performed yet.
+      // 2. The most recent Fixation attempted was such a Fixation but wasn't
+      //    performed.
+      //
+      //In the first case, the outcome of attempting to make the 
+      //HypothesisDiscriminationFixation is unknown so instead of generating 
+      //another which may fail again (essentially wasting a Fixation), generate
+      //another type of Fixation.
+      //
+      //In the second case, the outcome of attempting to make a 
+      //HypothesisDiscriminationFixation is known and the attempt was 
+      //unsuccessful so other Fixations need to be made to try and replace the
+      //current visual STM hypothesis since its information is not useful in the
+      //current Scene.
+      //
+      //To perform these checks, get the Fixations currently being deliberated
+      //on and the Fixations performed up until the time specified by the 
+      //CHREST model associated with this domain.  NOTE: there is no need to 
+      //check for whether the Lists returned are null or empty since this will 
+      //have been checked when doneInitialFixations() is called in the "if" part 
+      //of the conditional surrounding this block.
+      
+      //Check for a HypothesisDiscriminationFixation currently being decided 
+      //upon.
+      boolean hypothesisDiscriminationFixationBeingDeliberatedOn = false;
+      for(Fixation fixation : fixationsToMake){
+        if(fixation.getClass().equals(HypothesisDiscriminationFixation.class)){
+          hypothesisDiscriminationFixationBeingDeliberatedOn = true;
+          break;
+        }
+      }
+      
+      //Check for a recent attempt at a HypothesisDiscriminationFixation that
+      //failed.
+      boolean mostRecentFixationAttemptedFailedAndWasHDF = false;
+      if(fixationsAttempted != null){
+        Fixation mostRecentFixationAttempted = fixationsAttempted.get(fixationsAttempted.size() - 1);
+        mostRecentFixationAttemptedFailedAndWasHDF = (
+          !mostRecentFixationAttempted.hasBeenPerformed() && 
+          mostRecentFixationAttempted.getClass().equals(HypothesisDiscriminationFixation.class)
+        );
+      }
+      
+      if(
+        hypothesisDiscriminationFixationBeingDeliberatedOn ||
+        (
+          !hypothesisDiscriminationFixationBeingDeliberatedOn &&
+          mostRecentFixationAttemptedFailedAndWasHDF
+        )
+      ){
+        
+        Fixation fixation = null;
+        while(fixation == null){
+          double r = Math.random();
+          
+          if(r < 0.25){
+            fixation = new SalientObjectFixation(time + 150);
+          }
+          else if(r >= 0.25 && r < 0.5) {
+            fixation = new MovementFixation(this._associatedModel, time + 150);
+          }
+          else if(r >= 0.5 && r < 0.75){
+            fixation = new PeripheralItemFixation(this._associatedModel, this._peripheralItemFixationMaxAttempts, time + 150);
+          }
+          else{
+            fixation = new PeripheralSquareFixation(this._associatedModel, time + 150);
+          }
+        }
+        
+        return fixation;
+      }
+      else{
+        return new HypothesisDiscriminationFixation(this._associatedModel, time);
+      }
+    }
   }
 
+  /**
+   * 
+   * @param time
+   * 
+   * @return {@link java.lang.Boolean#FALSE} since there are no extra conditions
+   * to consider when a {@link jchrest.architecture.Chrest} model using {@link 
+   * #this} determines whether the {@link jchrest.domainSpecifics.Fixation 
+   * Fixations} it has performed should be learned from.
+   */
   @Override
   public boolean shouldLearnFromNewFixations(int time) {
-    throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+    return false;
   }
 
+  /**
+   * @param time
+   * 
+   * @return {@link java.lang.Boolean#FALSE} since the only reason a {@link 
+   * jchrest.domainSpecifics.Fixation} set should end in Tileworld is if the 
+   * maximum number of {@link jchrest.domainSpecifics.Fixation Fixations} have 
+   * been attempted.
+   */
   @Override
   public boolean isFixationSetComplete(int time) {
-    throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+    return false;
   }
 
+  /**
+   *
+   * @param time
+   * 
+   * @return {@link java.lang.Boolean#TRUE} since there are no additional checks
+   * to be made when adding a new {@link jchrest.domainSpecifics.Fixation} in
+   * {@link jchrest.architecture.Chrest#scheduleOrMakeNextFixation(
+   * jchrest.domainSpecifics.Scene, boolean, int)}.
+   */
   @Override
   public boolean shouldAddNewFixation(int time) {
-    throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+    return true;
   }
 }

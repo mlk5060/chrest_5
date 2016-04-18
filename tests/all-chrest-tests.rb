@@ -52,6 +52,7 @@ end
 end
 
 [
+  "AheadOfAgentFixation",
   "CentralFixation",
   "HypothesisDiscriminationFixation",
   "PeripheralItemFixation",
@@ -64,6 +65,19 @@ end
   "GenericDomain"
 ].each do |klass|
   import "jchrest.domainSpecifics.generic.#{klass}"
+end
+
+[
+  "TileworldDomain"
+].each do |klass|
+  import "jchrest.domainSpecifics.tileworld.#{klass}"
+end
+
+[
+  "MovementFixation",
+  "SalientObjectFixation"
+].each do |klass|
+  import "jchrest.domainSpecifics.tileworld.fixations.#{klass}"
 end
 
 [
@@ -85,8 +99,7 @@ end
 # Pick up all ruby test files except this one
 Dir.glob(File.dirname(__FILE__) + "/**/*.rb") do |file|
   require file unless 
-  File.expand_path(file) == File.expand_path(__FILE__) ||
-    file.to_s.end_with?("tileworld-domain-tests.rb")
+  File.expand_path(file) == File.expand_path(__FILE__)
 end
 
 puts "Testing CHREST:"
