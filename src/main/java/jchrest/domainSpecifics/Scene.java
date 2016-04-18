@@ -49,9 +49,12 @@ import jchrest.lib.Square;
  * @author Martyn Lloyd-Kelly <martynlk@liverpool.ac.uk>
  */
 public class Scene {
-  protected static final String BLIND_SQUARE_TOKEN = "*";
-  protected static final String EMPTY_SQUARE_TOKEN = ".";
-  protected static final String CREATOR_TOKEN = "SELF";
+  //TODO: Remove "get" methods for static fields now that they've been made 
+  //      public.  Should also move these to jchrest.domainSpecifics.SceneObject
+  //      since it makes more sense to have them there.
+  public static final String BLIND_SQUARE_TOKEN = "*";
+  public static final String EMPTY_SQUARE_TOKEN = ".";
+  public static final String CREATOR_TOKEN = "SELF";
   
   protected final String _name;
   protected final int _height;

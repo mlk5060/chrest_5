@@ -174,7 +174,7 @@ public abstract class Fixation {
       + "\n   - Decided upon at time: " + this._timeDecidedUpon + "ms"
       + "\n   - Performed at time: " + (this._performanceTime == null ? "null" : this._performanceTime + "ms")
       + "\n   - Performance successful: " + (this._performanceTime == null ? "not performed yet" : this._performed)
-      + "\n   - Made in context of scene: " + (this._scene == null ? "null" : this._scene.getName())
+      + "\n   - Made in context of scene: " + (this._scene == null ? "null" : "'" + this._scene.getName() + "'")
       + "\n   - Column fixated on (domain-coordinates): " + (this._colFixatedOn == null || this._scene == null ? "null" : this._scene.getDomainSpecificColFromSceneSpecificCol(this._colFixatedOn))
       + "\n   - Row fixated on (domain-coordinates): " + (this._rowFixatedOn == null || this._scene == null ? "null" : this._scene.getDomainSpecificRowFromSceneSpecificRow(this._rowFixatedOn))
       + "\n   - Object seen: " + (this._objectSeen == null ?

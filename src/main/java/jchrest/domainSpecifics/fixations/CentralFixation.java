@@ -35,8 +35,6 @@ public class CentralFixation extends Fixation{
  /**
   * Constructor.
   * 
-  * @param model The {@link jchrest.architecture.Chrest} model constructing 
-  * {@link #this}.
   * @param timeDecidedUpon The time {@link #this} should be decided upon (in 
   * milliseconds).
   */

@@ -10,13 +10,11 @@ import jchrest.lib.Modality;
 import jchrest.domainSpecifics.Scene;
 import jchrest.lib.Square;
 import java.util.ArrayList;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map.Entry;
 import jchrest.lib.HistoryTreeMap;
 import jchrest.domainSpecifics.SceneObject;
 import jchrest.lib.PrimitivePattern;
-import jchrest.lib.VisualSpatialFieldObject;
 
 /**
  * Manages storage of {@link jchrest.domainSpecifics.Fixation Fixations} 

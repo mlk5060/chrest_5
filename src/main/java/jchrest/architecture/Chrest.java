@@ -151,9 +151,6 @@ public class Chrest extends Observable {
   //by this model, if applicable.
   private HistoryTreeMap _fixationsToMake = new HistoryTreeMap();
   
-  //Records how many fixations have been made in the current saccade set.
-  private int _fixationsScheduledForDeliberation = 0;
-  
   //Stipulates whether object locations in a Scene will have their coordinates 
   //specified relative to the agent equipped with CHREST's location in the Scene 
   //or not.  Can not be modified when set since its not currently possible to 
@@ -3169,15 +3166,6 @@ public class Chrest extends Observable {
   }
   
   /**
-   * 
-   * @return The number of fixations that have been scheduled for deliberation 
-   * in the current set.
-   */
-  public int getNumberFixationsScheduledForDeliberation(){
-    return this._fixationsScheduledForDeliberation;
-  }
-  
-  /**
    * @param time
    * 
    * @return The next {@link jchrest.domainSpecifics.Fixation Fixations} that 
@@ -3700,7 +3688,6 @@ public class Chrest extends Observable {
               
               //Reset variables associated with fixation sets.
               this.printDebugStatement("- Resetting Fixation variables");
-              this._fixationsScheduledForDeliberation = 0;
               this._recognisedVisualSpatialFieldObjectIdentifiers.clear();
               fixationsToMakeAtTime.clear();
               
@@ -3830,7 +3817,7 @@ public class Chrest extends Observable {
           Fixation newFixation;
           this.printDebugStatement("   ~ New Fixation will be added.");
           
-          if(this._fixationsScheduledForDeliberation == 0){
+          if(a + b == 0){
             this.printDebugStatement("   ~ This is the first Fixation in a new set to visual STM will be cleared");
             this.getStm(Modality.VISUAL).clear(time);
             newFixation = this.getDomainSpecifics().getInitialFixationInSet(time);
@@ -3846,7 +3833,6 @@ public class Chrest extends Observable {
             this.printDebugStatement("   ~ Fixation to add:" + newFixation.toString());
             this._attentionClock = newFixation.getTimeDecidedUpon();
             fixationsToMakeAtTime.add(newFixation);
-            this._fixationsScheduledForDeliberation++;
           }
         }
         else{
