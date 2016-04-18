@@ -138,29 +138,30 @@ public class HypothesisDiscriminationFixation extends Fixation{
   @Override
   public Square make(Scene scene, int time) {
     if(!scene.isEntirelyBlind()){
-      this._model.printDebugStatement("1");
+      this._model.printDebugStatement("- Scene is not entirely blind");
       
       Stm visualStm = this._model.getStm(Modality.VISUAL);
       Integer numberNodesInStmAtTime = visualStm.getCount(time);
       
       if(numberNodesInStmAtTime != null && numberNodesInStmAtTime >= 1) {
-        this._model.printDebugStatement("2");
+        this._model.printDebugStatement("- Number of Nodes in visual STM at time " + time + " is >= 1");
         
         List<Link> hypothesisChildren = visualStm.getItem(0, time).getChildren(time);
         if(hypothesisChildren == null || hypothesisChildren.isEmpty()) return null;
-        this._model.printDebugStatement("3");
+        this._model.printDebugStatement("- Visual STM hypothesis has children at time " + time);
 
         //for(int i = 0; i < hypothesisChildren.size () && i < 1; ++i) { // *** i == 0 only
           ListPattern firstHypothesisChildTest = hypothesisChildren.get(0).getTest();
           if (firstHypothesisChildTest.isEmpty ()) return null;
-          this._model.printDebugStatement("4");
+          this._model.printDebugStatement("- Test for first child of visual STM hypothesis is not empty");
           
           Pattern firstItemOfFirstHypothesisChildTest = firstHypothesisChildTest.getItem(0);
           if(firstItemOfFirstHypothesisChildTest.getClass().equals(ItemSquarePattern.class)) {
-            this._model.printDebugStatement("5");
-            ItemSquarePattern potentialFixationWithDomainSpecificCoordinates = (ItemSquarePattern)firstItemOfFirstHypothesisChildTest;
+            this._model.printDebugStatement("- First pattern in test for first child of visual STM hypothesis is an ItemSquarePattern");
             
-            this._model.printDebugStatement("- Potential fixation (scene-specific): " + potentialFixationWithDomainSpecificCoordinates.toString());
+            ItemSquarePattern potentialFixationWithAgentRelativeOrDomainSpecificCoordinates = (ItemSquarePattern)firstItemOfFirstHypothesisChildTest;
+            this._model.printDebugStatement("- Potential fixation (domain-specific): " + potentialFixationWithAgentRelativeOrDomainSpecificCoordinates.toString());
+            
             //////////////////////////////////////////////////////////////
             ///// CONVERT DOMAIN-SPECIFIC FIXATION TO SCENE-SPECIFIC /////
             //////////////////////////////////////////////////////////////
@@ -172,14 +173,14 @@ public class HypothesisDiscriminationFixation extends Fixation{
             //with CHREST.
             Square potentialFixation = null;
             if(this._model.isLearningObjectLocationsRelativeToAgent()){
+              this._model.printDebugStatement("- CHREST model is learning object locations relative to agent equipped with CHREST");
               Square locationOfAgentInScene = scene.getLocationOfCreator();
               
               if(locationOfAgentInScene != null){
                 this._model.printDebugStatement("- Location of agent in scene (scene-specific): " + locationOfAgentInScene.toString());
-                int sceneSpecificCol = locationOfAgentInScene.getColumn() + potentialFixationWithDomainSpecificCoordinates.getColumn();
-                int sceneSpecificRow = locationOfAgentInScene.getRow() + potentialFixationWithDomainSpecificCoordinates.getRow();
+                int sceneSpecificCol = locationOfAgentInScene.getColumn() + potentialFixationWithAgentRelativeOrDomainSpecificCoordinates.getColumn();
+                int sceneSpecificRow = locationOfAgentInScene.getRow() + potentialFixationWithAgentRelativeOrDomainSpecificCoordinates.getRow();
                 
-                this._model.printDebugStatement("- Square to attempt fixation on: (" + sceneSpecificCol + ", " + sceneSpecificRow + ")");
                 if(
                   sceneSpecificCol >= 0 && 
                   sceneSpecificCol < scene.getWidth() &&
@@ -198,13 +199,13 @@ public class HypothesisDiscriminationFixation extends Fixation{
               }
             }
             else{
-              Integer col = scene.getSceneSpecificColFromDomainSpecificCol(potentialFixationWithDomainSpecificCoordinates.getColumn());
-              Integer row = scene.getSceneSpecificRowFromDomainSpecificRow(potentialFixationWithDomainSpecificCoordinates.getRow());
+              Integer col = scene.getSceneSpecificColFromDomainSpecificCol(potentialFixationWithAgentRelativeOrDomainSpecificCoordinates.getColumn());
+              Integer row = scene.getSceneSpecificRowFromDomainSpecificRow(potentialFixationWithAgentRelativeOrDomainSpecificCoordinates.getRow());
               if(col != null && row != null) potentialFixation = new Square(col, row);
             }
             
             if(potentialFixation != null){
-              this._model.printDebugStatement("6");
+              this._model.printDebugStatement("- Square to attempt fixation on (scene-specific): " + potentialFixation.toString());
 
               //Check if the fixation should be made.  If all of the following
               //statements are true, perform the fixation:
@@ -229,24 +230,47 @@ public class HypothesisDiscriminationFixation extends Fixation{
               //a few places below (more efficient).
               Fixation mostRecentFixationPerformed = this._model.getPerceiver().getMostRecentFixationPerformed(time);
               SceneObject contentsOfPotentialFixation = scene.getSquareContents(potentialFixation.getColumn(), potentialFixation.getRow());
+              
+              Square domainSquareToPotentiallyFixateOn = new Square(
+                scene.getDomainSpecificColFromSceneSpecificCol(potentialFixation.getColumn()),
+                scene.getDomainSpecificRowFromSceneSpecificRow(potentialFixation.getRow())
+              );
+              
+              Square domainSquareFixatedOnInMostRecentFixationPerformed = null;
+              if(mostRecentFixationPerformed != null){
+                domainSquareFixatedOnInMostRecentFixationPerformed = new Square(
+                  mostRecentFixationPerformed.getScene().getDomainSpecificColFromSceneSpecificCol(mostRecentFixationPerformed.getColFixatedOn()),
+                  mostRecentFixationPerformed.getScene().getDomainSpecificRowFromSceneSpecificRow(mostRecentFixationPerformed.getRowFixatedOn())
+                );
+              }
+              this._model.printDebugStatement(
+                "- Checking if Fixation can be made (all statements must evaluate to true):" +
+                "\n   ~ Potential Fixation on Square represented in Scene: " + (contentsOfPotentialFixation != null) +
+                "\n   ~ Potential Fixation on non-blind Square: " + !(contentsOfPotentialFixation.getObjectType().equals(Scene.getBlindSquareToken())) +
+                "\n   ~ Potential Fixation on different Square to previous Fixation: " + !(domainSquareToPotentiallyFixateOn.equals(domainSquareFixatedOnInMostRecentFixationPerformed)) +
+                "\n      + Potential Fixation (domain-specific coords): " + domainSquareToPotentiallyFixateOn.toString() + 
+                "\n      + Most recent Fixation performed (domain-specific coords): " + 
+                  (domainSquareFixatedOnInMostRecentFixationPerformed == null ? 
+                    "null" : 
+                    domainSquareFixatedOnInMostRecentFixationPerformed.toString()
+                  ) +
+                "\n   ~ Fixation performance time reached: " + (this.getPerformanceTime() <= time)
+              );
 
               if(
                 //Check statement 1
                 (contentsOfPotentialFixation != null) &&
                 //Check statement 2
                 !(contentsOfPotentialFixation.getObjectType().equals(Scene.getBlindSquareToken())) &&
-                //Check statement 3
-                (
-                  mostRecentFixationPerformed == null ||
-                  (
-                    scene.getDomainSpecificColFromSceneSpecificCol(potentialFixation.getColumn()) != mostRecentFixationPerformed.getScene().getDomainSpecificColFromSceneSpecificCol(potentialFixation.getColumn()) ||
-                    scene.getDomainSpecificRowFromSceneSpecificRow(potentialFixation.getRow()) != mostRecentFixationPerformed.getScene().getDomainSpecificRowFromSceneSpecificRow(potentialFixation.getRow())
-                  )
-                ) &&
+                //Check statement 3 (if no Fixation has previously been made, 
+                //the domain square prev. fixated on variable will be set to 
+                //null so the test will evaluate to true since potentialFixation
+                //is not null since it was asserted so above).
+                (!domainSquareToPotentiallyFixateOn.equals(domainSquareFixatedOnInMostRecentFixationPerformed)) &&
                 //Check statement 4
-                this.getPerformanceTime() <= time
+                (this.getPerformanceTime() <= time)
               ) {
-                this._model.printDebugStatement("7");
+                this._model.printDebugStatement("- Making Fixation");
               
                 /////////////////////////
                 ///// MAKE FIXATION /////

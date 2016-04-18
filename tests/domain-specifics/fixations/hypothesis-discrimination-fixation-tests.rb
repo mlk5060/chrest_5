@@ -210,7 +210,15 @@ unit_test "make" do
 
       if scenario != 7  
         node_3_contents.add(
-          scenario == 8 ? Pattern.makeString("Bad") : ItemSquarePattern.new("H", (repeat == 1 ? 5 : 1), (repeat == 1 ? 5 : -1)))
+          (scenario == 8 ? 
+            Pattern.makeString("Bad") : 
+            ItemSquarePattern.new(
+              "H", 
+              (repeat == 1 ? 5 : 1), 
+              (repeat == 1 ? 5 : -1)
+            )
+          )
+        )
       end
 
       node_3_image = ListPattern.new(Modality::VISUAL)
