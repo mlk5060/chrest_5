@@ -2100,7 +2100,43 @@ unit_test "get_initial_fixation_in_set" do
 end
 
 ################################################################################
+# Checks operation of the "getNonInitialFixationInSet" function.
+# 
+# Note that none of the Fixations constructed are actually "performed", rather,
+# their variables are set as though they are in the normal course of running a
+# simulation with CHREST.  Thus, some variables may not make much sense with 
+# respect to the values they are set with however, other tests ensure that such 
+# variables are set correctly.
 unit_test "get_non_initial_fixation_in_set" do
+  
+  ########################################
+  ##### SET-UP INSTANCE FIELD ACCESS #####
+  ########################################
+  
+  # Fixation instance variables need to be set so they appear to have been 
+  # "performed", grant access to these variables.
+  Fixation.class_eval{ 
+    field_accessor :_scene, :_performanceTime, :_timeDecidedUpon, :_performed, :_colFixatedOn, :_rowFixatedOn, :_objectSeen
+  }
+  
+  # Scene dimensions need to be accessed at times, grant access here.
+  scene_width_field = Scene.java_class.declared_field("_width")
+  scene_width_field.accessible = true
+  scene_height_field = Scene.java_class.declared_field("_height")
+  scene_height_field.accessible = true
+  
+  # Particular Fixation data structures in a CHREST model and Perceiver are 
+  # integral to the operation of the function being tested and need to be 
+  # manipulated precisely.  Access to these data structures is enabled here.
+  Chrest.class_eval{
+    field_accessor :_fixationsToMake, :_saccadeTime
+  }
+  perceiver_fixations_field = Perceiver.java_class.declared_field("_fixations")
+  perceiver_fixations_field.accessible = true
+  
+  #####################
+  ##### MAIN LOOP #####
+  #####################
   
   #Some Fixations returned when a HypothesisDiscriminationFixation has not been 
   #performed successfully can return null depending on the previous Fixation 
@@ -2110,24 +2146,20 @@ unit_test "get_non_initial_fixation_in_set" do
   #circumstances so the best solution is to run the test a number of times to 
   #ensure that all possible situations can occur and are handled.
   200.times do
-  
-    # Set the test "time".
+    
     time = 0
 
-    #############################
-    ##### REFLECTION SET-UP #####
-    #############################
-
     # Need to be able to specify if a CHREST model is experienced "on-the-fly"
-    # otherwise, when trying to get non-initial fixations, the model would have to 
-    # have a certain number of Nodes, n, in LTM to return "true" when the model's 
-    # "experienced" status is queried when determining if a GlobalStrategyFixation
-    # or a PeripheralItemFixation should be made.  Thus, if n is changed this test 
-    # will break in addition, performing this learning in a test adds extra code 
-    # that will just complicate an already complex test!
+    # otherwise, when trying to get non-initial fixations, the model would have 
+    # to have a certain number of Nodes, n, in LTM to return "true" when the 
+    # model's "experienced" status is queried when determining if a 
+    # GlobalStrategyFixation or a PeripheralItemFixation should be made.  Thus, 
+    # if n is changed this test will break in addition, performing this learning 
+    # in a test adds extra code that will just complicate an already complex 
+    # test!
     #
-    # To circumvent this, subclass the "Chrest" java class with a jRuby class that
-    # will be used in place of the "Chrest" java class in this test. In the 
+    # To circumvent this, subclass the "Chrest" java class with a jRuby class 
+    # that will be used in place of the "Chrest" java class in this test. In the 
     # subclass, override "Chrest.isExperienced()" (the method used to determine 
     # the "experienced" status of a CHREST model) and have it return a class 
     # variable (for the subclass) that can be set at will.
@@ -2142,30 +2174,6 @@ unit_test "get_non_initial_fixation_in_set" do
         @@experienced = bool
       end
     }.new(time, false)
-    
-    Chrest.class_eval{
-      field_accessor :_fixationsScheduledForDeliberation
-    }
-
-    # Since precise control is needed over what Fixations should be generated, 
-    # the private "_scene" instance variable for the Fixations generated needs to
-    # be accessible since "Fixation.perform()" and "Fixation.make()" should not be
-    # used as these will extra code to be included that makes the test more 
-    # complex.  If "_scene" can not be not accessed, NullPointerExceptions will be
-    # thrown when certain Fixations are generated since these Fixations require 
-    # access to previous Fixation's "_scene" variables and this variable can only 
-    # be set (without using reflection) when "Fixation.perform()" is invoked.
-    Fixation.class_eval{ field_writer :_scene }
-
-    # Since "Fixation.perform()" is not to be used in this test, it is also 
-    # necessary to invoke the private "Fixation.setPerformed()" method; this is 
-    # only accessible when "Fixation.perform()" is used and sets the coordinates 
-    # of the Square fixated on and the SceneObject "seen" when the Fixation 
-    # occurs.  If these variables are not set for a Fixation, 
-    # NullPointerExceptions will be thrown when other Fixations are being 
-    # generated.
-    set_performed_method = Fixation.java_class.declared_method(:setPerformed, Java::int, Java::int, SceneObject)
-    set_performed_method.accessible = true
 
     #########################
     ##### DOMAIN SET-UP #####
@@ -2189,119 +2197,244 @@ unit_test "get_non_initial_fixation_in_set" do
       "RNBQKBNR"
     board = ChessDomain.constructBoard(chess_board)
 
-    # No fixations made yet so an instance of SalientMan should be returned
-    salient_man_fixation = chess_domain.getNonInitialFixationInSet(0)
-    assert_true(
-      salient_man_fixation.java_kind_of?(SalientManFixation),
-      "occurred when checking the type of Fixation returned when initial " +
-      "fixations have not been completed yet"
-    )
+    #########################################################################
+    ##### SET-UP FIXATION DATA STRUCTURE FOR CHREST MODEL AND PERCEIVER #####
+    #########################################################################
+    
+    # Lists are used in the Fixation data structures for CHREST and the 
+    # Perceiver so set them up now.
+    fixations_to_make = ArrayList.new()
+    fixations_attempted = ArrayList.new()
 
-    #Populate the model's perceiver fixations with x performed fixations where
-    #x is equal to intial_fixation_threshold.  When the "getNonInitialFixation()" 
-    #function is called again, a HypothesisDiscrimination instance should be 
-    #returned.
+    ######################################################################
+    ##### GET FIXATIONS WHEN INITIAL FIXATIONS THRESHOLD NOT REACHED #####
+    ######################################################################
+
+    # Populate the model's perceiver fixations with x performed fixations where
+    # x is equal to intial_fixation_threshold.
     time += 50
     intial_fixation_threshold.times do
-      salient_man_fixation = SalientManFixation.new(model, time)
-      salient_man_fixation.setPerformanceTime(salient_man_fixation.getTimeDecidedUpon() + 50)
-      salient_man_fixation._scene = board
-      set_performed_method.invoke(salient_man_fixation, 0, 1, SceneObject.new("30", "P"))
-      model.getPerceiver.addFixation(salient_man_fixation)
-      model._fixationsScheduledForDeliberation += 1
-      time = salient_man_fixation.getPerformanceTime() + 300
-    end
-
-    fixation = chess_domain.getNonInitialFixationInSet(time)
-    assert_equal(
-      HypothesisDiscriminationFixation.java_class,
-      fixation.java_class,
-      "occurred when checking the type of Fixation returned after initial " + 
-      "fixations have been completed and a hypothesis-discrimination fixation " +
-      "hasn't been attempted ()"
-    )
-
-    # Now we need to check if AttackDefenseFixation, GlobalStrategyFixation, 
-    # PeripheralItemFixation and PeripheralSquareFixation instances are returned
-    # as expected.  Instances of such Fixations should only be returned if the
-    # previous Fixation attempted was an instance of 
-    # HypothesisDiscriminationFixation and wasn't performed successfully.  Since
-    # generating AttackDefenseFixation, GlobalStrategyFixation, 
-    # PeripheralItemFixation and PeripheralSquareFixation instances is random in 
-    # the "getNonInitialFixation()" the code needs to loop until all instances 
-    # have been returned.  Note that a GlobalStrategyFixation is returned in 
-    # place of a PeripheralItemFixation if the CHREST model that 
-    # "getNonInitialFixation()" is invoked in context of is experienced. 
-    # Consequently, the code block below will be run twice.  The first 
-    # repetition will check if instances of AttackDefenseFixation, 
-    # PeripheralItemFixation and PeripheralSquareFixation
-    # are returned.  The second repetition will check if instances of 
-    # AttackDefenseFixation, GlobalStrategyFixation and PeripheralSquareFixation
-    # are returned.
-    hypothesis_discrimination_fixation = fixation
-    for i in 1..2
-      if i == 2 then model.setExperienced(true) end
       
-      attack_defense_fixation_returned = false
-      global_strategy_or_peripheral_item_fixation_returned = false
-      peripheral_square_fixation_returned = false
-      while 
-        !attack_defense_fixation_returned or 
-        !global_strategy_or_peripheral_item_fixation_returned or 
-        !peripheral_square_fixation_returned
+      # Get Fixation and check its class
+      fixation = chess_domain.getNonInitialFixationInSet(time)
+      assert_true(
+        fixation.java_kind_of?(SalientManFixation),
+        "occurred when checking the type of Fixation returned when initial " +
+        "fixations have not been completed yet"
+      )
+      
+      # Add Fixation to CHREST model's "_fixationToMake" data structure.
+      fixations_to_make.add(fixation)
+      model._fixationsToMake.put(time, fixations_to_make)
+      
+      # Set Fixation variables so it has been "performed"
+      fixation._performed = true
+      fixation._performanceTime = fixation._timeDecidedUpon + model._saccadeTime
+      fixation._scene = board
+      fixation._colFixatedOn = 0
+      fixation._rowFixatedOn = 1
+      fixation._objectSeen = board._scene.get(fixation._colFixatedOn).get(fixation._rowFixatedOn)
+      # The value that fixation._objectSeen above is a good example of the 
+      # nonsensical value setting mentioned in the preamble to this test.
 
-        #Add the last, unperformed, HypothesisDiscriminationFixation instance to
-        #the CHREST model's fixations.
-        hypothesis_discrimination_fixation.setPerformanceTime(hypothesis_discrimination_fixation.getTimeDecidedUpon() + 30)
-        hypothesis_discrimination_fixation._scene = board
-        model.getPerceiver.addFixation(hypothesis_discrimination_fixation)
-        time = hypothesis_discrimination_fixation.getPerformanceTime() + 100
+      # Remove/add the Fixation from/to the CHREST model's/Perceiver's Fixation 
+      # data structure
+      fixations_to_make.remove(fixation)
+      model._fixationsToMake.put(fixation._performanceTime, fixations_to_make)
+      fixations_attempted.add(fixation)
+      perceiver_fixations_field.value(model.getPerceiver()).put(fixation._performanceTime, fixations_attempted)
+      
+      # Advance time
+      time = fixation._performanceTime + 300
+    end
+    
+    ##################################################################
+    ##### GET FIXATIONS WHEN INITIAL FIXATIONS THRESHOLD REACHED #####
+    ##################################################################
 
-        #Get the next fixation.
-        fixation = chess_domain.getNonInitialFixationInSet(time)
-        assert_true(
-          (
-            fixation.java_kind_of?(AttackDefenseFixation) || 
-            fixation.java_kind_of?(i == 1 ? PeripheralItemFixation : GlobalStrategyFixation) ||
-            fixation.java_kind_of?(PeripheralSquareFixation)
-          ),
-          "occurred when checking the type of Fixation returned when a CHREST " + 
-          "model is inexperienced and the last Fixation attempted was a " +
-          "HypothesisDiscriminationFixation but was not performed successfully. " +
-          "Fixation returned was a " + fixation.java_class.to_s + "."
-        )
-
-        #Set the relevant boolean value that controls the while loop we're in. 
-        if(fixation.java_kind_of?(AttackDefenseFixation)) then attack_defense_fixation_returned = true end
-        if(fixation.java_kind_of?( i == 1 ? PeripheralItemFixation : GlobalStrategyFixation)) then global_strategy_or_peripheral_item_fixation_returned = true end
-        if(fixation.java_kind_of?(PeripheralSquareFixation)) then peripheral_square_fixation_returned = true end
-
-        #Perform the fixation.  Note that the coordinates fixated on are 
-        #randomly generated, this is because some Fixations returned when a 
-        #HypothesisDiscriminationFixation has not been performed successfully 
-        #can return null depending on the previous Fixation made.  Essentially,
-        #this should be allowed to occur since the code's ability to deal with
-        #this needs to be verified.
-        time = fixation.getTimeDecidedUpon() + 100
-        fixation.setPerformanceTime(time)
-        fixation._scene = board
-        fixationXcor = rand(0..7)
-        fixationYcor = rand(0..7)
-        set_performed_method.invoke(fixation, fixationXcor, fixationYcor, board.getSquareContents(fixationXcor, fixationYcor))
-        model.getPerceiver.addFixation(fixation)
-        time = fixation.getPerformanceTime() + 300
-
-        #Now, get the next Fixation, this should be a 
-        #HypothesisDiscriminationFixation and start the loop over again (if 
-        #applicable).
-        hypothesis_discrimination_fixation = chess_domain.getNonInitialFixationInSet(time)
-        assert_true(
-          hypothesis_discrimination_fixation.java_kind_of?(HypothesisDiscriminationFixation),
-          "occurred when checking the type of Fixation returned when a CHREST " + 
-          "model is inexperienced and the last Fixation attempted was not a " +
-          "HypothesisDiscriminationFixation and was performed successfully."
-        )
+    # When the initial fixations threshold has been reached, a 
+    # HypothesisDiscriminationFixation should always be returned unless:
+    # 
+    # 1. A HypothesisDiscriminationFixation is scheduled to be performed but has
+    #    not been performed when the function is invoked. 
+    # 2. The previous Fixation attempted was a HypothesisDiscriminationFixation 
+    #    but wasn't performed successfully.  
+    # 
+    # In these cases, an AttackDefenseFixation, GlobalStrategyFixation, 
+    # PeripheralItemFixation or PeripheralSquareFixation should be returned.
+    # Note that the function will return either a GlobalStrategyFixation or a
+    # PeripheralItemFixation depending on whether the CHREST model invoking the
+    # function is experienced or not (experienced: GlobalStrategyFixation, 
+    # inexperienced: PeripheralItemFixation).
+    # 
+    # Since there is an equal probability of generating these Fixation types in 
+    # the cases described, the function will be invoked until all these Fixation 
+    # types have been returned in both cases.  To facilitate this, create 
+    # boolean flags that indicate whether each Fixation has been returned in 
+    # each case and set them to false initially.
+    
+    # Boolean flags when function is invoked before 
+    # HypothesisDiscriminationFixation is performed.
+    attack_defense_fixation_returned_before_hypothesis_discrimination_fixation_performed = false
+    global_strategy_or_peripheral_item_fixation_returned_before_hypothesis_discrimination_fixation_performed = false
+    peripheral_square_fixation_returned_before_hypothesis_discrimination_fixation_performed = false
+    
+    # Boolean flags when function is invoked after
+    # HypothesisDiscriminationFixation is performed.
+    attack_defense_fixation_returned_after_hypothesis_discrimination_fixation_performed = false
+    global_strategy_or_peripheral_item_fixation_returned_after_hypothesis_discrimination_fixation_performed = false
+    peripheral_square_fixation_returned_after_hypothesis_discrimination_fixation_performed = false
+    
+    # Function invocation loop
+    while 
+      !attack_defense_fixation_returned_before_hypothesis_discrimination_fixation_performed or 
+      !global_strategy_or_peripheral_item_fixation_returned_before_hypothesis_discrimination_fixation_performed
+      !peripheral_square_fixation_returned_before_hypothesis_discrimination_fixation_performed or
+      !attack_defense_fixation_returned_after_hypothesis_discrimination_fixation_performed or
+      !global_strategy_or_peripheral_item_fixation_returned_after_hypothesis_discrimination_fixation_performed or
+      !peripheral_square_fixation_returned_after_hypothesis_discrimination_fixation_performed
+    
+      ############################################################
+      ##### GET HypothesisDiscriminationFixation AND PERFORM #####
+      ############################################################
+      
+      # Get the next Fixation from the function.  This should be a 
+      # HypothesisDiscriminationFixation instance since:
+      #
+      # 1. The function is invoked for the first time after the initial fixation
+      #    threshold has been reached (first iteration of while loop).
+      # 2. The function is invoked after a HypothesisDiscriminationFixation has 
+      #    been attempted but performed unsuccessfully (iteration 2+ of while 
+      #    loop).
+      fixation = chess_domain.getNonInitialFixationInSet(time)
+      assert_equal(
+        HypothesisDiscriminationFixation.java_class,
+        fixation.java_class,
+        "occurred when checking the type of Fixation returned after initial " + 
+        "fixations have been completed and a hypothesis-discrimination fixation " +
+        "hasn't been attempted"
+      )
+      
+      # Add the Fixation to the CHREST model's Fixation to make data structure.
+      fixations_to_make.add(fixation)
+      model._fixationsToMake.put(time, fixations_to_make)
+      
+      # Set Fixation variables that would be set if the Fixation were performed
+      # "properly"
+      fixation._performanceTime = fixation._timeDecidedUpon + model._saccadeTime
+      fixation._scene = board
+      
+      # Remove/add the last, unperformed, HypothesisDiscriminationFixation 
+      # instance from/to the CHREST model's/Perceiver's Fixation data structure
+      fixations_to_make.remove(fixation)
+      model._fixationsToMake.put(fixation._performanceTime, fixations_to_make)
+      fixations_attempted.add(fixation)
+      perceiver_fixations_field.value(model.getPerceiver()).put(fixation._performanceTime, fixations_attempted)
+      
+      ##########################################################################
+      ##### GET FIXATION BEFORE HypothesisDiscriminationFixation PERFORMED #####
+      ##########################################################################
+      
+      # Invoke the function before the time the HypothesisDiscriminationFixation
+      # was performed to see if the correct type of Fixation is performed when a 
+      # Hypothesis DiscriminationFixation is scheduled to be performed but 
+      # hasn't been performed yet.  This Fixation will not be added to the 
+      # Fixation data structures, however. 
+      time_before_hypothesis_discrimination_fixation_performed = rand(time...fixation._performanceTime)
+      fixation_returned_before_hypothesis_discrimination_fixation_performed = chess_domain.getNonInitialFixationInSet(
+        time_before_hypothesis_discrimination_fixation_performed
+      )
+      
+      assert_true(
+        (
+          fixation_returned_before_hypothesis_discrimination_fixation_performed.java_kind_of?(AttackDefenseFixation) || 
+          fixation_returned_before_hypothesis_discrimination_fixation_performed.java_kind_of?(
+            model.isExperienced(time_before_hypothesis_discrimination_fixation_performed) ? 
+              GlobalStrategyFixation : 
+              PeripheralItemFixation
+          ) ||
+          fixation_returned_before_hypothesis_discrimination_fixation_performed.java_kind_of?(PeripheralSquareFixation)
+        ),
+        "occurred when checking the Fixation class returned by the function when " +
+        "a HypothesisDiscriminationFixation is scheduled for performance but " +
+        "hasn't been performed when the function is invoked.  Fixation returned:" +
+        fixation_returned_before_hypothesis_discrimination_fixation_performed.toString()
+      )
+      
+      # Set while loop control variable accordingly.
+      case fixation_returned_before_hypothesis_discrimination_fixation_performed.java_class
+      when AttackDefenseFixation.java_class
+        attack_defense_fixation_returned_before_hypothesis_discrimination_fixation_performed = true
+      when model.isExperienced(time_before_hypothesis_discrimination_fixation_performed) ? GlobalStrategyFixation.java_class : PeripheralItemFixation.java_class
+        global_strategy_or_peripheral_item_fixation_returned_before_hypothesis_discrimination_fixation_performed = true
+      when PeripheralSquareFixation.java_class
+        peripheral_square_fixation_returned_before_hypothesis_discrimination_fixation_performed = true
       end
+      
+      #############################
+      ##### GET NEXT FIXATION #####
+      #############################
+      
+      # Advance time
+      time = fixation._performanceTime + 100
+      
+      #Get the next fixation, this will be performed.
+      fixation = chess_domain.getNonInitialFixationInSet(time)
+      assert_true(
+        (
+          fixation_returned_before_hypothesis_discrimination_fixation_performed.java_kind_of?(AttackDefenseFixation) || 
+          fixation_returned_before_hypothesis_discrimination_fixation_performed.java_kind_of?(
+            model.isExperienced(time) ? 
+              GlobalStrategyFixation : 
+              PeripheralItemFixation
+          ) ||
+          fixation_returned_before_hypothesis_discrimination_fixation_performed.java_kind_of?(PeripheralSquareFixation)
+        ),
+        "occurred when checking the type of Fixation returned when the last " +
+        "Fixation attempted was a HypothesisDiscriminationFixation but was not " +
+        "performed successfully. Fixation returned was a " + 
+        fixation.java_class.to_s + "."
+      )
+
+      #Set the relevant boolean value that controls the while loop 
+      case fixation.java_class
+      when AttackDefenseFixation.java_class
+        attack_defense_fixation_returned_after_hypothesis_discrimination_fixation_performed = true
+      when model.isExperienced(time) ? GlobalStrategyFixation.java_class : PeripheralItemFixation.java_class
+        global_strategy_or_peripheral_item_fixation_returned_after_hypothesis_discrimination_fixation_performed = true
+      when PeripheralSquareFixation.java_class
+        peripheral_square_fixation_returned_after_hypothesis_discrimination_fixation_performed = true
+      end
+      
+      # Add the Fixation to the CHREST model's Fixation to make data structure.
+      fixations_to_make.add(fixation)
+      model._fixationsToMake.put(time, fixations_to_make)
+
+      # "Perform" the fixation.  Note that the coordinates fixated on are 
+      # randomly generated, this is because some Fixations returned when a 
+      # HypothesisDiscriminationFixation has not been performed successfully 
+      # can return null depending on the previous Fixation made.  Essentially,
+      # this should be allowed to occur since the code's ability to deal with
+      # this needs to be verified.
+      time = fixation.getTimeDecidedUpon() + model._saccadeTime
+      fixation._performanceTime = time
+      fixation._performed = true
+      fixation._scene = board
+      fixation._colFixatedOn = rand(0...scene_width_field.value(board))
+      fixation._rowFixatedOn =  rand(0...scene_height_field.value(board))
+      fixation._objectSeen = board._scene.get(fixation._colFixatedOn).get(fixation._rowFixatedOn)
+      # The value that fixation._objectSeen above is a good example of the 
+      # nonsensical value setting mentioned in the preamble to this test.
+  
+      # Remove/add the last Fixation from/to the CHREST model's/Perceiver's 
+      # Fixation data structure
+      fixations_to_make.remove(fixation)
+      model._fixationsToMake.put(fixation._performanceTime, fixations_to_make)
+      fixations_attempted.add(fixation)
+      perceiver_fixations_field.value(model.getPerceiver()).put(fixation._performanceTime, fixations_attempted)
+      
+      # Advance time
+      time = fixation._performanceTime + 300
     end
   end
 end

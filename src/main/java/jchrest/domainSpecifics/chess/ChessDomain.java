@@ -8,7 +8,6 @@ import jchrest.domainSpecifics.DomainSpecifics;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
@@ -23,13 +22,15 @@ import jchrest.domainSpecifics.fixations.HypothesisDiscriminationFixation;
 import jchrest.domainSpecifics.fixations.PeripheralSquareFixation;
 import jchrest.lib.ItemSquarePattern;
 import jchrest.lib.ListPattern;
-import jchrest.lib.Modality;
 import jchrest.lib.PrimitivePattern;
 import jchrest.domainSpecifics.Scene;
 import jchrest.lib.Square;
 
 /**
   * Used to play chess.
+  * 
+  * @author Peter C. R. Lane
+  * @author Martyn Lloyd-Kelly <martynlk@liverpool.ac.uk>
   */
 public class ChessDomain extends DomainSpecifics {
   
@@ -332,7 +333,9 @@ public class ChessDomain extends DomainSpecifics {
 
     //Check for standard move
     squaresConsidered++;
-    if( board.isSquareEmpty(square.getColumn(), blackPawn ? square.getRow() - 1 : square.getRow() + 1) ){
+    int colToCheck = square.getColumn(); 
+    int rowToCheck = (blackPawn ? square.getRow() - 1 : square.getRow() + 1);
+    if( board.getSquareContents(colToCheck, rowToCheck) != null && board.isSquareEmpty(colToCheck, rowToCheck) ){
       moves.add(new Square (square.getColumn(), blackPawn ? square.getRow() - 1 : square.getRow() + 1));
       
       //Check for an initial move now that a standard move is possible.
@@ -349,14 +352,14 @@ public class ChessDomain extends DomainSpecifics {
     if(square.getColumn() > 0){ // not in column a
       squaresConsidered++;
       Square destination = new Square(square.getColumn() - 1, blackPawn ? square.getRow() - 1 : square.getRow() + 1);
-      if(differentColour(board, square, destination)){
+      if(board.getSquareContents(destination.getColumn(), destination.getRow()) != null && differentColour(board, square, destination)){
         moves.add(destination);
       }
     }
     if(square.getColumn() < 7){ // not in column h
       squaresConsidered++;
       Square destination = new Square (square.getColumn() + 1, blackPawn ? square.getRow() - 1 : square.getRow() + 1);
-      if(differentColour(board, square, destination)){
+      if(board.getSquareContents(destination.getColumn(), destination.getRow()) != null && differentColour(board, square, destination)){
         moves.add(destination);
       }
     }
@@ -815,55 +818,64 @@ public class ChessDomain extends DomainSpecifics {
   /**
    * @param time
    * @return A new {@link jchrest.domainSpecifics.Fixation} whose type is 
-   * determined by the following algorithm:
+   * determined by comparing <i>n</i> (the sum of the number of {@link 
+   * jchrest.domainSpecifics.Fixation Fixations} to make and the number of {@link 
+   * jchrest.domainSpecifics.Fixation Fixations} attempted at the {@code time} 
+   * specified) to <i>t</i> (the initial {@link 
+   * jchrest.domainSpecifics.Fixation} threshold specified as a parameter to 
+   * {@link #this#TileworldDomain(jchrest.architecture.Chrest, int, int, int)}):
    * 
    * <ol type="1">
    *  <li>
-   *    The result of {@link #this#doneInitialFixations(int)} is invoked with 
-   *    the {@code time} specified as its parameter and its return value is 
-   *    checked.
+   *    If <i>n</i> &lt; <i>t</i> a {@link 
+   *    jchrest.domainSpecifics.chess.fixations.SalientManFixation} is returned.
+   *  </li>
+   *  <li>
+   *    If <i>n</i> &gt;&#61; <i>t</i>, the {@link 
+   *    jchrest.domainSpecifics.Fixation Fixations} scheduled to be performed 
+   *    and the most recent {@link jchrest.domainSpecifics.Fixation} attempted
+   *    by the {@link jchrest.architecture.Chrest} model using {@link #this} are
+   *    retrieved in context of the {@code time} specified. 
    *    <ol type="1">
    *      <li>
-   *        {@link java.lang.Boolean#FALSE} returned, a {@link 
-   *        jchrest.domainSpecifics.chess.fixations.SalientManFixation} is 
-   *        returned.
+   *        If there is no {@link 
+   *        jchrest.domainSpecifics.fixations.HypothesisDiscriminationFixation} 
+   *        scheduled to be performed or the most recently attempted {@link 
+   *        jchrest.domainSpecifics.Fixation} was a {@link 
+   *        jchrest.domainSpecifics.fixations.HypothesisDiscriminationFixation} 
+   *        whose performance was unsuccessful, a {@link 
+   *        jchrest.domainSpecifics.fixations.HypothesisDiscriminationFixation} 
+   *        is returned.
    *      </li>
    *      <li>
-   *        {@link java.lang.Boolean#TRUE} returned, the class and performance
-   *        status of the most recent {@link jchrest.domainSpecifics.Fixation} 
-   *        made by the {@link jchrest.architecture.Perceiver} of the {@link 
-   *        jchrest.architecture.Chrest} model associated with {@link #this}
-   *        is checked.
-   *        <ol type="1">
+   *        If there is a {@link 
+   *        jchrest.domainSpecifics.fixations.HypothesisDiscriminationFixation} 
+   *        scheduled to be performed or the most recently attempted {@link 
+   *        jchrest.domainSpecifics.Fixation} was a {@link 
+   *        jchrest.domainSpecifics.fixations.HypothesisDiscriminationFixation} 
+   *        that was performed successfully, one of the following {@link 
+   *        jchrest.domainSpecifics.Fixation Fixations} are returned with equal
+   *        probability:
+   *        <ul>
+   *          <li>{@link jchrest.domainSpecifics.chess.fixations.AttackDefenseFixation}</li>
+   *          <li>{@link jchrest.domainSpecifics.fixations.PeripheralSquareFixation}</li>
    *          <li>
-   *            If the {@link jchrest.domainSpecifics.Fixation} was not performed
-   *            and is an instance of {@link 
-   *            jchrest.domainSpecifics.fixations.HypothesisDiscriminationFixation}, 
-   *            one of three types of {@link jchrest.domainSpecifics.Fixation} 
-   *            are returned (with equal probability depending on which ones
-   *            can actually be made):
-   *            <ol type="1">
+   *            Get <i>e</i> (the result of invoking {@link 
+   *            jchrest.architecture.Chrest#isExperienced(int)} in context of 
+   *            the {@link jchrest.architecture.Chrest} model using {@link 
+   *            #this}).
+   *            <ul>
    *              <li>
-   *                {@link jchrest.domainSpecifics.chess.fixations.AttackDefenseFixation}.
+   *                If <i>e</i> is {@link java.lang.Boolean#TRUE}, return a
+   *                {@link jchrest.domainSpecifics.chess.fixations.GlobalStrategyFixation}.
    *              </li>
    *              <li>
-   *                If the {@link jchrest.architecture.Chrest} model associated 
-   *                with {@link #this} is experienced at the {@code time}
-   *                specified, a {@link jchrest.domainSpecifics.chess.fixations.GlobalStrategyFixation}
-   *                is returned otherwise, a {@link jchrest.domainSpecifics.fixations.PeripheralItemFixation}
-   *                is returned.
+   *                If <i>e</i> is {@link java.lang.Boolean#FALSE}, return a
+   *                {@link jchrest.domainSpecifics.fixations.PeripheralItemFixation}.
    *              </li>
-   *              <li>
-   *                {@link jchrest.domainSpecifics.fixations.PeripheralSquareFixation}.
-   *              </li>
-   *            </ol>
+   *            </ul>
    *          </li>
-   *          <li> 
-   *            Otherwise, a {@link 
-   *            jchrest.domainSpecifics.fixations.HypothesisDiscriminationFixation}
-   *            is returned.
-   *          </li>
-   *        </ol>
+   *        </ul>
    *      </li>
    *    </ol>
    *  </li>
@@ -871,7 +883,12 @@ public class ChessDomain extends DomainSpecifics {
    */
   @Override
   public Fixation getNonInitialFixationInSet(int time){
-    if(this._associatedModel.getNumberFixationsScheduledForDeliberation() < this._initialFixationThreshold){
+    List<Fixation> fixationsToMake = this._associatedModel.getFixationsToMake(time);
+    List<Fixation> fixationsAttempted = this._associatedModel.getPerceiver().getFixations(time);
+    int numberFixationsToMake = (fixationsToMake == null ? 0 : fixationsToMake.size());
+    int numberFixationsAttempted = (fixationsAttempted == null ? 0 : fixationsAttempted.size());
+    
+    if((numberFixationsToMake + numberFixationsAttempted) < this._initialFixationThreshold){
       return new SalientManFixation(this._associatedModel, time);
     }
     else{
@@ -886,7 +903,7 @@ public class ChessDomain extends DomainSpecifics {
       //
       //In the first case, the outcome of attempting to make the 
       //HypothesisDiscriminationFixation is unknown so instead of generating 
-      //another which may fail again (essentially wasting a Fixation).  Generate
+      //another which may fail again (essentially wasting a Fixation), generate
       //another type of Fixation.
       //
       //In the second case, the outcome of attempting to make a 
@@ -901,14 +918,12 @@ public class ChessDomain extends DomainSpecifics {
       //check for whether the Lists returned are null or empty since this will 
       //have been checked when doneInitialFixations() is called in the "if" part 
       //of the conditional surrounding this block.
-      List<Fixation> mostRecentFixationsToPerform = this._associatedModel.getFixationsToMake(time);
-      List<Fixation> mostRecentFixationsAttempted = this._associatedModel.getPerceiver().getFixations(time);
       
       //Check for a HypothesisDiscriminationFixation currently being decided 
       //upon.
       boolean hypothesisDiscriminationFixationBeingDeliberatedOn = false;
-      for(Fixation fixation : mostRecentFixationsToPerform){
-        if(!fixation.hasBeenPerformed() && fixation.getClass().equals(HypothesisDiscriminationFixation.class)){
+      for(Fixation fixation : fixationsToMake){
+        if(fixation.getClass().equals(HypothesisDiscriminationFixation.class)){
           hypothesisDiscriminationFixationBeingDeliberatedOn = true;
           break;
         }
@@ -916,10 +931,15 @@ public class ChessDomain extends DomainSpecifics {
       
       //Check for a recent attempt at a HypothesisDiscriminationFixation that
       //failed.
-      Fixation mostRecentFixationAttempted = mostRecentFixationsAttempted.get(mostRecentFixationsAttempted.size() - 1);
-      boolean mostRecentFixationAttemptedFailedAndWasHDF = 
-        !mostRecentFixationAttempted.hasBeenPerformed() && 
-        mostRecentFixationAttempted.getClass().equals(HypothesisDiscriminationFixation.class);
+      boolean mostRecentFixationAttemptedFailedAndWasHDF = false;
+      Fixation mostRecentFixationAttempted = null;
+      if(fixationsAttempted != null){
+        mostRecentFixationAttempted = fixationsAttempted.get(fixationsAttempted.size() - 1);
+        mostRecentFixationAttemptedFailedAndWasHDF = (
+          !mostRecentFixationAttempted.hasBeenPerformed() && 
+          mostRecentFixationAttempted.getClass().equals(HypothesisDiscriminationFixation.class)
+        );
+      }
       
       if(
         hypothesisDiscriminationFixationBeingDeliberatedOn ||
@@ -934,7 +954,7 @@ public class ChessDomain extends DomainSpecifics {
           double r = Math.random();
           
           if(r < 0.3333){
-             fixation = new AttackDefenseFixation(this._associatedModel, (ChessBoard)mostRecentFixationAttempted.getScene(), time);
+            fixation = new AttackDefenseFixation(this._associatedModel, (ChessBoard)mostRecentFixationAttempted.getScene(), time);
           }
           else if(r >= 0.3333 && r < 0.6667) {
             if(this._associatedModel.isExperienced(time)){

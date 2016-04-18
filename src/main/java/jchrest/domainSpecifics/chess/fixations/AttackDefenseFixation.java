@@ -92,7 +92,7 @@ public class AttackDefenseFixation extends Fixation{
       Fixation mostRecentFixationPerformed = model.getPerceiver().getMostRecentFixationPerformed(time);
       if(mostRecentFixationPerformed != null){
         
-        //Get most recent fixatioon performed info and check that its all OK.
+        //Get most recent fixation performed info and check that its all OK.
         Integer mostRecentFixationPerformedCol = mostRecentFixationPerformed.getColFixatedOn();
         Integer mostRecentFixationPerformedRow = mostRecentFixationPerformed.getRowFixatedOn();
         SceneObject mostRecentFixationPerformedObjectSeen = mostRecentFixationPerformed.getObjectSeen();

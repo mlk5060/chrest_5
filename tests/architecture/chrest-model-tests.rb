@@ -207,105 +207,337 @@ end
 # is invoked every millisecond until it returns true.  When this is the case, 
 # the data structures used to record Fixations by the CHREST model and its 
 # associated Perceiver are checked to ensure that they are as expected.
+# 
+# The test is run for a 1000 times after every Fixation that can be performed is
+# performed and is then repeated twice, first with an "inexperienced" CHREST 
+# model then with an "experienced" CHREST model (Fixations generated change in 
+# the ChessDomain depending on the experienced status of a CHREST model).  
 #
-# The test is repeated twice, first with an "inexperienced" CHREST model then 
-# with an "experienced" CHREST model (Fixations generated change in the 
-# ChessDomain depending on the experienced status of a CHREST model).
+# The board fixated on is randomly generated for each iteration of the test in 
+# order to provide as wide a breadth of test scenarios as possible.
 canonical_result_test "make_fixations_in_chess_domain" do
   
+  #######################################################
+  ##### SET-UP ACCESS TO PRIVATE INSTANCE VARIABLES #####
+  #######################################################
+  
+  # With regard to the CHREST model used:
+  # 
+  # 1. Need to set the domain specifics of the model to ChessDomain.
+  # 2. Need to set modify visual STM to ensure a 
+  #    HypothesisDiscriminationFixation can be performed.
+  # 3. Need to set the fixation field of view for the Perceiver associated with
+  #    the CHREST model so that PeripheralItemFixations and 
+  #    PeripheralSquareFixations are guaranteed to be made.
+  Chrest.class_eval{
+    field_accessor :_domainSpecifics, :_visualStm
+  }
+  chrest_perceiver_field = Chrest.java_class.declared_field("_perceiver")
+  chrest_perceiver_field.accessible = true
+  
+  # Need to set the fixation field of view for reasons described above.
+  Perceiver.class_eval{
+    field_accessor :_fixationFieldOfView
+  }
+  
+  # Need to access the dimensions of the chess board constructed to enable 
+  # randomness in STM Node images to enable/disable 
+  # HypothesisDiscriminationFixation performance.
+  scene_height_field = Scene.java_class.declared_field("_height")
+  scene_height_field.accessible = true
+  scene_width_field = Scene.java_class.declared_field("_width")
+  scene_width_field.accessible = true
+  
+  # With regard to the Scene used:
+  # 
+  # 1. Need to get SceneObjects from a randomly selected Square in the Scene
+  #    during STM Node construction.
+  # 2. Need to access the dimensions of the Scene constructed to enable 
+  #    randomness in STM Node images to enable/disable 
+  #    HypothesisDiscriminationFixation performance.
+  Scene.class_eval{
+    field_accessor :_scene
+  }
+  scene_object_type_field = SceneObject.java_class.declared_field("_objectType")
+  scene_object_type_field.accessible = true
+  
+  # Need access to what Fixations are performed to control test progress.
+  Fixation.class_eval{
+    field_accessor :_performed
+  }
+  
+  # Need access to ListPattern elements to construct contents and images for STM
+  # Nodes to enable/disable HypothesisDiscriminationFixation performance.
+  ListPattern.class_eval{
+    field_accessor :_list
+  }
+  
+  # Need access to STM Node's child history to enable/disable 
+  # HypothesisDiscriminationFixation performance.
+  Node.class_eval{
+    field_accessor :_childHistory
+  }
+  
+  # Need access to visual STM items to enable/disable 
+  # HypothesisDiscriminationFixation performance.
+  stm_item_history_field = Stm.java_class.declared_field("_itemHistory")
+  stm_item_history_field.accessible = true
+  
   for repeat in 1..2
+    
+    ##########################################
+    ##### SET-UP TEST PROGRESS VARIABLES #####
+    ##########################################
 
-    time = 5
+    # For each type of Fixation expected, add its class to an array along with 
+    # a boolean flag indicated whether that type of Fixation has been performed.
+    # Initially, none of the Fixation types expected will have been performed so
+    # set all boolean flags to false.
+    fixation_performance_flags = [
+      [HypothesisDiscriminationFixation.java_class, false],
+      [SalientManFixation.java_class, false],
+      [(repeat == 1 ? PeripheralItemFixation.java_class : GlobalStrategyFixation.java_class), false],
+      [PeripheralSquareFixation.java_class, false]
+    ]
 
-    ########################
-    ##### SET-UP MODEL #####
-    ########################
+    # Set a counter since the test should be run 1000 times after all Fixations 
+    # have been performed to ensure a broad spectrum of behaviour.
+    counter = 0
+    
+    until counter == 1000 do
 
-    # Need to be able to specify if a CHREST model is experienced "on-the-fly"
-    # otherwise, when trying to get non-initial fixations, the model would have 
-    # to have a certain number of Nodes, n, in LTM to return "true" when the 
-    # model's "experienced" status is queried when determining if a 
-    # GlobalStrategyFixation or a PeripheralItemFixation should be made.  Thus, 
-    # if n is changed this test will break in addition, performing this learning 
-    # in a test adds extra code that will just complicate an already complex 
-    # test!
-    #
-    # To circumvent this, subclass the "Chrest" java class with a jRuby class 
-    # that will be used in place of the "Chrest" java class in this test. In the 
-    # subclass, override "Chrest.isExperienced()" (the method used to determine 
-    # the "experienced" status of a CHREST model) and have it return a class 
-    # variable (for the subclass) that can be set at will.
-    model = Class.new(Chrest) {
-      @@experienced = false
+      time = 0
 
-      def isExperienced(x)
-        return @@experienced
+      ###########################
+      ##### CONSTRUCT MODEL #####
+      ###########################
+
+      # Need to be able to specify if a CHREST model is experienced "on-the-fly"
+      # otherwise, when trying to get non-initial fixations, the model would 
+      # have to have a certain number of Nodes, n, in LTM to return "true" when 
+      # the model's "experienced" status is queried when determining if a 
+      # GlobalStrategyFixation or a PeripheralItemFixation should be made.  
+      # Thus, if n is changed this test will break in addition, performing this 
+      # learning in a test adds extra code that will just complicate an already 
+      # complex test!
+      #
+      # To circumvent this, subclass the "Chrest" java class with a jRuby class 
+      # that will be used in place of the "Chrest" java class in this test. In
+      # the subclass, override "Chrest.isExperienced()" (the method used to 
+      # determine the "experienced" status of a CHREST model) and have it return 
+      # a class variable (for the subclass) that can be set at will.
+      model = Class.new(Chrest) {
+        @@experienced = false
+
+        def isExperienced(x)
+          return @@experienced
+        end
+
+        def setExperienced(bool)
+          @@experienced = bool
+        end
+      }.new(time, false)
+
+      if repeat == 2 then model.setExperienced(true) end
+      chrest_perceiver_field.value(model)._fixationFieldOfView = 2
+
+      ####################################
+      ##### SET-UP DOMAIN PARAMETERS #####
+      ####################################
+
+      initial_fixation_threshold = 4
+      fixation_periphery_max_attempts = 3
+      max_fixation_attempt = 10
+      
+      ###########################################################
+      ##### CONSTRUCT DOMAIN AND SET AS CHREST MODEL DOMAIN #####
+      ###########################################################
+      
+      chess_domain = ChessDomain.new(
+        model, 
+        initial_fixation_threshold, 
+        fixation_periphery_max_attempts, 
+        max_fixation_attempt
+      )
+
+      model._domainSpecifics = chess_domain
+      
+      ########################
+      ##### SET-UP BOARD #####
+      ########################
+
+      chess_board = 
+        "......../" +
+        "......../" +
+        "......../" +
+        "......../" +
+        "......../" +
+        "......../" +
+        "......../" +
+        "........"
+
+      pieces = ["r","n","b","q","k","R","N","B","Q","K"]
+      8.times do pieces.push("p") end
+      8.times do pieces.push("P") end
+      for piece in pieces
+        square = rand(0...chess_board.length)
+        while chess_board[square] != "."
+          square = rand(0...chess_board.length)
+        end
+        chess_board[square] = piece
       end
 
-      def setExperienced(bool)
-        @@experienced = bool
+      chess_board = ChessDomain.constructBoard(chess_board)
+
+      ###############################
+      ##### POPULATE VISUAL STM #####
+      ###############################
+    
+      # Populate visual STM so that HypothesisDiscriminationFixations can be 
+      # performed correctly (sometimes).  Essentially, there should be a STM 
+      # Node whose content/image contains ItemSquarePatterns that will be 
+      # present in ListPatterns generated after making a Fixation on the Scene 
+      # and normalising said ListPattern.  This STM Node should then have a 
+      # child whose content/image also contains ItemSquarePatterns that will be
+      # present in ListPatterns generated after making a Fixation on the Scene 
+      # and normalising said ListPattern. Therefore, 2 Nodes will be constructed 
+      # and added to STM, the Node in STM (depth 1 Node) and the Node that is a 
+      # child of the Node in STM (depth 2 Node).
+      # 
+      # The test should introduce some variablity in behaviour since the 
+      # handling of Fixations that are not performed successfully needs to be 
+      # checked. Therefore, get the location of 1 randomly selected SceneObject 
+      # that does not represent an empty squares since these SceneObjects would 
+      # be stripped from the ListPattern to learn during normalisation along 
+      # with duplicate SceneObject locations.  Therefore, prevent such 
+      # ItemSquarePatterns being considered as candidates for ItemSquarePatterns 
+      # used in construction of STM Nodes.
+
+      ##### CONSTRUCT DEPTH 2 NODE ######
+      depth_2_node_contents_image = nil
+
+      col = rand(0...scene_width_field.value(chess_board))
+      row = rand(0...scene_height_field.value(chess_board))
+      item = scene_object_type_field.value(chess_board._scene.get(col).get(row))
+
+      while item == Scene.getEmptySquareToken()
+        col = rand(0...scene_width_field.value(chess_board))
+        row = rand(0...scene_height_field.value(chess_board))
+        item = scene_object_type_field.value(chess_board._scene.get(col).get(row))
       end
-    }.new(time, false)
+      
+      depth_2_node_contents_image = ItemSquarePattern.new(item, col, row)
 
-    if repeat == 2 then model.setExperienced(true) end
+      depth_2_node_contents = ListPattern.new(Modality::VISUAL)
+      depth_2_node_contents._list.add(depth_2_node_contents_image)
+      depth_2_node_image = depth_2_node_contents
+      depth_2_node = Node.new(model, depth_2_node_contents, depth_2_node_image, time)
+      depth_2_link = Link.new(depth_2_node_contents, depth_2_node, time, "")
 
-    ###############################
-    ##### SET-UP CHESS DOMAIN #####
-    ###############################
+      ##### CONSTRUCT DEPTH 1 NODE ##### 
+      depth_1_node_contents_image = nil
 
-    initial_fixation_threshold = 4
-    fixation_periphery_max_attempts = 3
-    max_fixations_in_set = 10
-    model.setDomain(ChessDomain.new(model, initial_fixation_threshold, fixation_periphery_max_attempts, max_fixations_in_set))
+      col = rand(0...scene_width_field.value(chess_board))
+      row = rand(0...scene_height_field.value(chess_board))
+      item = scene_object_type_field.value(chess_board._scene.get(col).get(row))
 
-    ########################
-    ##### SET-UP SCENE #####
-    ########################
+      while item == Scene.getEmptySquareToken()
+        col = rand(0...scene_width_field.value(chess_board))
+        row = rand(0...scene_height_field.value(chess_board))
+        item = scene_object_type_field.value(chess_board._scene.get(col).get(row))
+      end
 
-    chess_board = ChessDomain.constructBoard(
-      "rnbqkbnr/" +
-      "pppppppp/" +
-      "......../" +
-      "......../" +
-      "......../" +
-      "......../" +
-      "PPPPPPPP/" +
-      "RNBQKBNR"
-    )
+      depth_1_node_contents_image = ItemSquarePattern.new(item, col, row)
+      
+      depth_1_node_contents = ListPattern.new(Modality::VISUAL)
+      depth_1_node_contents._list.add(depth_1_node_contents_image)
+      depth_1_node_image = depth_1_node_contents
+      depth_1_node = Node.new(model, depth_1_node_contents, depth_1_node_image, time)
 
-    200.times do
+      depth_1_node_children = ArrayList.new()
+      depth_1_node_children.add(depth_2_link)
+
+      time += 1
+      depth_1_node._childHistory.put(time, depth_1_node_children)
+
+      ##### ADD NODE TO STM #####
+      time += 1
+      stm_items = ArrayList.new()
+      stm_items.add(depth_1_node)
+      stm_item_history_field.value(model._visualStm).put(time, stm_items)
+
+      ##########################
+      ##### MAKE FIXATIONS #####
+      ##########################
+    
       until model.scheduleOrMakeNextFixation(chess_board, false, time)
         time += 1
       end
+      
+      #################
+      ##### TESTS #####
+      #################
 
-      # At the time "true" is returned by "scheduleOrMakeNextFixation()", the
-      # fixations attempted by the Perceiver should not be cleared (they will be
-      # at time + 1 though).
+      # Ensure the correct number of Fixations have been attempted before 
+      # continuing
       fixations_attempted = model.getPerceiver.getFixations(time)
-      assert_true(model.getFixationsToMake(time).isEmpty(), "occurred when checking the state of the data structure that stores fixations to be made by the CHREST model")
-      assert_equal(max_fixations_in_set, fixations_attempted.size(), "occurred when checking the number of fixations in the Perceiver's fixations attempted data structure")
+      assert_equal(
+        max_fixation_attempt,
+        fixations_attempted.size(),
+        "occurred when checking the number of fixations attempted"
+      )
 
-      fixation_classes_expected = []
-      for fixation_attempted in 0...max_fixations_in_set
+      # Check each Fixation type according to its order of attempt.
+      for f in 0...fixations_attempted.size()
+        fixation = fixations_attempted.get(f)
+        expected_fixation_classes = []
 
-        if fixation_attempted == 0 
-          fixation_classes_expected.push(CentralFixation.java_class)
-        elsif fixation_attempted.between?(1,3)
-          fixation_classes_expected.push(SalientManFixation.java_class)
-        elsif fixation_attempted == 4
-          fixation_classes_expected.push(HypothesisDiscriminationFixation.java_class)
+        if f == 0 
+          expected_fixation_classes.push(CentralFixation.java_class)
+        elsif f.between?(1,3)
+          expected_fixation_classes.push(SalientManFixation.java_class)
+        elsif f == 4
+          expected_fixation_classes.push(HypothesisDiscriminationFixation.java_class)
         else
-          fixation_classes_expected.push(HypothesisDiscriminationFixation.java_class)
-          fixation_classes_expected.push(repeat == 1 ? PeripheralItemFixation.java_class : GlobalStrategyFixation.java_class)
-          fixation_classes_expected.push(PeripheralSquareFixation.java_class)
-          fixation_classes_expected.push(AttackDefenseFixation.java_class)
+          expected_fixation_classes.push(HypothesisDiscriminationFixation.java_class)
+          expected_fixation_classes.push(repeat == 1 ? PeripheralItemFixation.java_class : GlobalStrategyFixation.java_class)
+          expected_fixation_classes.push(PeripheralSquareFixation.java_class)
+          expected_fixation_classes.push(AttackDefenseFixation.java_class)
         end
+        expected_fixation_classes.map!{|x| x.to_s}
 
         assert_true(
-          fixation_classes_expected.include?(fixations_attempted.get(fixation_attempted).getClass()),
-          "occurred when checking the type of fixation " + fixation_attempted.to_s + " in the Perceiver's fixations attempted data structure"
+          expected_fixation_classes.include?(fixation.java_class.to_s), 
+          "occurred when checking if fixation " + f.to_s + " was of any of the " +
+          "following types: " + expected_fixation_classes.to_s + "\nFixation details:\n" +
+          fixation.toString()
         )
-############################################################################
+      
+        # If the Fixation attempted was performed successfully, set the relevant
+        # boolean flag in the test loop control data structure
+        fixation_performance_flags.each{|fixation_type| 
+          if fixation_type[0] == fixation.java_class && fixation._performed 
+            fixation_type[1] = true
+          end
+        }
+      end
+    
+    ##############################################
+    ##### MODIFY TEST LOOP CONTROL VARIABLES #####
+    ##############################################
+    
+    all_fixations_performed = true
+    fixation_performance_flags.each{|fixation_type| 
+      if !fixation_type[1]
+        all_fixations_performed = false
+      end
+    }
+    if all_fixations_performed then counter += 1 end
+    end
+  end
+end
+
+################################################################################
 # Tests that Fixation performance in Tileworld proceeds as expected, i.e.
 # 
 # 1. All Fixations can be made (if conditions are appropriate).
