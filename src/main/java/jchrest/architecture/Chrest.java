@@ -3666,28 +3666,17 @@ public class Chrest extends Observable {
               }
               
               //If fixations are complete, try to learn from them and 
-              //instantiate a visual-spatial field with them (if specified) 
-              //before clearing them.
+              //instantiate a visual-spatial field with them (if specified).
               this.printDebugStatement("- Learning from Fixations performed");
               perceiver.learnFromNewFixations(time);
               if(constructVisualSpatialField){
                 this.printDebugStatement("- VisualSpatialField should be constructed");
-                constructVisualSpatialField(this._attentionClock);
+                this.constructVisualSpatialField(this._attentionClock);
               }
               else{
                 this.printDebugStatement("- VisualSpatialField will not be constructed");
               }
               
-              //Clear the Perceiver's fixation data structure 1ms "in the 
-              //future".  Its not possible, nor desirable, to clear the 
-              //Perceiver's fixations now due to the constraints on the "put"
-              //mechanism of HistoryTreeMap's (the type of structure the 
-              //Perceiver's fixation data structure is).
-              this.printDebugStatement("- Clearing Perceiver's Fixation data structure at time " + (time + 1));
-              this.getPerceiver().clearFixations(time + 1);
-              
-              //Reset variables associated with fixation sets.
-              this.printDebugStatement("- Resetting Fixation variables");
               this._recognisedVisualSpatialFieldObjectIdentifiers.clear();
               fixationsToMakeAtTime.clear();
               
@@ -3818,8 +3807,14 @@ public class Chrest extends Observable {
           this.printDebugStatement("   ~ New Fixation will be added.");
           
           if(a + b == 0){
-            this.printDebugStatement("   ~ This is the first Fixation in a new set to visual STM will be cleared");
+            this.printDebugStatement(
+              "   ~ This is the first Fixation in a new set so visual STM and " +
+              "the Fixation data structure of the Perceiver associated with " +
+              "this CHREST model will be cleared"
+            );
             this.getStm(Modality.VISUAL).clear(time);
+            this.getPerceiver().clearFixations(time + 1);
+              
             newFixation = this.getDomainSpecifics().getInitialFixationInSet(time);
           }
           else{
