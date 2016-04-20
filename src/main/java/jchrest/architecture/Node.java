@@ -1524,7 +1524,7 @@ public class Node extends Observable {
    * its item/position slots filled earlier than or equal to the time 
    * specified).
    */
-  ListPattern getFilledSlots (int time) {
+  public ListPattern getFilledSlots (int time) {
     List<ItemSquarePattern> filledItemSlots = this.getFilledItemSlots(time);
     List<ItemSquarePattern> filledPositionSlots = this.getFilledPositionSlots(time);
     
