@@ -347,11 +347,10 @@ public class ListPattern extends Pattern implements Iterable<PrimitivePattern> {
         ListPattern itemPattern = new ListPattern (_modality);
         itemPattern.add (item);
         pattern = pattern.remove (itemPattern);
-      }
-      if (count >= k) return true;
+      } 
     }
-
-    return false;
+    
+    return count >= k;
   }
 
   /**

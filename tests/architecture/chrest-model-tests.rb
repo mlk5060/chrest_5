@@ -7,6 +7,255 @@ require_relative "visual-spatial-field-tests.rb"
 ################################################################################
 ################################################################################
 
+################################################################################
+#
+# Scenario Descriptions
+# =====================
+#
+# - Scenario 1
+#   ~ Cognition isn't free
+#   
+# - Scenario 2
+#   ~ Cognition is free
+#   ~ Node to associate from is a root node
+# 
+# - Scenario 3
+#   ~ Cognition is free
+#   ~ Node to associate from is not a root node
+#   ~ Node to associate to is a root node
+#   
+# - Scenario 4
+#   ~ Cognition is free
+#   ~ Node to associate from is not a root node
+#   ~ Node to associate to is not a root node
+#   
+#   ~ Node to associate from modality is VISUAL and node to associate to 
+#     modality is ACTION
+#   ~ Association already exists
+#
+# - Scenario 5
+#   ~ Cognition is free
+#   ~ Node to associate from is not a root node
+#   ~ Node to associate to is not a root node
+#   
+#   ~ Node to associate from modality is VISUAL and node to associate to 
+#     modality is ACTION
+#   ~ Association does not already exist
+#   
+# - Scenario 6
+#   ~ Cognition is free
+#   ~ Node to associate from is not a root node
+#   ~ Node to associate to is not a root node
+#   
+#   ~ Node to associate from modality is VISUAL and node to associate to 
+#     modality is VERBAL
+#   ~ Association already exists
+#
+# - Scenario 7
+#   ~ Cognition is free
+#   ~ Node to associate from is not a root node
+#   ~ Node to associate to is not a root node
+#   
+#   ~ Node to associate from modality is VISUAL and node to associate to 
+#     modality is VERBAL
+#   ~ Association does not already exist
+#   
+# The following scenarios are now repeated with each type of Modality specified
+# in CHREST.  
+# 
+# - Scenario 8/12/16
+#   ~ Cognition is free
+#   ~ Node to associate from is not a root node
+#   ~ Node to associate to is not a root node
+#   
+#   ~ Node to associate from modality is equal to node to associate from 
+#     modality.
+#   ~ Node to associate from and node to associate to images are not similar
+#
+# - Scenario 9/13/17
+#   ~ Cognition is free
+#   ~ Node to associate from is not a root node
+#   ~ Node to associate to is not a root node
+#   
+#   ~ Node to associate from modality is equal to node to associate from 
+#     modality.
+#   ~ Node to associate from and node to associate to images are similar
+#   ~ Node to associate from already linked to node to associate to
+#   ~ Node to associate to not already linked to node to associate from
+#     
+# - Scenario 10/14/18
+#   ~ Cognition is free
+#   ~ Node to associate from is not a root node
+#   ~ Node to associate to is not a root node
+#   
+#   ~ Node to associate from modality is equal to node to associate from 
+#     modality.
+#   ~ Node to associate from and node to associate to images are similar
+#   ~ Node to associate from not already linked to node to associate to
+#   ~ Node to associate to already linked to node to associate from
+#
+# - Scenario 11/15/19
+#   ~ Cognition is free
+#   ~ Node to associate from is not a root node
+#   ~ Node to associate to is not a root node
+#   
+#   ~ Node to associate from modality is equal to node to associate from 
+#     modality.
+#   ~ Node to associate from and node to associate to images are similar
+#   ~ Node to associate from not already linked to node to associate to
+#   ~ Node to associate to not already linked to node to associate from
+#
+# Expected Outcomes
+# =================
+#
+# - The following scenarios should report false and the cognition clock of the 
+#   CHREST model should not differ from the time the function is requested.
+#   ~ 1, 2, 3, 4, 6, 8, 12, 16
+#   
+# - The following scenarios should report true but and the cognition clock of 
+#   the CHREST model should be set to the time indicated.
+#   ~ Scenario 5
+#     > Time function requested + time to add production
+#     
+#   ~ Scenario 7
+#     > Time function requested + time to add naming link
+#     
+#   ~ Scenarios 9/10/13/14/17/18
+#     > Time function requested + node comparison time + time to add semantic 
+#       link
+#     
+#   ~ Scenarios 11/15/19
+#     > Time function requested + node comparison time + (time to add semantic 
+#       link * 2)
+process_test "associateNodes" do
+  
+  Chrest.class_eval{
+    field_accessor :_addProductionTime, 
+    :_cognitionClock, 
+    :_namingLinkCreationTime,
+    :_nodeComparisonTime,
+    :_nodeImageSimilarityThreshold,
+    :_semanticLinkCreationTime
+  }
+  
+  associate_nodes_method = Chrest.java_class.declared_method(:associateNodes, Node.java_class, Node.java_class, Java::int)
+  associate_nodes_method.accessible = true
+  
+  Node.class_eval{
+    field_accessor :_namedByHistory, :_productionHistory, :_semanticLinksHistory
+  }
+  node_root_node_field = Node.java_class.declared_field("_rootNode")
+  node_root_node_field.accessible = true
+  
+  for scenario in 1..19
+    time = 0
+    model = Chrest.new(time, true)
+    
+    if scenario == 1 then model._cognitionClock = time + 5 end
+    
+    ############################
+    ##### CONSTRUCT NODE 1 #####
+    ############################
+    
+    # Set modality
+    node_1_modality = Modality::VISUAL
+    if [12..15].include?(scenario) then node_1_modality = Modality::ACTION end
+    if [16..19].include?(scenario) then node_1_modality = Modality::VERBAL end
+    
+    node_1_contents_and_image = ListPattern.new(node_1_modality)
+    node_1 = Node.new(model, node_1_contents_and_image, node_1_contents_and_image, time)
+    node_root_node_field.set_value(node_1, (scenario == 2 ? true : false)) 
+    
+    ############################
+    ##### CONSTRUCT NODE 2 #####
+    ############################
+    
+    node_2_modality = Modality::VISUAL
+    if [4,5].include?(scenario) || [12..15].include?(scenario) then node_2_modality = Modality::ACTION end
+    if [6,7].include?(scenario) || [16..19].include?(scenario) then node_2_modality = Modality::VERBAL end
+    
+    node_2_contents_and_image = ListPattern.new(node_2_modality)
+    node_2 = Node.new(model, node_2_contents_and_image, node_2_contents_and_image, time)
+    node_root_node_field.set_value(node_2, (scenario == 3 ? true : false))
+    
+    ########################################
+    ##### SET-UP EXISTING ASSOCIATIONS #####
+    ########################################
+    
+    if [4,6,9,13,17].include?(scenario)
+      if scenario == 4 
+        association_with_node_2 = HashMap.new()
+        association_with_node_2.put(node_2, 0.0)
+        association_history = HistoryTreeMap.new()
+        association_history.put(time, association_with_node_2)
+        node_1._productionHistory = association_history
+      elsif scenario == 6
+        association_history = HistoryTreeMap.new()
+        association_history.put(time, node_2)
+        node_1._namedByHistory = association_history
+      else
+        association_with_node_2 = ArrayList.new()
+        association_with_node_2.add(node_2)
+        association_history = HistoryTreeMap.new()
+        association_history.put(time, association_with_node_2)
+        node_1._semanticLinksHistory = association_history
+      end
+    end
+    
+    if [10,14,18].include?(scenario)
+      association_with_node_1 = ArrayList.new()
+      association_with_node_1.add(node_1)
+      association_history = HistoryTreeMap.new()
+      association_history.put(time, association_with_node_1)
+      node_2._semanticLinksHistory = association_history
+    end
+    
+    ####################################
+    ##### SET SIMILARITY THRESHOLD #####
+    ####################################
+    
+    if [8,12,16].include?(scenario)
+      model._nodeImageSimilarityThreshold = 1
+    else
+      model._nodeImageSimilarityThreshold = 0
+    end
+    
+    ###########################
+    ##### INVOKE FUNCTION #####
+    ###########################
+    
+    result = associate_nodes_method.invoke(model, node_1, node_2, time)
+    
+    #################################
+    ##### SET EXPECTED OUTCOMES #####
+    #################################
+    
+    expected_result = true
+    if [1,2,3,4,6,8,12,16].include?(scenario) then expected_result = false end
+    
+    expected_cognition_clock = -1
+    if scenario == 1
+      expected_cognition_clock = time + 5
+    elsif scenario == 5
+      expected_cognition_clock = time + model._addProductionTime
+    elsif scenario == 7
+      expected_cognition_clock = time + model._namingLinkCreationTime
+    elsif [9,10,13,14,17,18].include?(scenario)
+      expected_cognition_clock = time + model._nodeComparisonTime + model._semanticLinkCreationTime
+    elsif [11,15,19].include?(scenario)
+      expected_cognition_clock = time + model._nodeComparisonTime + (model._semanticLinkCreationTime * 2)
+    end
+    
+    #################
+    ##### TESTS #####
+    #################
+    
+    assert_equal(expected_result, result, "occurred when checking the result in scenario " + scenario.to_s)
+    assert_equal(expected_cognition_clock, model._cognitionClock, "occurred when checking the cognition clock in scenario " + scenario.to_s)
+  end
+  
+end
+
 #unit_test "get maximum clock value" do
 #  model = Chrest.new(0, GenericDomain.java_class)
 #  

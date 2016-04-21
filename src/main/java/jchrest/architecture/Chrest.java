@@ -1781,278 +1781,6 @@ public class Chrest extends Observable {
     return null;
   }
   
-  /**
-   * Learns the two {@link jchrest.lib.ListPattern}s provided completely 
-   * (ensures that the {@link jchrest.lib.ListPattern} is an image in a 
-   * long-term memory {@link jchrest.architecture.Node}) before associating the 
-   * respective long-term memory {@link jchrest.architecture.Node}s.
-   * 
-   * The association created is determined by the {@link jchrest.lib.Modality}
-   * of the {@link jchrest.lib.ListPattern}s provided:
-   * 
-   * <ul>
-   *  <li>
-   *    If pattern1 and pattern2 have the same {@link jchrest.lib.Modality}, a
-   *    semantic link is created between them.
-   *  </li>
-   *  <li>
-   *    If pattern2 has {@link jchrest.lib.Modality#ACTION} and pattern1 does
-   *    not, a production is created between them. 
-   *  </li>
-   * </ul>
-   * 
-   * @param pattern1
-   * @param pattern2
-   * @param time
-   * 
-   * @return The {@link jchrest.architecture.Node} recognised for pattern1.
-   */
-//  private ExecutionRequestResponse associate (ListPattern pattern1, ListPattern pattern2, int time) {
-//    
-//    ArrayList<ListPattern> stm1Contents = new ArrayList();
-//    ArrayList<ListPattern> stm2Contents = new ArrayList();
-//    
-//    this.getStm(pattern1.getModality()).getContents(time).forEach(Node -> stm1Contents.add(Node.getImage(time)));
-//    this.getStm(pattern2.getModality()).getContents(time).forEach(Node -> stm2Contents.add(Node.getImage(time)));
-//    
-//    if(stm1Contents.contains(pattern1) && stm2Contents.contains(pattern2)){
-//    
-//    if (ListPattern.isSameModality (pattern1, pattern2)) {
-//      
-//      return learnAndCreateSemanticLink(pattern1, pattern2, time);
-//    }
-//    else if(pattern2.getModalityString().equalsIgnoreCase(Modality.ACTION.toString())){
-//      return learnAndCreateProduction(pattern1, pattern2, time);
-//    }
-//    else if(pattern1.isVisual() && pattern2.isVerbal()){
-//      return createNamedByLink(pattern1, pattern2, time);
-//    }
-//  }
-  
-  /**
-   * Learns first pattern (which can be of any modality) and a second pattern 
-   * (whose {@link jchrest.lib.Modality} is assumed to be {@link 
-   * jchrest.lib.Modality#ACTION}) and creates a production between them.
-   */
-  public Node learnProduction(ListPattern pattern, ListPattern actionPattern, int time) {
-    Node recognisedNode = recognise (pattern, time, false);
-    
-    //Was cognition free?
-    if(recognisedNode != null){
-    
-      //Set the time in this function to the value of the cognition clock which
-      //will have been incremented during recognition + 1.  This ensures that 
-      //any subsequent cognitive functions will occur when invoked.
-      time = this._cognitionClock + 1;
-    
-      //If the test below passes, it may be that the node retrieved is not equal
-      //to the first pattern so some overgeneralisation may occur.
-      ListPattern recognisedNodeImage = recognisedNode.getImage(time);
-      if(recognisedNodeImage.matches(pattern)){
-      
-        HashMap<Node, Double> recognisedNodeProductions = recognisedNode.getProductions(time);
-        if(recognisedNodeProductions != null) {
-        
-          //Check each production to see if it matches the action pattern 
-          //passed.
-          boolean actionPatternAlreadyProduction = false;
-          for(Node productionNode : recognisedNodeProductions.keySet()){
-          
-            //Increment time since a production is being traversed to.
-            time += this._ltmLinkTraversalTime;
-          
-            ListPattern productionNodeImage = productionNode.getImage(time);
-            if (productionNodeImage.matches (actionPattern)) {
-              
-              //TODO: this is overlearning the first pattern?
-              if (productionNodeImage.equals(actionPattern)) {
-                actionPatternAlreadyProduction = true;
-                recogniseAndLearn (pattern, time); 
-              }
-              else {
-                recogniseAndLearn (actionPattern, time);
-              }
-              
-              //Set the time to the value of the cognition clock since this 
-              //will have been incremented due to the recogniseAndLearn() calls
-              //above + 1.  Will ensure that any further cognitive functions are 
-              //not blocked due to the cognition resource being blocked.
-              time = this._cognitionClock + 1;
-            }
-          }
-        
-          //If the action pattern isn't already a production recogniseAndLearn the 
-          //actionPattern and the first pattern again to force correction of 
-          //any mistakes and attempt to recognise the action pattern again.
-          //
-          //Martyn: This comment was lifted from the learnAndCreateSemanticLink() function in 
-          //        this class and I think the mistake alluded to is an 
-          //        over-generalisation mistake for the node recognised when the
-          //        first pattern is presented.  In other words, it may be the
-          //        case that instead of the production being "If I see an
-          //        unprotected Queen, q, on a chess board and I can take with 
-          //        my Queen, q*, then I should take the q with q*" it is "If I 
-          //        see a Queen, q, on a chess board and I can take with my 
-          //        Queen, q*, then I should take the q with q*".
-          //
-          //TODO: check if the mistake is that thought of (see Martyn's comment)
-          //      or if it is something else entirely.
-          //TODO: this may be overlearning since the pattern or actionPattern
-          //      may have been learned above when checking if the actionPattern
-          //      matches and equals any of the productions contained in the 
-          //      Node recognised when the first pattern is presented?
-          if(!actionPatternAlreadyProduction){
-            
-            recogniseAndLearn (actionPattern, time);
-            time = this._cognitionClock + 1;
-          
-            recogniseAndLearn (pattern, time);
-            time = this._cognitionClock + 1;
-          
-            Node actionNodeRetrieved = recognise (actionPattern, time, false);
-            time = this._cognitionClock + 1;
-
-            //This may introduce a non-precise production since only part of the
-            //action pattern needs to be learned before a production is created.
-            //
-            //TODO: check with Fernand if this is OK.
-            if (actionNodeRetrieved.getImage(time).matches (actionPattern)) {
-              time += this._addProductionTime;
-              recognisedNode.addProduction(actionNodeRetrieved, 0.0, time);
-              setChanged ();
-              if (!_frozen) notifyObservers ();
-            }
-          }
-        }
-        else {
-
-          Node actionNodeRetrieved = recognise (actionPattern, time, false);
-          time = this._cognitionClock + 1;
-        
-          //If the conditional is passed here, an overgeneralisation may occur 
-          //with regards to production creation.
-          //
-          //TODO: check with Fernand if this is OK.
-          if (actionNodeRetrieved.getImage(time).matches (actionPattern)) {
-            time += this._addProductionTime;
-            recognisedNode.addProduction(actionNodeRetrieved, 0.0, time);
-            setChanged ();
-            if (!_frozen) notifyObservers ();
-          } 
-          else { 
-            recogniseAndLearn (actionPattern, time);
-            time = this._cognitionClock + 1;
-          
-            actionNodeRetrieved = recognise (actionPattern, time, false);
-            time = this._cognitionClock + 1;
-          
-            //If the conditional is passed here, an overgeneralisation may occur 
-            //with regards to production creation.
-            //
-            //TODO: check with Fernand if this is OK.
-            if (actionNodeRetrieved.getImage(time).matches (actionPattern)) {
-              time += this._addProductionTime;
-              recognisedNode.addProduction(actionNodeRetrieved, 0.0, time);
-              setChanged ();
-              if (!_frozen) notifyObservers ();
-            }
-          }
-        }
-      }
-      else { 
-        recogniseAndLearn (pattern, time);
-      }
-    }
-    
-    this._cognitionClock = time;
-    return recognisedNode;
-  }
-  
-  /**
-   * Presents Chrest with a pair of patterns, which it should recogniseAndLearn and 
- then attempt to recogniseAndLearn a link.  Assumes the two patterns are of the same 
-   * modality.
-   */
-  private Node learnAndCreateSemanticLink (ListPattern pattern1, ListPattern pattern2, int time) {
-    Node pat1RecognisedNode = recognise (pattern1, time, false);
-    time = this._cognitionClock + 1;
-    
-   // 1. is retrieved node image a match for pattern1?
-    if (pat1RecognisedNode.getImage(time).matches (pattern1)) {
-      
-      // 2. does retrieved node have a lateral link?
-      Node associatedNode = pat1RecognisedNode.getAssociatedNode(time);
-      time += this._ltmLinkTraversalTime;
-      
-      if (associatedNode != null) {
-        
-        // if yes
-        //   3. is linked node image match pattern2? if not, recogniseAndLearn pattern2
-        if (associatedNode.getImage(time).matches (pattern2)) {
-          
-          //   if yes
-          //   4. if linked node image == pattern2, recogniseAndLearn pattern1, else recogniseAndLearn pattern2
-          if (associatedNode.getImage(time).equals (pattern2)) {  
-            recogniseAndLearn (pattern1, time); // TODO: this is overlearning?
-          } else {
-            recogniseAndLearn (pattern2, time);
-          }
-        } else {
-          recogniseAndLearn (pattern2, time);
-          time = this._cognitionClock + 1;
-          
-          recogniseAndLearn (pattern1, time);
-          time = this._cognitionClock + 1;
-          
-          Node pat2RecognisedNode = recognise (pattern2, time, false);
-          time = this._cognitionClock + 1;
-
-          // 6. if pattern2 retrieved node image match for pattern2, recogniseAndLearn link, else recogniseAndLearn pattern2
-          if (pat2RecognisedNode.getImage(time).matches (pattern2)) {
-            time += this._semanticLinkCreationTime;
-            pat1RecognisedNode.addSemanticLink(pat2RecognisedNode, time);
-            setChanged ();
-            if (!_frozen) notifyObservers ();
-          }
-        } 
-      } else {
-        // if not
-        // 5. sort pattern2
-        Node pat2RecognisedNode = recognise (pattern2, time, false);
-        time = this._cognitionClock + 1;
-        
-        // 6. if pattern2 retrieved node image match for pattern2, recogniseAndLearn link, else recogniseAndLearn pattern2
-        if (pat2RecognisedNode.getImage(time).matches (pattern2)) {  
-          time += this._semanticLinkCreationTime;
-          pat1RecognisedNode.addSemanticLink(pat2RecognisedNode, time);
-          setChanged ();
-          if (!_frozen) notifyObservers ();
-        } 
-        else { // image not a match, so we need to recogniseAndLearn pattern 2
-          recogniseAndLearn (pattern2, time);
-          time = this._cognitionClock + 1;
-          
-          // 5. sort pattern2
-          pat2RecognisedNode = recognise (pattern2, time, false);
-          time = this._cognitionClock + 1;
-          
-          // 6. if pattern2 retrieved node image match for pattern2, recogniseAndLearn link, else recogniseAndLearn pattern2
-          if (pat2RecognisedNode.getImage(time).matches (pattern2)) {
-            time += this._semanticLinkCreationTime;
-            pat1RecognisedNode.addSemanticLink(pat2RecognisedNode, time);
-            setChanged ();
-            if (!_frozen) notifyObservers ();
-          }
-        }
-      }
-    } else { // image not a match, so we need to recogniseAndLearn pattern 1
-      recogniseAndLearn (pattern1, time);
-    }
-    
-    this._cognitionClock = time;
-    return pat1RecognisedNode;
-  }
-  
   /** 
    * Sort the {@link jchrest.lib.ListPattern} provided through the long-term 
    * memory network of {@link #this} (see {@link #recognise(
@@ -2423,7 +2151,7 @@ public class Chrest extends Observable {
 
       this.printDebugStatement(func + "Returning node " + bestNode.getReference());
       this.printDebugStatement(func + "RETURN");
-      
+
       return bestNode;
     }
   }
@@ -2431,6 +2159,262 @@ public class Chrest extends Observable {
   /********************************/
   /**** Learning Functionality ****/
   /********************************/
+  
+  /**
+   * Determines the {@link jchrest.lib.Modality} of the two {@link 
+   * jchrest.architecture.Node Nodes} passed as parameters and creates the 
+   * relevant type of association between them if {@link 
+   * #this#isCognitionFree(int)} returns {@link java.lang.Boolean#TRUE} at the
+   * {@code time} specified.
+   * 
+   * An association will only be created if the following statements all 
+   * evaluate to {@link java.lang.Boolean#TRUE}:
+   * 
+   * <ol type="1">
+   *  <li>
+   *    {@link #this#isCognitionFree(int)} returns {@link 
+   *    java.lang.Boolean#TRUE} at the {@code time} specified.
+   *  </li>
+   *  <li>
+   *    Invoking {@link jchrest.architecture.Node#isRootNode()} on {@code 
+   *    nodeToAssociateFrom} and {@code nodeToAssociateTo} returns
+   *    {@link java.lang.Boolean#FALSE}.
+   *  </li>
+   *  <li>
+   *    The association to create doesn't already exist between {@code 
+   *    nodeToAssociateFrom} and {@code nodeToAssociateTo}.
+   *  </li>
+   * </ol>
+   * 
+   * The types of association created are as follows:
+   * 
+   * <table border="1">
+   *  <tr>
+   *    <th>Node to associate from {@link jchrest.lib.Modality}</th>
+   *    <th>Node to associate to {@link jchrest.lib.Modality}</th>
+   *    <th>Association created (function invoked)</th>
+   *  </tr>
+   *  <tr>
+   *    <td>Equal to node to associate to {@link jchrest.lib.Modality}</td>
+   *    <td>Equal to node to associate from {@link jchrest.lib.Modality}</td>
+   *    <td>
+   *      Semantic link ({@link jchrest.architecture.Node#addSemanticLink(
+   *      jchrest.architecture.Node, int)})
+   *    </td>
+   *  </tr>
+   *  <tr>
+   *    <td>{@link jchrest.lib.Modality#VISUAL}</td>
+   *    <td>{@link jchrest.lib.Modality#ACTION}</td>
+   *    <td>
+   *      Production ({@link jchrest.architecture.Node#addProduction(
+   *      jchrest.architecture.Node, java.lang.Double, int)})
+   *    </td>
+   *  </tr>
+   *  <tr>
+   *    <td>{@link jchrest.lib.Modality#VISUAL}</td>
+   *    <td>{@link jchrest.lib.Modality#VERBAL}</td>
+   *    <td>
+   *      Named-by link ({@link jchrest.architecture.Node#setNamedBy(
+   *      jchrest.architecture.Node, int)})
+   *    </td>
+   *  </tr>
+   * </table>
+   * 
+   * <b>NOTE:</b> semantic link associations are special cases since the
+   * association created will be bi-directional and, in addition to the 
+   * conditions for association creation listed above, {@link 
+   * jchrest.lib.ListPattern#isSimilarTo(jchrest.lib.ListPattern, int)} must 
+   * evaluate to {@link java.lang.Boolean#TRUE} when the result of invoking 
+   * {@link jchrest.architecture.Node#getImage(int)} on {@code 
+   * nodeToAssociateFrom} and {@code nodeToAssociateTo} are passed as the first 
+   * and second parameters, respectively and {@link 
+   * #this#_nodeImageSimilarityThreshold} is passed as a third parameter.
+   * 
+   * If an association is created, the cognition clock of {@link #this} will be 
+   * set to the following times:
+   * 
+   * <table>
+   *  <tr>
+   *    <th>Association</th>
+   *    <th>Cognition Clock Set To</th>
+   *  </tr>
+   *  <tr>
+   *    <td>Semantic Link</td>
+   *    <td>
+   *      {@code time} + {@link #this#getNodeComparisonTime()} + ({@link 
+   *      #this#getTimeToCreateSemanticLink()} * 2)
+   *    </td>
+   *  </tr>
+   *  <tr>
+   *    <td>Production</td>
+   *    <td>{@code time} + {@link #this#getAddProductionTime()}</td>
+   *  </tr>
+   *  <tr>
+   *    <td>Named-by link</td>
+   *    <td>{@code time} + {@link #this#getTimeToCreateNamingLink()}</td>
+   *  </tr>
+   * </table>
+   * 
+   * @param nodeToAssociateFrom
+   * @param nodeToAssociateTo
+   * @param time 
+   * 
+   * @return Whether the association was created or not.
+   */
+  private boolean associateNodes(Node nodeToAssociateFrom, Node nodeToAssociateTo, int time){
+    this.printDebugStatement("===== Chrest.associatedNodes() =====");
+    boolean associationCreated = false;
+    
+    this.printDebugStatement(
+      "- Checking if cognition is free at time function invoked (" + time + ") " + 
+      "and the nodes to associate aren't root nodes"
+    );
+    if(this.isCognitionFree(time) && !nodeToAssociateFrom.isRootNode() && !nodeToAssociateTo.isRootNode()){
+      
+      this.printDebugStatement("  ~ All OK");
+      Modality nodeToAssociateFromModality = nodeToAssociateFrom.getModality();
+      Modality nodeToAssociateToModality = nodeToAssociateTo.getModality();
+    
+      this.printDebugStatement(
+        "- Checking modality of nodes to associate (node to associate from modality: '" +
+        nodeToAssociateFromModality.toString() + "', node to associate to modality: '" +
+        nodeToAssociateToModality.toString() + "'."
+      );
+      
+      if(nodeToAssociateFromModality.equals(nodeToAssociateToModality)){
+        this.printDebugStatement("  ~ Attempting to create a semantic link");
+        
+        List<Node> nodeToAssociateFromSemanticLinks = nodeToAssociateFrom.getSemanticLinks(time);
+        List<Node> nodeToAssociateToSemanticLinks = nodeToAssociateTo.getSemanticLinks(time);
+        this.printDebugStatement("- Checking if semantic link exists between nodes in either direction");
+        
+        if(
+          (
+            !nodeToAssociateFromSemanticLinks.contains(nodeToAssociateTo) ||
+            !nodeToAssociateToSemanticLinks.contains(nodeToAssociateFrom)
+          )
+        ){
+          
+          this.printDebugStatement(
+            "  ~ A semantic link between the nodes doesn't exist in one/both " +
+            "directions, comparing node images to see if they're similar " +
+            "enough for a semantic link to be created between them"
+          );
+          
+          time += this._nodeComparisonTime;
+          this.printDebugStatement(
+            "  ~ Time incremented by node comparison time specified (" + 
+            this._nodeComparisonTime + ") to " + time
+          );
+          
+          if(nodeToAssociateTo.getImage(time).isSimilarTo(nodeToAssociateFrom.getImage(time), this._nodeImageSimilarityThreshold)){
+            this.printDebugStatement("  ~ Node images similar enough to create semantic link between them");
+            
+            this.printDebugStatement("- Determining if a uni/bi-directional semantic link needs to be created");
+            boolean fromToAssociationCreated = false;
+            boolean toFromAssociationCreated = false;
+            
+            if(!nodeToAssociateFromSemanticLinks.contains(nodeToAssociateTo)){
+              
+              this.printDebugStatement(
+                "  ~ Creating semantic link in direction of node to add " +
+                "association from to node to add association to."
+              );
+              time += this._semanticLinkCreationTime;
+              this.printDebugStatement(
+                "  ~ Time incremented by semantic link creation time specified (" + 
+                this._semanticLinkCreationTime + ") to " + time
+              );
+              
+              fromToAssociationCreated = nodeToAssociateFrom.addSemanticLink(nodeToAssociateTo, time);
+            }
+          
+            if(!nodeToAssociateToSemanticLinks.contains(nodeToAssociateFrom)){
+              this.printDebugStatement(
+                "  ~ Creating semantic link in direction of node to add " +
+                "association to to node to add association from."
+              );
+              time += this._semanticLinkCreationTime;
+              this.printDebugStatement(
+                "  ~ Time incremented by semantic link creation time specified (" + 
+                this._semanticLinkCreationTime + ") to " + time
+              );
+              toFromAssociationCreated = nodeToAssociateTo.addSemanticLink(nodeToAssociateFrom, time);
+            }
+          
+            if(fromToAssociationCreated || toFromAssociationCreated){
+              associationCreated = true;
+            }
+          }
+          else{
+            this.printDebugStatement("  ~ Node images not similar enough to create semantic link, exiting.");
+          }
+        }
+        else{
+          this.printDebugStatement("  ~ Semantic links exist between both nodes in both directions, exiting.");
+        }
+      }
+      else if(
+        nodeToAssociateFromModality.equals(Modality.VISUAL) && 
+        nodeToAssociateToModality.equals(Modality.ACTION)
+      ){
+        this.printDebugStatement("  ~ Attempting to create a production");
+        
+        this.printDebugStatement("- Checking if nodes have a production between them already");
+        HashMap<Node, Double> productions = nodeToAssociateFrom.getProductions(time);
+        if(productions != null && !productions.containsKey(nodeToAssociateTo)){
+          
+          time += this._addProductionTime;
+          this.printDebugStatement(
+            "  ~ Nodes do not have a production between them already, " +
+            "creating production and incrementing time by add production time " +
+            "specified (" + this._addProductionTime + ") to " + time
+          );
+          associationCreated = nodeToAssociateFrom.addProduction(nodeToAssociateTo, 0.0, time);
+        }
+      }
+      else if(
+        nodeToAssociateFromModality.equals(Modality.VISUAL) && 
+        nodeToAssociateToModality.equals(Modality.VERBAL)
+      ){
+        this.printDebugStatement("  ~ Attempting to create a naming link");
+        
+        this.printDebugStatement("- Checking if nodes have a naming link between them already");
+        Node namedBy = nodeToAssociateFrom.getNamedBy(time);
+        if(namedBy == null || !namedBy.equals(nodeToAssociateTo)){
+          
+          time += this._namingLinkCreationTime;
+          this.printDebugStatement(
+            "  ~ Nodes do not have a naming link between them already, " +
+            "creating naming link and incrementing time by naming link creation time " +
+            "specified (" + this._namingLinkCreationTime + ") to " + time
+          );
+          associationCreated = nodeToAssociateFrom.setNamedBy(nodeToAssociateTo, time);
+        }
+      }
+    }
+    else{
+      this.printDebugStatement(
+        "- Either cognition is not free (" + !this.isCognitionFree(time) + ") " + 
+        ", the node to associate from is a root node (" + 
+        nodeToAssociateFrom.isRootNode() + ") or the node to associate to is " +
+        "a root node (" + nodeToAssociateTo.isRootNode() + ")"
+      );
+    }
+    
+    this.printDebugStatement("- Checking if an association was created, if so, the cognition clock will be modified");
+    if(associationCreated){
+      this._cognitionClock = time;
+      this.printDebugStatement("  ~ An association was created, cognition clock set to " + time);
+    }
+    else{
+      this.printDebugStatement("  ~ No association was created, cognition clock will not be modified");
+    }
+    
+    this.printDebugStatement("- Returning " + associationCreated);
+    this.printDebugStatement("===== RETURN =====");
+    return associationCreated;
+  }
 
   /**
    * Attempts to increase the total number of {@link jchrest.architecture.Node}s 
@@ -2811,33 +2795,14 @@ public class Chrest extends Observable {
    * relevant {@link jchrest.architecture.Stm} modality associated with {@link 
    * #this} at the time passed.
    * 
-   * Also, create a bidirectional semantic link between the {@link 
-   * jchrest.architecture.Node} to add and the current hypothesis of the 
-   * relevant {@link jchrest.architecture.Stm} if applicable, i.e. all of the 
-   * following must evaluate to true:
-   * 
-   * <ol type="1">
-   *  <li>
-   *    The cognition resource of {@link #this} is free after the {@link 
-   *    jchrest.architecture.Node} has been added to the relevant {@link 
-   *    jchrest.architecture.Stm}.
-   *  </li>
-   *  <li>
-   *    The {@link jchrest.lib.Modality} of the {@link 
-   *    jchrest.architecture.Node} added is {@link jchrest.lib.Modality#VISUAL}.
-   *  </li>
-   *  <li>
-   *    The image of the {@link jchrest.architecture.Node} added is sufficiently 
-    "similar" to the hypothesisBeforeNodeAdded' image (see {@link 
-   *    jchrest.lib.ListPattern#isSimilarTo(jchrest.lib.ListPattern, int)}).
-   *  </li>
-   *  
-   * </ol>
+   * If an association can be created using the {@code nodeToAdd} then this will
+   * also occur (see {@link #this#associateNodes(jchrest.architecture.Node, 
+   * jchrest.architecture.Node, int)}).  Note that semantic link creation is
+   * only attempted if other applicable associations can not be made.
    * 
    * If the {@link jchrest.architecture.Node} is added to a {@link 
-   * jchrest.architecture.Stm}, the attention clock will be incremented.  If the
-   * bidirectional semantic link is created, the cognition clock will also be
-   * incremented.
+   * jchrest.architecture.Stm}, the attention clock of {@link #this} will be 
+   * modified and likewise for the cognition clock if an association is created. 
    * 
    * @param nodeToAdd
    * @param time
@@ -2848,11 +2813,10 @@ public class Chrest extends Observable {
    * not.
    */
   private boolean addToStm (Node nodeToAdd, int time) {
-    String func = "- addToStm: ";
-    this.printDebugStatement(func + "START");
+    this.printDebugStatement("===== Chrest.addToStm() =====");
     
     this.printDebugStatement(
-      func + "Attempting to add node " + nodeToAdd.getReference() + " to " +
+      "- Attempting to add node " + nodeToAdd.getReference() + " to " +
       nodeToAdd.getModality() + " STM.  Checking if " + 
       "attention resource is free at time function invoked i.e. is the " +
       "current attention clock value (" + this._attentionClock + ") <= the " + 
@@ -2862,24 +2826,24 @@ public class Chrest extends Observable {
     if(this.isAttentionFree(time)){
       
       this.printDebugStatement(
-        func + "Attention resource is free so node " + 
-        nodeToAdd.getReference() + " will be added to STM at time " + 
-        (time + this._timeToUpdateStm) + " (the current time, " +
-        time + ", plus the time it takes to update STM (" + 
+        "  ~ Attention resource is free so node " + nodeToAdd.getReference() + 
+        " will be added to STM at time " + (time + this._timeToUpdateStm) + 
+        " (the current time, " + time + ", plus the time it takes to update STM (" + 
         this._timeToUpdateStm + ")."
       );
       
-      Stm stm = this.getStm(nodeToAdd.getModality());
+      Modality nodeToAddModality = nodeToAdd.getModality();
+      Stm stm = this.getStm(nodeToAddModality);
       
       // TODO: Check if this is the best place
       // Idea is that nodeToAdd's filled slots are cleared when put into STM, 
       // are filled whilst in STM, and forgotten when it leaves.
-      nodeToAdd.clearFilledSlots (time); 
+      nodeToAdd.clearFilledSlots(time); 
       
-      if(stm.add (nodeToAdd, time + this._timeToUpdateStm)){
+      if(stm.add(nodeToAdd, time + this._timeToUpdateStm)){
         
         this.printDebugStatement(
-          func + "STM addition successful, setting the current time to the " +
+          "- STM addition successful, setting the current time to the " +
           "time node " + nodeToAdd.getReference() + " was added to STM (" + 
           (time + this._timeToUpdateStm) + ") and setting the attention clock " +
           "to this value."
@@ -2889,149 +2853,35 @@ public class Chrest extends Observable {
         setChanged ();
         if (!_frozen) notifyObservers ();
 
-        //Try to create two-way semantic link
-        //TODO: Reimplement this but with a call to a more abstract "associate"
-        //      function that will create any type of link possible depending
-        //      on the modality of the node just added and the contents of other
-        //      STM structures.
-        //      Will have implications for production creation for Tileworld
-        //      agents, speak to Fernand about this.
-//        System.out.println(
-//          func + "Attempting to create a semantic link between the node that " +
-//          "was the STM hypothesis node before node " + 
-//          nodeToAdd.getReference() + " was added and the node just " +
-//          "added.  To do this, the cognition resource must be free at the time " +
-//          "the node is added to STM.  If it is, the modality of the STM that " + 
-//          "the node was added to will also be checked to see is of visual " +
-//          "modality and if it is, are there at least two nodes in it since the " +
-//          "node just addded may have been the hypothesis previous to the addition."
-//        );
+        boolean nonSemanticAssociationsCreated = false;
+        if(nodeToAddModality.equals(Modality.ACTION) || nodeToAddModality.equals(Modality.VERBAL)){
+          List<Node> visualStmContents = this.getStm(Modality.VISUAL).getContents(time);
+          if(visualStmContents != null && !visualStmContents.isEmpty()){
+            Node visualStmHypothesis = visualStmContents.get(0);
+            nonSemanticAssociationsCreated = this.associateNodes(visualStmHypothesis, nodeToAdd, time);
+          }
+        }
+
+        if(!nonSemanticAssociationsCreated){
+          List<Node> stmContents = stm.getContents(time);
+          if(stmContents != null && !stmContents.isEmpty()){
+            Node stmHypothesis = stmContents.get(0);
+            this.associateNodes(stmHypothesis, nodeToAdd, time);
+          }
+        }
         
-        
-      
-//        if (
-//          this.cognitionFree(time) &&
-//          stm.getModality() == Modality.VISUAL &&
-//          stm.getCount(time) > 1
-//        ) {
-//          
-//          //No need to check the result of stm.getItem() below; null will never 
-//          //be returned since there will be a node in visual STM (one was just 
-//          //added) and STM must exist otherwise the addition above would not 
-//          //have occurred.
-//          Node hypothesisBeforeNodeAdded = stm.getItem(0, time - 1);
-//          time += this._timeToRetrieveItemFromStm;
-//          this._attentionClock = time;
-//          
-//          System.out.println(
-//            func + "Cognition is free, the node was added to visual STM " +
-//            "and there are at least 2 nodes in visual STM.  Retrieved the " +
-//            "visual STM hypothesis that existed before node " + 
-//            nodeToAdd.getReference() + " was added (hypothesis ref: " + 
-//            hypothesisBeforeNodeAdded.getReference() + ") and have set both " +
-//            "the current time and attention clock to the time when STM addition " +
-//            "completed plus the time it takes to retrive a STM item (" + 
-//            time + ")."
-//          );
-//        
-//          System.out.println(
-//            func + "Checking if node " + nodeToAdd.getReference() + "'s image (" + 
-//            nodeToAdd.getImage(time) + ") is similar enough to the hypothesis' " + 
-//            "image (" + hypothesisBeforeNodeAdded.getImage(time) + ") for a " +
-//            "semantic link to be made."
-//          );
-//          boolean nodeAddedToStmSimilarEnoughToHypothesis = nodeToAdd.getImage(time).isSimilarTo(hypothesisBeforeNodeAdded.getImage(time), this._nodeImageSimilarityThreshold);
-//          
-//          time += this._nodeComparisonTime;
-//          this._cognitionClock = time;
-//          System.out.println(
-//            func + "Node image comparison complete.  Incremented current " +
-//            "time by the time required to compare two nodes (" + time + 
-//            ") and set the cognition clock to this value." 
-//          );
-//          
-//          if(nodeAddedToStmSimilarEnoughToHypothesis){
-//          
-//            System.out.println(
-//              func + "Node images are similar enough to create a bilateral " +
-//              "semantic link between them.  Attempting to create a semantic " +
-//              "link from from node " + nodeToAdd.getReference() + " to " + 
-//              hypothesisBeforeNodeAdded.getReference() + "."
-//            );
-//            if(nodeToAdd.addSemanticLink (hypothesisBeforeNodeAdded, time + this._semanticLinkCreationTime)){
-//            
-//              time += this._semanticLinkCreationTime;
-//              this._cognitionClock = time;
-//              System.out.println(
-//                func + "Semantic link creation from node " + 
-//                nodeToAdd.getReference() + " to " + 
-//                hypothesisBeforeNodeAdded.getReference() + " achieved.  Current " +
-//                "time and attention clock set to " + time + "."
-//              );
-//              
-//              System.out.println(
-//                func + "Attempting to create a semantic link from the " +
-//                "visual STM hypothesis to the node added to STM at the " + 
-//                "current time, i.e. when the cognition resource is free (" + 
-//                this._cognitionClock + ")."
-//              );
-//              if(hypothesisBeforeNodeAdded.addSemanticLink (nodeToAdd, time)){
-//              
-//                time += this._semanticLinkCreationTime;
-//                this._cognitionClock = time;
-//                System.out.println(
-//                  func + "Semantic link creation from node " + 
-//                  hypothesisBeforeNodeAdded.getReference() + " to " + 
-//                  nodeToAdd.getReference() + " achieved.  Current " +
-//                  "time and attention clock set to " + time + "."
-//                );
-//              }
-//              else{
-//                System.out.println(
-//                  func + "Semantic link creation from node " + 
-//                  hypothesisBeforeNodeAdded.getReference() + " to " + 
-//                  nodeToAdd.getReference() + " failed."
-//                );
-//              }
-//            }
-//            else{
-//              System.out.println(
-//                func + "Semantic link creation from node " + 
-//                nodeToAdd.getReference() + " to " + 
-//                hypothesisBeforeNodeAdded.getReference() + " failed."
-//              );
-//            }
-//          }
-//          else{
-//            System.out.println(
-//              func + "Semantic link creation denied; images of node added to " + 
-//              "visual STM and visual STM hypothesis before addition not " +
-//              "similar enough."
-//            );
-//          }
-//        }
-//        else{
-//          System.out.println(
-//            func + "Semantic link creation denied.  Either cognition isn't " +
-//            "free (" + (!this.cognitionFree(time)) + "), the STM modality " + 
-//            "that the node was added to isn't visual (" + 
-//            (stm.getModality() != Modality.VISUAL) + ") or the number of " +
-//            "items in visual STM is < 2 (" + (stm.getCount(time) < 2) + ")."
-//          );
-//        }
-        
-        this.printDebugStatement(func + "RETURN");
+        this.printDebugStatement("===== RETURN =====");
         return true;
       }
       else{
-        this.printDebugStatement(func + "STM addition unsuccessful.");
+        this.printDebugStatement("  ~ STM addition unsuccessful.");
       }
     }
     else{
-      this.printDebugStatement(func + "Attention resource isn't free");
+      this.printDebugStatement("  ~ Attention resource isn't free");
     }
     
-    this.printDebugStatement(func + "RETURN");
+    this.printDebugStatement("===== RETURN =====");
     return false;
   }
   

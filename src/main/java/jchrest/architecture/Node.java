@@ -116,8 +116,8 @@ public class Node extends Observable {
   private final int _creationTime;
   private final Chrest _model;
   private final int _reference;
-  private boolean _rootNode;
-  private Modality _modality;
+  private final boolean _rootNode;
+  private final Modality _modality;
   
   //The variables listed below do not stay consistent throughout the Node's
   //life-cycle.
@@ -739,17 +739,19 @@ public class Node extends Observable {
       !node.isRootNode()
     ){
       HashMap<Node, Double> currentProductions = this.getProductions(time);
-      HashMap<Node, Double> newProductions = new HashMap();
-      newProductions.put(node, productionValue);
-      if(currentProductions != null) newProductions.putAll(currentProductions);
-      
-      boolean addProductionSuccessful = (boolean)this._productionHistory.put(time, newProductions);
+      if(currentProductions != null && !currentProductions.containsKey(node)){
+        HashMap<Node, Double> newProductions = new HashMap();
+        newProductions.put(node, productionValue);
+        newProductions.putAll(currentProductions);
 
-      if(addProductionSuccessful){
-        this.setChanged();
-        this.notifyObservers();
+        boolean addProductionSuccessful = (boolean)this._productionHistory.put(time, newProductions);
 
-        return true;
+        if(addProductionSuccessful){
+          this.setChanged();
+          this.notifyObservers();
+
+          return true;
+        }
       }
     }
     
