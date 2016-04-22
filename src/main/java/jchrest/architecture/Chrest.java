@@ -3172,7 +3172,7 @@ public class Chrest extends Observable {
       this.printDebugStatement("- Fixations scheduled:");
       if(this._debug){
         for(Fixation fixationToMake : fixationsToMakeAtTime){
-          System.out.println(fixationToMake.toString());
+          this._debugOutput.println(fixationToMake.toString());
         }
       }
       
@@ -3333,14 +3333,14 @@ public class Chrest extends Observable {
                 this.printDebugStatement("   ~ Nodes in visual STM before Fixation performed:");
                 if(this._debug){
                   for(Node node : visualStmBeforeRecognition){
-                    System.out.println("      + " + node.getReference());
+                    this._debugOutput.println("      + " + node.getReference());
                   }
                 }
                 
                 this.printDebugStatement("   ~ Nodes in visual STM after Fixation performed and visual STM updated:");
                 if(this._debug){
                   for(Node node : visualStmAfterRecognition){
-                    System.out.println("      + " + node.getReference());
+                    this._debugOutput.println("      + " + node.getReference());
                   }
                 }
 
@@ -3366,7 +3366,7 @@ public class Chrest extends Observable {
                 this.printDebugStatement("   ~ Nodes added after Fixation performance:");
                 if(this._debug){
                   for(Node node : newNodesRecognised){
-                    System.out.println("      + " + node.getReference());
+                    this._debugOutput.println("      + " + node.getReference());
                   }
                 }
 
@@ -3910,8 +3910,8 @@ public class Chrest extends Observable {
         this.printDebugStatement(
           "\n- Instantiating VisualSpatialField that is " + width + " columns by " +
           height + " rows and will represent domain-specific coordinates from " + 
-          "(" + minDomainSpecificColOfSceneFixatedOn + ", " + minDomainSpecificColOfSceneFixatedOn + ") to " +
-          "(" + maxDomainSpecificColOfSceneFixatedOn + ", " + maxDomainSpecificColOfSceneFixatedOn + ")" +
+          "(" + minDomainSpecificColOfSceneFixatedOn + ", " + minDomainSpecificRowOfSceneFixatedOn + ") to " +
+          "(" + maxDomainSpecificColOfSceneFixatedOn + ", " + maxDomainSpecificRowOfSceneFixatedOn + ")" +
           (creatorDetails == null ? 
             "" : 
             "and the agent creating the VisualSpatialField has identifier: '" +

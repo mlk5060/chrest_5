@@ -28,7 +28,6 @@ end
 [
   "DomainSpecifics",
   "Fixation",
-  "FixationResult",
   "Scene",
   "SceneObject"
 ].each do |klass|
@@ -85,7 +84,6 @@ end
   "ListPattern",
   "Modality",
   "HistoryTreeMap",
-  "VisualSpatialFieldMoveObjectException",
   "NumberPattern",
   "Pattern",
   "ReinforcementLearning",
