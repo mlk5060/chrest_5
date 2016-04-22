@@ -373,6 +373,48 @@ public class ListPattern extends Pattern implements Iterable<PrimitivePattern> {
   }
   
   /**
+   * 
+   * @return If {@link #this} contains {@link jchrest.lib.ItemSquarePattern 
+   * ItemSquarePatterns}, any that return {@link 
+   * jchrest.domainSpecifics.Scene#BLIND_SQUARE_TOKEN} when {@link 
+   * jchrest.lib.ItemSquarePattern#getItem()} is invoked on them will be 
+   * removed from {@link #this}.
+   */
+  public ListPattern removeBlindObjects(){
+    ListPattern result = new ListPattern(this.getModality());
+    
+    for(PrimitivePattern pattern : this){
+      String item = ((ItemSquarePattern)pattern).getItem();
+      if(!item.equals(Scene.BLIND_SQUARE_TOKEN)){
+        result.add(pattern);
+      }
+    }
+    
+    return result;
+  }
+  
+  /**
+   * 
+   * @return If {@link #this} contains {@link jchrest.lib.ItemSquarePattern 
+   * ItemSquarePatterns}, any that return {@link 
+   * jchrest.domainSpecifics.Scene#CREATOR_TOKEN} when {@link 
+   * jchrest.lib.ItemSquarePattern#getItem()} is invoked on them will be 
+   * removed from {@link #this}.
+   */
+  public ListPattern removeCreatorObject(){
+    ListPattern result = new ListPattern(this.getModality());
+    
+    for(PrimitivePattern pattern : this){
+      String item = ((ItemSquarePattern)pattern).getItem();
+      if(!item.equals(Scene.CREATOR_TOKEN)){
+        result.add(pattern);
+      }
+    }
+    
+    return result;
+  }
+  
+  /**
    * Creates a new {@link jchrest.lib.ListPattern} by removing all patterns from 
    * this {@link #this} where the result of calling 
    * {@link jchrest.lib.ItemSquarePattern#getItem()} returns 

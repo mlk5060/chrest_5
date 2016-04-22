@@ -16,6 +16,7 @@ import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -3766,8 +3767,7 @@ public class Chrest extends Observable {
   //      objects but it would be better if there were an explicit check in the 
   //      test that validates this directly.
   private void constructVisualSpatialField(int time){
-    String func = "- instantiateVisualSpatialField: ";
-    this.printDebugStatement("===== Chrest.instantiateVisualSpatialField() =====");
+    this.printDebugStatement("===== Chrest.constructVisualSpatialField() =====");
     
     //Attention must be free to start constructing a visual-spatial field.
     this.printDebugStatement("- Checking if attention is free at time " + time);
@@ -3963,8 +3963,13 @@ public class Chrest extends Observable {
           Fixation fixationPerformed = fixationsPerformed.get(fixation);
           this.printDebugStatement("\n- Processing Fixation " + (fixation + 1) + ":\n" + fixationPerformed.toString());
           
-          ListPattern objectsSeenInFixationFieldOfView = this.getPerceiver().getObjectsSeenInFixationFieldOfView(fixationPerformed);
+          ListPattern objectsSeenInFixationFieldOfView = this.getPerceiver().getObjectsSeenInFixationFieldOfView(fixationPerformed, false);
           this.printDebugStatement("   ~ This ListPattern was generated when this Fixation was performed: " + objectsSeenInFixationFieldOfView.toString());
+          
+          this.printDebugStatement("   ~ Stripping ListPattern of any blind squares since these shouldn't be considered at all and creators since one has already been added");
+          objectsSeenInFixationFieldOfView = objectsSeenInFixationFieldOfView.removeBlindObjects();
+          objectsSeenInFixationFieldOfView = objectsSeenInFixationFieldOfView.removeCreatorObject();
+          this.printDebugStatement("   ~ ListPattern after stripping blind squares and creator from it: " + objectsSeenInFixationFieldOfView.toString());
           
           this.printDebugStatement("   ~ Using this ListPattern's primitives to get required information");
           for(int primitive = 0; primitive < objectsSeenInFixationFieldOfView.size(); primitive++){
@@ -4263,7 +4268,7 @@ public class Chrest extends Observable {
               visualSpatialFieldObjectEncodingTime,
               true
             );
-            
+
             this.printDebugStatement("   ~ SceneObject encoding successful? " + visualSpatialFieldObjectCreated);
             if(visualSpatialFieldObjectCreated) visualSpatialFieldObjectEncoded = true;
           }
@@ -4281,7 +4286,6 @@ public class Chrest extends Observable {
               );
             }
           }
-          
           
           if(visualSpatialFieldObjectEncoded){
             this.printDebugStatement("\n- Since a SceneObject was encoded, the current time will be set to " + visualSpatialFieldObjectEncodingTime);
@@ -4359,7 +4363,7 @@ public class Chrest extends Observable {
                   }
                 }
               }            
-              
+
               if(visualSpatialFieldCol != null && visualSpatialFieldRow != null){
                 this.printDebugStatement("   ~ Attempting to encode SceneObject with " + unrecognisedSceneObject.toString() + 
                   " as a VisualSpatialFieldObject at the current time + "  +
@@ -4383,7 +4387,7 @@ public class Chrest extends Observable {
                   encodingTime, 
                   false
                 );
-                
+
                 this.refreshVisualSpatialFieldObjectTermini(visualSpatialField, visualSpatialFieldCol, visualSpatialFieldRow, time);
 
                 if(visualSpatialFieldObjectCreated){
@@ -4402,10 +4406,10 @@ public class Chrest extends Observable {
         }
         this._attentionClock = time;
       }
-      this.printDebugStatement(func + "Attention clock set to time " + this._attentionClock);
+      this.printDebugStatement("Attention clock set to time " + this._attentionClock);
       
     }
-    this.printDebugStatement(func + "RETURN");
+    this.printDebugStatement("===== RETURN =====");
   }
   
   /**

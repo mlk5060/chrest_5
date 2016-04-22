@@ -215,7 +215,7 @@ public class Perceiver {
           ///// GET INFORMATION IN FIXATION FIELD OF VIEW /////
           /////////////////////////////////////////////////////
 
-          fixationFieldOfViewInformation = this.getObjectsSeenInFixationFieldOfView(fixation);
+          fixationFieldOfViewInformation = this.getObjectsSeenInFixationFieldOfView(fixation, true);
           this._associatedChrestModel.printDebugStatement("- SceneObjects fixated on: " + fixationFieldOfViewInformation.toString());
 
           ////////////////////////////////////////////////
@@ -283,9 +283,15 @@ public class Perceiver {
   /**
    * 
    * @param fixation
+   * @param normaliseListPattern Set to {@link java.lang.Boolean#TRUE} if the
+   * {@link jchrest.lib.ListPattern} is to be sent as inout to {@link 
+   * jchrest.domainSpecifics.DomainSpecifics#normalise(jchrest.lib.ListPattern)}
+   * before being returned.  Set to {@link java.lang.Boolean#FALSE} to return
+   * the {@link jchrest.lib.ListPattern} as-is, i.e. with all {@link 
+   * jchrest.domainSpecifics.SceneObject SceneObjects} fixated on present.
    * @return 
    */
-  public ListPattern getObjectsSeenInFixationFieldOfView(Fixation fixation){
+  public ListPattern getObjectsSeenInFixationFieldOfView(Fixation fixation, boolean normaliseListPattern){
     ListPattern objectsSeenInFixationFieldOfView = null;
     Scene fixationScene = fixation.getScene();
     Integer fixationXcor = fixation.getColFixatedOn();
@@ -347,7 +353,9 @@ public class Perceiver {
 
       //Finally, normalise fixationFieldOfViewInformation according to
       //domain-specifics.
-      objectsSeenInFixationFieldOfView = this._associatedChrestModel.getDomainSpecifics().normalise(objectsSeenInFixationFieldOfView);
+      if(normaliseListPattern){
+        objectsSeenInFixationFieldOfView = this._associatedChrestModel.getDomainSpecifics().normalise(objectsSeenInFixationFieldOfView);
+      }
     }
     else{
       throw new IllegalArgumentException(
