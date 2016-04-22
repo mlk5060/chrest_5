@@ -53,7 +53,7 @@ public class TileworldDomain extends DomainSpecifics{
    * {@link jchrest.domainSpecifics.fixations.PeripheralItemFixation#PeripheralItemFixation(
    * jchrest.architecture.Chrest, int, int)}
    */
-  public TileworldDomain(Chrest model, int maxFixationsInSet, int initialFixationThreshold, int peripheralItemFixationMaxAttempts) {
+  public TileworldDomain(Chrest model, Integer maxFixationsInSet, Integer initialFixationThreshold, Integer peripheralItemFixationMaxAttempts) {
     super(model, maxFixationsInSet);
     
     //Check for CHREST model learning object locations realtive to agent
