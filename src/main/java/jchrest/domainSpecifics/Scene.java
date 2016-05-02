@@ -664,14 +664,17 @@ public class Scene {
   
   /**
    * 
-   * @return {@link java.lang.Boolean#TRUE} if {@link #this} consists entirely
-   * of blind {@link jchrest.lib.SceneObject SceneObjects}, {@link 
-   * java.lang.Boolean#FALSE} if not.
+   * @return {@link java.lang.Boolean#FALSE} if invoking {@link 
+   * jchrest.domainSpecifics.SceneObject#getObjectType()} returns anything 
+   * other than {@link jchrest.domainSpecifics.Scene#BLIND_SQUARE_TOKEN} or
+   * {@link jchrest.domainSpecifics.Scene#CREATOR_TOKEN}, {@link 
+   * java.lang.Boolean#TRUE} otherwise.
    */
-  public boolean isEntirelyBlind(){
+  public boolean isBlind(){
     for(int col = 0; col < this._width; col++){
       for(int row = 0; row < this._height; row++){
-        if(!this.isSquareBlind(col, row)) return false;
+        String objectType = this._scene.get(col).get(row).getObjectType();
+        if(!objectType.equals(Scene.BLIND_SQUARE_TOKEN) && !objectType.equals(Scene.CREATOR_TOKEN)) return false;
       }
     }
     

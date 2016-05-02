@@ -120,12 +120,12 @@ public class PeripheralItemFixation extends Fixation{
    *          jchrest.domainSpecifics.Fixation#getScene()} yields a {@link 
    *          jchrest.domainSpecifics.Scene} that returns {@link 
    *          java.lang.Boolean#TRUE} when {@link 
-   *          jchrest.domainSpecifics.Scene#isEntirelyBlind()} is invoked upon 
+   *          jchrest.domainSpecifics.Scene#isBlind()} is invoked upon 
    *          it.
    *        </li>
    *        <li>
    *          The result of invoking {@link 
-   *          jchrest.domainSpecifics.Scene#isEntirelyBlind()} on {@code scene} 
+   *          jchrest.domainSpecifics.Scene#isBlind()} on {@code scene} 
    *          returns {@link java.lang.Boolean#TRUE}.
    *        </li>
    *      </ul>
@@ -209,8 +209,8 @@ public class PeripheralItemFixation extends Fixation{
         mostRecentFixationPerformedXcor != null &&
         mostRecentFixationPerformedYcor != null &&
         sceneMostRecentFixationPerformedOn.sameDomainSpace(scene) &&
-        !sceneMostRecentFixationPerformedOn.isEntirelyBlind() &&
-        !scene.isEntirelyBlind() &&
+        !sceneMostRecentFixationPerformedOn.isBlind() &&
+        !scene.isBlind() &&
         this.getPerformanceTime() <= time
       ){
 

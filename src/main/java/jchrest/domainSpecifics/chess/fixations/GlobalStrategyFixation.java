@@ -52,7 +52,7 @@ public class GlobalStrategyFixation extends Fixation{
    *    </li>
    *    <li>
    *      The result of invoking {@link 
-   *      jchrest.domainSpecifics.Scene#isEntirelyBlind()} on the {@code scene}
+   *      jchrest.domainSpecifics.Scene#isBlind()} on the {@code scene}
    *      specified returns {@link java.lang.Boolean#TRUE}.
    *    </li>
    *    <li>
@@ -100,7 +100,7 @@ public class GlobalStrategyFixation extends Fixation{
       mostRecentFixationsPerformed != null &&
       !mostRecentFixationsPerformed.isEmpty() &&
       scene.getClass().equals(ChessBoard.class) &&
-      !scene.isEntirelyBlind() && 
+      !scene.isBlind() && 
       this.getPerformanceTime() <= time
     ){
         

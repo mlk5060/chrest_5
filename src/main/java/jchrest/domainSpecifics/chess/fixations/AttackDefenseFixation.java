@@ -78,7 +78,7 @@ public class AttackDefenseFixation extends Fixation{
     //required that makes use of this instance variable.
     this._board = board;
     
-    if(!board.isEntirelyBlind()){
+    if(!board.isBlind()){
       
       //Get the most recent fixations performed and check that a Fixation of this
       //type can be performed.  Note that the performance time check of this
@@ -160,7 +160,7 @@ public class AttackDefenseFixation extends Fixation{
    *    </li>
    *    <li>
    *      {@link java.lang.Boolean#TRUE} is returned when {@link 
-   *      jchrest.domainSpecifics.Scene#isEntirelyBlind()} is invoked in context
+   *      jchrest.domainSpecifics.Scene#isBlind()} is invoked in context
    *      of the {@code scene} specified.
    *    </li>
    *    <li>
@@ -189,7 +189,7 @@ public class AttackDefenseFixation extends Fixation{
   public Square make(Scene scene, int time) {
     return 
       time < this.getPerformanceTime() ||
-      scene.isEntirelyBlind() ||
+      scene.isBlind() ||
       !this._board.equals(scene) ||
       this._squareToFixateOn == null ||
       scene.getSquareContents(this._squareToFixateOn.getColumn(), this._squareToFixateOn.getRow()).getObjectType().equals(Scene.getBlindSquareToken()) ? 

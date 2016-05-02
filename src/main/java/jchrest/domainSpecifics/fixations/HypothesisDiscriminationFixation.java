@@ -137,7 +137,7 @@ public class HypothesisDiscriminationFixation extends Fixation{
    */
   @Override
   public Square make(Scene scene, int time) {
-    if(!scene.isEntirelyBlind()){
+    if(!scene.isBlind()){
       this._model.printDebugStatement("- Scene is not entirely blind");
       
       Stm visualStm = this._model.getStm(Modality.VISUAL);

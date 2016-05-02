@@ -49,7 +49,7 @@ public class CentralFixation extends Fixation{
    * @return A non-blind {@link jchrest.lib.Square} either at the absolute 
    * centre or around the absolute centre of the {@link 
    * jchrest.domainSpecifics.Scene} specified or {@code null} if
-   * {@link jchrest.domainSpecifics.Scene#isEntirelyBlind()} evaluates to
+   * {@link jchrest.domainSpecifics.Scene#isBlind()} evaluates to
    * {@link java.lang.Boolean#TRUE} (may happen if the {@link 
    * jchrest.domainSpecifics.Scene} has been generated using {@link 
    * jchrest.architecture.VisualSpatialField#getSceneEncoded()} or {@link 
@@ -70,7 +70,7 @@ public class CentralFixation extends Fixation{
   public Square make(Scene scene, int time) {
     Square fixation = null;
     
-    if(!scene.isEntirelyBlind() && this.getPerformanceTime() <= time){
+    if(!scene.isBlind() && this.getPerformanceTime() <= time){
       if(scene.getWidth() % 2 != 0 && scene.getHeight() % 2 != 0){
         int col = scene.getWidth()/2;
         int row = scene.getHeight()/2;

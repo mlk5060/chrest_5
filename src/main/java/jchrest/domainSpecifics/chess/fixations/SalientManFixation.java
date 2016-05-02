@@ -67,7 +67,7 @@ public class SalientManFixation extends Fixation{
    *    </li>
    *    <li>
    *      The result of invoking {@link 
-   *      jchrest.domainSpecifics.Scene#isEntirelyBlind()} on the {@code scene}
+   *      jchrest.domainSpecifics.Scene#isBlind()} on the {@code scene}
    *      specified returns {@link java.lang.Boolean#TRUE}.
    *    </li>
    *    <li>
@@ -88,7 +88,7 @@ public class SalientManFixation extends Fixation{
   public Square make(Scene scene, int time) {
     if(
       this.getPerformanceTime() <= time && 
-      !scene.isEntirelyBlind() && 
+      !scene.isBlind() && 
       scene.getClass().equals(ChessBoard.class)
     ){
       

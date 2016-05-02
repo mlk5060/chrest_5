@@ -1,5 +1,6 @@
 package jchrest.domainSpecifics.fixations;
 
+import java.util.ArrayList;
 import java.util.Random;
 import jchrest.architecture.Chrest;
 import jchrest.architecture.Perceiver;
@@ -102,12 +103,12 @@ public class PeripheralSquareFixation extends Fixation{
    *          jchrest.domainSpecifics.Fixation#getScene()} yields a {@link 
    *          jchrest.domainSpecifics.Scene} that returns {@link 
    *          java.lang.Boolean#TRUE} when {@link 
-   *          jchrest.domainSpecifics.Scene#isEntirelyBlind()} is invoked upon 
+   *          jchrest.domainSpecifics.Scene#isBlind()} is invoked upon 
    *          it.
    *        </li>
    *        <li>
    *          The result of invoking {@link 
-   *          jchrest.domainSpecifics.Scene#isEntirelyBlind()} on {@code scene} 
+   *          jchrest.domainSpecifics.Scene#isBlind()} on {@code scene} 
    *          returns {@link java.lang.Boolean#TRUE}.
    *        </li>
    *        <li>
@@ -152,6 +153,10 @@ public class PeripheralSquareFixation extends Fixation{
    */
   @Override
   public Square make(Scene scene, int time) {
+    this._model.printDebugStatement("===== PeripheralSquareFixation.make() =====");
+    this._model.printDebugStatement("- Requested at time " + time);
+    
+    Square squareToFixateOn = null;
     
     //Get the most recent fixations performed and check that a Fixation of this
     //type can be performed.  Note that the performance time check of this
@@ -165,112 +170,159 @@ public class PeripheralSquareFixation extends Fixation{
     Perceiver perceiver = this._model.getPerceiver();
     Fixation mostRecentFixationPerformed = perceiver.getMostRecentFixationPerformed(time);
     if(mostRecentFixationPerformed != null){
+      this._model.printDebugStatement("- A Fixation has previously been performed: " + mostRecentFixationPerformed.toString());
 
-      //Get the fixation field of view for the associated Perceiver and add 
-      //1 since the bound provided to Random.nextInt() below is exclusive so 
-      //it should be possible to get the maximum x/y displacement as 
-      //stipulated by the fixationFieldOfView parameter.  Check that the
-      //resulting value is greater than 1 otherwise the while loop below will
-      //run forever since the x and y discplacement will always equal 0 
-      //resulting in the new Square to fixate on being the same as the Square
-      //fixated on in the previous Fixation.
-      int fixationFieldOfView = perceiver.getFixationFieldOfView() + 1;
-      if(fixationFieldOfView > 1){
+      //Get the fixation field of view for the associated Perceiver.  Check that 
+      //the value is greater than 0 otherwise the column and row displacement 
+      //will always equal 0 resulting in the new Square to fixate on being the 
+      //same as the Square fixated on in the previous Fixation.
+      int fixationFieldOfView = perceiver.getFixationFieldOfView();
+      if(fixationFieldOfView > 0){
+        this._model.printDebugStatement("- Perceiver's Fixation field of view (" + fixationFieldOfView + ") is greater than 0 so a peripheral Fixation is possible");
         
-        //Get the Scene and x/y coordinates of the Square that the most recent 
-        //fixation was performed in context of.
+        //Get the Scene and column/row coordinates that the most recent fixation 
+        //performed fixated on.
         Scene sceneMostRecentFixationPerformedOn = mostRecentFixationPerformed.getScene();
-        Integer mostRecentFixationPerformedXcor = mostRecentFixationPerformed.getColFixatedOn();
-        Integer mostRecentFixationPerformedYcor = mostRecentFixationPerformed.getRowFixatedOn();
+        Integer colFixatedOnByMostRecentFixationPerformed = mostRecentFixationPerformed.getColFixatedOn();
+        Integer rowFixatedOnByMostRecentFixationPerformed = mostRecentFixationPerformed.getRowFixatedOn();
 
-        //Assert that the Scene in the Fixation most recently performed 
-        //successfully exists and that the x/y coordinates of the Square 
-        //fixated on in that Fixation are set (ensures that the required 
-        //information is available to try and suggest a Square for this 
+        //Assert that the Scene in the Fixation most recently performed exists 
+        //and that the column/row coordinates fixated on are set (ensures that 
+        //the required information is available to suggest a Square for this 
         //Fixation).
         //
         //Also, assert that the Scene previously fixated on refers to the same 
         //space in the external domain as the one passed as a parameter to 
         //this function.  This ensures that this Fixation is only ever made in 
-        //context of the same space that the last Fixation successfully made 
-        //in context of but allows for the location of objects in the Scene 
-        //passed as a parameter to this function to have changed when compared 
-        //to the Scene that the last successful Fixation was made in context 
-        //of.
+        //context of the same space that the last Fixation performed was made in 
+        //context of but allows for the locations of SceneObjects in these two
+        //Scenes to differ. Also, ensure that neither Scene are entirely blind 
+        //otherwise, there's no point continuing with trying to make this 
+        //Fixation.
         //
-        //Ensure that neither Scene (the one previously fixated on or the one 
-        //passed to this function) are entirely blind otherwise, there's no 
-        //point continuing with trying to make this Fixation (over-cautious but 
-        //better to be safe than sorry!).
-        //
-        //Finally, ensure that the time this function is being invoked is greater
-        //than or equal to the performance time of this.
+        //Finally, ensure that the time this function is being invoked is 
+        //greater than or equal to the performance time of this Fixation.
+        if(this._model.debug()){
+          this._model.printDebugStatement("- Checking if the following statements all evaluate to true:");
+          this._model.printDebugStatement("  ~ Scene fixated on by the most recent Fixation performed is not null: " + (sceneMostRecentFixationPerformedOn != null));
+          this._model.printDebugStatement("  ~ Column fixated on by the most recent Fixation performed is not null: " + (colFixatedOnByMostRecentFixationPerformed != null));
+          this._model.printDebugStatement("  ~ Row fixated on by the most recent Fixation performed is not null: " + (rowFixatedOnByMostRecentFixationPerformed != null));
+          this._model.printDebugStatement("  ~ Scene fixated on by the most recent Fixation performed is the same domain space as the Scene being fixated on by this Fixation: " + (sceneMostRecentFixationPerformedOn.sameDomainSpace(scene)));
+          this._model.printDebugStatement("  ~ Scene fixated on by the most recent Fixation is not entirely blind: " + (!sceneMostRecentFixationPerformedOn.isBlind()));
+          this._model.printDebugStatement("  ~ Scene being fixated on by this Fixation is not entirely blind: " + (!scene.isBlind()));
+          this._model.printDebugStatement("  ~ Performance time of this Fixation is <= the time this method was requested: " + (this.getPerformanceTime() <= time));
+        }
         if(
           sceneMostRecentFixationPerformedOn != null &&
-          mostRecentFixationPerformedXcor != null &&
-          mostRecentFixationPerformedYcor != null &&
+          colFixatedOnByMostRecentFixationPerformed != null &&
+          rowFixatedOnByMostRecentFixationPerformed != null &&
           sceneMostRecentFixationPerformedOn.sameDomainSpace(scene) &&
-          !sceneMostRecentFixationPerformedOn.isEntirelyBlind() &&
-          !scene.isEntirelyBlind() &&
+          !sceneMostRecentFixationPerformedOn.isBlind() &&
+          !scene.isBlind() &&
           this.getPerformanceTime() <= time
         ){
-
-          //Now set up the x, y coordinate displacement values i.e. the number 
-          //of squares from the fixation's last x, y coordinates (should be 
-          //near to the periphery).  Set these to 0 initially so the while 
-          //loop body below is entered.
-          int xDisplacement = 0;
-          int yDisplacement = 0;
-          SceneObject potentialFixationContents = scene.getSquareContents(
-            mostRecentFixationPerformedXcor + xDisplacement, 
-            mostRecentFixationPerformedYcor + yDisplacement
-          );
-
-          //Generate the x, y coordinate displacement values.  Note that due 
-          //to the randomness of displacement value generation, it may be that 
-          //the x and y coordinate displacement values:
-          //
-          // 1. Both equal 0, resulting in the most recent fixation being made
-          //    again.
-          // 2. Suggest a fixation on a square that isn't in scope of the 
-          //    scene being "looked-at".  
-          // 3. Suggest a fixation on a blind square.
-          // 4. Suggest a fixation on a square occupied by the agent making 
-          //    the fixation.
-          //
-          //If any of these statements are true, generate new x, y 
-          //displacement variables until all statements evaluate to false.
-          Random r = new Random();
+          this._model.printDebugStatement("- All statements evaluate to true, continuing");
 
           //Note that it should always be possible to find a suitable Square
           //given the conditionals checked up until this point. However, to 
           //ensure that infinite loops do not occur (which only occurs under 
-          //bizarre circumstances: the scene to make this Fixation on contains
-          //creator objects only), only attempt to find a suitable Square for 
-          //a specified number of times, n.  This value of n = the number of 
-          //Squares that constitute the Scene to make the fixation on 
-          //multiplied by 10.  This should give enough of an opportunity for a 
-          //suitable Square to be find but will also prevent infinite loops.
-          int maxAttempts = (scene.getHeight() * scene.getWidth()) * 10;
-          int attempt = 1;
-
+          //bizarre circumstances e.g. the scene to make this Fixation on 
+          //contains creator objects only), only attempt to find a suitable 
+          //Square for the number of Squares that can be fixated on.
+          //
+          //To calculate the number of Squares that can be fixated on, suppose
+          //the current Fixation field of view parameter is set to 2.  25
+          //Squares in total should be seen when a Fixation is made. To 
+          //calculate this for any given Fixation field of view parameter, add 
+          //the current Fixation field of view parameter to itself (2 + 2) since 
+          //this parameter only stipulates how many Squares along 1 ordinal 
+          //compass direction can be seen FROM THE PREVIOUS SQUARE FIXATED ON.  
+          //Add 1 to this value now since the column or row the previous 
+          //Fixation was made on is not included, this gives 5; the total number 
+          //of Squares along one spatial dimension, either the x or y axis of a 
+          //Scene that falls within a Fixation's field of view.  Since this is 
+          //just the value for one spatial dimension (x/y) raise this number by 
+          //2 (5 ^ 2) to get the total number of Squares that can be seen along 
+          //both spatial dimensions, i.e. the total number of Squares in the 
+          //Fixation's field of view.
+          int singleSpatialDimension = (fixationFieldOfView + fixationFieldOfView) + 1;
+          int numberSquaresThatCanBeFixatedOn = (int)(Math.pow((double)singleSpatialDimension, (double)2));
+          this._model.printDebugStatement("- Number of Squares that could be fixated on = " + numberSquaresThatCanBeFixatedOn);
+          
+          //Initialise the column and row coordinate displacement values i.e. 
+          //the number of Squares along the x and y axis of the Scene from the 
+          //last Fixation performed's coordinates that should be potentially 
+          //fixated on; otherwise known as the fixationFieldOfView parameter.
+          //Initialise these to 0 so that the "fixation attempt" while loop 
+          //below is entered.  This can be thought of as starting to make this
+          //Fixation from the Square previously performed.
+          Random r = new Random();
+          int colDisplacement = 0;
+          int rowDisplacement = 0;
+          SceneObject potentialFixationContents = scene.getSquareContents(
+            colFixatedOnByMostRecentFixationPerformed + colDisplacement, 
+            rowFixatedOnByMostRecentFixationPerformed + rowDisplacement
+          );
+          
+          //Due to the randomness of displacement value generation, it may be 
+          //that the Square selected:
+          //
+          // 1. Is the Square fixated on by the most recent Fixation performed 
+          //    again (column and row displacement may both equal 0)
+          // 2. Is a square that isn't in scope of the Scene being fixated on.  
+          // 3. Is blind.
+          // 4. Is occupied by the agent making this Fixation.
+          //
+          //If any of these statements are true, generate new column/row
+          //displacement variables until either all statements evaluate to false 
+          //or every displacement combination has been tried (all Squares in the
+          //Fixation field of view have been fixated on).
+          ArrayList<Square> displacementsTried = new ArrayList();
           while(
-            attempt < maxAttempts && 
             ( 
-              (xDisplacement == 0 && yDisplacement == 0) || //Statement 1
+              (colDisplacement == 0 && rowDisplacement == 0) || //Statement 1
               (potentialFixationContents == null) || //Statement 2
               (potentialFixationContents.getObjectType().equals(Scene.getBlindSquareToken())) || //Statement 3
               (potentialFixationContents.getObjectType().equals(Scene.getCreatorToken())) //Statement 4
-            )
+            ) &&
+            displacementsTried.size() < numberSquaresThatCanBeFixatedOn
           ){
-            xDisplacement = r.nextInt(fixationFieldOfView);
-            yDisplacement = r.nextInt(fixationFieldOfView);
+            Square displacementTried = new Square(colDisplacement, rowDisplacement);
+            if (!displacementsTried.contains(displacementTried)) displacementsTried.add(displacementTried);
+            
+            //Add 1 to the random number generator bound since it is exclusive. 
+            //So if the fixationFieldOfView parameter is set to 2, integers 0 -> 
+            //2 should be able to be generated rather than just 0 or 1.
+            colDisplacement = r.nextInt(fixationFieldOfView + 1);
+            rowDisplacement = r.nextInt(fixationFieldOfView + 1);
+            
+            //The col and row displacement generation above would only ever 
+            //allow a Fixation to be made to the east or north of the previous
+            //Fixation, displacements should also be possible to the west and
+            //south.  To enable this, "flip a coin", if "heads", displace to
+            //the north/east, if "tails", displace to the south/west.
+            colDisplacement = (r.nextDouble() < 0.5 ? colDisplacement : colDisplacement * -1);
+            rowDisplacement = (r.nextDouble() < 0.5 ? rowDisplacement : rowDisplacement * -1);
+            
+            //Add the col/row displacement to the col/row fixated on previously
+            //(negative displacements will negatively affect the col/row 
+            //previously fixated on).
             potentialFixationContents = scene.getSquareContents(
-              mostRecentFixationPerformedXcor + xDisplacement, 
-              mostRecentFixationPerformedYcor + yDisplacement
+              colFixatedOnByMostRecentFixationPerformed + colDisplacement,
+              rowFixatedOnByMostRecentFixationPerformed + rowDisplacement
             );
-            attempt++;
           }
+          
+          this._model.printDebugStatement("- The following displacements failed: " + displacementsTried.toString());
+          this._model.printDebugStatement(
+            "- Last displacement tried was (" + colDisplacement + ", " + 
+            rowDisplacement + ")" + " and " +
+            (potentialFixationContents == null ? 
+              "was on a Square not represented in the Scene" : 
+              "was on a Square represented in the Scene that contained the " +
+              "following SceneObject: " + potentialFixationContents.toString()
+            )
+          );
 
           //Double-check that the potential fixation is represented in the
           //scene and that it is not a blind square or the location of the 
@@ -282,12 +334,36 @@ public class PeripheralSquareFixation extends Fixation{
             (!potentialFixationContents.getObjectType().equals(Scene.getBlindSquareToken())) &&
             (!potentialFixationContents.getObjectType().equals(Scene.getCreatorToken()))
           ){
-            return new Square(mostRecentFixationPerformedXcor + xDisplacement, mostRecentFixationPerformedYcor + yDisplacement);
+            squareToFixateOn = new Square(colFixatedOnByMostRecentFixationPerformed + colDisplacement, rowFixatedOnByMostRecentFixationPerformed + rowDisplacement);
+            this._model.printDebugStatement(
+              "- Since the last displacement tried was on a Square represented " +
+              "in the Scene and this Square was not blind or occupied by myself, " +
+              "this Fixation will be made on this Square (scene-specific coordinates: " +
+              squareToFixateOn + ")"
+            );
+          }
+          else{
+            this._model.printDebugStatement(
+              "- Since the last displacement tried was not on a Square represented " +
+              "in the Scene or it was but the Square was blind or occupied by myself, " +
+              "this Fixation has failed"
+            );
           }
         }
+        else{
+          this._model.printDebugStatement("  ~ Some statements evaluated to false, exiting");
+        }
+      }
+      else{
+        this._model.printDebugStatement("- Perceiver's Fixation field of view is not greater than 0 so a peripheral Fixation is not possible, exiting");
       }
     }
+    else{
+      this._model.printDebugStatement("- A Fixation has not been performed previously, exiting");
+    }
     
-    return null;
+    this._model.printDebugStatement("- Returning " + (squareToFixateOn == null ? "null" : squareToFixateOn.toString()));
+    this._model.printDebugStatement("===== RETURN PeripheralSquareFixation.make() =====");
+    return squareToFixateOn;
   }
 }
