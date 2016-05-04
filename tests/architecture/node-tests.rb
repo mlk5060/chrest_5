@@ -915,7 +915,7 @@ process_test "production functionality" do
   # Set the reinforcement learning theory of the CHREST model associated with 
   # the Nodes being used so that all sub-conditions of the minor-conditional in 
   # the "Node.reinforceProduction" function can be checked.
-  model.setReinforcementLearningTheory(ReinforcementLearning::ReinforcementLearningTheories::PROFIT_SHARING_WITH_DISCOUNT_RATE)
+  model.setReinforcementLearningTheory(ReinforcementLearning::Theory::PROFIT_SHARING_WITH_DISCOUNT_RATE)
   assert_false(visual_node_1.reinforceProduction(action_node_3, variables_to_calculate_reinforcement_value, time_first_production_reinforced), "occurred when checking the result of calling 'reinforceProduction' and specifying a production to be reinforced for the visual node that doesn't exist.")
   
   # Check that the Node.reinforceProduction function returns true (allows 
