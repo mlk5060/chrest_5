@@ -40,7 +40,8 @@ public class Perceiver {
    * 
    * Associates the {@link jchrest.architecture.Chrest} model specified with
    * {@link #this} and initialises the data structure that will maintain the 
-   * {@link jchrest.domainSpecifics.chess.fixationTypes.Fixation Fixations} made by {@link #this}. 
+   * {@link jchrest.domainSpecifics.Fixation Fixations} whose performance was 
+   * attempted by the {@code associatedChrestModel}. 
    * 
    * @param associatedChrestModel
    * @param time 
@@ -284,7 +285,7 @@ public class Perceiver {
    * 
    * @param fixation
    * @param normaliseListPattern Set to {@link java.lang.Boolean#TRUE} if the
-   * {@link jchrest.lib.ListPattern} is to be sent as inout to {@link 
+   * {@link jchrest.lib.ListPattern} is to be sent as input to {@link 
    * jchrest.domainSpecifics.DomainSpecifics#normalise(jchrest.lib.ListPattern)}
    * before being returned.  Set to {@link java.lang.Boolean#FALSE} to return
    * the {@link jchrest.lib.ListPattern} as-is, i.e. with all {@link 

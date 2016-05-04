@@ -197,23 +197,4 @@ public class AttackDefenseFixation extends Fixation{
         this._squareToFixateOn
     ;
   }
-  
-  @Override
-  public String toString(){
-    return this.getClass().getSimpleName()
-      + "\n   - Reference: " + this._reference
-      + "\n   - Decided upon at time: " + this._timeDecidedUpon + "ms"
-      + "\n   - Performed at time: " + (this._performanceTime == null ? "null" : this._performanceTime + "ms")
-      + "\n   - Made in context of scene: " + (this._board == null ? "null" : this._board.getName())
-      + "\n   - Square fixated on: " + (this._squareToFixateOn == null ? 
-          "has not yet been set" :
-          this._squareToFixateOn.toString()
-        )
-      + "\n   - Object seen: " + (this._board != null && this._squareToFixateOn != null ?
-          "ID = " + this._board.getSquareContents(this._squareToFixateOn.getColumn(), this._squareToFixateOn.getRow()).getIdentifier() + 
-          ", class = " + this._board.getSquareContents(this._squareToFixateOn.getColumn(), this._squareToFixateOn.getRow()).getObjectType() :
-          "has not yet been set"
-      )
-    ;
-  }
 }

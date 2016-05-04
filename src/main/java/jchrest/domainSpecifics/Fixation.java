@@ -169,7 +169,7 @@ public abstract class Fixation {
    */
   @Override
   public String toString() {
-    return this.getClass().getSimpleName() 
+    return "\n" + this.getClass().getSimpleName() 
       + "\n   - Reference: " + this._reference
       + "\n   - Decided upon at time: " + this._timeDecidedUpon + "ms"
       + "\n   - Performed at time: " + (this._performanceTime == null ? "null" : this._performanceTime + "ms")

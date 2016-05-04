@@ -263,7 +263,7 @@ public class ListPattern extends Pattern implements Iterable<PrimitivePattern> {
 
     return result;
   }
-
+  
   /**
    * Return a new ListPattern formed from the contents of this list pattern and the 
    * contents of the given pattern appended to it.

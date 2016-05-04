@@ -88,10 +88,6 @@ public class Stm implements Iterable<Node> {
    *    The {@link jchrest.architecture.Node} specified is of the same modality 
    *    as {@link #this}
    *  </li>
-   *  <li>
-   *    Adding the {@link jchrest.architecture.Node} specified will not rewrite
-   *    the contents history of {@link #this}
-   *  </li>
    * </ul>
    * 
    * The reference to the most informative {@link jchrest.architecture.Node} is 
@@ -108,8 +104,7 @@ public class Stm implements Iterable<Node> {
     if(
       this._creationTime <= time &&
       nodeToAdd.getCreationTime() <= time &&
-      this._modality == nodeToAdd.getModality() &&
-      !this._itemHistory.rewritingHistory(time)
+      this._modality == nodeToAdd.getModality()
     ){
       ArrayList<Node> newStmContents = new ArrayList();
       
@@ -233,7 +228,6 @@ public class Stm implements Iterable<Node> {
   public boolean setCapacity (int newCapacity, int time) {
     if(
       this._creationTime <= time &&
-      !this._itemHistory.rewritingHistory(time) &&
       !this._capacityHistory.rewritingHistory(time)
     ){
       this._capacityHistory.put(time, newCapacity);
@@ -300,7 +294,7 @@ public class Stm implements Iterable<Node> {
    */
   public Integer getCount (int time) {
     List<Node> contentsAtTime = this.getContents(time);
-    return contentsAtTime == null? null : contentsAtTime.size();
+    return contentsAtTime == null ? null : contentsAtTime.size();
   }
 
   /**
