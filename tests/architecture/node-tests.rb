@@ -2272,3 +2272,116 @@ process_test "information" do
   end
 end
 
+################################################################################
+unit_test "get_all_information" do
+  
+  ##############################################
+  ##### SET-UP ACCESS TO PRIVATE VARIABLES #####
+  ##############################################
+  
+  # Need to be able to edit a Node's image and fill its item and position slots
+  Node.class_eval{
+    field_accessor :_imageHistory, :_filledItemSlotsHistory, :_filledPositionSlotsHistory
+  }
+  
+  # Needed to that Node contents/image can be constructed precisely.
+  ListPattern.class_eval{
+    field_accessor :_list
+  }
+  
+  #####################
+  ##### MAIN LOOP #####
+  #####################
+  
+  50.times do
+  
+    time_model_created = 0
+    model = Chrest.new(time_model_created, [true,false].sample)
+    
+    ##########################
+    ##### CONSTRUCT NODE #####
+    ##########################
+
+    # Construct node contents
+    node_contents = ListPattern.new(Modality::VISUAL)
+    node_contents._list.add(ItemSquarePattern.new("A", 3, 3))
+
+    # Construct node image
+    node_image = ListPattern.new(Modality::VISUAL)
+
+    # Construct node so that its contents, image and item/position slots 
+    # can be instantiated.
+    time_node_created = time_model_created + 5
+    node = Node.new(model, node_contents, node_image, time_node_created)
+
+    # Add information to the image after node has been constructed.  Image will
+    # contain the ItemSquarePattern in contents so the test can check if 
+    # duplicate PrimitivePatterns in the contents/image are removed.
+    new_image = ListPattern.new(Modality::VISUAL)
+    for pattern in node_contents._list
+      new_image._list.add(pattern)
+    end
+    new_image._list.add(ItemSquarePattern.new("B", 5, 5))
+    time_image_updated = time_node_created + 5
+    node._imageHistory.put(time_image_updated, new_image)
+
+    # Construct and fill node's filled item/position slots (the Node doesn't have 
+    # to actually be a template to do this since the test has access to the 
+    # relevant private Node instance variables).
+    node_filled_item_slots = ArrayList.new()
+    node_filled_item_slots.add(ItemSquarePattern.new("C", 5, 3))
+    node_filled_item_slots_history = HistoryTreeMap.new()
+    time_item_slots_filled = time_image_updated + 5
+    node_filled_item_slots_history.put(time_item_slots_filled, node_filled_item_slots)
+    node._filledItemSlotsHistory = node_filled_item_slots_history
+
+    # Construct node filled position slots
+    node_filled_position_slots = ArrayList.new()
+    node_filled_position_slots.add(ItemSquarePattern.new("D", 3, 5))
+    node_filled_position_slots_history = HistoryTreeMap.new()
+    time_position_slots_filled = time_item_slots_filled + 5
+    node_filled_position_slots_history.put(time_position_slots_filled, node_filled_position_slots)
+    node._filledPositionSlotsHistory = node_filled_position_slots_history
+
+    ################
+    ##### TEST #####
+    ################
+
+    info_before_image_updated = node.getAllInformation( rand(time_node_created...time_image_updated).to_java(:int) )
+    info_after_image_updated_before_item_slots_filled = node.getAllInformation( rand(time_image_updated...time_item_slots_filled).to_java(:int) )
+    info_after_item_slots_filled_before_position_slots_filled = node.getAllInformation( rand(time_item_slots_filled...time_position_slots_filled).to_java(:int) )
+    info_after_position_slots_filled = node.getAllInformation( rand(time_position_slots_filled...(time_position_slots_filled + 5)).to_java(:int) )
+
+    expected_info = ListPattern.new(Modality::VISUAL)
+    expected_info._list.add(ItemSquarePattern.new("A", 3, 3))
+    assert_equal(
+      expected_info.toString(),
+      info_before_image_updated.toString(),
+      "occurred when checking return value before node image updated"
+    )
+    
+    expected_info._list.add(ItemSquarePattern.new("B", 5, 5))
+    assert_equal(
+      expected_info.toString(),
+      info_after_image_updated_before_item_slots_filled.toString(),
+      "occurred when checking return value after node image updated but " +
+      "before item slots are filled"
+    )
+    
+    expected_info._list.add(ItemSquarePattern.new("C", 5, 3))
+    assert_equal(
+      expected_info.toString(),
+      info_after_item_slots_filled_before_position_slots_filled.toString(),
+      "occurred when checking return value after item slots filled but " +
+      "before position slots are filled"
+    )
+    
+    expected_info._list.add(ItemSquarePattern.new("D", 3, 5))
+    assert_equal(
+      expected_info.toString(),
+      info_after_position_slots_filled.toString(),
+      "occurred when checking return value after position slots are filled"
+    )
+  end
+end
+

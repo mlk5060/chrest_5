@@ -1530,11 +1530,11 @@ public class Node extends Observable {
     List<ItemSquarePattern> filledItemSlots = this.getFilledItemSlots(time);
     List<ItemSquarePattern> filledPositionSlots = this.getFilledPositionSlots(time);
     
-    if(filledItemSlots != null && filledPositionSlots != null){
+    if(filledItemSlots != null || filledPositionSlots != null){
       ListPattern listPattern = new ListPattern(this.getModality());
       List<ItemSquarePattern> filledItemAndPositionSlots = new ArrayList();
-      filledItemAndPositionSlots.addAll(filledItemSlots);
-      filledItemAndPositionSlots.addAll(filledPositionSlots);
+      if(filledItemSlots != null) filledItemAndPositionSlots.addAll(filledItemSlots);
+      if(filledPositionSlots != null) filledItemAndPositionSlots.addAll(filledPositionSlots);
       
       for (ItemSquarePattern filledSlotValue : filledItemAndPositionSlots) {
         boolean slotValueAlreadyInListPattern = false;
@@ -1553,6 +1553,51 @@ public class Node extends Observable {
       return listPattern;
     }
     return null;
+  }
+  
+  /*********************************/
+  /**** MISCELLANEOUS FUNCTIONS ****/
+  /*********************************/
+  
+  /**
+   * 
+   * @param time
+   * 
+   * @return A {@link jchrest.lib.ListPattern} containing the concatenation of 
+   * {@link #this#getContents()}, {@link #this#getImage(int)} and {@link 
+   * #this#getFilledSlots(int)} at the {@code time} specified, with no duplicate
+   * {@link jchrest.lib.PrimitivePattern PrimitivePatterns}.
+   */
+  public ListPattern getAllInformation(int time){
+    this._model.printDebugStatement("===== Node.getInformation() =====");
+    this._model.printDebugStatement("- Getting information at time " + time);
+    ListPattern information = new ListPattern(this._modality);
+    ListPattern contents = this.getContents();
+    ListPattern image = this.getImage(time);
+    ListPattern filledSlots = this.getFilledSlots(time);
+    
+    this._model.printDebugStatement("- Contents: " + contents.toString());
+    this._model.printDebugStatement("- Image: " + (image == null ? "null" : image.toString()));
+    this._model.printDebugStatement("- Filled slots: " + (filledSlots == null ? "null" : filledSlots.toString()));
+    
+    information = information.append(contents);
+    this._model.printDebugStatement("- Information after appending contents: " + information.toString());
+    
+    if(image != null){
+      image = image.remove(contents);
+      information = information.append(image);
+    }
+    this._model.printDebugStatement("- Information after appending image: " + information.toString());
+    
+    if(filledSlots != null){
+      filledSlots = filledSlots.remove(contents).remove(image);
+      information = information.append(filledSlots);
+    }
+    this._model.printDebugStatement("- Information after appending filled slots: " + information.toString());
+    
+    this._model.printDebugStatement("- Returning " + information.toString());
+    this._model.printDebugStatement("===== RETURN Node.getInformation() =====");
+    return information;
   }
   
   /***********************/
