@@ -1105,25 +1105,41 @@ unit_test "get_width" do
 end
 
 ################################################################################
-# Tests the "isEntirelyBlind" function using two scenarios. 
+# Tests "Scene.isBlind" using various scenarios. 
 #
-# Scenario 1: Scene function invoked on is entirely blind.
-# Scenario 2: Function invoked on Scene that contains Scene creator SceneObject
-#             tokens, empty square SceneObject tokens, non 
-#             blind/empty/creator SceneObject tokens and 1 blind square object
-#             token.
-#
-# In scenario 1 the function should return true, in scenario 2 it should return 
-# false.
-unit_test "is_entirely_blind" do
-  for scenario in 1..2
+# Scenario Details
+# ================
+# 
+# - Scenario 1
+#   ~ Input Scene is composed of SceneObjects whose type is equal to 
+#     Scene::BLIND_SQUARE_TOKEN.
+# - Scenario 2
+#   ~ Input Scene is composed of multiple SceneObjects whose type is equal to 
+#     Scene::BLIND_SQUARE_TOKEN and 1 SceneObject whose type is equal to 
+#     Scene::BLIND_CREATOR_TOKEN.
+# - Scenario 3 
+#   ~ Input Scene is composed of 1 SceneObject whose type is equal to 
+#     Scene::BLIND_SQUARE_TOKEN, 1 SceneObject whose type is equal to 
+#     Scene::BLIND_CREATOR_TOKEN and multiple SceneObject whose type is equal to
+#     either Scene::EMPTY_SQUARE_TOKEN or "none of the above".
+#     
+# Expected Output
+# ===============
+# 
+# Method should return the following for each scenario:
+# 
+# - Scenario 1: true
+# - Scenario 2: true
+# - Scenario 3: false
+unit_test "is_blind" do
+  for scenario in 1..3
     
     ##################
     ##### SET-UP #####
     ##################
     
     # Create Scene with huge dimensions so that there is a good mix of 
-    # SceneObjects in scenario 2
+    # SceneObjects with different types in scenario 3
     scene = Scene.new("", 70, 70, 0, 0, nil)
 
     # Need access to the private, final "_scene" Scene variable so that other
@@ -1134,45 +1150,45 @@ unit_test "is_entirely_blind" do
     scene_field.accessible = true
     scene_data_structure = scene_field.value(scene)
 
-    # Populate a data structure with object classes to use when populating the
-    # Scene with items (scenario 1 just pushes 1 element on: the blind square 
-    # token so that the Scene is populated entirely with blind square 
-    # SceneObjects.
-    scene_object_classes = []
-    if scenario == 1 
-      scene_object_classes.push(Scene.getBlindSquareToken())
+    # Populate a data structure with object types to use when populating the
+    # Scene with SceneObjects
+    scene_object_types = []
+    if [1,2].include?(scenario)
+      scene_object_types.push(Scene::BLIND_SQUARE_TOKEN)
     else
-      scene_object_classes.push(Scene.getCreatorToken())
-      scene_object_classes.push(Scene.getEmptySquareToken())
-      (("a".."z").to_a - [Scene.getCreatorToken(), Scene.getEmptySquareToken, Scene.getBlindSquareToken]).each { |letter| scene_object_classes.push(letter) }
+      scene_object_types.push(Scene::EMPTY_SQUARE_TOKEN)
+      (("a".."z").to_a - [Scene::CREATOR_TOKEN, Scene::EMPTY_SQUARE_TOKEN, Scene::BLIND_SQUARE_TOKEN]).each { 
+        |scene_object_type| scene_object_types.push(scene_object_type) 
+      }
     end
     
     # Populate the Scene with SceneObjects.
-    object_id = 0
     for col in 0...scene_data_structure.size()
       for row in 0...scene_data_structure.get(col).size()
-        scene_data_structure.get(col).set(row, SceneObject.new(
-          object_id.to_s,
-          scene_object_classes.sample
-        ))
-      
-        object_id += 1
+        scene_data_structure.get(col).set(row, SceneObject.new(scene_object_types.sample))
       end
     end
     
-    # In scenario 2, add 1 blind square SceneObject to the Scene so that the 
-    # test can verify that the Scene must consist *entirely* of SceneObjects 
-    # for the function to return true.
-    if scenario == 2 then scene_data_structure.get(0).set(0, SceneObject.new(Scene.getBlindSquareToken)) end
+    # In scenario 2, add 1 creator SceneObject to the Scene.
+    if scenario == 2 then scene_data_structure.get(34).set(34, SceneObject.new(Scene::CREATOR_TOKEN)) end
+    
+    # In scenario 3, add 1 creator SceneObject to the Scene and 1 blind 
+    # SceneObject to the Scene so that the test can verify that the Scene must 
+    # consist *entirely* of blind SceneObjects and a creator SceneObject for 
+    # the function to return true.
+    if scenario == 3 
+      scene_data_structure.get(0).set(0, SceneObject.new(Scene.getBlindSquareToken))
+      scene_data_structure.get(34).set(34, SceneObject.new(Scene::CREATOR_TOKEN))
+    end
     
     ################
     ##### TEST #####
     ################
     
-    expected_result = (scenario == 1 ? true : false)
+    expected_result = (scenario == 3 ? false : true)
     assert_equal(
       expected_result,
-      scene.isEntirelyBlind(),
+      scene.isBlind(),
       "occurred in scenario " + scenario.to_s
     )
   end
