@@ -6,6 +6,7 @@ package jchrest.architecture;
 import java.io.IOException;
 import java.io.Writer;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -18,7 +19,7 @@ import jchrest.lib.ListPattern;
 import jchrest.lib.Modality;
 import jchrest.lib.Pattern;
 import jchrest.lib.PrimitivePattern;
-import jchrest.lib.ReinforcementLearning;
+import jchrest.lib.ReinforcementLearning.Theory;
 import jchrest.lib.Square;
 
 /**
@@ -808,24 +809,39 @@ public class Node extends Observable {
    * otherwise.
    */
   boolean reinforceProduction (Node node, Double[] variables, int time){
+    this._model.printDebugStatement("===== Node.reinforceProduction() =====");
+    this._model.printDebugStatement("- Reference of visual Node specified: " + this._reference);
+    this._model.printDebugStatement("- Reference of action Node specified: " + node._reference);
+    this._model.printDebugStatement("- Reinforcement learning theory variables specified: " + Arrays.toString(variables));
+    this._model.printDebugStatement("- Time reinforcment should occur: " + time);
     
-    Entry<Integer, Object> currentProductionEntry = this._productionHistory.floorEntry(time);
-    String reinforcementLearningTheoryName = this._model.getReinforcementLearningTheory();
+    boolean reinforceProductionSuccessful = false;
+    Entry<Integer, Object> productionsAtTime = this._productionHistory.floorEntry(time);
+    Theory reinforcementLearningTheory = this._model.getReinforcementLearningTheory();
+    
+    this._model.printDebugStatement("Checking if the following all evaluate to true:");
+    if(this._model.debug()){
+      this._model.printDebugStatement("  ~ Visual Node has been created at time reinforcement should occur: " + (this.getCreationTime() <= time));
+      this._model.printDebugStatement("  ~ Action Node has been created at time reinforcement should occur: " + (node.getCreationTime() <= time));
+      this._model.printDebugStatement("  ~ Visual Node has Visual modality: " + (this.getModality() == Modality.VISUAL));
+      this._model.printDebugStatement("  ~ Action Node has Action modality: " + (node.getModality() == Modality.ACTION));
+      this._model.printDebugStatement("  ~ Visual Node has productions at time reinforcement should occur: " + (productionsAtTime != null));
+      this._model.printDebugStatement("  ~ Visual Node is engaged in a production with the Action Node: " + (((HashMap)productionsAtTime.getValue()).containsKey(node)));
+      this._model.printDebugStatement("  ~ The reinforcement learning theory of the model associated with the Visual Node has been set" + (reinforcementLearningTheory != null));
+    }
     
     if(
       this.getCreationTime() <= time &&
       node.getCreationTime() <= time &&
       this.getModality() == Modality.VISUAL &&
       node.getModality() == Modality.ACTION &&
-      currentProductionEntry != null &&
-      ((HashMap)currentProductionEntry.getValue()).containsKey(node) &&
-      !reinforcementLearningTheoryName.equals("null")
+      productionsAtTime != null &&
+      ((HashMap)productionsAtTime.getValue()).containsKey(node) &&
+      reinforcementLearningTheory != null
     ){
-
-      HashMap<Node, Double> currentProductions = (HashMap)currentProductionEntry.getValue();
-      double reinforcedValue = currentProductions.get(node) + 
-        ReinforcementLearning.ReinforcementLearningTheories.valueOf(reinforcementLearningTheoryName).
-          calculateReinforcementValue(variables);
+      this._model.printDebugStatement("- All checks evaluate to true, attempting to reinforce production");
+      HashMap<Node, Double> currentProductions = (HashMap)productionsAtTime.getValue();
+      double reinforcedValue = currentProductions.get(node) + reinforcementLearningTheory.calculateReinforcementValue(variables);
       
       HashMap<Node, Double> newProductions = new HashMap();
       for(Entry<Node, Double> currentProduction : currentProductions.entrySet()){
@@ -837,16 +853,17 @@ public class Node extends Observable {
         }
       }
       
-      boolean reinforceProductionSuccessful = (boolean)this._productionHistory.put(time, newProductions);
-
-      if(reinforceProductionSuccessful){
-        this.setChanged();
-        this.notifyObservers();
-        return true;
-      }
+      reinforceProductionSuccessful = (boolean)this._productionHistory.put(time, newProductions);
     }
     
-    return false;
+    if(reinforceProductionSuccessful){
+      this.setChanged();
+      this.notifyObservers();
+    }
+    
+    this._model.printDebugStatement("- Returning " + reinforceProductionSuccessful);
+    this._model.printDebugStatement("===== RETURN =====");
+    return reinforceProductionSuccessful;
   }
   
   /*********************************/

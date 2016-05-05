@@ -29,7 +29,7 @@ import jchrest.domainSpecifics.Fixation;
 import jchrest.domainSpecifics.SceneObject;
 import jchrest.gui.experiments.Experiment;
 import jchrest.lib.*;
-import jchrest.lib.ReinforcementLearning.ReinforcementLearningTheories;
+import jchrest.lib.ReinforcementLearning.Theory;
 
 /**
  * A CHREST model.
@@ -177,7 +177,7 @@ public class Chrest extends Observable {
   private int _minNodeDepthInNetworkToBeTemplate = 3;
   private int _minItemOrPositionOccurrencesInNodeImagesToBeSlotValue = 2;
   
-  private ReinforcementLearningTheories _reinforcementLearningTheory = null; //Must be set explicitly using Chrest.setReinforcementLearningTheory();
+  private Theory _reinforcementLearningTheory = null; //Must be set explicitly using Chrest.setReinforcementLearningTheory();
   
   /****************************************/
   /**** Visual-Spatial Field variables ****/
@@ -5161,19 +5161,8 @@ public class Chrest extends Observable {
     }
   }
 
-  /**
-   * Returns the string value of a CHREST instance's _reinforcementLearningTheory
-   * variable.
-   * 
-   * @return 
-   */
-  public String getReinforcementLearningTheory(){
-    if(_reinforcementLearningTheory == null){
-      return "null";
-    }
-    else{
-      return _reinforcementLearningTheory.toString();
-    }
+  public Theory getReinforcementLearningTheory(){
+    return this._reinforcementLearningTheory;
   }
   
   /**
@@ -5186,10 +5175,10 @@ public class Chrest extends Observable {
    * 
    * @param theorySpecified
    */
-  public void setReinforcementLearningTheory(ReinforcementLearningTheories theorySpecified){
+  public void setReinforcementLearningTheory(Theory theorySpecified){
     if(_reinforcementLearningTheory == null){
-      ReinforcementLearningTheories[] theories = ReinforcementLearning.getReinforcementLearningTheories();
-      for(ReinforcementLearningTheories theory : theories){
+      Theory[] theories = ReinforcementLearning.getReinforcementLearningTheories();
+      for(Theory theory : theories){
         if(theorySpecified.equals(theory)){
           _reinforcementLearningTheory = theory;
           break;
