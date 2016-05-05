@@ -256,6 +256,284 @@ process_test "associateNodes" do
   
 end
 
+################################################################################
+# Tests the "Chrest.reinforceProduction()" function using a number of different
+# scenarios:
+#  
+# - Scenario 1
+#   ~ No action STM exists at time function invoked.
+#
+# - Scenario 2
+#   ~ Action STM exists at time function invoked.
+#   ~ No visual STM exists at time function invoked.
+#
+# - Scenario 3
+#   ~ Action STM exists at time function invoked.
+#   ~ Visual STM exists at time function invoked.
+#   ~ Action node specified does not have Action modality.
+#
+# - Scenario 4
+#   ~ Action STM exists at time function invoked.
+#   ~ Visual STM exists at time function invoked.
+#   ~ Action node specified has Action modality.
+#   ~ Visual node specified does not have Visual modality.
+#
+# - Scenario 5
+#   ~ Action STM exists at time function invoked.
+#   ~ Visual STM exists at time function invoked.
+#   ~ Action node specified has Action modality.
+#   ~ Visual node specified has Visual modality.
+#   ~ Attention is not free at time function invoked.
+#
+# - Scenario 6
+#   ~ Action STM exists at time function invoked.
+#   ~ Visual STM exists at time function invoked.
+#   ~ Action node specified has Action modality.
+#   ~ Visual node specified has Visual modality.
+#   ~ Attention is free at time function invoked.
+#   ~ Action node not present in action STM.
+#
+# - Scenario 7
+#   ~ Action STM exists at time function invoked.
+#   ~ Visual STM exists at time function invoked.
+#   ~ Action node specified has Action modality.
+#   ~ Visual node specified has Visual modality.
+#   ~ Attention is free at time function invoked.
+#   ~ Action node present in action STM.
+#   ~ Visual node not present in visual STM.
+#
+# - Scenario 8
+#   ~ Action STM exists at time function invoked.
+#   ~ Visual STM exists at time function invoked.
+#   ~ Action node specified has Action modality.
+#   ~ Visual node specified has Visual modality.
+#   ~ Attention is free at time function invoked.
+#   ~ Action node present in action STM.
+#   ~ Visual node present in visual STM.
+#   ~ Cognition isn't free at the time specified.
+#   
+# - Scenario 9
+#   ~ Action STM exists at time function invoked.
+#   ~ Visual STM exists at time function invoked.
+#   ~ Action node specified has Action modality.
+#   ~ Visual node specified has Visual modality.
+#   ~ Attention is free at time function invoked.
+#   ~ Action node present in action STM.
+#   ~ Visual node present in visual STM.
+#   ~ Cognition is free at the time specified.
+#   ~ Production reinforcement isn't successful (production doesn't exist)
+#
+# - Scenario 10
+#   ~ Action STM exists at time function invoked.
+#   ~ Visual STM exists at time function invoked.
+#   ~ Action node specified has Action modality.
+#   ~ Visual node specified has Visual modality.
+#   ~ Attention is free at time function invoked.
+#   ~ Action node present in action STM.
+#   ~ Visual node present in visual STM.
+#   ~ Cognition is free at the time specified.
+#   ~ Production reinforcement is successful.
+#
+# The function is expected to alter the attention and cognition clocks of the 
+# CHREST model it is invoked in context of (if certain scenarios occur) and the
+# return value of the function should differ depending on the scenario.  
+# Therefore, the attention clock and cognition clock of the CHREST model this
+# function is invoked in context of is checked after each scenario along with
+# the return value of the function itself.
+#
+# Expected Outcomes
+# =================
+# 
+# - Attention clock
+#   ~ Scenarios 1-4: should not be altered from its initial value
+#   ~ Scenario 5: should be set to the time it is "manually" set to by the test
+#   ~ Scenario 6-10: should be set to the time taken to search through the 
+#                    contents of action and visual STM (time taken to retrieve a 
+#                    STM item multiplied by the number of Nodes in action and 
+#                    visual STM).
+#                    
+# - Cognition clock
+#   ~ Scenario 8: should be set to the time it is "manually" set to by the test
+#   ~ Scenarios 1-9 (excluding 8): should not be altered from its initial value
+#   ~ Scenario 10: should be set to the attention clock's value plus the time
+#                  taken to reinforce a production
+#                  
+# - Value returned by function
+#   ~ Scenarios 1-9: should return false
+#   ~ Scenario 10: should return true
+process_test "reinforce_production" do
+  
+  #######################################################
+  ##### SET-UP ACEESS TO PRIVATE INSTANCE VARIABLES #####
+  #######################################################
+  
+  # Chrest model field access
+  Chrest.class_eval{
+    field_accessor :_reinforcementLearningTheory,
+    :_actionStm, 
+    :_visualStm, 
+    :_attentionClock, 
+    :_cognitionClock, 
+    :_timeToRetrieveItemFromStm,
+    :_reinforceProductionTime
+  }
+  
+  ##### Stm field access
+  stm_item_history_field = Stm.java_class.declared_field("_itemHistory")
+  stm_item_history_field.accessible = true
+  
+  ##### Node field access
+  Node.class_eval{
+    field_accessor :_productionHistory
+  }
+  
+  node_modality_field = Node.java_class.declared_field("_modality")
+  node_modality_field.accessible = true
+  
+  node_reference_field = Node.java_class.declared_field("_reference")
+  node_reference_field.accessible = true
+  
+  #####################
+  ##### TEST LOOP #####
+  #####################
+  100.times do
+    for scenario in 1..10
+      
+      # Create CHREST model.
+      time = 0
+      model = Chrest.new(time, false)
+      model._reinforcementLearningTheory = ReinforcementLearning::Theory::PROFIT_SHARING_WITH_DISCOUNT_RATE
+      
+      # Set the time the function is to be invoked (do this now since other 
+      # times depend on this being set).
+      time_function_invoked = time + 50
+      
+      ###################################
+      ##### CREATE PRODUCTION Nodes #####
+      ###################################
+      
+      # Set the time the Nodes are created to a random time between the time the
+      # CHREST model is created and the time the function is invoked - 2 since
+      # the production between the visual and action Nodes needs to be added.
+      # The time the production is created needs to be after the creation time 
+      # of the Nodes but before the time the production should be reinforced. 
+      # The subtraction of 2 from the time the function is invoked gives some 
+      # time for this.
+      time_nodes_created = rand(time...(time_function_invoked - 2))
+      action_node = Node.new(model, ListPattern.new(Modality::ACTION), ListPattern.new(Modality::ACTION), time_nodes_created)
+      visual_node = Node.new(model, ListPattern.new(Modality::VISUAL), ListPattern.new(Modality::VISUAL), time_nodes_created)
+      if scenario == 3 then node_modality_field.set_value(action_node, Modality::VISUAL) end
+      if scenario == 4 then node_modality_field.set_value(visual_node, Modality::ACTION) end
+      
+      ########################
+      ##### POPULATE STM #####
+      ########################
+      
+      action_stm_item_history = stm_item_history_field.value(model._actionStm)
+      action_stm_items = ArrayList.new()
+      
+      visual_stm_item_history = stm_item_history_field.value(model._visualStm)
+      visual_stm_items = ArrayList.new()
+      
+      # Put 2 action/visual Nodes in action/visual STM before the action/visual 
+      # Node used in the production is added so the function has to cycle when 
+      # locating the action/visual Node used in the production.
+      for i in 1..4
+        
+        # First 2 Nodes should have action modality, last 2 should have visual
+        # modality.
+        node = Node.new(
+          model, 
+          ListPattern.new( ((i == 1 || i == 2) ? Modality::ACTION : Modality::VISUAL) ), 
+          ListPattern.new( ((i == 1 || i == 2) ? Modality::ACTION : Modality::VISUAL) ), 
+          time_nodes_created
+        )
+        
+        # Set the Node's reference so that it differs from the action/visual 
+        # Nodes to be used in the production. To do this, add the local "i" 
+        # variable to the visual Node's reference.  Since this was the last Node
+        # created, any subsequent references will not equal the action/visual 
+        # Node's references that are to be used in the production.
+        node_reference_field.set_value(
+          node, 
+          node_reference_field.value(visual_node) + i
+        )
+        
+        ((i == 1 || i == 2) ? action_stm_items.add(node) : visual_stm_items.add(node))
+      end
+      
+      if scenario != 6 then action_stm_items.add(action_node) end
+      if scenario != 7 then visual_stm_items.add(visual_node) end
+      
+      action_stm_item_history.put(time_nodes_created, action_stm_items)
+      visual_stm_item_history.put(time_nodes_created, visual_stm_items)
+      
+      ##### Set action/visual STM item histories so they don't exist at the time
+      ##### the function is invoked (if the scenario specifies this).
+      stm_exists_after_function_invoked = HistoryTreeMap.new()
+      stm_exists_after_function_invoked.put(time_function_invoked + 10000, ArrayList.new())
+      
+      if scenario == 1 then stm_item_history_field.set_value(model._actionStm, stm_exists_after_function_invoked) end
+      if scenario == 2 then stm_item_history_field.set_value(model._visualStm, stm_exists_after_function_invoked) end
+      
+      # Set attention clock (if necessary)
+      unavailable_attention_time = time_function_invoked + 10000
+      if scenario == 5 then model._attentionClock = unavailable_attention_time end
+      
+      # Set cognition clock (if necessary)
+      unavailable_cognition_time = time_function_invoked + 10000
+      if scenario == 8 then model._cognitionClock = unavailable_cognition_time end
+      
+      #############################
+      ##### CREATE PRODUCTION #####
+      #############################
+      
+      if scenario != 9
+        visual_node_productions = HashMap.new()
+        visual_node_productions.put(action_node, (1.0).to_java(:Double))
+        visual_node._productionHistory.put(time_nodes_created + 1, visual_node_productions)
+      end
+      
+      ###########################
+      ##### INVOKE FUNCTION #####
+      ###########################
+      
+      reinforcement_calculation_variables = [1.0, 0.5, 1.0, 1.0].to_java(:Double)
+      result = model.reinforceProduction(visual_node, action_node, reinforcement_calculation_variables, time_function_invoked)
+      
+      ##################################
+      ##### SET EXPECTED VARIABLES #####
+      ##################################
+      
+      # Set the expected return value.
+      expected_result = (scenario == 10 ? true : false)
+      
+      # Set the expected attention clock value.
+      expected_attention_clock = (time_function_invoked + (model._timeToRetrieveItemFromStm * 6))
+      if scenario.between?(1,4)
+        expected_attention_clock = -1
+      elsif scenario == 5 
+        expected_attention_clock = unavailable_attention_time
+      elsif scenario == 6 || scenario == 7
+        expected_attention_clock = (time_function_invoked + (model._timeToRetrieveItemFromStm * 5))
+      end
+      
+      # Set the expected cognition clock value.
+      expected_cognition_clock = -1
+      if scenario == 8 then expected_cognition_clock = unavailable_cognition_time end
+      if scenario == 10 then expected_cognition_clock = (expected_attention_clock + model._reinforceProductionTime) end
+      
+      #################
+      ##### TESTS #####
+      #################
+      
+      assert_equal(expected_result, result, "occurred when checking the result of invoking the function in scenario " + scenario.to_s)
+      assert_equal(expected_attention_clock, model._attentionClock, "occurred when checking the attention clock in scenario " + scenario.to_s)
+      assert_equal(expected_cognition_clock, model._cognitionClock, "occurred when checking the cognition clock in scenario " + scenario.to_s)
+    end
+  end
+end
+
 #unit_test "get maximum clock value" do
 #  model = Chrest.new(0, GenericDomain.java_class)
 #  

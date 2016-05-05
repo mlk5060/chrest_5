@@ -2727,42 +2727,207 @@ public class Chrest extends Observable {
   }
   
   /**
-   * Attempts to reinforce the specified production if the cognition resource of 
-   * {@link #this} is free at the {@code time} specified.
+   * Attempts to reinforce the production specified by the {@code actionNode} 
+   * and {@code visualNode} passed as parameters.
+   * 
+   * Invoking this function may consume the attentional and cognitive resources
+   * of {@link #this}:
+   * <ul>
+   *  <li>
+   *    Attention is consumed since the {@code actionNode} and {@code 
+   *    visualNode} must both be present in {@link jchrest.lib.Modality#ACTION} 
+   *    and {@link jchrest.lib.Modality#VISUAL} {@link jchrest.architecture.Stm} 
+   *    respectively and checking this consumes attention: each {@link 
+   *    jchrest.architecture.Stm} is cycled through from the hypothesis until 
+   *    the {@code actionNode} or {@code visualNode} is found (if at all). 
+   *    Checking each {@link jchrest.architecture.Node} in {@link 
+   *    jchrest.architecture.Stm} incurs the time cost specified by {@link 
+   *    #this#getTimeToRetrieveItemFromStm()}.
+   *  </li>
+   *  <li>
+   *    Cognition is consumed since it requires time to reinforce a production.
+   *    If a production between the {@code actionNode} and {@code visualNode} 
+   *    exists, and they are both present in their respective {@link 
+   *    jchrest.architecture.Stm Stm's}, and {@link 
+   *    jchrest.architecture.Node#reinforceProduction(jchrest.architecture.Node, 
+   *    java.lang.Double[], int)} returns {@link java.lang.Boolean#TRUE},  
+   *    cognition will be consumed until the {@code actionNode} and {@code 
+   *    visualNode} are retrieved from {@link jchrest.architecture.Stm} plus the 
+   *    time specified by {@link #this#getReinforceProductionTime()}.
+   *  </li>
+   * </ul>
    * 
    * @param visualPattern
    * @param actionPattern
-   * @param variables
+   * @param variables The variables required by the result of {@link 
+   * #this#getReinforcementLearningTheory()} to invoke {@link 
+   * jchrest.lib.ReinforcementLearning.Theory#calculateReinforcementValue(
+   * java.lang.Double[])}. 
    * @param time 
+   * 
+   * @return {@link java.lang.Boolean#TRUE} if reinforcement occurs, i.e. if 
+   * all the following statements evaluate to {@link java.lang.Boolean#TRUE}, 
+   * {@link java.lang.Boolean#FALSE} if not.
+   * <ul>
+   *  <li>
+   *    The {@link jchrest.lib.Modality#ACTION} {@link jchrest.architecture.Stm} 
+   *    associated with {@link #this} exists at the {@code time} specified.
+   *  </li>
+   *  <li>
+   *    The {@link jchrest.lib.Modality#VISUAL} {@link jchrest.architecture.Stm} 
+   *    associated with {@link #this} exists at the {@code time} specified.
+   *  </li>
+   *  <li>
+   *    The result of {@link jchrest.architecture.Node#getModality()} is {@link 
+   *    jchrest.lib.Modality#ACTION} for the {@code actionNode} specified.
+   *  </li>
+   *  <li>
+   *    The result of {@link jchrest.architecture.Node#getModality()} is {@link 
+   *    jchrest.lib.Modality#VISUAL} for the {@code visualNode} specified.
+   *  </li>
+   *  <li>
+   *    {@link #this#isAttentionFree(int)} returns {@link 
+   *    java.lang.Boolean#TRUE} when the {@code time} specified is passed as a
+   *    parameter.
+   *  </li>
+   *  <li>
+   *    The {@code actionNode} specified is present in {@link 
+   *    jchrest.lib.Modality#ACTION} {@link jchrest.architecture.Stm} at the
+   *    {@code time} specified.
+   *  </li>
+   *  <li>
+   *    The {@code visualNode} specified is present in {@link 
+   *    jchrest.lib.Modality#VISUAL} {@link jchrest.architecture.Stm} at the
+   *    {@code time} specified.
+   *  </li>
+   *  <li>
+   *    {@link #this#isCognitionFree(int)} returns {@link 
+   *    java.lang.Boolean#TRUE} after retrieving the {@code actionNode} and 
+   *    {@code visualNode} from {@link jchrest.architecture.Stm}.
+   *  </li>
+   *  <li>
+   *    Invoking {@link jchrest.architecture.Node#reinforceProduction(
+   *    jchrest.architecture.Node, java.lang.Double[], int)} returns {@link 
+   *    java.lang.Boolean#TRUE} when invoked on the {@code visualNode} and the
+   *    {@code actionNode}, {@code variables} and time reinforcement should 
+   *    occur are passed as parameters.
+   *  </li>
+   * </ul>
    */
-  public void reinforceProduction(ListPattern visualPattern, ListPattern actionPattern, Double[] variables, int time){
+  public boolean reinforceProduction(Node visualNode, Node actionNode, Double[] variables, int time){
+    this.printDebugStatement("===== Chrest.reinforceProduction() =====");
+    boolean reinforcementSuccessful = false;
     
-    Node recognisedNode = this.recognise(visualPattern, time, true);
+    //////////////////////////////
+    ///// PRELIMINARY CHECKS /////
+    //////////////////////////////
     
-    if(recognisedNode != null){
+    List<Node> actionStmContents = this.getStm(Modality.ACTION).getContents(time);
+    List<Node> visualStmContents = this.getStm(Modality.VISUAL).getContents(time);
+    
+    if(this.debug()){
+      this.printDebugStatement("- Checking if the following all evaluate to true:");
+      this.printDebugStatement("  ~ Does action STM exist at the time this function is invoked? " + (actionStmContents != null));
+      this.printDebugStatement("  ~ Does visual STM exist at the time this function is invoked? " + (visualStmContents != null));
+      this.printDebugStatement("  ~ Does the action Node specified have action modality? " + (actionNode.getModality().equals(Modality.ACTION)));
+      this.printDebugStatement("  ~ Does the visual Node specified have visual modality? " + (visualNode.getModality().equals(Modality.VISUAL)));
+      this.printDebugStatement("  ~ Is attention free at time " + time + "? " + (this.isAttentionFree(time)));
+    }
+    
+    if(
+      actionStmContents != null &&
+      visualStmContents != null &&
+      actionNode.getModality().equals(Modality.ACTION) &&
+      visualNode.getModality().equals(Modality.VISUAL) &&
+      this.isAttentionFree(time)
+    ){
       
-      //The cognition clock will have been incremented by recognition and if 
-      //program operation reaches this point, its safe to assume that the 
-      //cognition resource is free otherwise the recognised node would have been
-      //equal to null.  So, attempt to recognise the action pattern at the time 
-      //when the visual pattern is retrieved.
-      Node recognisedActionNode = this.recognise(actionPattern, this._cognitionClock, true);
-
-      if(recognisedActionNode != null){
+      this.printDebugStatement(
+        "- Checking if the action and visual Node specified are in their " +
+        "respective STMs (checking references)"
+      );
+      
+      if(this.debug()){
+        this.printDebugStatement("  ~ Action Node reference " + actionNode.getReference());
+        this.printDebugStatement("  ~ Action STM contents:");
+        for(Node actionStmContent : actionStmContents){
+          this.printDebugStatement("    > Node reference: " + actionStmContent.getReference());
+        }
         
-        //If program operation reaches this point, its safe to assume that the 
-        //cognition resource is free otherwise the recognised node would have 
-        //been equal to null.  So, reinforce the production at the cognition 
-        //clock time (will have been incremented during recognition)
-        int timeReinforcementShouldOccur = this._cognitionClock + this._reinforceProductionTime;
-        if(recognisedNode.reinforceProduction(recognisedActionNode, variables, timeReinforcementShouldOccur)){
-          
+        this.printDebugStatement("  ~ Visual Node reference " + visualNode.getReference());
+        this.printDebugStatement("  ~ Visual STM contents:");
+        for(Node visualStmContent : visualStmContents){
+          this.printDebugStatement("    > Node reference: " + visualStmContent.getReference());
+        }
+      }
+      
+      ////////////////////////////////////////////////
+      ///// CHECK THAT actionNode AND visualNode /////
+      ///// ARE IN STM AND COGNITION IS FREE     /////
+      ////////////////////////////////////////////////
+      
+      boolean actionNodeInStm = false;
+      boolean visualNodeInStm = false;
+      
+      for(Node actionStmContent : actionStmContents){
+        time += this._timeToRetrieveItemFromStm;
+        if(actionNode.getReference() == actionStmContent.getReference()){
+          actionNodeInStm = true;
+          break;
+        }
+      }
+      this.printDebugStatement("- Time after searching action STM for action Node specified : " + time);
+      
+      for(Node visualStmContent : visualStmContents){
+        time += this._timeToRetrieveItemFromStm;
+        if(visualNode.getReference() == visualStmContent.getReference()){
+          visualNodeInStm = true;
+          break;
+        }
+      }
+      this.printDebugStatement("- Time after searching visual STM for visual Node specified : " + time);
+      
+      this._attentionClock = time;
+      this.printDebugStatement("- Consuming attention");
+      
+      this.printDebugStatement("- Checking if the following all evaluate to true:");
+      if(this.debug()){
+        this.printDebugStatement("  ~ Action Node in STM? " + actionNodeInStm);
+        this.printDebugStatement("  ~ Visual Node in STM? " + visualNodeInStm);
+        this.printDebugStatement("  ~ Is cognition free at time " + time + "? " + this.isCognitionFree(time));
+      }
+      if(actionNodeInStm && visualNodeInStm && this.isCognitionFree(time)){
+        
+        ///////////////////////////////////////////
+        ///// ATTEMPT TO REINFORCE PRODUCTION /////
+        ///////////////////////////////////////////
+        
+        this.printDebugStatement(
+          "- All checks evaluate to true, attempting to reinforce production " +
+          "at time " + time + " plus the time taken to reinforce productions (" + 
+          this._reinforceProductionTime + ")"
+        );
+        
+        int timeReinforcementShouldOccur = time + this._reinforceProductionTime;
+        if(visualNode.reinforceProduction(actionNode, variables, time)){
           this._cognitionClock = timeReinforcementShouldOccur;
-          this.setChanged ();
+          this.printDebugStatement("  ~ Production reinforcement successful, consuming cognition");
+          
+          this.setChanged();
           if (!_frozen) notifyObservers ();
+          reinforcementSuccessful = true;
+        }
+        else{
+          this.printDebugStatement("  ~ Production reinforcement unsuccessful, exiting");
         }
       }
     }
+    
+    this.printDebugStatement("- Returning " + reinforcementSuccessful);
+    this.printDebugStatement("- Attention clock set to: " + this._attentionClock);
+    this.printDebugStatement("- Cognition clock set to: " + this._cognitionClock);    
+    this.printDebugStatement("===== RETURN =====");
+    return reinforcementSuccessful;
   }
   
   /*****************************************/
