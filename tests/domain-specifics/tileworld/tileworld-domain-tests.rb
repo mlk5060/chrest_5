@@ -266,7 +266,7 @@ unit_test "get_non_initial_fixation_in_set" do
   # integral to the operation of the function being tested and need to be 
   # manipulated precisely.  Access to these data structures is enabled here.
   Chrest.class_eval{
-    field_accessor :_fixationsToMake, :_saccadeTime
+    field_accessor :_fixationsScheduled, :_saccadeTime
   }
   perceiver_fixations_field = Perceiver.java_class.declared_field("_fixations")
   perceiver_fixations_field.accessible = true
@@ -308,13 +308,10 @@ unit_test "get_non_initial_fixation_in_set" do
     # to be instantiated and not populated with SceneObjects.
     scene = Scene.new("", 5, 5, 0, 0, nil)
     
-    #########################################################################
-    ##### SET-UP FIXATION DATA STRUCTURE FOR CHREST MODEL AND PERCEIVER #####
-    #########################################################################
+    ########################################################
+    ##### SET-UP FIXATION DATA STRUCTURE FOR PERCEIVER #####
+    ########################################################
     
-    # Lists are used in the Fixation data structures for CHREST and the 
-    # Perceiver so set them up now.
-    fixations_to_make = ArrayList.new()
     fixations_attempted = ArrayList.new()
 
     ######################################################################
@@ -334,9 +331,10 @@ unit_test "get_non_initial_fixation_in_set" do
         "fixations have not been completed yet"
       )
       
-      # Add Fixation to CHREST model's "_fixationToMake" data structure.
-      fixations_to_make.add(fixation)
-      model._fixationsToMake.put(time, fixations_to_make)
+      # Add Fixation to CHREST model's "_fixationsScheduled" data structure.
+      fixations_scheduled = ArrayList.new()
+      fixations_scheduled.add(fixation)
+      model._fixationsScheduled.put(time, fixations_scheduled)
       
       # Set Fixation variables so it has been "performed"
       fixation._performed = true
@@ -348,7 +346,6 @@ unit_test "get_non_initial_fixation_in_set" do
       # The SceneObject fixated on should be a hole, opponent or tile given the
       # Fixation used.  Done for "realism", not really important.
       fixation._objectSeen = SceneObject.new(
-        SecureRandom.uuid(), 
         [ 
           TileworldDomain::HOLE_SCENE_OBJECT_TYPE_TOKEN, 
           TileworldDomain::OPPONENT_SCENE_OBJECT_TYPE_TOKEN,
@@ -358,8 +355,8 @@ unit_test "get_non_initial_fixation_in_set" do
 
       # Remove/add the Fixation from/to the CHREST model's/Perceiver's Fixation 
       # data structure
-      fixations_to_make.remove(fixation)
-      model._fixationsToMake.put(fixation._performanceTime, fixations_to_make)
+      fixations_scheduled = ArrayList.new()
+      model._fixationsScheduled.put(fixation._performanceTime, fixations_scheduled)
       fixations_attempted.add(fixation)
       perceiver_fixations_field.value(model.getPerceiver()).put(fixation._performanceTime, fixations_attempted)
       
@@ -434,8 +431,9 @@ unit_test "get_non_initial_fixation_in_set" do
       )
       
       # Add the Fixation to the CHREST model's Fixation to make data structure.
-      fixations_to_make.add(fixation)
-      model._fixationsToMake.put(time, fixations_to_make)
+      fixations_scheduled = ArrayList.new()
+      fixations_scheduled.add(fixation)
+      model._fixationsScheduled.put(time, fixations_scheduled)
       
       # Set Fixation variables that would be set if the Fixation were performed
       # "properly"
@@ -444,8 +442,8 @@ unit_test "get_non_initial_fixation_in_set" do
       
       # Remove/add the last, unperformed, HypothesisDiscriminationFixation 
       # instance from/to the CHREST model's/Perceiver's Fixation data structure
-      fixations_to_make.remove(fixation)
-      model._fixationsToMake.put(fixation._performanceTime, fixations_to_make)
+      fixations_scheduled = ArrayList.new()
+      model._fixationsScheduled.put(fixation._performanceTime, fixations_scheduled)
       fixations_attempted.add(fixation)
       perceiver_fixations_field.value(model.getPerceiver()).put(fixation._performanceTime, fixations_attempted)
       
@@ -522,8 +520,9 @@ unit_test "get_non_initial_fixation_in_set" do
       end
       
       # Add the Fixation to the CHREST model's Fixation to make data structure.
-      fixations_to_make.add(fixation)
-      model._fixationsToMake.put(time, fixations_to_make)
+      fixations_scheduled = ArrayList.new()
+      fixations_scheduled.add(fixation)
+      model._fixationsScheduled.put(time, fixations_scheduled)
 
       # "Perform" the fixation.  Note that the coordinates fixated on are 
       # randomly generated, this is because some Fixations returned when a 
@@ -551,8 +550,8 @@ unit_test "get_non_initial_fixation_in_set" do
         
       # Remove/add the last Fixation from/to the CHREST model's/Perceiver's 
       # Fixation data structure
-      fixations_to_make.remove(fixation)
-      model._fixationsToMake.put(fixation._performanceTime, fixations_to_make)
+      fixations_scheduled = ArrayList.new()
+      model._fixationsScheduled.put(fixation._performanceTime, fixations_scheduled)
       fixations_attempted.add(fixation)
       perceiver_fixations_field.value(model.getPerceiver()).put(fixation._performanceTime, fixations_attempted)
       

@@ -150,7 +150,7 @@ public class Chrest extends Observable {
   
   //Used for scheduling and tracking the next fixation point that is to be made
   //by this model, if applicable.
-  private HistoryTreeMap _fixationsToMake = new HistoryTreeMap();
+  private HistoryTreeMap _fixationsScheduled = new HistoryTreeMap();
   
   //Stipulates whether object locations in a Scene will have their coordinates 
   //specified relative to the agent equipped with CHREST's location in the Scene 
@@ -160,6 +160,10 @@ public class Chrest extends Observable {
   //coordinates [1, 1] or that there is a "T" object on coordinates 1 square 
   //north and 1 square east of the agent equipped with CHREST.
   private final boolean _learnObjectLocationsRelativeToAgent;
+  
+  //Indicates whether the model is currently performing a Fixation set.
+  private boolean _performingFixations = false;
+  private int _fixationsAttemptedInCurrentSet = 0;
   
   /****************************/
   /**** Learning variables ****/
@@ -348,7 +352,7 @@ public class Chrest extends Observable {
     
     //Add first entry at time - 1 so that, if a fixation is made at the time 
     //this CHREST model is created, the HistoryTreeMap can be updated correctly.
-    this._fixationsToMake.put(time - 1, new ArrayList());
+    this._fixationsScheduled.put(time - 1, new ArrayList());
     
     /*********************************************/
     /***** Execution history DB table set-up *****/
@@ -3219,121 +3223,60 @@ public class Chrest extends Observable {
    * are scheduled to be made by {@link #this} or {@code null} if {@link #this}
    * was not created at the {@code time} specified.
    */
-  public List<Fixation> getFixationsToMake(int time){
-    Entry<Integer, Object> fixationsToMakeAtTime = this._fixationsToMake.floorEntry(time);
+  public List<Fixation> getScheduledFixations(int time){
+    Entry<Integer, Object> fixationsToMakeAtTime = this._fixationsScheduled.floorEntry(time);
     return fixationsToMakeAtTime == null ? null : (List<Fixation>)fixationsToMakeAtTime.getValue();
   }
   
   /**
    * Creates/performs {@link jchrest.domainSpecifics.Fixation Fixations} 
-   * in accordance with the {@code scene} and {@code time} specified; the result
-   * of {@link #this#getDomainSpecifics()} influences how this function operates
-   * significantly.
+   * in accordance with {@link #this#getDomainSpecifics()}, the {@code scene} 
+   * specified and the {@code time} specified. <b>After initialising a new 
+   * {@link jchrest.domainSpecifics.Fixation} set, it is imperative that this 
+   * method is called every millisecond in isolation until {@link 
+   * java.lang.Boolean#TRUE} is returned.</b>
    * <p>
-   * A {@link jchrest.domainSpecifics.Fixation} will be created for performance
-   * if the following conditions all evaluate to {@link java.lang.Boolean#TRUE}:
-   * <ul>
+   * The method proceeds by invoking the following functions in the order 
+   * specified:
+   * <ol type="1">
+   *  <li>{@link jchrest.architecture.Chrest#getInitialFixation(int)}</li>
    *  <li>
-   *    Creating a new {@link jchrest.domainSpecifics.Fixation} for performance 
-   *    will not cause the maximum number of {@link 
-   *    jchrest.domainSpecifics.Fixation Fixations} that can be attempted (see 
-   *    {@link jchrest.domainSpecifics.DomainSpecifics#shouldAddNewFixation(int)
-   *    } for the result of invoking {@link #this#getDomainSpecifics()}) to be
-   *    surpassed if the {@link jchrest.domainSpecifics.Fixation} created is 
-   *    performed.
+   *    {@link jchrest.architecture.Chrest#performScheduledFixations(java.util.List, 
+   *    jchrest.domainSpecifics.Scene, int)}
    *  </li>
+   *  <li>{@link jchrest.architecture.Chrest#tagVisualSpatialFieldObjectsFixatedOnAsRecognised(jchrest.domainSpecifics.Fixation)</li>
    *  <li>
-   *    {@link jchrest.domainSpecifics.DomainSpecifics#shouldAddNewFixation(
-   *    int)} returns {@link java.lang.Boolean#TRUE} for the result of invoking 
-   *    {@link #this#getDomainSpecifics()}.
+   *    Check if {@link jchrest.domainSpecifics.Fixation} set is now complete, 
+   *    i.e. does the number of {@link jchrest.domainSpecifics.Fixation 
+   *    Fixations} performed equal the result of invoking {@link 
+   *    jchrest.domainSpecifics.DomainSpecifics#getMaximumFixationsInSet()} in
+   *    context of {@link #this#getDomainSpecifics()} or does invoking {@link 
+   *    jchrest.domainSpecifics.DomainSpecifics#isFixationSetComplete(int)} in
+   *    context of {@link #this#getDomainSpecifics()} return {@link 
+   *    java.lang.Boolean#TRUE}?
+   *    <ul>
+   *      <li>{@link jchrest.domainSpecifics.Fixation} set complete</li>
+   *      <ol type="1">
+   *        <li>{@link jchrest.architecture.Chrest#tagUnrecognisedVisualSpatialFieldObjectsAfterFixationSetComplete(jchrest.domainSpecifics.Fixation)}</li>
+   *        <li>
+   *          {@link jchrest.architecture.Perceiver#learnFromNewFixations(int)} 
+   *          (in context of {@link #this#getPerceiver()}).
+   *        </li>
+   *        <li>
+   *          If {@code constructVisualSpatialField} specifies {@link 
+   *          java.lang.Boolean#TRUE}, {@link 
+   *          jchrest.architecture.Chrest#constructVisualSpatialField(int)} is
+   *          invoked.
+   *        </li>
+   *      </ol>
+   *      <li>{@link jchrest.domainSpecifics.Fixation} set not complete</li>
+   *      <ol type="1">
+   *        <li>{@link jchrest.architecture.Chrest#scheduleFixationsForPerformance(java.util.List, int)</li>
+   *        <li>{@link jchrest.architecture.Chrest#getNonInitialFixation(int, int, int)}</li>
+   *      </ol>
+   *    </ul>
    *  </li>
-   *  <li>
-   *    {@link #this#attentionFree(int)} returns {@link java.lang.Boolean#TRUE} 
-   *    when invoked at the {@code time} specified.  
-   *  </li>
-   * </ul>
-   * If the {@link jchrest.domainSpecifics.Fixation} to create is the first in a 
-   * set, the {@link jchrest.lib.Modality#VISUAL} {@link 
-   * jchrest.architecture.Stm} of {@link #this} will be cleared at {@code time}
-   * (ensures that any {@link jchrest.architecture.Node Nodes} in {@link 
-   * jchrest.lib.Modality#VISUAL} {@link jchrest.architecture.Stm} when the 
-   * {@link jchrest.domainSpecifics.Fixation} set is complete have resulted from
-   * the {@link jchrest.domainSpecifics.Fixation} set being performed) and 
-   * {@link jchrest.domainSpecifics.DomainSpecifics#getInitialFixationInSet(int)} 
-   * will be invoked. Otherwise, {@link 
-   * jchrest.domainSpecifics.DomainSpecifics#getNonInitialFixationInSet(int)} 
-   * will be invoked instead.
-   * <p>
-   * If this function is invoked and the {@code time} specified equals the 
-   * result of invoking {@link 
-   * jchrest.domainSpecifics.Fixation#getTimeDecidedUpon()} on a {@link 
-   * jchrest.domainSpecifics.Fixation} created for performance and {@link 
-   * #this#perceiverFree(int)} returns {@link java.lang.Boolean#TRUE} when the
-   * {@code time} specified is passed as a parameter, the {@link 
-   * jchrest.domainSpecifics.Fixation} created will have its performance time 
-   * set to the result of {@link 
-   * jchrest.domainSpecifics.Fixation#getTimeDecidedUpon()} plus {@link 
-   * #this#getSaccadeTime()}.  If {@link 
-   * jchrest.domainSpecifics.Fixation#getTimeDecidedUpon()} returns {@link 
-   * java.lang.Boolean#TRUE} but {@link 
-   * #this#perceiverFree(int)} returns {@link java.lang.Boolean#FALSE} when the
-   * {@code time} specified is passed as a parameter, the {@link 
-   * jchrest.domainSpecifics.Fixation} will be abandoned.
-   * <p>
-   * If the {@code time} specified equals the result of invoking {@link 
-   * jchrest.domainSpecifics.Fixation#getPerformanceTime()} for any {@link 
-   * jchrest.domainSpecifics.Fixation Fixations} scheduled for performance, 
-   * {@link jchrest.domainSpecifics.Fixation#perform(
-   * jchrest.domainSpecifics.Scene, int)} will be invoked with the {@code scene}
-   * and {@code time} specified passed as input parameters.  If the {@link 
-   * jchrest.domainSpecifics.Fixation} performed is on a {@link 
-   * jchrest.domainSpecifics.SceneObject} or {@link jchrest.lib.Square} that has
-   * previously been fixated on by another {@link 
-   * jchrest.domainSpecifics.Fixation} in the current set or {@link 
-   * jchrest.domainSpecifics.DomainSpecifics#shouldLearnFromNewFixations(int)} 
-   * returns {@link java.lang.Boolean#TRUE} then {@link 
-   * jchrest.architecture.Perceiver#learnFromNewFixations(int)} will be invoked
-   * in context of the {@link jchrest.architecture.Perceiver} associated with 
-   * {@link #this}.
-   * <p>
-   * If a {@link jchrest.domainSpecifics.Fixation} is performed on a {@link 
-   * jchrest.domainSpecifics.Scene} that represents a {@link 
-   * jchrest.architecture.VisualSpatialField}, any {@link 
-   * jchrest.lib.VisualSpatialFieldObject VisualSpatialFieldObjects} on 
-   * and around the coordinates fixated on (coordinates "around" are decided by
-   * the value of {@link jchrest.architecture.Perceiver#getFixationFieldOfView()}
-   * in context of the result of invoking {@link #this#getPerceiver()}) will 
-   * have their termini refreshed.  Also, any {@link 
-   * jchrest.lib.VisualSpatialFieldObject VisualSpatialFieldObjects} that are 
-   * referenced in the contents and image of {@link jchrest.architecture.Node
-   * Nodes} recognised after performing a {@link 
-   * jchrest.domainSpecifics.Fixation} will have their recognised status set to
-   * {@link java.lang.Boolean#TRUE} at the time the {@link 
-   * jchrest.architecture.Node} is added to {@link jchrest.lib.Modality#VISUAL}
-   * {@link jchrest.architecture.Stm}.
-   * <p>
-   * If, after performance of a {@link jchrest.domainSpecifics.Fixation}, 
-   * invoking {@link jchrest.architecture.Perceiver#getFixations(int)} in 
-   * context of the {@link jchrest.architecture.Perceiver} associated with 
-   * {@link #this} is greater than or equal to {@link 
-   * jchrest.domainSpecifics.DomainSpecifics#getMaximumFixationsInSet()} or
-   * {@link jchrest.domainSpecifics.DomainSpecifics#isFixationSetComplete(int)}
-   * returns {@link java.lang.Boolean#TRUE}, {@link 
-   * jchrest.architecture.Perceiver#learnFromNewFixations(int)} will be invoked. 
-   * If the {@code constructVisualSpatialField} parameter for this function is 
-   * set to {@link java.lang.Boolean#TRUE}, {@link 
-   * #this#constructVisualSpatialField(int)} will be invoked at the time the 
-   * attention resource for {@link #this} is free.  If the {@link 
-   * jchrest.domainSpecifics.Scene} fixated on represents a {@link 
-   * jchrest.architecture.VisualSpatialField}, any {@link 
-   * jchrest.lib.VisualSpatialFieldObject VisualSpatialFieldObjects} that were
-   * not recognised as the {@link jchrest.domainSpecifics.Fixation Fixations} in
-   * the set were performed will have their recognised status set to {@link 
-   * java.lang.Boolean#FALSE} after 
-   * 
-   * Finally, {@link 
-   * jchrest.architecture.Perceiver#clearFixations(int)} will be invoked for the
-   * {@link jchrest.architecture.Perceiver} associated with {@link #this}.
+   * </ol>
    * 
    * @param scene The {@link jchrest.domainSpecifics.Scene} that will be used
    * to schedule or make a new {@link jchrest.domainSpecifics.Fixation}.
@@ -3342,14 +3285,9 @@ public class Chrest extends Observable {
    * 
    * @param time
    * 
-   * @throws IllegalStateException If this function is invoked and the {@code 
-   * time} specified is later than the value returned after invoking {@link 
-   * jchrest.domainSpecifics.Fixation#getTimeDecidedUpon()} or {@link 
-   * jchrest.domainSpecifics.Fixation#getPerformanceTime()} on any {@link 
-   * jchrest.domainSpecifics.Fixation} currently scheduled for performance.
-   * 
-   * @return {@link java.lang.Boolean#TRUE} if the current set of {@link 
-   * jchrest.domainSpecifics.Fixation Fixations} has just been completed.
+   * @return Whether a {@link jchrest.domainSpecifics.Fixation} set is being 
+   * performed.  Note that this does not take into account when attention is
+   * free.
    */
   //TODO: Should a new Fixation immediately be scheduled when attention is free
   //      or should a Fixation be completely performed and STM allowed to update
@@ -3358,137 +3296,511 @@ public class Chrest extends Observable {
   //      updated.
   public boolean scheduleOrMakeNextFixation(Scene scene, boolean constructVisualSpatialField, int time){
     this.printDebugStatement("===== Chrest.scheduleOrMakeNextFixation() =====");
-    boolean fixationSetComplete = false;
     
     this.printDebugStatement("- Checking if model exists at the time the function is requested (" + time + ")");
     if(this._creationTime <= time){
       this.printDebugStatement("   ~ Model exists at the time the function is requested");
       
-      List<Fixation> fixationsToMakeAtTime = this.getFixationsToMake(time);
+      List<Fixation> fixationsScheduled = this.getScheduledFixations(time);
       Perceiver perceiver = this.getPerceiver();
       this.printDebugStatement("- Fixations scheduled:");
       if(this._debug){
-        for(Fixation fixationToMake : fixationsToMakeAtTime){
-          this._debugOutput.println(fixationToMake.toString());
+        for(Fixation fixationScheduled : fixationsScheduled){
+          this._debugOutput.println(fixationScheduled.toString());
         }
       }
       
-      /////////////////////////////
-      ///// PERFORM FIXATIONS /////
-      /////////////////////////////
+      ///// ADD INITIAL FIXATION /////  
+      this.printDebugStatement("- Checking if an initial Fixation should be scheduled");
+      Fixation initialFixation = this.getInitialFixation(time);
+      if(initialFixation != null) fixationsScheduled.add(initialFixation);
+      
+      //Only continue if performing a Fixation set.  If a Fixation set has 
+      //completed but a new one hasn't started, this conditional won't pass 
+      //since this._performingFixations won't have been set to true by 
+      //getInitialFixation() above.
+      if(this._performingFixations){
+      
+        ///// PERFORM FIXATIONS /////
+        this.printDebugStatement("- Performing Fixations that are due to be performed");
+        List<Fixation> fixationsAttempted = this.performScheduledFixations(fixationsScheduled, scene, time);
 
-      //Perform any Fixations whose performance time is <= the time
-      //specified.
-      this.printDebugStatement("- Performing Fixations that are due to be performed");
-      for(int i = 0; i < fixationsToMakeAtTime.size(); i++){
-        Fixation fixation = fixationsToMakeAtTime.get(i);
-        Integer performanceTime = fixation.getPerformanceTime();
-        this.printDebugStatement("   ~ Checking if Fixation with reference " + fixation.getReference() + " is to be performed now");
+        ///// TAG RECOGNISED VisualSpatialFieldObjects /////
+        this.printDebugStatement(
+          "- Removing any Fixations that were attempted (regardless of the " +
+          "success of their performance) from the Fixations scheduled and any " +
+          "that have been performed will be added to a list of Fixations performed"
+        );
+        List<Fixation> fixationsPerformed = new ArrayList();
+        for(int i = 0; i < fixationsScheduled.size(); i++){
+          Fixation fixationScheduled = fixationsScheduled.get(i);
+          for(Fixation fixationAttempted : fixationsAttempted){
 
-        //Only process fixations that are scheduled for performance.
-        if(performanceTime != null){
-          if(performanceTime == time){
-            this.printDebugStatement("      + Fixation is to be performed now");
-            fixationsToMakeAtTime.remove(i);
+            if(fixationScheduled.getReference().equals(fixationAttempted.getReference())){
+              if(fixationAttempted.hasBeenPerformed()){
+                fixationsPerformed.add(fixationAttempted);
+              }
+
+              fixationsScheduled.remove(i);
+            }
+          }
+        }
+      
+        this.printDebugStatement("- Fixations scheduled to be performed now: " + fixationsScheduled.toString());
+        this.printDebugStatement("- Fixations that were performed: " + fixationsPerformed.toString());
+        this.printDebugStatement("- Attempting to tag any VisualSpatialFieldObjects that may have been fixated on when fixation was performed");
+        for(Fixation fixationPerformed : fixationsPerformed){
+          this.tagVisualSpatialFieldObjectsFixatedOnAsRecognised(fixationPerformed);
+        }
+
+        //////////////////////////////////////
+        ///// FIXATION SET NOW COMPLETE? /////
+        //////////////////////////////////////
+      
+        //this.performScheduledFixations() will have updated the Fixations 
+        //attempted data structure of the Perceiver associated with this CHREST
+        //model so fixation set completion can now be checked.
+        this.printDebugStatement(
+          "- Checking if Fixation set complete: have the maximum number " +
+          "of Fixations been attempted (Fixations attempted: " + 
+          perceiver.getFixations(time).size() + ", maximum # Fixations that " + 
+          "can be attempted: " + this.getDomainSpecifics().getMaximumFixationsInSet() + 
+          ")" + " or does the DomainSpecifics (" + this.getDomainSpecifics().getClass().getSimpleName() + 
+          ") specify that the Fixation set is now complete?"
+        );
+            
+        if(
+          this._fixationsAttemptedInCurrentSet >= this.getDomainSpecifics().getMaximumFixationsInSet() ||
+          this.getDomainSpecifics().isFixationSetComplete(time)
+        ){
+          /////////////////////////////////
+          ///// FIXATION SET COMPLETE /////
+          /////////////////////////////////
+          
+          this.printDebugStatement("  ~ Fixation set complete");
+          this._performingFixations = false;
+
+          ///// TAG UNRECOGNISED VisualSpatialFieldObjects /////
+          this.printDebugStatement(
+            "- Tagging any VisualSpatialFieldObjects that were not recognised " +
+            "during this Fixation set as being unrecognised"
+          );
+          List<Fixation> perceiverFixations = this.getPerceiver().getFixations(time);
+          this.tagUnrecognisedVisualSpatialFieldObjectsAfterFixationSetComplete(perceiverFixations.get(perceiverFixations.size() - 1));
+
+          ///// LEARN FROM FIXATIONS /////
+          this.printDebugStatement("- Learning from Fixations performed");
+          perceiver.learnFromNewFixations(time);
+
+          ///// CONSTRUCT VisualSpatialField ///// 
+          this.printDebugStatement("- Constructing VisualSpatialField using Fixations if requested");
+          if(constructVisualSpatialField){
+            this.printDebugStatement("  ~ VisualSpatialField should be constructed at time when attention is free (" + this._attentionClock + ")");
+            this.constructVisualSpatialField(this._attentionClock);
+          }
+          else{
+            this.printDebugStatement(" ~ VisualSpatialField will not be constructed");
+          }
+
+          this._recognisedVisualSpatialFieldObjectIdentifiers.clear();
+          fixationsScheduled.clear();
+          this._fixationsAttemptedInCurrentSet = 0;
+        }
+        else{
+          /////////////////////////////////////
+          ///// FIXATION SET NOT COMPLETE /////
+          /////////////////////////////////////
+          this.printDebugStatement("  ~ Fixation set not complete");
+
+          ///// SCHEDULE FIXATIONS FOR PERFORMANCE /////
+          this.printDebugStatement("- Scheduling any Fixations to make for performance");
+          this.scheduleFixationsForPerformance(fixationsScheduled, time);
+
+          ///// ADD NEW FIXATIONS /////
+          List<Fixation> perceiverFixations = this.getPerceiver().getFixations(time);
+          int numberPerceiverFixations = (perceiverFixations == null ? 0 : perceiverFixations.size());
+          Fixation nonInitialFixation = this.getNonInitialFixation(time, fixationsScheduled.size(), numberPerceiverFixations);
+          if(nonInitialFixation != null) fixationsScheduled.add(nonInitialFixation);
+        }
+
+        this._fixationsScheduled.put(time, fixationsScheduled);
+      }
+      else {
+        this.printDebugStatement("  ~ Not currently performing a Fixation set at the moment, exiting");
+      }
+    }
+    else{
+      this.printDebugStatement("   ~ Model does not exist at the time the function is requested, exiting.");
+    }
+
+    this.printDebugStatement("- Returning boolean " + this._performingFixations);
+    this.printDebugStatement("===== RETURN =====");
+    return this._performingFixations;
+  }
+  
+  /**
+   * Designed to be used by {@link #this#scheduleOrMakeNextFixation(
+   * jchrest.domainSpecifics.Scene, boolean, int)}.
+   * 
+   * @param time
+   * 
+   * @return The result of invoking {@link 
+   * jchrest.domainSpecifics.DomainSpecifics#getInitialFixationInSet(int)} on 
+   * the result of {@link #this#getDomainSpecifics()} if {@link 
+   * #this#isAttentionFree(int)} returns {@link java.lang.Boolean#TRUE} when 
+   * checked against {@code time} and {@link #this#_performingFixations} is set
+   * to {@link java.lang.Boolean#FALSE}.  Otherwise {@code null} is returned.
+   * <p>
+   * If a {@link jchrest.domainSpecifics.Fixation} is returned, the following
+   * variables are also affected:
+   * <ul>
+   *  <li>
+   *    The attention of {@link #this} will be consumed until the time specified 
+   *    by invoking {@link jchrest.domainSpecifics.Fixation#getTimeDecidedUpon()} 
+   *    on the {@link jchrest.domainSpecifics.Fixation} returned.
+   *  </li>
+   *  <li>
+   *    {@link #this#_performingFixations} will be set to {@link 
+   *    java.lang.Boolean#TRUE}.
+   *  </li>
+   *  <li>
+   *    {@link jchrest.architecture.Perceiver#clearFixations(int)} will be 
+   *    invoked on the {@link jchrest.architecture.Perceiver} associated with
+   *    {@link #this} at the time specified.  Required since an {@link 
+   *    java.lang.IllegalStateException} may be thrown by {@link 
+   *    jchrest.architecture.Perceiver#learnFromNewFixations(int)} when invoked
+   *    by {@link 
+   *    jchrest.architecture.Chrest#scheduleOrMakeNextFixation(jchrest.domainSpecifics.Scene, 
+   *    boolean, int)} if a {@link jchrest.domainSpecifics.Fixation} is 
+   *    performed successfully and the {@link jchrest.lib.Square} or {@link 
+   *    jchrest.domainSpecifics.SceneObject} fixated on has been fixated on by
+   *    another {@link jchrest.domainSpecifics.Fixation} in a previous {@link 
+   *    jchrest.domainSpecifics.Fixation} set.  Essentially, this check should
+   *    only apply to {@link jchrest.domainSpecifics.Fixation Fixations} in the
+   *    same set so the {@link jchrest.architecture.Perceiver#clearFixations(int)}
+   *    is required.
+   *  </li>
+   * </ul>
+   */
+  private Fixation getInitialFixation(int time){
+    this.printDebugStatement("===== Chrest.scheduleInitialFixation() =====");
+    
+    if(this.debug()){
+      this.printDebugStatement("- Attempting to get an initial Fixation.  This will occur if the following all evaluate to true:");
+      this.printDebugStatement("  ~ Attention is free at time this function is invoked (" + time + "): " + this.isAttentionFree(time));
+      this.printDebugStatement("  ~ This CHREST model is not currently performing Fixations: " + !this._performingFixations);
+    }
+    
+    Fixation initialFixation = null;
+    
+    if(this.isAttentionFree(time) && !this._performingFixations){
+      this.printDebugStatement("- All checks evaluate to true");
+      
+      initialFixation = this.getDomainSpecifics().getInitialFixationInSet(time);
+      this.getPerceiver().clearFixations(time);
+      this._performingFixations = true;
+      this._attentionClock = initialFixation.getTimeDecidedUpon();
+    }
+    
+    if(this.debug()){
+      this.printDebugStatement("- Initial Fixation to return: " + (initialFixation == null ? "null" : initialFixation.toString()));
+      this.printDebugStatement("- Attention clock set to " + this._attentionClock);
+      this.printDebugStatement("- CHREST model performing Fixations: " + this._performingFixations);
+      this.printDebugStatement("- Number of items in Visual STM: " + this.getStm(Modality.VISUAL).getCount(time));
+      this.printDebugStatement("- Number of Fixations attempted by Perceiver: " + this.getPerceiver().getFixations(time).size());
+      this.printDebugStatement("- Fixation to learn from in Perceiver: " + this.getPerceiver().getFixationToLearnFrom());
+    }
+    
+    this.printDebugStatement("===== RETURN =====");
+    return initialFixation;
+  }
+  
+  /**
+   * Designed to be used by {@link #this#scheduleOrMakeNextFixation(
+   * jchrest.domainSpecifics.Scene, boolean, int)}.
+   * 
+   * @param time
+   * @param numberFixationsScheduled
+   * 
+   * @return The result of invoking {@link 
+   * jchrest.domainSpecifics.DomainSpecifics#getNonInitialFixationInSet(int)} on 
+   * the result of {@link #this#getDomainSpecifics()} if the following all
+   * evaluate to {@link java.lang.Boolean#TRUE}:
+   * <ul>
+   *  <li>
+   *    {@link #this#isAttentionFree(int)} returns {@link 
+   *    java.lang.Boolean#TRUE} when checked against {@code time}
+   *  </li>
+   *  <li>
+   *    {@link #this#_performingFixations} is set to {@link 
+   *    java.lang.Boolean#TRUE}.
+   *  </li>
+   *  <li>
+   *    The {@code numberFixationsScheduled} plus the {@code 
+   *    numberFixationsAttempted} specified is less than the result of invoking 
+   *    {@link jchrest.domainSpecifics.DomainSpecifics#getMaximumFixationsInSet()}
+   *    on the result of {@link #this#getDomainSpecifics()}.
+   *  </li>
+   *  <li>
+   *    Invoking {@link jchrest.domainSpecifics.DomainSpecifics#shouldAddNewFixation(int)}
+   *    on the result of {@link #this#getDomainSpecifics()} returns {@link 
+   *    java.lang.Boolean#TRUE}.
+   *  </li>
+   * </ul>
+   * If any of the statements above evaluate to {@link java.lang.Boolean#FALSE}, 
+   * {@code null} is returned.
+   * <p>
+   * If a {@link jchrest.domainSpecifics.Fixation} is returned, the attention of 
+   * {@link #this} will be consumed until the time specified by invoking {@link 
+   * jchrest.domainSpecifics.Fixation#getTimeDecidedUpon()} on the {@link 
+   * jchrest.domainSpecifics.Fixation} returned.
+   */
+  private Fixation getNonInitialFixation(int time, int numberFixationsScheduled, int numberFixationsAttempted){
+    this.printDebugStatement("===== Chrest.getNonInitialFixation() =====");
+    
+    if(this.debug()){
+      this.printDebugStatement("- Attempting to get a non initial Fixation. This will occur if the following all evaluate to true:");
+      this.printDebugStatement("  ~ Attention is free at time this function is invoked (" + time + "): " + this.isAttentionFree(time));
+      this.printDebugStatement("  ~ This CHREST model is currently performing Fixations: " + this._performingFixations);
+      this.printDebugStatement(
+        "  ~ Number of fixations scheduled (" + numberFixationsScheduled + ") plus " +
+        "number fixations attempted (" + numberFixationsAttempted + ") is less " +
+        "than the maximum number of fixations in this domain (" + 
+        this.getDomainSpecifics().getMaximumFixationsInSet() + "): " + 
+        (numberFixationsScheduled + numberFixationsAttempted < this.getDomainSpecifics().getMaximumFixationsInSet())
+      );
+      this.printDebugStatement(
+        "  ~ The domain stipulates that a new fixation should be added (" + 
+        this.getDomainSpecifics().shouldAddNewFixation(time) + ")"
+      );
+    }
+    
+    Fixation nonInitialFixation = null;
+
+    if(
+      this.isAttentionFree(time) &&
+      this._performingFixations &&
+      numberFixationsScheduled + numberFixationsAttempted < this.getDomainSpecifics().getMaximumFixationsInSet() &&
+      this.getDomainSpecifics().shouldAddNewFixation(time)
+    ){
+      nonInitialFixation = this.getDomainSpecifics().getNonInitialFixationInSet(time);
+      this._attentionClock = nonInitialFixation.getTimeDecidedUpon();
+    }
+    
+    this.printDebugStatement("- Non-initial Fixation to return: " + (nonInitialFixation == null ? "null" : nonInitialFixation.toString()));
+    this.printDebugStatement("- Attention clock set to: " + this._attentionClock);
+    this.printDebugStatement("===== RETURN =====");
+    return nonInitialFixation;
+  }
+  
+  /**
+   * Designed to be used by {@link #this#scheduleOrMakeNextFixation(
+   * jchrest.domainSpecifics.Scene, boolean, int)}.
+   * <p>
+   * This function will attempt to invoke {@link 
+   * jchrest.domainSpecifics.Fixation#perform(jchrest.domainSpecifics.Scene, 
+   * int)} on the first {@link jchrest.domainSpecifics.Fixation} in {@code 
+   * fixationsScheduled} whose value for {@link 
+   * jchrest.domainSpecifics.Fixation#getPerformanceTime()} equals the {@code 
+   * time} specified.  If {@link 
+   * jchrest.domainSpecifics.Fixation#perform(jchrest.domainSpecifics.Scene, 
+   * int)} returns {@link java.lang.Boolean#TRUE}, {@link 
+   * #this#_fixationsAttemptedInCurrentSet} is incremented by 1 and the 
+   * following statements are checked. If any evaluate to {@link 
+   * java.lang.Boolean#TRUE}, {@link 
+   * jchrest.architecture.Perceiver#learnFromNewFixations(int)} is invoked:
+   * <ul>
+   *  <li>
+   *    The {@link jchrest.domainSpecifics.Fixation} has fixated on a {@link 
+   *    jchrest.lib.Square} in the domain that has previously been fixated on 
+   *    by another {@link jchrest.domainSpecifics.Fixation} in the current 
+   *    fixation set, i.e. a {@link jchrest.domainSpecifics.Fixation} in {@link 
+   *    jchrest.architecture.Perceiver#getFixationsPerformed(int)}.
+   *  </li>
+   *  <li>
+   *    The {@link jchrest.domainSpecifics.Fixation} has fixated on a {@link 
+   *    jchrest.domainSpecifics.SceneObject} in the domain that has previously 
+   *    been fixated on by another {@link jchrest.domainSpecifics.Fixation} in 
+   *    the current fixation set, i.e. a {@link 
+   *    jchrest.domainSpecifics.Fixation} in {@link 
+   *    jchrest.architecture.Perceiver#getFixationsPerformed(int)}.
+   *  </li>
+   *  <li>
+   *    Invoking {@link 
+   *    jchrest.domainSpecifics.DomainSpecifics#shouldLearnFromNewFixations(
+   *    int)} in context of {@link #this#getDomainSpecifics()} returns {@link 
+   *    java.lang.Boolean#TRUE}.
+   *  </li>
+   * </ul>
+   * The first two statements trigger this behaviour since an {@link 
+   * java.lang.IllegalStateException} is thrown by {@link 
+   * jchrest.architecture.Perceiver#learnFromNewFixations(int)} if more than 
+   * one {@link jchrest.domainSpecifics.Fixation} in the set of {@link 
+   * jchrest.domainSpecifics.Fixation Fixations} to learn from has fixated on 
+   * the same domain {@link jchrest.lib.Square} or {@link 
+   * jchrest.domainSpecifics.SceneObject}.  Thus, by checking if these 
+   * conditions apply before the {@link jchrest.domainSpecifics.Fixation} just 
+   * performed is added, an {@link java.lang.IllegalStateException} will not be 
+   * thrown.
+   * <p>
+   * Regardless of the outcome of {@link 
+   * jchrest.domainSpecifics.Fixation#perform(jchrest.domainSpecifics.Scene, 
+   * int)}, the {@link jchrest.domainSpecifics.Fixation} will be removed from
+   * {@code fixationsScheduled} and passed as input to {@link 
+   * jchrest.architecture.Perceiver#addFixation(
+   * jchrest.domainSpecifics.Fixation)} for the {@link 
+   * jchrest.architecture.Perceiver} associated with {@link #this}. 
+   * <p>
+   * Any other {@link jchrest.domainSpecifics.Fixation Fixations} whose
+   * {@link jchrest.domainSpecifics.Fixation#getPerformanceTime()} equals the 
+   * {@code time} specified will be "abandoned", i.e. {@link 
+   * jchrest.domainSpecifics.Fixation#perform(jchrest.domainSpecifics.Scene, 
+   * int)} will not be invoked on them and they will be removed from {@code 
+   * fixationsScheduled}.
+   * 
+   * @param fixationsScheduled
+   * @param scene
+   * @param time
+   * 
+   * @return The {@link jchrest.domainSpecifics.Fixation Fixations} in {@code 
+   * fixationsScheduled} whose {@link 
+   * jchrest.domainSpecifics.Fixation#getPerformanceTime()} is equal to {@code 
+   * time}.
+   */
+  private List<Fixation> performScheduledFixations(List<Fixation> fixationsScheduled, Scene scene, int time){
+    this.printDebugStatement("===== Chrest.performScheduledFixations() =====");
+    this.printDebugStatement("- Fixations to process: " + fixationsScheduled.toString());
+    boolean functionHasAttemptedToPerformFixation = false;
+    
+    ArrayList<Fixation> fixationsWithPerformanceTimeEqualToTimeMethodInvoked = new ArrayList();
+    for(Fixation fixation : fixationsScheduled){
+      
+      this.printDebugStatement("- Checking if the following Fixation is to be performed now (" + time + "): " + fixation.toString());
+
+      Integer performanceTime = fixation.getPerformanceTime();
+      if(performanceTime != null){
+        
+        if(performanceTime == time){
+          this.printDebugStatement("  ~ Fixation is to be performed now");
+          
+          this.printDebugStatement(
+            "- Adding Fixation to the Fixations whose performance time is " +
+            "equal to the time this method is invoked."
+          );
+          fixationsWithPerformanceTimeEqualToTimeMethodInvoked.add(fixation);
  
-            //Perform the fixation, if its successful, determine if new 
-            //Fixations performed should be learned from.
+          this.printDebugStatement(
+            "- Checking if this function has not already performed a Fixation (" +
+            !functionHasAttemptedToPerformFixation + ").  If not, an attempt " +
+            "will be made to perform this Fixation"
+          );
+          if(!functionHasAttemptedToPerformFixation){
+            
+            this.printDebugStatement(
+              "  ~ This function hasn't performed a Fixation yet.  " +
+              "Incrementing the fixations attempted in current set counter " +
+              "and attempting to perform the Fixation being processed"
+            );
+            this._fixationsAttemptedInCurrentSet++;
+            functionHasAttemptedToPerformFixation = true;
+            
             if(fixation.perform(scene, time)){
-               this.printDebugStatement("- Fixation performed successfully");
+              this.printDebugStatement("- Fixation was performed successfully");
               
               /////////////////////////////////////////////////
               ///// SHOULD LEARN FROM PERFORMED FIXATIONS /////
               /////////////////////////////////////////////////
+            
+              this.printDebugStatement("- Checking if the model should now learn from the Fixations it has performed");
               
-              //First, determine if the Fixation has fixated on a position/item
-              //again since the last time Fixations performed were learned from.
-              //If so, all Fixations recorded by the Perceiver (before addition
-              //of the one just performed) should be learned.
+              this.printDebugStatement(
+                "- Checking if the Fixation just performed fixated on a " +
+                "SceneObject or Square already fixated on in this fixation set."
+              );
+            
               boolean objectOrLocationFixatedOnAgain = false;
               
+              //Assume that these are all OK, a null pointer will be thrown 
+              //below if not.  If they're not OK then its a CHREST programmer's 
+              //fault (something must have not been set correctly in 
+              //Fixation.perform() or functions that Fixation.perform() relies 
+              //on), nothing at runtime should affect their setting!
               Scene sceneFixatedOn = fixation.getScene();
               SceneObject objectFixatedOn = fixation.getObjectSeen();
               Integer sceneSpecificColFixatedOn = fixation.getColFixatedOn();
               Integer sceneSpecificRowFixatedOn = fixation.getRowFixatedOn();
-              
-              this.printDebugStatement("   ~ Checking if Fixation should and can be learned from");
-              if(
-                sceneFixatedOn != null &&
-                objectFixatedOn != null &&
-                sceneSpecificColFixatedOn != null &&
-                sceneSpecificRowFixatedOn != null
-              ){
-                this.printDebugStatement("      + All relevant data set, Fixation can be learned from.");
-                
-                ////////////////////////////////////////////////////////
-                ///// CHECK FOR REPEAT FIXATION ON OBJECT/LOCATION /////
-                ////////////////////////////////////////////////////////
-                
-                this.printDebugStatement("- Checking if Fixation has been made on a SceneObject or Square already fixated on in this fixation set.");
-                String identifierForObjectJustFixatedOn = objectFixatedOn.getIdentifier();
-                int fixationJustPerformedDomainSpecificCol = sceneFixatedOn.getDomainSpecificColFromSceneSpecificCol(sceneSpecificColFixatedOn);
-                int fixationJustPerformedDomainSpecificRow = sceneFixatedOn.getDomainSpecificRowFromSceneSpecificRow(sceneSpecificRowFixatedOn);
-                this.printDebugStatement("   ~ Identifier for SceneObject fixated on: " + identifierForObjectJustFixatedOn);
-                this.printDebugStatement("   ~ Square fixated on: (" + fixationJustPerformedDomainSpecificCol + ", " + fixationJustPerformedDomainSpecificRow + ")");
-                
-                List<Fixation> mostRecentFixations = perceiver.getFixations(time);
-                for(int j = perceiver.getFixationToLearnFrom(); j < mostRecentFixations.size(); j++){
-                  Fixation f = mostRecentFixations.get(j);
-                  
-                  if(f.hasBeenPerformed()){
-                    this.printDebugStatement("      + Fixation with reference " + f.getReference() + " has been performed and will be checked");
-                    String identifierForObjectFixatedOn = f.getObjectSeen().getIdentifier();
-                    int fixationDomainSpecificCol = f.getScene().getDomainSpecificColFromSceneSpecificCol(f.getColFixatedOn());
-                    int fixationDomainSpecificRow = f.getScene().getDomainSpecificRowFromSceneSpecificRow(f.getRowFixatedOn());
-                    this.printDebugStatement("         > Identifier for SceneObject fixated on: " + identifierForObjectFixatedOn);
-                    this.printDebugStatement("         > Square fixated on: (" + fixationDomainSpecificCol + ", " + fixationDomainSpecificRow + ")");
-                
-                    if( 
-                      identifierForObjectFixatedOn.equals(identifierForObjectJustFixatedOn) ||
-                      (
-                        fixationDomainSpecificCol == fixationJustPerformedDomainSpecificCol &&
-                        fixationDomainSpecificRow == fixationJustPerformedDomainSpecificRow
-                      )
-                    ){
-                      this.printDebugStatement("      + SceneObject or Square has been fixated on before");
-                      objectOrLocationFixatedOnAgain = true;
-                      break;
-                    }
+            
+              String identifierForObjectJustFixatedOn = objectFixatedOn.getIdentifier();
+              int fixationJustPerformedDomainSpecificCol = sceneFixatedOn.getDomainSpecificColFromSceneSpecificCol(sceneSpecificColFixatedOn);
+              int fixationJustPerformedDomainSpecificRow = sceneFixatedOn.getDomainSpecificRowFromSceneSpecificRow(sceneSpecificRowFixatedOn);
+              this.printDebugStatement("  ~ Identifier for SceneObject fixated on: " + identifierForObjectJustFixatedOn);
+              this.printDebugStatement("  ~ Square fixated on (domain-specific coordinates): (" + fixationJustPerformedDomainSpecificCol + ", " + fixationJustPerformedDomainSpecificRow + ")");
+
+              List<Fixation> mostRecentFixations = this.getPerceiver().getFixations(time);
+              for(int j = this.getPerceiver().getFixationToLearnFrom(); j < mostRecentFixations.size(); j++){
+                Fixation f = mostRecentFixations.get(j);
+
+                if(f.hasBeenPerformed()){
+                  this.printDebugStatement("    + Checking SceneObject and Square fixated on by Fixation " + f.toString());
+                  String identifierForObjectFixatedOn = f.getObjectSeen().getIdentifier();
+                  int fixationDomainSpecificCol = f.getScene().getDomainSpecificColFromSceneSpecificCol(f.getColFixatedOn());
+                  int fixationDomainSpecificRow = f.getScene().getDomainSpecificRowFromSceneSpecificRow(f.getRowFixatedOn());
+
+                  if( 
+                    identifierForObjectFixatedOn.equals(identifierForObjectJustFixatedOn) ||
+                    (
+                      fixationDomainSpecificCol == fixationJustPerformedDomainSpecificCol &&
+                      fixationDomainSpecificRow == fixationJustPerformedDomainSpecificRow
+                    )
+                  ){
+                    this.printDebugStatement(
+                      "      > SceneObject or Square fixated on in this previously " +
+                      "performed Fixation match the SceneObject or Square fixated " +
+                      "on by the Fixation just performed.  Stopping checks for " +
+                      "repeat fixations on SceneObjects or Squares."
+                    );
+                    objectOrLocationFixatedOnAgain = true;
+                    break;
+                  }
+                  else{
+                    this.printDebugStatement(
+                      "      > SceneObject or Square do not match the " +
+                      "SceneObject or Square fixated on by the Fixation just " +
+                      "performed.  Checking next Fixation performed."
+                    );
                   }
                 }
               }
-              else{
-                throw new IllegalStateException(
-                  "The Fixation performed has not had all relevant variables " +
-                  "set, i.e. Scene fixated on, SceneObject fixated on, Scene " +
-                  "column fixated on and Scene row fixated on.  Fixation " +
-                  "details:" + fixation.toString()
-                );
-              }
               
+              boolean shouldLearnFromNewFixations = this.getDomainSpecifics().shouldLearnFromNewFixations(time);
               this.printDebugStatement(
-                "   ~ Checking if the current DomainSpecifics (" + 
-                this.getDomainSpecifics().getClass().getSimpleName() + ") " +
-                "stipulates that Fixations should be learned from now or " +
-                "the SceneObject/Square just fixated on has been fixated on " +
-                "before."
+                "- Checking if the domain (" + this.getDomainSpecifics().getClass().getCanonicalName() + 
+                ") stipulates that Fixations should be learned from after " +
+                "Fixation performance (" + shouldLearnFromNewFixations + ") or " +
+                "if the Fixation just performed fixated on a SceneObject/Square " +
+                "that was fixated on previosly by a Fixation in the current set (" +
+                objectOrLocationFixatedOnAgain + ").  If so, Fixations that have " +
+                "been performed but not learned from yet will be learned from."
               );
               if(
-                this.getDomainSpecifics().shouldLearnFromNewFixations(time) ||
+                shouldLearnFromNewFixations ||
                 objectOrLocationFixatedOnAgain
               ){
-                this.printDebugStatement("   + Fixations will be learned from");
+                this.printDebugStatement("  ~ Fixations will be learned from");
                 this.getPerceiver().learnFromNewFixations(time);
               }
               else{
-                this.printDebugStatement("   + Fixations will not be learned from");
+                this.printDebugStatement("  ~ Fixations will not be learned from");
               }
+            }
+            else{
+              this.printDebugStatement("- Fixation performance unsuccessful");
             }
             
             /////////////////////////////////////
             ///// ADD FIXATION TO PERCEIVER /////
             /////////////////////////////////////
-            
+
             //Now, add the new Fixation after learning others since this 
             //Fixation may contain a duplicate object/location.  Consequently, 
             //when this function is called again, the "fixation to learn from" 
@@ -3496,405 +3808,446 @@ public class Chrest extends Observable {
             //will not throw a duplicate object/location exception when 
             //"this.getPerceiver().learnFromNewFixations(time);" is called above
             this.printDebugStatement("- Adding Fixation to Perceiver's Fixation data structure");
-            perceiver.addFixation(fixation);
-            
-            ////////////////////////////////////////////////////
-            ///// TAG RECOGNISED VisualSpatialFieldObjects /////
-            ////////////////////////////////////////////////////
-            
-            if(fixation.hasBeenPerformed()){
-              this.printDebugStatement(
-                "- Since Fixation was performed, the Scene fixated on will be " +
-                "checked to see if it represents a VisualSpatialField and any " +
-                "VisualSpatialFieldObjects that may have been recognised will " +
-                "be tagged accordingly."
-              );
-              
-              //Get the VisualSpatialField that the Scene fixated on represents.
-              //The conditional below is set up to "short-circuit" if the Fixation 
-              //has not been performed so, if it has, performing a null check on
-              //the Scene fixated on is pointless since an exception would have
-              //been thrown when determining if Fixations should be learned from
-              //above.
-              Scene sceneFixatedOn = fixation.getScene();
-              VisualSpatialField visualSpatialFieldRepresented = sceneFixatedOn.getVisualSpatialFieldRepresented();
-              this.printDebugStatement("   ~ Checking if Fixation was made on a Scene that represents a VisualSpatialField");
-              if(visualSpatialFieldRepresented != null){
-                this.printDebugStatement("      + Fixation was made on a Scene that represents a VisualSpatialField");
-                
-                //Get any new Nodes that may have been recognised by performing 
-                //the Fixation.
-                List<Node> visualStmBeforeRecognition = this.getStm(Modality.VISUAL).getContents(fixation.getPerformanceTime());
-                List<Node> visualStmAfterRecognition = this.getStm(Modality.VISUAL).getContents(this._attentionClock);
-                List<Node> newNodesRecognised = new ArrayList();
-                this.printDebugStatement("   ~ Nodes in visual STM before Fixation performed:");
-                if(this._debug){
-                  for(Node node : visualStmBeforeRecognition){
-                    this._debugOutput.println("      + " + node.getReference());
-                  }
-                }
-                
-                this.printDebugStatement("   ~ Nodes in visual STM after Fixation performed and visual STM updated:");
-                if(this._debug){
-                  for(Node node : visualStmAfterRecognition){
-                    this._debugOutput.println("      + " + node.getReference());
-                  }
-                }
-
-                if(visualStmBeforeRecognition == null || !visualStmBeforeRecognition.isEmpty()){
-                  for(Node nodeRecognised : visualStmAfterRecognition){
-                    newNodesRecognised.add(nodeRecognised);
-                  }
-                }
-                else{
-                  for(Node nodeRecognised : visualStmAfterRecognition){
-                    if(!visualStmBeforeRecognition.contains(nodeRecognised)){
-                      newNodesRecognised.add(nodeRecognised);
-                    }
-                  }
-                }
-                
-                //Remove root Nodes from newNodesRecognised since these will 
-                //cause problems
-                for(int n = 0; n < newNodesRecognised.size(); n++){
-                  if(newNodesRecognised.get(n).isRootNode()) newNodesRecognised.remove(n);
-                }
-                
-                this.printDebugStatement("   ~ Nodes added after Fixation performance:");
-                if(this._debug){
-                  for(Node node : newNodesRecognised){
-                    this._debugOutput.println("      + " + node.getReference());
-                  }
-                }
-
-                //Process each Node recognised.  
-                for(Node nodeRecognised : newNodesRecognised){
-                  this.printDebugStatement("   ~ Processing Node " + nodeRecognised.getReference());
-
-                  //Combine the contents and image of the Node so that all objects
-                  //referenced will be processed. Contents and image are combined
-                  //since, if the image is empty, the contents should still be
-                  //considered and, if the image is not empty, all objects 
-                  //referenced in the image should be processed.  Note: if the
-                  //image is not empty, the content will be present so remove it
-                  //to prevent duplication and processing time (micro-optimisation
-                  //but they all add up!).
-                  ListPattern contents = nodeRecognised.getContents();
-                  ListPattern image = nodeRecognised.getImage(this._attentionClock).remove(contents);
-                  ListPattern objectsRecognised = contents.append(image);
-                  this.printDebugStatement("      + Node contents and image: " + objectsRecognised.toString());
-
-                  //Determining if this CHREST model is learning object locations 
-                  //relative to the agent equipped with this model.  If this is 
-                  //the case, convert the agent-relative coordinates that will be 
-                  //present in the ItemSquarePatterns of the content/image 
-                  //ListPattern to domain-specific coordinates so that the 
-                  //relevant VisualSpatialField coordinates can be identified.
-                  for(PrimitivePattern objectRecognised : objectsRecognised){
-                    ItemSquarePattern objectRec = (ItemSquarePattern)objectRecognised;
-                    int col = objectRec.getColumn();
-                    int row = objectRec.getRow();
-
-                    if(this.isLearningObjectLocationsRelativeToAgent()){
-                      Square locationOfCreator = sceneFixatedOn.getLocationOfCreator();
-                      int locationOfCreatorCol = sceneFixatedOn.getDomainSpecificColFromSceneSpecificCol(locationOfCreator.getColumn());
-                      int locationOfCreatorRow = sceneFixatedOn.getDomainSpecificRowFromSceneSpecificRow(locationOfCreator.getRow());
-                      col = locationOfCreatorCol + col;
-                      row = locationOfCreatorRow + row;
-                    }
-
-                    col = visualSpatialFieldRepresented.getVisualSpatialFieldColFromDomainSpecificCol(col);
-                    row = visualSpatialFieldRepresented.getVisualSpatialFieldRowFromDomainSpecificRow(row);
-                    this.printDebugStatement(
-                      "      + VisualSpatialFieldCoordinates referenced by " + 
-                      objectRec.toString() + ": (" + col + ", " + row + ")"
-                    );
-
-                    //Cycle through all VisualSpatialFieldObjects on the 
-                    //coordinates and check if they are alive and of the same type
-                    //as that defined by the ItemSquarePattern in the 
-                    //content/image ListPattern.  If so, tag them as recognised.
-                    //
-                    //NOTE: there may be more than one VisualSpatialFieldObject 
-                    //that is alive and has the same type on the coordinates.  All
-                    //such VisualSpatialFieldObjects will be tagged as recognised.
-                    List<VisualSpatialFieldObject> coordinateContents = visualSpatialFieldRepresented.getCoordinateContents(col, row);
-                    for(VisualSpatialFieldObject objectOnVisualSpatialFieldCoordinates : coordinateContents){
-                      
-                      this.printDebugStatement(
-                        "      + Checking if the following " +
-                        "VisualSpatialFieldObject on these coordinates is " +
-                        "alive and if its object type matches the item " +
-                        "referenced in " + objectRec.toString()
-                      );
-                      
-                      if(
-                        objectOnVisualSpatialFieldCoordinates.isAlive(this._attentionClock) && 
-                        objectOnVisualSpatialFieldCoordinates.getObjectType().equals(objectRec.getItem())
-                      ){
-                        this.printDebugStatement(
-                          "         > VisualSpatialFieldObject matches, " +
-                          "setting recognised status to true at time it is " + 
-                          "recognised (" + this._attentionClock + ")"
-                        );
-                        objectOnVisualSpatialFieldCoordinates.setRecognised(this._attentionClock, true);
-                        this._recognisedVisualSpatialFieldObjectIdentifiers.add(objectOnVisualSpatialFieldCoordinates.getIdentifier());
-                      }
-                    }
-                  }
-                }
-              }
-              else{
-                this.printDebugStatement("      + Fixation was not made on a Scene that represents a VisualSpatialField");
-              }
-            }
-            
-            //////////////////////////////
-            ///// FIXATIONS COMPLETE /////
-            //////////////////////////////
-            
-            this.printDebugStatement(
-              "- Checking if Fixation set complete, i.e. have the maximum number " +
-              "of Fixations been attempted (Fixations attempted: " + 
-              perceiver.getFixations(time).size() + ", maximum Fixations that " + 
-              "can be attempted: " + this.getDomainSpecifics().getMaximumFixationsInSet() + 
-              ")" + " or does the DomainSpecifics (" + this.getDomainSpecifics().getClass().getSimpleName() + 
-              ") specify that the Fixation set is now complete?"
-            );
-            
-            if(
-              perceiver.getFixations(time).size() >= this.getDomainSpecifics().getMaximumFixationsInSet() ||
-              this.getDomainSpecifics().isFixationSetComplete(time)
-            ){
-              this.printDebugStatement("   + Fixation set complete");
-              
-              //////////////////////////////////////////////////////
-              ///// TAG UNRECOGNISED VisualSpatialFieldObjects /////
-              //////////////////////////////////////////////////////
-              
-              this.printDebugStatement(
-                "- Checking if the Scene fixated on represents a " +
-                "VisualSpatialField and whether any VisualSpatialFieldObjects " +
-                "should be tagged as being unrecognised"
-              );
-              if(!this._recognisedVisualSpatialFieldObjectIdentifiers.isEmpty()){
-                this.printDebugStatement(
-                  "   + Applicable, getting the latest time after comparing " +
-                  "the attention clock (" + this._attentionClock + ") and the " +
-                  "current time (" + time + ") since recognition may or may " +
-                  "not have occurred " 
-                    
-                );
-                int latestTime = Math.max(this._attentionClock, time);
-                
-                VisualSpatialField visualSpatialFieldRepresented = fixation.getScene().getVisualSpatialFieldRepresented();
-                for(int col = 0; col < visualSpatialFieldRepresented.getWidth(); col++){
-                  for(int row = 0; row < visualSpatialFieldRepresented.getHeight(); row++){
-                    for(VisualSpatialFieldObject visualSpatialFieldObject : visualSpatialFieldRepresented.getCoordinateContents(col, row, time, false)){
-
-                      if(
-                        visualSpatialFieldObject.isAlive(latestTime) && 
-                        !visualSpatialFieldObject.getObjectType().equals(Scene.getCreatorToken()) &&
-                        !this._recognisedVisualSpatialFieldObjectIdentifiers.contains(visualSpatialFieldObject.getIdentifier())
-                      ){
-                        this.printDebugStatement(
-                          "   + The following VisualSpatialFieldObject will have " +
-                          "its recognised status set to false at time " + 
-                          latestTime + visualSpatialFieldObject.toString()
-                        );
-                        visualSpatialFieldObject.setUnrecognised(latestTime, true);
-                      }
-                    }
-                  }
-                }
-              }
-              else{
-                this.printDebugStatement("   + Not applicable");
-              }
-              
-              //If fixations are complete, try to learn from them and 
-              //instantiate a visual-spatial field with them (if specified).
-              this.printDebugStatement("- Learning from Fixations performed");
-              perceiver.learnFromNewFixations(time);
-              if(constructVisualSpatialField){
-                this.printDebugStatement("- VisualSpatialField should be constructed");
-                this.constructVisualSpatialField(this._attentionClock);
-              }
-              else{
-                this.printDebugStatement("- VisualSpatialField will not be constructed");
-              }
-              
-              this._recognisedVisualSpatialFieldObjectIdentifiers.clear();
-              fixationsToMakeAtTime.clear();
-              
-              //Set the flag that indicates a fixation set is complete to true.
-              fixationSetComplete = true;
-            }
-            else{
-              this.printDebugStatement("   + Fixation set not complete");
-            }
-          }
-          else if(performanceTime < time){
-            throw new IllegalStateException(
-              "Fixation " + i + " in fixations to be made at time " + time + 
-              " was scheduled to be performed at time " + performanceTime + 
-              " but wasn't."
-            );
+            this.getPerceiver().addFixation(fixation);
           }
           else{
-            this.printDebugStatement("      + Fixation performance time set but not reached yet.  Fixation will not be performed.");
+            this.printDebugStatement(
+              "  ~ A Fixation has already been performed so this Fixation will be abandoned."
+            );
           }
         }
-        else{
-          this.printDebugStatement("      + Fixation performance time not set.  Fixation will not be performed.");
-        }
-      }
-      
-      this.printDebugStatement("- Checking if Fixation set complete");
-      if(!fixationSetComplete){
-        this.printDebugStatement("   + Fixation set not complete");
-        
-        //////////////////////////////////////////////
-        ///// SCHEDULE FIXATIONS FOR PERFORMANCE /////
-        //////////////////////////////////////////////
-
-        //Convert fixationsToMakeAtTime into an Iterator so that, if a fixation
-        //has been decided on at or before the time passed but the perceptual
-        //resource is busy at the time it was decided upon, it can be removed 
-        //safely whilst iterating through the fixationsToMakeAtTime.
-        this.printDebugStatement("- Scheduling any Fixations to make for performance");
-        for(int i = 0; i < fixationsToMakeAtTime.size(); i++){
-          Fixation fixation = fixationsToMakeAtTime.get(i);
-          this.printDebugStatement(
-            "   ~ Checking if Fixation with reference " + fixation.getReference() + 
-            " should be scheduled for performance"
+        else if(performanceTime < time){
+          throw new IllegalStateException(
+            "The following Fixation was scheduled to be performed at a time " +
+            "in the past " + performanceTime + "but wasn't: " + fixation.toString()
           );
-          
-          //Only process fixations that aren't scheduled for performance yet.
-          if(fixation.getPerformanceTime() == null){
-            int timeDecidedUpon = fixation.getTimeDecidedUpon();
-            this.printDebugStatement(
-              "      + Fixation's performance time not yet set, checking if " +
-              "the current time (" + time + ") is equal to the time the Fixation " + 
-              "is decided upon (" + timeDecidedUpon + ")"
-            );
-            
-            if(timeDecidedUpon == time){
-              this.printDebugStatement(
-                "         > Fixation is decided upon now, checking if Perceiver " +
-                "is free"
-              );
-              
-              if(this.isPerceiverFree(time)){
-                this.printDebugStatement(
-                  "            = Perceiver free, scheduling Fixation for " +
-                  "performance at the current time (" + time + ") plus the " +
-                  "time taken to perform a saccade (" + this._saccadeTime + ") " +
-                  "and consuming the Perceiver resource until this time"
-                );
-                fixation.setPerformanceTime(time + this._saccadeTime);
-                this._perceiverClock = fixation.getPerformanceTime();
-              }
-              else {
-                this.printDebugStatement("            = Perceiver not free, abandoning Fixation");
-                fixationsToMakeAtTime.remove(i);
-              }
-            }
-            else if(timeDecidedUpon < time){
-              throw new IllegalStateException(
-                "Fixation " + i + " in fixations to be made at time " + time + 
-                " was scheduled to be decided upon at time " + timeDecidedUpon + 
-                " but wasn't."
-              );
-            }
-          }
-          else{
-            this.printDebugStatement("      + Fixation's performance time already set");
-          }
-        }
-
-        /////////////////////////////
-        ///// ADD NEW FIXATIONS /////
-        /////////////////////////////
-        
-        List<Fixation> fixationsToMake = this.getFixationsToMake(time);
-        List<Fixation> fixationsAttempted = perceiver.getFixations(time);
-        int a = (fixationsToMake == null ? 0 : fixationsToMake.size());
-        int b = (fixationsAttempted == null ? 0 : fixationsAttempted.size());
-        
-        this.printDebugStatement(
-          "- Checking if a new Fixation should be added, i.e. after summing the " +
-          "number of Fixations scheduled (" + a + ") and the number of " +
-          "Fixations attempted (" + b + "), is the total less than the maximum " +
-          "number of Fixations allowed according to the current domain (" + 
-          this.getDomainSpecifics().getMaximumFixationsInSet() + ") and does the " +
-          "current domain stipulate that addition can occur and is attention " +
-          "free at current time (time: " + time + ", attention free: " + 
-          this._attentionClock + ")?"
-        );
-        
-//        this.printDebugStatement(
-//          "- Checking if a new Fixation should be added, i.e. do the following " +
-//          "statements all evaluate to true:" + 
-//          "\n   1. The number of Fixations attempted (" + b + ") is less than " +
-//          "the maximum number of Fixations allowed to be attempted according " +
-//          "to the current domain (" + 
-//          this.getDomainSpecifics().getMaximumFixationsInSet() + ")" +
-//          "\n   2. The current domain stipulates that addition can occur" + 
-//          "\n   3. Attention is free at current time (time: " + time + ", " +
-//          "attention free: " + this._attentionClock + ")"
-//        );
-        
-        if(
-          a + b < this.getDomainSpecifics().getMaximumFixationsInSet() &&
-          this.getDomainSpecifics().shouldAddNewFixation(time) && 
-          this.isAttentionFree(time)
-        ){
-          Fixation newFixation;
-          this.printDebugStatement("   ~ New Fixation will be added.");
-          
-          if(a + b == 0){
-            this.printDebugStatement(
-              "   ~ This is the first Fixation in a new set so visual STM and " +
-              "the Fixation data structure of the Perceiver associated with " +
-              "this CHREST model will be cleared"
-            );
-            this.getStm(Modality.VISUAL).clear(time);
-            this.getPerceiver().clearFixations(time + 1);
-              
-            newFixation = this.getDomainSpecifics().getInitialFixationInSet(time);
-          }
-          else{
-            this.printDebugStatement("   ~ This is not the first Fixation in a new set");
-            newFixation = this.getDomainSpecifics().getNonInitialFixationInSet(time);
-          }
-
-          //A Fixation should always be returned but, just in case, perform a 
-          //null check on newFixation before altering relevant variables.
-          if(newFixation != null){
-            this.printDebugStatement("   ~ Fixation to add:" + newFixation.toString());
-            this._attentionClock = newFixation.getTimeDecidedUpon();
-            fixationsToMakeAtTime.add(newFixation);
-          }
         }
         else{
-          this.printDebugStatement("   ~ New Fixation will not be added.");
+          this.printDebugStatement("  ~ Fixation performance time set, but not reached yet.  Fixation will not be performed.");
         }
       }
       else{
-        this.printDebugStatement("   + Fixation set complete");
+        this.printDebugStatement("  ~ Fixation performance time not set.  Fixation will not be performed.");
       }
+    }
+    
+    this.printDebugStatement("- The following Fixations were attempted: " + fixationsWithPerformanceTimeEqualToTimeMethodInvoked);
+    
+    this.printDebugStatement("Returning the Fixations attempted");
+    this.printDebugStatement("===== RETURN Chrest.performScheduledFixations() =====");
+    return fixationsWithPerformanceTimeEqualToTimeMethodInvoked;
+  }
+  
+  /**
+   * Designed to be used by {@link #this#scheduleOrMakeNextFixation(
+   * jchrest.domainSpecifics.Scene, boolean, int)}.
+   * <p>
+   * Updates the recognised status of any {@link 
+   * jchrest.lib.VisualSpatialFieldObject VisualSpatialFieldObjects} recognised
+   * after the {@code fixation} specified is performed.
+   * <p>
+   * The method assumes that from the time the {@code fixation} was performed, 
+   * {@link jchrest.lib.Modality#VISUAL} {@link jchrest.architecture.Stm} has 
+   * not been updated by any other process.  So, it is only {@link 
+   * jchrest.lib.VisualSpatialFieldObject VisualSpatialFieldObjects} that are
+   * present in the contents, image and filled item/position slots of {@link 
+   * jchrest.architecture.Node Nodes} added to {@link 
+   * jchrest.lib.Modality#VISUAL} {@link jchrest.architecture.Stm} from the 
+   * result of invoking {@link 
+   * jchrest.domainSpecifics.Fixation#getPerformanceTime()} on the {@code 
+   * fixation} specified to the result of {@link #this#getAttentionClock()} that
+   * have their recognised status set to {@link java.lang.Boolean#TRUE} at the
+   * value specified by {@link #this#getAttentionClock()}.
+   * <p>
+   * If the {@code fixation} specified has not been performed or did not fixate
+   * on a {@link jchrest.domainSpecifics.Scene} that represents a {@link 
+   * jchrest.architecture.VisualSpatialField} or no new {@link 
+   * jchrest.architecture.Node Nodes} have been added between the time the 
+   * {@code fixation} specified was performed and the value of {@link 
+   * #this#getAttentionClock()}, this method will do nothing.
+   * 
+   * @param fixation
+   */
+  private void tagVisualSpatialFieldObjectsFixatedOnAsRecognised(Fixation fixation){
+    this.printDebugStatement("===== Chrest.tagVisualSpatialFieldObjectsFixatedOnAsRecognised() =====");
+    this.printDebugStatement("- Processing Fixation: " + fixation.toString());
+    
+    if(fixation.hasBeenPerformed()){
+              
+      Scene sceneFixatedOn = fixation.getScene();
+      VisualSpatialField visualSpatialFieldRepresented = sceneFixatedOn.getVisualSpatialFieldRepresented();
+      if(visualSpatialFieldRepresented != null){
+        this.printDebugStatement("- Scene fixated on represents a VisualSpatialField");
+                
+        //Get any new Nodes that may have been recognised by performing 
+        //the Fixation.
+        List<Node> visualStmBeforeRecognition = this.getStm(Modality.VISUAL).getContents(fixation.getPerformanceTime());
+        List<Node> visualStmAfterRecognition = this.getStm(Modality.VISUAL).getContents(this._attentionClock);
+        
+        List<Node> newNodesRecognised = new ArrayList();
+        this.printDebugStatement("- Nodes in visual STM when Fixation performed (references):");
+        if(this._debug){
+          for(Node node : visualStmBeforeRecognition){
+            this._debugOutput.println("  ~ " + node.getReference());
+          }
+        }
+                
+        this.printDebugStatement("- Nodes in visual STM after Fixation performed and visual STM updated (references):");
+        if(this._debug){
+          for(Node node : visualStmAfterRecognition){
+            this._debugOutput.println("  ~ " + node.getReference());
+          }
+        }
 
-      this._fixationsToMake.put(time, fixationsToMakeAtTime);
-      
+        if(visualStmBeforeRecognition == null || visualStmBeforeRecognition.isEmpty()){
+          for(Node nodeRecognised : visualStmAfterRecognition){
+            newNodesRecognised.add(nodeRecognised);
+          }
+        }
+        else{
+          for(Node nodeRecognised : visualStmAfterRecognition){
+            if(!visualStmBeforeRecognition.contains(nodeRecognised)){
+              newNodesRecognised.add(nodeRecognised);
+            }
+          }
+        }
+                
+        //Remove root Nodes from newNodesRecognised since these will 
+        //cause problems
+        for(int n = 0; n < newNodesRecognised.size(); n++){
+          if(newNodesRecognised.get(n).isRootNode()) newNodesRecognised.remove(n);
+        }
+
+        this.printDebugStatement("- Nodes added after Fixation performance (references):");
+        if(this._debug){
+          for(Node node : newNodesRecognised){
+            this._debugOutput.println("  ~ " + node.getReference());
+          }
+        }
+
+        //Process each Node recognised.  
+        for(Node nodeRecognised : newNodesRecognised){
+          this.printDebugStatement("- Processing VisualSpatialFieldObjects in Node " + nodeRecognised.getReference());
+
+          ListPattern objectsRecognised = nodeRecognised.getAllInformation(this._attentionClock);
+          this.printDebugStatement("  ~ Objects recognised: " + objectsRecognised.toString());
+
+          //Determining if this CHREST model is learning object locations 
+          //relative to the agent equipped with this model.  If this is 
+          //the case, convert the agent-relative coordinates that will be 
+          //present in the ItemSquarePatterns of the content/image 
+          //ListPattern to domain-specific coordinates so that the 
+          //relevant VisualSpatialField coordinates can be identified.
+          for(PrimitivePattern objectRecognised : objectsRecognised){
+            ItemSquarePattern objectRec = (ItemSquarePattern)objectRecognised;
+            int col = objectRec.getColumn();
+            int row = objectRec.getRow();
+            this.printDebugStatement("- Processing " + objectRec.toString());
+
+            if(this.isLearningObjectLocationsRelativeToAgent()){
+              Square locationOfCreator = (Square)visualSpatialFieldRepresented.getCreatorDetails(this._attentionClock).get(1);
+              int locationOfCreatorCol = visualSpatialFieldRepresented.getDomainSpecificColFromVisualSpatialFieldCol(locationOfCreator.getColumn());
+              int locationOfCreatorRow = visualSpatialFieldRepresented.getDomainSpecificRowFromVisualSpatialFieldRow(locationOfCreator.getRow());
+              col = locationOfCreatorCol + col;
+              row = locationOfCreatorRow + row;
+            }
+
+            col = visualSpatialFieldRepresented.getVisualSpatialFieldColFromDomainSpecificCol(col);
+            row = visualSpatialFieldRepresented.getVisualSpatialFieldRowFromDomainSpecificRow(row);
+            this.printDebugStatement("  ~ VisualSpatialFieldCoordinates referenced: (" + col + ", " + row + ")");
+
+            //Cycle through all VisualSpatialFieldObjects on the 
+            //coordinates and check if they are alive and of the same type
+            //as that defined by the ItemSquarePattern in the 
+            //content/image ListPattern.  If so, tag them as recognised.
+            //
+            //NOTE: there may be more than one VisualSpatialFieldObject 
+            //that is alive and has the same type on the coordinates.  All
+            //such VisualSpatialFieldObjects will be tagged as recognised.
+            this.printDebugStatement(
+              "  ~ Checking if the type of any VisualSpatialFieldObjects on " +
+              "these coordinates match the item referenced (" + 
+              objectRec.getItem() + ") and if they do, are they also 'alive' " +
+              "on the VisualSpatialField"
+            );
+            List<VisualSpatialFieldObject> coordinateContents = visualSpatialFieldRepresented.getCoordinateContents(col, row);
+            for(VisualSpatialFieldObject objectOnVisualSpatialFieldCoordinates : coordinateContents){
+
+              this.printDebugStatement(objectOnVisualSpatialFieldCoordinates.toString());
+              if(
+                objectOnVisualSpatialFieldCoordinates.isAlive(this._attentionClock) && 
+                objectOnVisualSpatialFieldCoordinates.getObjectType().equals(objectRec.getItem())
+              ){
+                this.printDebugStatement(
+                  "    + VisualSpatialFieldObject's type matches and it is alive, " +
+                  "setting its recognised status to true at time it is " + 
+                  "recognised (" + this._attentionClock + ")"
+                );
+                objectOnVisualSpatialFieldCoordinates.setRecognised(this._attentionClock, true);
+                this._recognisedVisualSpatialFieldObjectIdentifiers.add(objectOnVisualSpatialFieldCoordinates.getIdentifier());
+              }
+              else{
+                this.printDebugStatement(
+                  "    + VisualSpatialFieldObject's type does not match or it " +
+                  "is not alive. Processing next VisualSpatialFieldObject on " +
+                  "the coordinates"
+                );
+              }
+            }
+          }
+        }
+      }
+      else{
+        this.printDebugStatement("- Scene fixated on does not represent a VisualSpatialField, exiting");
+      }
     }
     else{
-      this.printDebugStatement("   ~ Model does not exist at the time the function is requested, exiting.");
+      this.printDebugStatement("- Fixation has not been performed, exiting");
     }
-
-    this.printDebugStatement("- Returning boolean " + fixationSetComplete);
+    
     this.printDebugStatement("===== RETURN =====");
-    return fixationSetComplete;
+  }
+  
+  /**
+   * Designed to be used by {@link #this#scheduleOrMakeNextFixation(
+   * jchrest.domainSpecifics.Scene, boolean, int)}.
+   * <p>
+   * Sets the recognised status of any {@link 
+   * jchrest.lib.VisualSpatialFieldObject VisualSpatialFieldObjects} to {@link 
+   * java.lang.Boolean#FALSE} at the time a {@link 
+   * jchrest.domainSpecifics.Fixation} set is complete if the following 
+   * statements hold:
+   * 
+   * <ul>
+   *  <li>
+   *    The {@link jchrest.lib.VisualSpatialFieldObject} has not been recognised 
+   *    during performance of the current {@link 
+   *    jchrest.domainSpecifics.Fixation} set.
+   *  </li>
+   *  <li>
+   *    Invoking {@link jchrest.lib.VisualSpatialFieldObject#isAlive(int)} on 
+   *    the {@link jchrest.lib.VisualSpatialFieldObject} returns {@link 
+   *    java.lang.Boolean#TRUE} when the current {@link 
+   *    jchrest.domainSpecifics.Fixation} set is complete.
+   *  </li>
+   *  <li>
+   *    The {@link jchrest.lib.VisualSpatialFieldObject} does not represent the
+   *    agent equipped with CHREST.  This should never occur but if it does, it 
+   *    can cause serious problems if {@link #this} is learning the locations
+   *    of {@link jchrest.domainSpecifics.SceneObject SceneObjects} in a {@link 
+   *    jchrest.domainSpecifics.Scene} relative to the location of the agent 
+   *    equipped with {@link #this} since changes to the recognised status of a 
+   *    {@link jchrest.lib.VisualSpatialFieldObject} entails setting the {@link 
+   *    jchrest.lib.VisualSpatialFieldObject#_terminus} meaning that a {@link 
+   *    jchrest.lib.VisualSpatialFieldObject} representing the agent equipped 
+   *    with {@link #this} may decay in its current {@link 
+   *    jchrest.architecture.VisualSpatialField}.
+   *  </li>
+   * </ul>
+   * 
+   * This method assumes that previous {@link jchrest.domainSpecifics.Fixation 
+   * Fixations} in the set that the {@code lastFixationAttempted} specified is
+   * a part of have also been made on the same {@link 
+   * jchrest.architecture.VisualSpatialField} as that fixated on by the {@code 
+   * lastFixationAttempted} specified.  This means that the time that 
+   * unrecognised {@link jchrest.lib.VisualSpatialFieldObject 
+   * VisualSpatialFieldObjects} are tagged as being unrecognised at is 
+   * determined by considering which of the two values is larger: the result of
+   * invoking {@link jchrest.domainSpecifics.Fixation#getPerformanceTime()} or
+   * the result of invoking {@link #this#getAttentionClock()}.  This essentially
+   * equates to the time that the {@link jchrest.domainSpecifics.Fixation} set
+   * is complete (like other methods used by {@link 
+   * #this#scheduleOrMakeNextFixation(jchrest.domainSpecifics.Scene, boolean, 
+   * int)}), this method assumes that the attention resource is consumed by 
+   * methods handling {@link jchrest.domainSpecifics.Fixation} scheduling).  So,
+   * if attention is free before the {@link lastFixationAttempted} is performed,
+   * the {@link jchrest.domainSpecifics.Fixation} set is complete at this time
+   * otherwise, it is complete when attention becomes free.
+   * 
+   * @param mostRecentFixationPerformed
+   */
+  private void tagUnrecognisedVisualSpatialFieldObjectsAfterFixationSetComplete(Fixation lastFixationAttempted){
+    this.printDebugStatement("===== Chrest.tagUnrecognisedVisualSpatialFieldObjectsAfterFixationSetComplete() =====");
+    this.printDebugStatement("- Last Fixation attempted specified as: " + lastFixationAttempted.toString());
+    
+    VisualSpatialField visualSpatialFieldRepresented = lastFixationAttempted.getScene().getVisualSpatialFieldRepresented();
+    
+    if(this.debug()){
+      this.printDebugStatement("- Method will continue if the following statements evaluate to true:");
+      this.printDebugStatement("  ~ This CHREST model is no longer performing Fixations: " + !this._performingFixations);
+      this.printDebugStatement("  ~ The last Fixation attempted actually attempted to fixate on a Scene representing a VisualSpatialField: " + (visualSpatialFieldRepresented != null));
+    }
+    
+    if(
+      !this._performingFixations && 
+      visualSpatialFieldRepresented != null
+    ){
+      this.printDebugStatement("- All statements evaluate to true, continuing");
+      
+      this.printDebugStatement(
+        "- Determining the latest time when attention will be free so that " +
+        "unrecognised VisualSpatialFieldObjects can be tagged as unrecognised.  " +
+        "This will be either the time the last Fixation attempted was performed (" +
+        + lastFixationAttempted.getPerformanceTime() + ") or the time the " +
+        "attention clock is currently set to (" + this._attentionClock + ")."
+      );
+      int time = Math.max(lastFixationAttempted.getPerformanceTime(), this._attentionClock);
+      
+      this.printDebugStatement(
+        "- Tagging VisualSpatialFieldObjects whose identifiers are not in the " +
+        "following list as being unrecognised at time (" + time + "): " + 
+        this._recognisedVisualSpatialFieldObjectIdentifiers
+      );
+        
+      for(int col = 0; col < visualSpatialFieldRepresented.getWidth(); col++){
+        for(int row = 0; row < visualSpatialFieldRepresented.getHeight(); row++){
+          
+          this.printDebugStatement(
+            "- Processing VisualSpatialFieldObjects on VisualSpatialFieldCoordinates (" + 
+            col + ", " + row + ")"
+          );
+          
+          for(VisualSpatialFieldObject visualSpatialFieldObject : visualSpatialFieldRepresented.getCoordinateContents(col, row, time, false)){
+
+            this.printDebugStatement("  ~ Processing VisualSpatialFieldObject:" + visualSpatialFieldObject.toString());
+            if(this.debug()){
+              this.printDebugStatement("    + Checking if all the following statements evaluate to true:");
+              this.printDebugStatement("      > The VisualSpatialFieldObject is alive at time " + time + ": " + visualSpatialFieldObject.isAlive(time));
+              this.printDebugStatement("      > The VisualSpatialFieldObject does not represent the creator: " + !visualSpatialFieldObject.getObjectType().equals(Scene.getCreatorToken()));
+              this.printDebugStatement("      > The VisualSpatialFieldObject was not recognised when the most recent Fixation set was performed: " + !this._recognisedVisualSpatialFieldObjectIdentifiers.contains(visualSpatialFieldObject.getIdentifier()));
+            }
+            
+            if(
+              visualSpatialFieldObject.isAlive(time) && 
+              !visualSpatialFieldObject.getObjectType().equals(Scene.getCreatorToken()) &&
+              !this._recognisedVisualSpatialFieldObjectIdentifiers.contains(visualSpatialFieldObject.getIdentifier())
+            ){
+              this.printDebugStatement(
+                "    + All checks evaluate to true, the VisualSpatialFieldObject's " +
+                "recognised status will be set to false at time " + time
+              );
+              visualSpatialFieldObject.setUnrecognised(time, true);
+            }
+            else{
+              this.printDebugStatement(
+                "    + Not all checks evaluate to true so this " +
+                "VisualSpatialFieldObject's recognised status will not be " +
+                "modified"
+              );
+            }
+          }
+        }
+      }
+    }
+    else{
+      this.printDebugStatement("  ~ Not all statements are true, exiting");
+    }
+      
+    this.printDebugStatement("===== RETURN =====");
+  }
+  
+  /**
+   * Designed to be used by {@link #this#scheduleOrMakeNextFixation(
+   * jchrest.domainSpecifics.Scene, boolean, int)}.
+   * <p>
+   * If invoking {@link jchrest.domainSpecifics.Fixation#getTimeDecidedUpon()}
+   * on any {@link jchrest.domainSpecifics.Fixation} in {@code 
+   * fixationsScheduled} equals the {@code time} specified, an attempt will be 
+   * made to schedule that {@link jchrest.domainSpecifics.Fixation} for 
+   * performance.
+   * <p>
+   * A {@link jchrest.domainSpecifics.Fixation} can only be scheduled for 
+   * performance if the {@link jchrest.architecture.Perceiver} associated with
+   * {@link #this} is free, i.e. if passing the {@code time} specified to {@link 
+   * #this#isPerceiverFree(int)} returns {@link java.lang.Boolean#TRUE}.  If 
+   * not, the {@link jchrest.domainSpecifics.Fixation} will be abandoned, i.e.
+   * removed from {@code fixationsScheduled}.  This means that if there is more
+   * than one {@link jchrest.domainSpecifics.Fixation} in {@code 
+   * fixationsScheduled} that returns the {@code time} specified when {@link 
+   * jchrest.domainSpecifics.Fixation#getTimeDecidedUpon()} is invoked, only 
+   * the first {@link jchrest.domainSpecifics.Fixation} in the list will be 
+   * scheduled for performance, the rest will be abandoned.
+   * <p>
+   * Any {@link jchrest.domainSpecifics.Fixation Fixations} whose value for 
+   * {@link jchrest.domainSpecifics.Fixation#getPerformanceTime()} is not equal
+   * to {@code null} will simply be ignored since these {@link 
+   * jchrest.domainSpecifics.Fixation Fixations} have already been scheduled for
+   * performance.
+   * 
+   * @param fixationsScheduled
+   * @param time
+   * 
+   * @return {@code fixationsScheduled} after the processing described in the
+   * method description has been applied.
+   * 
+   * @throws IllegalStateException If any {@link 
+   * jchrest.domainSpecifics.Fixation} in {@code fixationsScheduled} returns 
+   * {@code null} when {@link 
+   * jchrest.domainSpecifics.Fixation#getPerformanceTime()} is invoked on it and
+   * and its value for {@link 
+   * jchrest.domainSpecifics.Fixation#getTimeDecidedUpon()} is in the past 
+   * relative to the {@code time} specified. This means that the {@link 
+   * jchrest.domainSpecifics.Fixation} has not been scheduled correctly and 
+   * model execution should not continue in such circumstances.
+   */
+  private List<Fixation> scheduleFixationsForPerformance(List<Fixation> fixationsScheduled, int time){
+    this.printDebugStatement("===== Chrest.scheduleFixationsForPerformance() =====");
+    this.printDebugStatement("- Fixations to process: " + fixationsScheduled);
+    
+    Iterator<Fixation> iterator = fixationsScheduled.iterator();
+    while(iterator.hasNext()){
+      
+      Fixation fixation = iterator.next();
+      this.printDebugStatement(
+        "- Checking if the following Fixation should be scheduled for " +
+        "performance: " + fixation.toString()
+      );
+          
+      //Only process fixations that aren't scheduled for performance yet.
+      if(fixation.getPerformanceTime() == null){
+        int timeDecidedUpon = fixation.getTimeDecidedUpon();
+        this.printDebugStatement( "  ~ Fixation's performance time not yet set");
+        
+        this.printDebugStatement(
+          "- Checking if the current time (" + time + ") is equal to the time " +
+          "the Fixation is decided upon (" + timeDecidedUpon + ")"
+        );
+            
+        if(timeDecidedUpon == time){
+          this.printDebugStatement("  ~ Fixation is to be decided upon now");
+          
+          this.printDebugStatement("- Checking if Perceiver is free"); 
+          if(this.isPerceiverFree(time)){
+            this.printDebugStatement(
+              "   + Perceiver free, scheduling Fixation for " +
+              "performance at the current time (" + time + ") plus the " +
+              "time taken to perform a saccade (" + this._saccadeTime + ") " +
+              "and consuming the Perceiver resource until this time"
+            );
+            fixation.setPerformanceTime(time + this._saccadeTime);
+            this._perceiverClock = fixation.getPerformanceTime();
+          }
+          else {
+            this.printDebugStatement("  ~ Perceiver not free, abandoning Fixation");
+            iterator.remove();
+          }
+        }
+        else if(timeDecidedUpon < time){
+          throw new IllegalStateException(
+            "The following Fixation was scheduled to be decided upon at time " + 
+            timeDecidedUpon + " but wasn't so its performance time has not been " +
+            "set correctly: " + fixation.toString()
+          );
+        }
+      }
+      else{
+        this.printDebugStatement("  ~ Fixation's performance time already set, skipping processing");
+      }
+    }
+    
+    this.printDebugStatement("- Returning " + fixationsScheduled.toString());
+    this.printDebugStatement("===== RETURN Chrest.scheduleFixationsForPerformance() =====");
+    return fixationsScheduled;
   }
   
   /**********************************************/
@@ -3962,6 +4315,9 @@ public class Chrest extends Observable {
   //      function handles root Nodes correctly when processing recognised 
   //      objects but it would be better if there were an explicit check in the 
   //      test that validates this directly.
+  //TODO: If the same SceneObject is fixated on more than once consecutively, 
+  //      should there be a time cost incurred for processing each Fixation 
+  //      after the first one it appears in?
   private void constructVisualSpatialField(int time){
     this.printDebugStatement("===== Chrest.constructVisualSpatialField() =====");
     

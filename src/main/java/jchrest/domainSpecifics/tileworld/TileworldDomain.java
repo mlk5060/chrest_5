@@ -216,9 +216,9 @@ public class TileworldDomain extends DomainSpecifics{
    */
   @Override
   public Fixation getNonInitialFixationInSet(int time) {
-    List<Fixation> fixationsToMake = this._associatedModel.getFixationsToMake(time);
+    List<Fixation> fixationsScheduled = this._associatedModel.getScheduledFixations(time);
     List<Fixation> fixationsAttempted = this._associatedModel.getPerceiver().getFixations(time);
-    int numberFixationsToMake = (fixationsToMake == null ? 0 : fixationsToMake.size());
+    int numberFixationsToMake = (fixationsScheduled == null ? 0 : fixationsScheduled.size());
     int numberFixationsAttempted = (fixationsAttempted == null ? 0 : fixationsAttempted.size());
     
     if((numberFixationsToMake + numberFixationsAttempted) < this._initialFixationThreshold){
@@ -255,7 +255,7 @@ public class TileworldDomain extends DomainSpecifics{
       //Check for a HypothesisDiscriminationFixation currently being decided 
       //upon.
       boolean hypothesisDiscriminationFixationBeingDeliberatedOn = false;
-      for(Fixation fixation : fixationsToMake){
+      for(Fixation fixation : fixationsScheduled){
         if(fixation.getClass().equals(HypothesisDiscriminationFixation.class)){
           hypothesisDiscriminationFixationBeingDeliberatedOn = true;
           break;

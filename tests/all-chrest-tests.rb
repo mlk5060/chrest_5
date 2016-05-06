@@ -9,6 +9,7 @@ include TestFramework
 
 # Import all required Java classes
 import "java.awt.Color"
+import "java.util.List"
 import "java.util.ArrayList"
 import "java.util.HashMap"
 import "java.util.TreeMap"
