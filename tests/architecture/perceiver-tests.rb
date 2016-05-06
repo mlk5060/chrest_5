@@ -1129,7 +1129,7 @@ end
 # For each Scenario the test will check:
 # - If an exception is thrown by the function
 # - The ListPattern generated and learned
-# - The Perceiever's "_fixationToLearnFrom" variable after function invocation
+# - The Perceiver's "_fixationToLearnFrom" variable after function invocation
 # 
 # Expected output:
 # 
@@ -1181,7 +1181,7 @@ unit_test "learn_from_new_fixatons" do
     
       time = 0
       model = Chrest.new(time, ([14,16].include?(scenario) ? true : false))
-      model._domainSpecifics = GenericDomain.new(model, nil)
+      model._domainSpecifics = GenericDomain.new(model, nil, 3)
       perceiver = model.getPerceiver()
 
       # Need access to the private, final "_fixations" Fixation instance variable
