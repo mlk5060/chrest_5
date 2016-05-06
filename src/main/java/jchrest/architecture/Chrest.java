@@ -1892,13 +1892,23 @@ public class Chrest extends Observable {
    * @param time 
    * @param considerTimeAndAddRecognisedNodeToStm
    * 
-   * @return 
+   * @return If {@code considerTimeAndAddRecognisedNodeToStm} is set to {@link 
+   * java.lang.Boolean#FALSE} or if its set to {@link java.lang.Boolean#TRUE}
+   * and {@link jchrest.architecture.Chrest#isCognitionFree(int)} returns {@link 
+   * java.lang.Boolean#TRUE} when {@code time} is passed as a parameter, the 
+   * {@link jchrest.architecture.Node} reached (as explained in the parameter
+   * description above) is returned.  This may be a root {@link 
+   * jchrest.architecture.Node}.
+   * <p>
+   * If {@code considerTimeAndAddRecognisedNodeToStm} is set to {@link 
+   * java.lang.Boolean#TRUE} and {@link 
+   * jchrest.architecture.Chrest#isCognitionFree(int)} returns {@link 
+   * java.lang.Boolean#FALSE} when {@code time} is passed as a parameter, {@code
+   * null} is returned.
    */
   public Node recognise (ListPattern pattern, Integer time, Boolean considerTimeAndAddRecognisedNodeToStm) {
-    String func = "- recognise: ";
-    
-    this.printDebugStatement(func + "START");
-    this.printDebugStatement(func + "Time " + (considerTimeAndAddRecognisedNodeToStm ? 
+    this.printDebugStatement("===== Chrest.recognise() =====");
+    this.printDebugStatement("- Time " + (considerTimeAndAddRecognisedNodeToStm ? 
       "will" : "will not") + " be considered and the node returned by the " +
       "recognition process performed to ascertain if learning should occur " + 
       (considerTimeAndAddRecognisedNodeToStm ? "will" : "will not") + " be " +
@@ -1907,7 +1917,7 @@ public class Chrest extends Observable {
 
     if(considerTimeAndAddRecognisedNodeToStm){
       this.printDebugStatement(
-        func + "Checking if cognition resource free (is the current value " + 
+        "- Checking if cognition resource free (is the current value " + 
         "of the cognition clock (" + this._cognitionClock + ") <= the time " + 
         "this function was invoked (" + time + ")?"
       );
@@ -1915,20 +1925,20 @@ public class Chrest extends Observable {
     
     if(this.isCognitionFree(time) || !considerTimeAndAddRecognisedNodeToStm){
       
-      if(considerTimeAndAddRecognisedNodeToStm) this.printDebugStatement(func + "Cognition resource free.");
-      this.printDebugStatement(func + "Attempting to recognise " + pattern.toString() + ".");
+      if(considerTimeAndAddRecognisedNodeToStm) this.printDebugStatement("- Cognition resource free.");
+      this.printDebugStatement("- Attempting to recognise " + pattern.toString() + ".");
       
       //Get root node for modality.
-      Node currentNode = getLtmModalityRootNode (pattern);
+      Node currentNode = this.getLtmModalityRootNode(pattern);
       
       this.printDebugStatement(
-        func + "Retrieved " + currentNode.getImage(time).getModalityString() + 
+        "  ~ Retrieved " + currentNode.getImage(time).getModalityString() + 
         " modality root node"
       );
       
       if(considerTimeAndAddRecognisedNodeToStm){
         this.printDebugStatement(
-          func + "Incrementing current time (" + time + ") by the time taken " +
+          "- Incrementing current time (" + time + ") by the time taken " +
           "to traverse a LTM link (" + this._ltmLinkTraversalTime + ")"
         );
         
@@ -1943,17 +1953,17 @@ public class Chrest extends Observable {
         Link currentNodeTestLink = currentNodeTestLinks.get(linkToCheck);
         
         this.printDebugStatement(
-          func + "Checking if " + pattern.toString() + " passes test (" + 
+          "- Checking if " + pattern.toString() + " passes test (" + 
           currentNodeTestLink.getTest().toString() + ") on link " + 
           linkToCheck + " from node " + currentNode.getReference() + "."
         );
         
         if (currentNodeTestLink.passes (sortedPattern)) { // descend a test link in network
-          this.printDebugStatement(func + "Test passed, descending the link to its child node");
+          this.printDebugStatement("  ~ Test passed, descending the link to its child node");
           
           if(considerTimeAndAddRecognisedNodeToStm){
             this.printDebugStatement(
-              func + "Incrementing the current time (" + time + ") by the time " +
+              "  ~ Incrementing the current time (" + time + ") by the time " +
               "taken to traverse a LTM link (" + this._ltmLinkTraversalTime + ")."
             );
             
@@ -1971,7 +1981,7 @@ public class Chrest extends Observable {
         else { // move on to the next link on same level
           
           this.printDebugStatement(
-            func + "Test not passed, checking the next test link of node " +
+           "  ~ Test not passed, checking the next test link of node " +
             currentNode.getReference() + "."
           );
           
@@ -1980,28 +1990,28 @@ public class Chrest extends Observable {
       }
       
       this.printDebugStatement(
-        func + "Descended vertically through long-term memory network as far " + 
-        "as possible.  Searching horizontally through long-term memory network for " +
-        "a more informative node by searching the semantic links of node " + 
+        "- Descended vertically through long-term memory network as far " + 
+        "as possible.  Searching horizontally through long-term memory network " +
+        "for a more informative node by searching the semantic links of node " + 
         currentNode.getReference()
       );
       
       if(considerTimeAndAddRecognisedNodeToStm){
-        this.printDebugStatement(func + "Cognition clock will be set to the current time (" + time + ").");
+        this.printDebugStatement("- Cognition clock will be set to the current time (" + time + ").");
         this._cognitionClock = time;
       }
       
       // try to retrieve a more informative node in semantic links
       currentNode = this.searchSemanticLinks(currentNode, this._maximumSemanticLinkSearchDistance, time, false);
       this.printDebugStatement(
-        func + "Semantic link search retrieved node with reference " + 
+        "- Semantic link search retrieved node with reference " + 
         currentNode.getReference() + "."
       );
       
       if(considerTimeAndAddRecognisedNodeToStm){
         
         this.printDebugStatement(
-          func + "Current time will now be set to the value of the cognition " +
+          "- Current time will now be set to the value of the cognition " +
           "clock, i.e. the time semantic link search completed: " + 
           this._cognitionClock + ".  Adding node " + currentNode.getReference() + 
           " to STM."
@@ -2012,16 +2022,16 @@ public class Chrest extends Observable {
       }
       
       // return retrieved node
-      this.printDebugStatement(func + "Returning node " + currentNode.getReference());
-      this.printDebugStatement(func + "RETURN");
+      this.printDebugStatement("- Returning node " + currentNode.getReference());
+      this.printDebugStatement("===== RETURN =====");
       return currentNode;
     }
     else{
       if(considerTimeAndAddRecognisedNodeToStm){
-        this.printDebugStatement(func + "Cognition resource not free, returning null");
+        this.printDebugStatement("- Cognition resource not free, returning null");
       }
 
-      this.printDebugStatement(func + "RETURN");
+      this.printDebugStatement("===== RETURN =====");
       
       return null;
     }
