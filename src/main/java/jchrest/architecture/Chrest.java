@@ -3080,13 +3080,34 @@ public class Chrest extends Observable {
    * @param time 
    */
   public void replaceStmHypothesis(Node replacement, int time){
+    this.printDebugStatement("===== Chrest.replaceStmHypothesis() =====");
+    this.printDebugStatement(
+      "- Attempting to replace the " + replacement.getModality().toString() + 
+      " hypothesis with Node " + replacement.getReference() + " at time " + time
+    );
+    
+    this.printDebugStatement("- Hypothesis can be replaced if attention is free at this time");
     if(this.isAttentionFree(time)){
+      this.printDebugStatement(
+        "  ~ Attention is free at time " + time + " so the relevant " +
+        "STM hypothesis will be replaced at " + time + " plus the time taken " +
+        "to update STM (" + this._timeToUpdateStm  + "), i.e. at time " + (time + 
+        this._timeToUpdateStm)
+      );
       time += this._timeToUpdateStm;
       Stm stmToReplaceHypothesisIn = this.getStm(replacement.getModality());
       if(stmToReplaceHypothesisIn.replaceHypothesis(replacement, time)){
         this._attentionClock = time;
       }
     }
+    else{
+      this.printDebugStatement(
+        "  ~ Attention is not free at time " + time + " so the relevant " +
+        "STM hypothesis will not be replaced"
+      );
+    }
+    
+    this.printDebugStatement("===== RETURN Chrest.replaceStmHypothesis() =====");
   }
   
   /********************************/
