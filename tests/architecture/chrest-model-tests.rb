@@ -2417,7 +2417,7 @@ process_test "construct_visual_spatial_field" do
         
         return result
       end
-    }.new(model, 10)
+    }.new(model, 10, 3)
     model.setDomain(domain)
     
     # Set fixation field of view
