@@ -726,23 +726,2269 @@ process_test "recogniseAndLearn" do
   assert_equal(expected_cognition_clock, model.getCognitionClock(), "see test 19")
 end
 
+
+################################################################################
+# Tests the "Chrest.getInitialFixation()" method.
+# 
+# Scenario Details
+# ================
+# 
+# - Scenario 1
+#   ~ Attention is not free
+#
+# - Scenario 2
+#   ~ Attention is free
+#   ~ CHREST model is performing fixations
+#
+# - Scenario 3
+#   ~ Attention is free
+#   ~ CHREST model is not performing fixations
+#   
+# Expected Outcomes
+# =================
+# 
+# - Scenario 1: no Fixation returned.
+# - Scenario 2: no Fixation returned.
+# - Scenario 3: Fixation returned.
+#
+unit_test "get_initial_fixation" do
+  
+  ###############################################################
+  ##### SET-UP ACCESS TO PRIVATE METHODS/INSTANCE VARIABLES #####
+  ###############################################################
+  
+  # The "getInitialFixation" method in a jchrest.architecture.Chrest instance is
+  # private so it needs to be made accessible.
+  method = Chrest.java_class.declared_method(:getInitialFixation, Java::int)
+  method.accessible = true
+  
+  # The following jchrest.architecture.Chrest variables need to be made 
+  # accessible so that they can be both set and checked.
+  Chrest.class_eval{
+    field_accessor :_attentionClock, :_performingFixations, :_visualStm
+  }
+  
+  # Need access to the jchrest.architecture.Perceiver associated with the 
+  # jchrest.architecture.Chrest model used in the test so that the test can 
+  # set and check the the data structure that stores Fixations attempted by the 
+  # Perceiver and the counter that stores what Fixation the Perceiver should 
+  # learn from.
+  chrest_perceiver_field = Chrest.java_class.declared_field("_perceiver")
+  chrest_perceiver_field.accessible = true
+  
+  # Need access to the time the initial fixation is decided upon since this 
+  # should be the time the attention clock is set to in scenario 3.
+  fixation_time_decided_upon_field = Fixation.java_class.declared_field("_timeDecidedUpon")
+  fixation_time_decided_upon_field.accessible = true
+  
+  # Need access to the jchrest.architecture.Perceiver _fixationToLearnFrom 
+  # variable so it can be set and checked.
+  Perceiver.class_eval{
+    field_accessor :_fixationToLearnFrom
+  }
+  
+  # Need access to the jchrest.architecture.Perceiver _fixations variable so it 
+  # can be set and checked.
+  perceiver_fixations_field = Perceiver.java_class.declared_field("_fixations");
+  perceiver_fixations_field.accessible = true
+  
+  #########################
+  ##### SCENARIO LOOP #####
+  #########################
+  
+  for scenario in 1..3
+    50.times do
+      
+      ###################################
+      ##### SET-UP Chrest AND TIMES #####
+      ###################################
+      
+      time = 0
+      
+      # Randomly choose if the CHREST model is learning object locations 
+      # relative to itself or not, this shouldn't affect anything in the test.
+      model = Chrest.new(time, [true, false].sample)
+      
+      # Set the time the function is invoked since the test requires that this 
+      # be known in order to set up variables correctly.
+      time_method_invoked = time + 50
+      
+      ########################################
+      ##### POPULATE Perceiver FIXATIONS #####
+      ########################################
+      
+      # Create new Fixations and add to a list
+      fixations = ArrayList.new()
+      4.times do
+        fixations.add(PeripheralItemFixation.new(model, 3, time))
+      end
+      
+      # Add list as value to map. Time last Fixation made should be before the
+      # function is invoked.
+      fixations_history = HistoryTreeMap.new()
+      fixations_history.put(time, fixations)
+      
+      # Set the map to be perceiver fixations
+      perceiver_fixations_field.set_value(chrest_perceiver_field.value(model), fixations_history)
+      
+      # Set the Perceiver's "_fixationToLearnFrom" instance variable since this
+      # should be reset if the initial Fixation is scheduled successfully.
+      chrest_perceiver_field.value(model)._fixationToLearnFrom = 3
+      
+      ###########################################
+      ##### SET SCENARIO-SPECIFIC VARIABLES #####
+      ###########################################
+      
+      if scenario == 1 then model._attentionClock = time_method_invoked + 100 end
+      if scenario == 2 then model._performingFixations = true end
+      
+      ###########################
+      ##### INVOKE FUNCTION #####
+      ###########################
+      
+      result = method.invoke(model, time_method_invoked.to_java(:int))
+      
+      #################
+      ##### TESTS #####
+      #################
+      
+      # Check function return value
+      assert_true(
+        (scenario == 3 ? result != nil : result == nil), 
+        "occurred when checking the result of the function in scenario " + 
+        scenario.to_s
+      )
+      
+      # Check attention clock
+      expected_attention_clock = nil
+      if scenario == 1 then expected_attention_clock = time_method_invoked + 100 end
+      if scenario == 2 then expected_attention_clock = -1 end
+      if scenario == 3 then expected_attention_clock = fixation_time_decided_upon_field.value(result) end
+      assert_equal(
+        expected_attention_clock,
+        model._attentionClock, 
+        "occurred when checking the attention clock in scenario " + scenario.to_s
+      )
+      
+      # Check if model is now performing fixations
+      expected_performing_fixations = (scenario == 1 ? false : true)
+      assert_equal(
+        expected_performing_fixations,
+        model._performingFixations,
+        "occurred when checking if the model is performing Fixations in " +
+        "scenario " + scenario.to_s
+      )
+      
+      # Check Perceiver fixations
+      perceiver_fixations = perceiver_fixations_field.value(chrest_perceiver_field.value(model)).floorEntry(time_method_invoked.to_java(:int)).getValue()
+      assert_true( 
+        (scenario == 3 ? 
+          perceiver_fixations.isEmpty() :
+          !perceiver_fixations.isEmpty()
+        ),
+        "occurred when checking the Perceiver's Fixations in scenario " + scenario.to_s
+      )
+      
+      # Check Perceiver's fixation to learn from counter
+      expected_fixation_to_learn_from = (scenario == 3 ? 0 : 3)
+      assert_equal(
+        expected_fixation_to_learn_from,
+        chrest_perceiver_field.value(model)._fixationToLearnFrom,
+        "occurred when checking the Fixation to learn from in scenario " + scenario.to_s
+      )
+    end
+  end
+end
+
+################################################################################
+# Tests the "Chrest.getNonInitialFixation()" method using various scenarios that
+# should cover all potential configurations of variables intrinsic to the 
+# method's operation.
+# 
+# Scenario Details
+# ================
+# 
+# - Scenario 1
+#   ~ Attention not free
+#   
+# - Scenario 2
+#   ~ The CHREST model is not performing fixations currently
+#   
+# - Scenario 3
+#   ~ Number fixations scheduled + number fixations attempted = max fixations
+#   
+# - Scenario 4
+#   ~ Number fixations scheduled + number fixations attempted > max fixations
+# 
+# - Scenario 5
+#   ~ Domain specifics stipulates fixations should not be added
+#
+# - Scenario 6
+#   ~ All OK.
+#
+unit_test "get_non_initial_fixation" do
+  
+  ###############################################################
+  ##### SET-UP ACCESS TO PRIVATE METHODS/INSTANCE VARIABLES #####
+  ###############################################################
+  
+  # The "getNonInitialFixation" method in a jchrest.architecture.Chrest instance 
+  # is private so it needs to be made accessible.
+  method = Chrest.java_class.declared_method(:getNonInitialFixation, Java::int, Java::int, Java::int)
+  method.accessible = true
+  
+  # Need to set what domain the CHREST model uses to enable scenario-specific
+  # behaviour and the test needs to set and check the attention clock of the
+  # CHREST model used in the test.
+  Chrest.class_eval{
+    field_accessor :_domainSpecifics, :_attentionClock, :_performingFixations
+  }
+  
+  # Need access to the time the non-initial fixation is decided upon since this 
+  # should be the time the attention clock is set to in scenario 5.
+  fixation_time_decided_upon_field = Fixation.java_class.declared_field("_timeDecidedUpon")
+  fixation_time_decided_upon_field.accessible = true
+  
+  for scenario in 1..6
+    50.times do
+      
+      ###############################
+      ##### SET-UP Chrest MODEL #####
+      ###############################
+      
+      time = 0
+      
+      # Randomly choose if the CHREST model is learning object locations 
+      # relative to itself or not, this shouldn't affect anything in the test.
+      model = Chrest.new(time, [true, false].sample)
+      
+      ####################################################
+      ##### CONSTRUCT DOMAIN AND SET TO Chrest MODEL #####
+      ####################################################
+      
+      # Set the maximum number of domain fixations to a variable since this is 
+      # needed to set the number of fixations scheduled/attempted below.
+      max_domain_fixations = 5
+      
+      # Override the GenericDomain.shouldAddNewFixation method so that it will 
+      # return whatever a new local variable called "add_new_fixation" is set 
+      # to.  This variable should be able to be set on a per-scenario basis so
+      # implement a method to do this in the overridden GenericDomain class.
+      domain = Class.new(GenericDomain) {
+        @add_new_fixation
+        
+        def setAddNewFixation(x)
+          @add_new_fixation = x
+        end
+        
+        def shouldAddNewFixation(x)
+          return @add_new_fixation
+        end
+      }.new(model, max_domain_fixations, 3)
+      
+      # Set the overridden GenericDomain class to be used by the CHREST model.
+      model._domainSpecifics = domain
+      
+      ###########################################
+      ##### SET SCENARIO-SPECIFIC VARIABLES #####
+      ###########################################
+      
+      # By default the variables should be set to enable a Fixation to be 
+      # successfully returned.
+      time_method_invoked = time + 50
+      number_fixations_scheduled = max_domain_fixations - 2
+      number_fixations_attempted = 1
+      add_new_fixation = true
+      
+      if scenario == 1 then model._attentionClock = time_method_invoked + 100 end
+      model._performingFixations = (scenario == 2 ? false : true)
+      if scenario == 3 then number_fixations_attempted = 2 end
+      if scenario == 4 then number_fixations_attempted = 3 end
+      if scenario == 5 then add_new_fixation = false end
+      
+      # Need to set whether the overridden GenericDomain class will return true
+      # or false when queried regarding if a new Fixation should be added.
+      domain.setAddNewFixation(add_new_fixation)
+      
+      ###########################
+      ##### INVOKE FUNCTION #####
+      ###########################
+      
+      result = method.invoke(model, time_method_invoked, number_fixations_scheduled, number_fixations_attempted)
+      
+      #################
+      ##### TESTS #####
+      #################
+      
+      # Check result of method
+      assert_true(
+        (scenario == 6 ? 
+          result != nil :
+          result == nil
+        ),
+        "occurred when checking the result of the method in scenario " + scenario.to_s
+      )
+      
+      # Check attention clock of CHREST model
+      expected_attention_clock = -1
+      if scenario == 1 then expected_attention_clock = time_method_invoked + 100 end
+      if scenario == 6 then expected_attention_clock = fixation_time_decided_upon_field.value(result) end
+      
+      assert_equal(
+        expected_attention_clock,
+        model._attentionClock,
+        "occurred when checking the attention clock in scenario " + scenario.to_s
+      )
+    end
+  end
+end
+
+################################################################################
+# Tests the "Chrest.perform_scheduled_fixations()" method using a number of 
+# scenarios that should cover all possible scenarios this method will encounter.
+#
+# Scenario Descriptions and Expected Outcomes
+# ===========================================
+# 
+# - Scenario 1
+#   ~ The Fixation list to be passed to the method as a parameter contains one 
+#     Fixation whose performance time is set to null.
+#   ~ Expected outcome:
+#     + No exception thrown by method since no Fixation in the input has a 
+#       performance time less than the time the method is invoked.
+#     + Empty list returned since no Fixations were attempted.
+#     + Fixations should not be learned from.
+#     + Fixation should not be added to Perceiver's attempted Fixation data
+#       structure.
+#     + The CHREST model's "_fixationsAttemptedInCurrentSet" variable should 
+#       equal 0 since there is no attempt made to perform the Fixation.
+#   
+# - Scenario 2
+#   ~ The Fixation list to be passed to the method as a parameter contains one 
+#     Fixation whose performance time is set in the future relative to the time 
+#     passed as an input parameter to the method.
+#   ~ Expected outcome:
+#     + No exception thrown by method since no Fixation in the input has a 
+#       performance time less than the time the method is invoked.
+#     + Empty list returned since no Fixations were attempted.
+#     + Fixations should not be learned from.
+#     + Fixation should not be added to Perceiver's attempted Fixation data
+#       structure.
+#     + The CHREST model's "_fixationsAttemptedInCurrentSet" variable should 
+#       equal 0 since there is no attempt made to perform the Fixation.
+#     
+# - Scenario 3
+#   ~ The Fixation list to be passed to the method as a parameter contains one 
+#     Fixation whose performance time is set in the past relative to the time 
+#     passed as an input parameter to the method.
+#   ~ Expected outcome:
+#     + An exception should be thrown by method since the Fixation in the input 
+#       has a performance time less than the time the method is invoked.
+#     + No output from the method.
+#     + Fixations should not be learned from.
+#     + Fixation should not be added to Perceiver's attempted Fixation data
+#       structure.
+#     + The CHREST model's "_fixationsAttemptedInCurrentSet" variable should 
+#       equal 0 since there is no attempt made to perform the Fixation.
+#
+# - Scenario 4
+#   ~ The Fixation list to be passed to the method as a parameter contains one 
+#     Fixation whose performance time is set to the time passed as an input 
+#     parameter to the method.  The Scene to fixate on means that the Fixation
+#     can not be performed successfully, however.
+#   ~ Expected outcome:
+#     + No exception thrown by method since no Fixation in the input has a 
+#       performance time less than the time the method is invoked.
+#     + List containing the Fixation since it was attempted.
+#     + Fixations should not be learned from.
+#     + Fixation should be added to Perceiver's attempted Fixation data
+#       structure.
+#     + The CHREST model's "_fixationsAttemptedInCurrentSet" variable should 
+#       be incremented by 1 since an attempt is made to perform the Fixation.
+#
+# - Scenario 5
+#   ~ The Fixation list to be passed to the method as a parameter contains one 
+#     Fixation whose performance time is set to the time passed as an input 
+#     parameter to the method.  The Scene to fixate on means that the Fixation
+#     can be performed successfully, however, the Fixation will fixate on a 
+#     SceneObject that has already been fixated on when it is performed.  The 
+#     domain-specifics of the CHREST model states that new Fixations should not 
+#     be learned from.
+#   ~ Expected outcome:
+#     + No exception thrown by method since no Fixation in the input has a 
+#       performance time less than the time the method is invoked.
+#     + List containing the Fixation since it was attempted.
+#     + Fixations should be learned from since a SceneObject has been fixated on
+#       more than once by two Fixations in the same set (regardless of what the 
+#       domain-specifics stipulate).
+#     + Fixation should be added to Perceiver's attempted Fixation data
+#       structure.
+#     + The CHREST model's "_fixationsAttemptedInCurrentSet" variable should 
+#       be incremented by 1 since an attempt is made to perform the Fixation.
+#
+# - Scenario 6
+#   ~ The Fixation list to be passed to the method as a parameter contains one 
+#     Fixation whose performance time is set to the time passed as an input 
+#     parameter to the method.  The Scene to fixate on means that the Fixation
+#     can be performed successfully, however, the Fixation will fixate on a 
+#     Square that has already been fixated on when it is performed.  The 
+#     domain-specifics of the CHREST model states that new Fixations should not 
+#     be learned from.
+#   ~ Expected outcome:
+#     + No exception thrown by method since no Fixation in the input has a 
+#       performance time less than the time the method is invoked.
+#     + List containing the Fixation since it was attempted.
+#     + Fixations should be learned from since a Square has been fixated on
+#       more than once by two Fixations in the same set (regardless of what the 
+#       domain-specifics stipulate).
+#     + Fixation should be added to Perceiver's attempted Fixation data
+#       structure.
+#     + The CHREST model's "_fixationsAttemptedInCurrentSet" variable should 
+#       be incremented by 1 since an attempt is made to perform the Fixation.
+#       
+# - Scenario 7 
+#   ~ The Fixation list to be passed to the method as a parameter contains one 
+#     Fixation whose performance time is set to the time passed as an input 
+#     parameter to the method.  The Scene to fixate on means that the Fixation
+#     can be performed successfully, and the Fixation will not fixate on a 
+#     SceneObject or Square that has already been fixated on.  The 
+#     domain-specifics of the CHREST model states that new Fixations should not 
+#     be learned from.
+#   ~ Expected outcome:
+#     + No exception thrown by method since no Fixation in the input has a 
+#       performance time less than the time the method is invoked.
+#     + List containing the Fixation since it was attempted.
+#     + Fixations should not learned from since the domain-specifics stipulate
+#       that Fixations should not be learned from and the SceneObject/Square 
+#       fixated on have not been fixated on by any other Fixation in this set.
+#     + Fixation should be added to Perceiver's attempted Fixation data
+#       structure.
+#     + The CHREST model's "_fixationsAttemptedInCurrentSet" variable should 
+#       be incremented by 1 since an attempt is made to perform the Fixation.
+#       
+# - Scenario 8
+#   ~ The Fixation list to be passed to the method as a parameter contains one 
+#     Fixation whose performance time is set to the time passed as an input 
+#     parameter to the method.  The Scene to fixate on means that the Fixation
+#     can be performed successfully, and the Fixation will not fixate on a 
+#     SceneObject or Square that has already been fixated on. However, the 
+#     domain-specifics of the CHREST model states that new Fixations should be 
+#     learned from.
+#   ~ Expected outcome:
+#     + No exception thrown by method since no Fixation in the input has a 
+#       performance time less than the time the method is invoked.
+#     + List containing the Fixation since its performance time is equal to
+#       the time the method is invoked.
+#     + Fixations should be learned from since the domain-specifics stipulate
+#       that Fixations should be learned from (regardless of whether the 
+#       SceneObject and Square have never been fixated on before by a Fixation
+#       performed in the current set).
+#     + Fixation should be added to Perceiver's attempted Fixation data
+#       structure.
+#     + The CHREST model's "_fixationsAttemptedInCurrentSet" variable should 
+#       be incremented by 1 since an attempt is made to perform the Fixation.
+#   
+# - Scenario 9 
+#   ~ The Fixation list to be passed to the method as a parameter contains two 
+#     Fixations whose performance time is set to the time passed as an input 
+#     parameter to the method.  The Scenes to fixate on means that both 
+#     Fixations can be performed successfully, and neither Fixation will fixate
+#     on a SceneObject or Square that has already been fixated on. However, the 
+#     domain-specifics of the CHREST model states that new Fixations should be 
+#     learned from.
+#   ~ Expected outcome:
+#     + No exception thrown by method since no Fixation in the input has a 
+#       performance time less than the time the method is invoked.
+#     + List containing both Fixations since their performance time is equal to
+#       the time the method is invoked.
+#     + Fixations should be learned from since the domain-specifics stipulate
+#       that Fixations should be learned from (regardless of whether the 
+#       SceneObject and Square have never been fixated on before by a Fixation
+#       performed in the current set).
+#     + Only the first Fixation should be added to Perceiver's attempted 
+#       Fixation data structure.  The second should be abandoned.
+#     + The CHREST model's "_fixationsAttemptedInCurrentSet" variable should 
+#       be incremented by 1 since the only Fixation whose performance is 
+#       attempted is the first Fixation.
+#
+# - Scenario 10
+#   ~ The Fixation list to be passed to the method as a parameter contains two 
+#     Fixations whose performance time is set to the time passed as an input 
+#     parameter to the method.  The Scenes to fixate on means that only the 
+#     second Fixation can be performed successfully.  If they were performed,
+#     neither Fixation would fixate on a SceneObject or Square that has already 
+#     been fixated on. However, the domain-specifics of the CHREST model states 
+#     that new Fixations should be learned from.
+#   ~ Expected outcome:
+#     + No exception thrown by method since no Fixation in the input has a 
+#       performance time less than the time the method is invoked.
+#     + List containing both Fixations since their performance time is equal to
+#       the time the method is invoked.
+#     + Fixations should be learned from since the domain-specifics stipulate
+#       that Fixations should be learned from (regardless of whether the 
+#       SceneObject and Square have never been fixated on before by a Fixation
+#       performed in the current set).
+#     + Only the first Fixation should be added to Perceiver's attempted 
+#       Fixation data structure.  The second should be abandoned.
+#     + The CHREST model's "_fixationsAttemptedInCurrentSet" variable should 
+#       be incremented by 1 since the only Fixation whose performance is 
+#       attempted is the first Fixation.
+#
+# Since the method takes into consideration previous Fixations, in most scenarios
+unit_test "perform_scheduled_fixations" do
+  
+  ###############################################################
+  ##### SET-UP ACCESS TO PRIVATE METHODS/INSTANCE VARIABLES #####
+  ###############################################################
+  
+  # The "performScheduledFixations" method in a jchrest.architecture.Chrest 
+  # instance is private so it needs to be made accessible.
+  method = Chrest.java_class.declared_method(:performScheduledFixations, List, Scene, Java::int)
+  method.accessible = true
+  
+  Chrest.class_eval{
+    field_accessor :_domainSpecifics, :_fixationsAttemptedInCurrentSet
+  }
+  
+  chrest_perceiver_field = Chrest.java_class.declared_field("_perceiver")
+  chrest_perceiver_field.accessible = true
+  
+  fixation_reference_field = Fixation.java_class.declared_field("_reference")
+  fixation_reference_field.accessible = true
+  
+  Fixation.class_eval{
+    field_accessor :_timeDecidedUpon, 
+      :_performanceTime,
+      :_performed,
+      :_scene,
+      :_colFixatedOn,
+      :_rowFixatedOn,
+      :_objectSeen
+  }
+  
+  Scene.class_eval{
+    field_accessor :_scene
+  }
+  
+  perceiver_fixations_field = Perceiver.java_class.declared_field("_fixations")
+  perceiver_fixations_field.accessible = true
+  
+  Perceiver.class_eval{
+    field_accessor :_fixationToLearnFrom
+  }
+  
+  for scenario in 1..10
+    
+    50.times do
+      
+      ##################################################
+      ##### CONSTRUCT CHREST AND METHOD PARAMETERS #####
+      ##################################################
+      
+      # Construct CHREST model.
+      time = 0
+      model_learning_object_locations_relative_to_self = [true, false].sample
+      model = Chrest.new(time, model_learning_object_locations_relative_to_self)
+      
+      # Create Fixation list to be passed to the method.
+      fixations_scheduled = ArrayList.new()
+      
+      # Construct the Scene to Fixate on
+      scene_to_fixate_on = Scene.new("scene_to_fixate_on", 3, 3, 0, 0, nil)
+      
+      # Set time method will be invoked (other test variables depend on this 
+      # being known now).
+      time_method_invoked = time + 200
+      
+      ###############################################
+      ##### CONSTRUCT FIRST FIXATION TO BE MADE #####
+      ###############################################
+      
+      time_fixation_1_decided_upon = time + 50
+      fixation_1 = CentralFixation.new(time_fixation_1_decided_upon)
+      if scenario == 1
+        fixation_1._performanceTime = nil
+      elsif scenario == 2  
+        fixation_1._performanceTime = time_method_invoked + 100  
+      elsif scenario == 3  
+        fixation_1._performanceTime = time_method_invoked - 10 
+      else
+        fixation_1._performanceTime = time_method_invoked
+      end
+      
+      # Ensure that, in all other scenarios except 4 and 10, the first Fixation
+      # will be performed successfully (in scenarios 4 and 10, the Square 
+      # fixated on will be blind since all Squares in a Scene are blind when a
+      # Scene is constructed, this will cause a CentralFixation to fail when an
+      # attempt to make it is made).
+      if ![4,10].include?(scenario)
+        scene_to_fixate_on._scene.get(1).set(1, SceneObject.new("0", "A"))
+      end
+      
+      # Add first Fixation to Fixation list to be passed to the method.
+      fixations_scheduled.add(fixation_1)
+      
+      ################################################################
+      ##### CONSTRUCT SCENE FIXATED ON BY PREVIOUS FIXATION MADE #####
+      ################################################################
+      
+      # In scenarios 6 and 10, domain coordinates will be the same as the Scene 
+      # to fixate on but different otherwise.
+      previous_fixation_scene = Scene.new(
+        "scene_previously_fixated_on", 
+        3, 
+        3, 
+        ([6,10].include?(scenario) ? 0 : 1),
+        ([6,10].include?(scenario) ? 0 : 1), 
+        nil
+      )
+      
+      previous_fixation_scene._scene.get(1).set(1, 
+        scenario == 5 ? SceneObject.new("0", "A") : #Different domain coordinates fixated on but SceneObject fixated on previously
+        scenario == 6 ? SceneObject.new(Scene::EMPTY_SQUARE_TOKEN) : #Same domain coordinates fixated on but different SceneObject fixated on previously
+        SceneObject.new("1", "A") #Different domain coordinates and SceneObject fixated on
+      ) 
+      
+      #########################################################################
+      ##### ADD CREATOR TO SCENE TO FIXATE ON AND PREVIOUS FIXATION SCENE #####
+      #########################################################################
+      
+      # If the model is learning object locations relative to itself then a
+      # Creator token should be in the Scene otherwise an exception will be 
+      # thrown by the Perceiver when fixations are learned from since, if the 
+      # model is learning object locations relative to itself, it expects a
+      # Creator token in every Scene fixated on.  Thus, an exception may be 
+      # thrown in a scenario other than 3 which is not expected in context of 
+      # this test and undesirable.
+      if model_learning_object_locations_relative_to_self
+        scene_to_fixate_on._scene.get(2).set(2, SceneObject.new(Scene::CREATOR_TOKEN))
+        previous_fixation_scene._scene.get(2).set(2, SceneObject.new(Scene::CREATOR_TOKEN))
+      end
+      
+      ############################################################
+      ##### CONSTRUCT PREVIOUS FIXATION AND ADD TO PERCEIVER #####
+      ############################################################
+      
+      # Construct previous Fixation
+      previous_fixation = CentralFixation.new(time + 10)
+      previous_fixation._performanceTime = rand((previous_fixation._timeDecidedUpon + 1)...time_fixation_1_decided_upon)
+      previous_fixation._performed = true
+      previous_fixation._scene = previous_fixation_scene
+      previous_fixation._colFixatedOn = 1
+      previous_fixation._rowFixatedOn = 1
+      previous_fixation._objectSeen = previous_fixation_scene._scene.get(previous_fixation._colFixatedOn).get(previous_fixation._rowFixatedOn)
+      
+      # Add to Perceiver
+      previous_fixations = ArrayList.new()
+      previous_fixations.add(previous_fixation)
+      fixations_attempted_history = HistoryTreeMap.new()
+      fixations_attempted_history.put(previous_fixation._performanceTime, previous_fixations)
+      perceiver_fixations_field.set_value(chrest_perceiver_field.value(model), fixations_attempted_history)
+      
+      ############################
+      ##### CONSTRUCT DOMAIN #####
+      ############################
+      
+      # Override the GenericDomain.shouldLearnFromNewFixations method so that it 
+      # will return whatever a new local variable called 
+      # "learn_from_new_fixations" is set to.  This variable should be able to 
+      # be set on a per-scenario basis so implement a method to do this in the 
+      # overridden GenericDomain class.
+      domain = Class.new(GenericDomain) {
+        @learn_from_new_fixations = false
+        
+        def setLearnFromNewFixations(x)
+          @learn_from_new_fixations = x
+        end
+        
+        def shouldLearnFromNewFixations(x)
+          return @learn_from_new_fixations
+        end
+      }.new(model, 10, 3)
+      
+      if scenario.between?(8,10) 
+        domain.setLearnFromNewFixations(true) 
+      end
+      
+      # Set the overridden GenericDomain class to be used by the CHREST model.
+      model._domainSpecifics = domain
+      
+      ###############################################
+      ##### ADD SECOND FIXATION TO BE PERFORMED #####
+      ###############################################
+      
+      time_fixation_2_decided_upon = nil
+      if scenario > 8
+        time_fixation_2_decided_upon = time_fixation_1_decided_upon + 10
+        fixation_2 = PeripheralSquareFixation.new(model, time_fixation_2_decided_upon)
+        fixation_2._performanceTime = time_method_invoked
+        fixations_scheduled.add(fixation_2)
+        
+        # Second fixation needs to be able to succeed in scenario 10 (it'll never
+        # actually be performed but do this for realism) so add an empty square
+        # on the "periphery" of the previous fixation's fixation point.  When 
+        # the PeripheralSquareFixation is made, it should ignore the Creator in
+        # the Scene (if present), ignore the Square previously fixated on and
+        # fixate on (0, 0) since all other Squares are blind.
+        if scenario == 10 then scene_to_fixate_on._scene.get(0).set(0, SceneObject.new(Scene::EMPTY_SQUARE_TOKEN)) end
+      end
+      
+      #########################
+      ##### INVOKE METHOD #####
+      #########################
+      
+      method_return_value = nil
+      exception_thrown = false
+      begin
+        method_return_value = method.invoke(model, fixations_scheduled, scene_to_fixate_on, time_method_invoked)
+      rescue
+        exception_thrown = true
+      end
+      
+      # For some reason, the method's result value needs to be cast to the 
+      # correct type.  Possibly because there's some "under-the-hood" work by
+      # method.invoke() that wraps the return value.  Since a generic type is 
+      # returned too it appears that JRuby can't handle this appropriately 
+      # (despite "puts method_return_value.java_class" returning 
+      # "java.util.ArrayList" when method_return_value is non-null).  So, if the 
+      # cast isn't performed, JRuby complains that the "size" method that's 
+      # invoked on the non-null method_return_value isn't a valid method for the 
+      # object.
+      if method_return_value != nil then method_return_value = method_return_value.to_java(ArrayList) end
+      
+      #################
+      ##### TESTS #####
+      #################
+      
+      ###### Check if exception thrown
+      expected_exception_thrown = (scenario == 3 ? true : false)
+      assert_equal(
+        expected_exception_thrown, 
+        exception_thrown, 
+        "occurred when checking if an exception is thrown by the method in " +
+        "scenario " + scenario.to_s
+      )
+      
+      ##### Check method return value if exception is not thrown
+      if !exception_thrown
+        
+        # Check return value size
+        expected_method_return_value_size = 1
+        if [1,2].include?(scenario) then expected_method_return_value_size = 0 end
+        if [9,10].include?(scenario) then expected_method_return_value_size = 2 end
+        
+        assert_equal(
+          expected_method_return_value_size,
+          method_return_value.size,
+          "occurred when checking the size of the value returned by the method in scenario " + scenario.to_s
+        )
+      
+        # Check return value contents
+        expected_method_return_value_contents = ArrayList.new()
+        if [4..8].include?(scenario) 
+          expected_method_return_value_contents.add(fixation_1)
+        elsif [9,10].include?(scenario)
+          expected_method_return_value_contents.add(fixation_1)
+          expected_method_return_value_contents.add(fixation_2)
+        end
+        for i in 0...expected_method_return_value_contents.size()
+          assert_equal(
+            expected_method_return_value_contents.get(i).toString(),
+            method_return_value.get(i).toString(),
+            "occurred when checking Fixation " + i.to_s + " in scenario " + scenario.to_s
+          )
+        end
+      end
+      
+      ##### Check if Fixations learned from
+      expected_fixation_to_learn_from_counter = 0
+      if [5,6,8,9].include?(scenario) then expected_fixation_to_learn_from_counter = 1 end
+        
+      assert_equal(
+        expected_fixation_to_learn_from_counter,
+        chrest_perceiver_field.value(model)._fixationToLearnFrom,
+        "occurred when checking the Perceiver's _fixationToLearnFrom variable in scenario " + scenario.to_s
+      )
+        
+      ##### Check Perceiver's fixations
+      expected_perceiver_fixations = ArrayList.new()
+        
+      # The previous_fixation is always added, regardless of the scenario so
+      # this should always be expected.
+      expected_perceiver_fixations.add(previous_fixation)
+        
+      # Except in scenarios 1-3, fixation_1 is expected to exist in the
+      # Perceiver's attempted Fixations data structure at the time the 
+      # method is invoked.
+      if scenario > 3
+        expected_fixation = CentralFixation.new(0)
+        fixation_reference_field.set_value(expected_fixation, fixation_reference_field.value(fixation_1))
+        expected_fixation._timeDecidedUpon = time_fixation_1_decided_upon
+        expected_fixation._performanceTime = time_method_invoked
+        expected_fixation._scene = scene_to_fixate_on
+
+        if ![4,10].include?(scenario)
+          expected_fixation._performed = true
+          expected_fixation._colFixatedOn = 1
+          expected_fixation._rowFixatedOn = 1
+          expected_fixation._objectSeen = scene_to_fixate_on._scene.get(expected_fixation._colFixatedOn).get(expected_fixation._rowFixatedOn)
+        end
+
+        expected_perceiver_fixations.add(expected_fixation)
+      end
+        
+      perceiver_fixations = perceiver_fixations_field.value(chrest_perceiver_field.value(model)).floorEntry(time_method_invoked.to_java(:int)).getValue()
+
+      assert_equal(
+        expected_perceiver_fixations.size(),
+        perceiver_fixations.size(),
+        "occurred when checking the size of the Perceiver's attempted Fixations data structure in scenario " + scenario.to_s
+      )
+
+      for i in 0...expected_perceiver_fixations.size()
+        assert_equal(
+          expected_perceiver_fixations.get(i).toString,
+          perceiver_fixations.get(i).toString,
+          "occurred when checking if Fixation " + i.to_s + " in the " +
+          "Perceiver's attempted Fixations data structure is as expected in " +
+          "scenario " + scenario.to_s
+        )
+      end
+      
+      # Check Chrest._fixationsAttemptedInCurrentSet 
+      expected_fixations_attempted_in_current_set = (
+        scenario.between?(1,3) ? 0 :
+        1
+      )
+      assert_equal(
+        expected_fixations_attempted_in_current_set,
+        model._fixationsAttemptedInCurrentSet,
+        "occurred when checking the _fixationsAttemptedInCurrentSet model " +
+        "parameter in scenario " + scenario.to_s
+      )
+    end
+  end
+end
+
+################################################################################
+# Tests the "Chrest.tagVisualSpatialFieldObjectsFixatedOnAsRecognised()" method
+# using various scenarios that should simulate every possible scenario this 
+# method will have to handle.  
+# 
+# Every set of Scenarios is repeated twice:
+# 
+# - Repeat 1: CHREST model is not learning object locations relative to self 
+# - Repeat 2: CHREST model is learning object locations relative to self
+# 
+# The VisualSpatialField used in these tests is as follows 
+# (VisualSpatialFieldObjects are denoted by their identifier followed by their 
+# type in parenthesis):
+#
+# Visual-Spatial Field Used
+# =========================
+# 
+# NOTE: VisualSpatialFieldObject with identifier "0" is the creator.  This will
+#       not be present in repeat 1.
+#  
+#       |--------|--------|--------|--------|--------|
+# 4   6 |        |        |  6(F)  |        |        |
+#       |--------|--------|--------|--------|--------|
+# 3   5 |        |  4(D)  |        |  2(B)  |        |
+#       |--------|--------|--------|--------|--------|
+# 2   4 |  5(E)  |        | 0(CRT) |        |  7(G)  |
+#       |--------|--------|--------|--------|--------|
+# 1   3 |        |  1(A)  |        |  3(C)  |        |
+#       |--------|--------|--------|--------|--------|
+# 0   2 |        |        |  8(H)  |        |        |
+#       |--------|--------|--------|--------|--------|
+#           2        3        4        5        6     DOMAIN-COORDINATES
+#           0        1        2        3        4     VISUAL-SPATIAL FIELD COORDINATES
+# 
+# Scenario Details
+# ================
+# 
+# - Scenario 1
+#   ~ Input Fixation has not been performed.
+#
+# - Scenario 2
+#   ~ Input Fixation has been performed.
+#   ~ Scene fixated on by input Fixation does not represent a visual-spatial 
+#     field.
+#
+# - Scenario 3
+#   ~ Input Fixation has been performed.
+#   ~ Scene fixated on by input Fixation does represents a visual-spatial field.
+#   ~ No recognition occurs.
+#
+# - Scenario 4
+#   ~ Input Fixation has been performed.
+#   ~ Scene fixated on by input Fixation does not represent a visual-spatial 
+#     field.
+#   ~ Recognition occurs and Visual STM is empty before "recognition".
+#
+# - Scenario 5
+#   ~ Fixation has been performed
+#   ~ Scene fixated on by Fixation does not represent a visual-spatial field
+#   ~ Visual STM not empty and recognition does not occur.
+#
+# - Scenario 6
+#   ~ Fixation has been performed
+#   ~ Scene fixated on by Fixation does not represent a visual-spatial field
+#   ~ Recognition occurs, before this, Visual STM is not empty after recognition
+#     its contents differ.
+#     
+# "Recognition" is simulated by populating Visual STM manually after the 
+# Fixation has been performed.  To do this, the attention clock of the CHREST 
+# model is set to a certain value and the item history of the Visual STM
+# associated with the CHREST model has an entry added to it at the time the 
+# CHREST model's attention clock has been set to.  If recognition occurs:  
+#
+# - The Visual LTM root Node will be added to check that the method handles them
+#   gracefully.
+# - Every other Node added will have a non-empty content/image and its item and
+#   position slots will be filled.  This allows the test to check that all of 
+#   these sources of information are used to determine what 
+#   VisualSpatialFieldObjects are recognised.
+# - Up to three Nodes may be added these are:
+#   ~ Visual LTM root Node
+#   ~ node_1
+#   ~ node_2 (only in scenario 6)
+# - node_1 and node_2's contents, image, filled item slot and filled position 
+#   slot contain the location for 1 VisualSpatialFieldObject on the 
+#   VisualSpatialField:
+#   ~ node_1
+#     + Contents
+#       > Denotes VisualSpatialFieldObject with identifier "1" and type "A".
+#     + Image
+#       > Denotes VisualSpatialFieldObject with identifier "2" and type "B".
+#     + Filled item slot
+#       > Denotes VisualSpatialFieldObject with identifier "3" and type "C".
+#     + Filled position slot
+#       > Denotes VisualSpatialFieldObject with identifier "4" and type "D".
+#   ~ node_2
+#     + Contents
+#       > Denotes VisualSpatialFieldObject with identifier "5" and type "E".
+#     + Image
+#       > Denotes VisualSpatialFieldObject with identifier "6" and type "F".
+#     + Filled item slot
+#       > Denotes VisualSpatialFieldObject with identifier "7" and type "G".
+#     + Filled position slot
+#       > Denotes VisualSpatialFieldObject with identifier "8" and type "H".
+#       
+# In Scenarios 4-6, Visual STM will be populated in the following way:
+# 
+# - Scenario 4
+#   ~ At Fixation performance time: empty
+#   ~ At time attention clock is set: Visual LTM root Node, node_1
+# 
+# - Scenario 5
+#   ~ At Fixation performance time: Visual LTM root Node, node_1
+#   ~ At time attention clock is set: Visual LTM root Node, node_1
+#   
+# - Scenario 6
+#   ~ At Fixation performance time: Visual LTM root Node, node_2
+#   ~ At Fixation performance time: Visual LTM root Node, node_2, node_1
+#   
+# Before discussing expected outcomes, the status of VisualSpatialFieldObjects
+# should be noted:
+# 
+# - 1(A) is not recognised but will not be "alive" at the time the CHREST 
+#   model's attention clock is set to.
+#   
+# - 2(B) is not recognised and will be "alive" at the time the CHREST model's 
+#   attention clock is set to.
+#   
+# - 3(C) is recognised and will be "alive" at the time the CHREST model's 
+#   attention clock is set to.
+#   
+# - 4(D) is recognised and will be "alive" at the time the CHREST model's 
+#   attention clock is set to.
+#   
+# - 5(E), 6(F), 7(G) and 8(H) are not recognised and will be "alive" at the time 
+#   the CHREST model's attention clock is set to.
+#   
+# Note also that the terminus of all VisualSpatialFieldObjects except 1(A) will
+# not be set, the reasoning for this will be explained below.
+#
+# Expected Output
+# ===============
+# 
+# Recognition should only occur in scenarios 4 and 6 and 
+# VisualSpatialFieldObjects denoted in the contents, image and filled 
+# item/position slots of Nodes that have been added to Visual STM after the 
+# Fixation has been performed, i.e. at the time the CHREST model's attention 
+# clock is set to, should have their "recognised" status set at the time the 
+# CHREST model's attention clock is set to and their terminus should be updated
+# automatically (if the VisualSpatialFieldObject is alive).  Thus, by ensuring 
+# that 1(A) is not alive at the time recognition occurs, the test can check to
+# see if it is ignored appropriately.  Furthermore, since none of the other
+# VisualSpatialFieldObject's termini are set when created or afterwards, the 
+# test can also verify that this variable is set correctly for recognised 
+# VisualSpatialFieldObjects.  Finally, since node_1 is the only Node that will
+# be considered as being "recognised", VisualSpatialFieldObjects referenced in
+# node_2 should not be altered in any way (this is why they are unrecognised 
+# when created and their termini are set to null).
+# 
+# So, in Scenarios 4 and 6, the recognised status and termini of 
+# VisualSpatialFieldObjects 2(B), 3(C) and 4(D) should be updated *only*.
+#
+unit_test "tag_visual_spatial_field_objects_fixated_on_as_recognised" do
+  
+  #######################################################
+  ##### SET-UP ACCESS TO PRIVATE INSTANCE VARIABLES #####
+  #######################################################
+  
+  # The "tagVisualSpatialFieldObjectsFixatedOnAsRecognised" method in a 
+  # jchrest.architecture.Chrest instance is private so it needs to be made 
+  # accessible.
+  method = Chrest.java_class.declared_method(:tagVisualSpatialFieldObjectsFixatedOnAsRecognised, Fixation)
+  method.accessible = true
+  
+  # Need access to visual LTM root Node so it can be placed in visual STM.  Also
+  # need access to the attention clock so that visual STM can be set according
+  # to the scenario requirements.  Finally, need access to the lifespan defined
+  # for recognised VisualSpatialFieldObjects so the status of recognised 
+  # VisualSpatialFieldObjects can be set for checking.
+  Chrest.class_eval{
+    field_accessor :_visualLtm, :_visualStm, :_attentionClock, :_recognisedVisualSpatialFieldObjectLifespan
+  }
+  
+  # Need to be able to access the visual-spatial field's actual field to 
+  # populate it.
+  vsf_field = VisualSpatialField.java_class.declared_field("_visualSpatialField")
+  vsf_field.accessible = true
+  
+  # Needed to be able to precisely stipulate if VisualSpatialFieldObjects are 
+  # alive.
+  VisualSpatialFieldObject.class_eval{
+    field_accessor :_terminus
+  }
+  
+  # Needed to set and check recognised status of VisualSpatialFieldObjects
+  vsfo_recognised_field = VisualSpatialFieldObject.java_class.declared_field("_recognisedHistory")
+  vsfo_recognised_field.accessible = true
+  
+  # Needed to that Node contents/image can be constructed precisely.
+  ListPattern.class_eval{
+    field_accessor :_list
+  }
+  
+  # Need to be able to fill a Node's item and position slots
+  Node.class_eval{
+    field_accessor :_filledItemSlotsHistory, :_filledPositionSlotsHistory
+  }
+  
+  # Need to be able to set various Fixation variables depending on the scenario.
+  Fixation.class_eval {
+    field_accessor :_performed, :_performanceTime, :_scene
+  }
+  
+  # Need to be able to set the item history for visual STM.
+  stm_item_history_field = Stm.java_class.declared_field("_itemHistory")
+  stm_item_history_field.accessible = true
+  
+  #####################
+  ##### MAIN LOOP #####
+  #####################
+  
+  for repeat in 1..2
+    for scenario in 1..6
+      100.times do
+        
+        ##################################
+        ##### CONSTRUCT CHREST MODEL #####
+        ##################################
+        
+        time_model_created = 0
+        model_learning_object_locations_relative_to_self = (repeat == 1 ? false : true)
+        model = Chrest.new(time_model_created, model_learning_object_locations_relative_to_self)
+        
+        ###########################
+        ##### CONSTRUCT NODES #####
+        ###########################
+        
+        # Get Visual Modality root Node
+        visual_ltm_root_node = model._visualLtm
+        
+        ##### Construct node_1
+        
+        # Construct node_1 contents
+        node_1_contents = ListPattern.new(Modality::VISUAL)
+        node_1_contents._list.add(
+          (model_learning_object_locations_relative_to_self ?
+            ItemSquarePattern.new("A", -1, -1) :
+            ItemSquarePattern.new("A", 3, 3)
+          )
+        )
+        
+        # Construct node_1 image
+        node_1_image = ListPattern.new(Modality::VISUAL)
+        node_1_image._list.add(
+          (model_learning_object_locations_relative_to_self ?
+            ItemSquarePattern.new("A", -1, -1) :
+            ItemSquarePattern.new("A", 3, 3)
+          )
+        )
+        node_1_image._list.add(
+          (model_learning_object_locations_relative_to_self ?
+            ItemSquarePattern.new("B", 1, 1) :
+            ItemSquarePattern.new("B", 5, 5)
+          )
+        )
+        
+        # Construct node_1 filled item slots
+        node_1_filled_item_slots = ArrayList.new()
+        node_1_filled_item_slots.add(
+          (model_learning_object_locations_relative_to_self ?
+            ItemSquarePattern.new("C", 1, -1) :
+            ItemSquarePattern.new("C", 5, 3)
+          )
+        )
+      
+        # Construct node_1 filled position slots
+        node_1_filled_position_slots = ArrayList.new()
+        node_1_filled_position_slots.add(
+          (model_learning_object_locations_relative_to_self ?
+            ItemSquarePattern.new("D", -1, 1) :
+            ItemSquarePattern.new("D", 3, 5)
+          )
+        )
+        
+        # Construct node_1 so that its contents, image and item/position slots 
+        # can be instantiated.
+        time_node_1_created = time_model_created + 5
+        node_1 = Node.new(model, node_1_contents, node_1_image, time_node_1_created)
+        
+        # Fill node_1's item and position slots (doesn't have to actually be a
+        # template to do this since the test has access to the relevant private
+        # Node instance variables).
+        node_1_filled_item_slots_history = HistoryTreeMap.new()
+        node_1_filled_item_slots_history.put(time_node_1_created, node_1_filled_item_slots)
+        node_1._filledItemSlotsHistory = node_1_filled_item_slots_history
+        
+        node_1_filled_position_slots_history = HistoryTreeMap.new()
+        node_1_filled_position_slots_history.put(time_node_1_created, node_1_filled_position_slots)
+        node_1._filledPositionSlotsHistory = node_1_filled_position_slots_history
+        
+        ##### Construct node_2
+           
+        # Construct node_2 contents
+        node_2_contents = ListPattern.new(Modality::VISUAL)
+        node_2_contents._list.add(
+          (model_learning_object_locations_relative_to_self ?
+            ItemSquarePattern.new("E", -2, 0) :
+            ItemSquarePattern.new("E", 2, 4)
+          )
+        )
+        
+        # Construct node_2 image
+        node_2_image = ListPattern.new(Modality::VISUAL)
+        node_2_image._list.add(
+          (model_learning_object_locations_relative_to_self ?
+            ItemSquarePattern.new("E", -2, 0) :
+            ItemSquarePattern.new("E", 2, 4)
+          )
+        )
+        node_2_image._list.add(
+          (model_learning_object_locations_relative_to_self ?
+            ItemSquarePattern.new("F", 0, 2) :
+            ItemSquarePattern.new("F", 4, 6)
+          )
+        )
+        
+        # Construct node_2 filled item slots
+        node_2_filled_item_slots = ArrayList.new()
+        node_2_filled_item_slots.add(
+          (model_learning_object_locations_relative_to_self ?
+            ItemSquarePattern.new("G", 2, 0) :
+            ItemSquarePattern.new("G", 6, 4)
+          )
+        )
+      
+        # Construct node_2 filled position slots
+        node_2_filled_position_slots = ArrayList.new()
+        node_2_filled_position_slots.add(
+          (model_learning_object_locations_relative_to_self ?
+            ItemSquarePattern.new("H", 0, -2) :
+            ItemSquarePattern.new("H", 4, 2)
+          )
+        )
+        
+        # Construct node_2 so that its contents, image and item/position slots 
+        # can be instantiated.
+        time_node_2_created = time_node_1_created
+        node_2 = Node.new(model, node_2_contents, node_2_image, time_node_2_created)
+        
+        # Fill node_2's item and position slots (doesn't have to actually be a
+        # template to do this since the test has access to the relevant private
+        # Node instance variables).
+        node_2_filled_item_slots_history = HistoryTreeMap.new()
+        node_2_filled_item_slots_history.put(time_node_2_created, node_2_filled_item_slots)
+        node_2._filledItemSlotsHistory = node_2_filled_item_slots_history
+        
+        node_2_filled_position_slots_history = HistoryTreeMap.new()
+        node_2_filled_position_slots_history.put(time_node_2_created, node_2_filled_position_slots)
+        node_2._filledPositionSlotsHistory = node_2_filled_position_slots_history
+        
+        ##############################################
+        ##### CONSTRUCT THE VISUAL-SPATIAL FIELD #####
+        ##############################################
+        
+        # Set visual-spatial field dimension parameters
+        vsf_width = 5
+        vsf_height = 5
+        vsf_min_col = 2
+        vsf_min_row = 2
+        
+        # Set creator details
+        creator_details = nil
+        if model_learning_object_locations_relative_to_self
+          creator_details = ArrayList.new()
+          creator_details.add("0")
+          creator_details.add(Square.new(2, 2))
+        end
+        
+        # Set the time the visual-spatial field is created
+        vsf_creation_time = time_node_2_created + 5
+        
+        # Construct visual-spatial field
+        visual_spatial_field = VisualSpatialField.new(
+          "", 
+          vsf_width, 
+          vsf_height, 
+          vsf_min_col, 
+          vsf_min_row, 
+          model, 
+          creator_details, 
+          vsf_creation_time
+        )
+        
+        # Create an array containing the VisualSpatialField col/row where each
+        # VisualSpatialFieldObject is located along with the 
+        # VisualSpatialFieldObjects identifier and type.  This will make placing
+        # the VisualSpatialFieldObjects much easier
+        visual_spatial_field_objects = [
+          [[1,1],"1","A"], 
+          [[3,3],"2","B"],
+          [[3,1],"3","C"],
+          [[1,3],"4","D"],
+          [[0,2],"5","E"],
+          [[2,4],"6","F"],
+          [[4,2],"7","G"],
+          [[2,0],"8","H"]
+        ]
+        
+        vsfo_creation_time = vsf_creation_time + 5
+        
+        # Place VisualSpatialFieldObjects
+        for visual_spatial_field_object in visual_spatial_field_objects
+          col = visual_spatial_field_object[0][0]
+          row = visual_spatial_field_object[0][1]
+          identifier = visual_spatial_field_object[1]
+          type = visual_spatial_field_object[2]
+          
+          vsfo = VisualSpatialFieldObject.new(
+            identifier,
+            type,
+            model,
+            visual_spatial_field, 
+            vsfo_creation_time,
+            (["C","D"].include?(type) ? true : false), # Only VisualSpatialFieldObjects "C" and "D" should be recognised
+            false # Don't bother setting the terminus, yet.
+          )
+          
+          # Add the VisualSpatialFieldObject to the coordinates
+          vsf_field.value(visual_spatial_field).get(col).get(row).add(vsfo)
+        end
+        
+        ##############################
+        ##### CONSTRUCT FIXATION #####
+        ##############################
+        
+        time_fixation_decided_upon = time_node_2_created + 5
+        fixation = CentralFixation.new(time_fixation_decided_upon)
+        fixation._performed = (scenario == 1 ? false : true) 
+        fixation._performanceTime = time_fixation_decided_upon + 20
+        fixation._scene = Scene.new(
+          "", 
+          vsf_width, 
+          vsf_height, 
+          vsf_min_col, 
+          vsf_min_row, 
+          (scenario == 2 ? nil : visual_spatial_field)
+        )
+        
+        ########################################################
+        ##### SET TERMINUS OF VISUAL-SPATIAL FIELD OBJECTS #####
+        ########################################################
+        
+        # Now that the Fixation's performance time has been set, the terminus 
+        # for VisualSpatialFieldObjects that shouldn't be alive when recognition
+        # occurs can be set.  Only VisualSpatialFieldObject with identifier "1"
+        # should not be alive.
+        vsf_field.value(visual_spatial_field).get(1).get(1).get(0)._terminus = fixation._performanceTime - 1 
+        
+        ###############################
+        ##### SET ATTENTION CLOCK #####
+        ###############################
+        
+        # This will mimic the time taken to recognise information in the 
+        # Fixation and update visual STM.  In scenarios 1-3 recognition will not
+        # occur but, just go with it.
+        model._attentionClock = fixation._performanceTime + 100
+        
+        ###############################
+        ##### POPULATE VISUAL STM #####
+        ###############################
+
+        if scenario == 4
+          visual_stm_nodes = ArrayList.new()
+          visual_stm_nodes.add(visual_ltm_root_node)
+          visual_stm_nodes.add(node_1)
+          
+          # Add visual STM entry after Fixation performed, i.e. at time 
+          # attention clock is set to.  At the time the Fixation is performed,
+          # visual STM will be empty.
+          stm_item_history_field.value(model._visualStm).put(model._attentionClock, visual_stm_nodes) 
+          
+        elsif scenario == 5
+          visual_stm_nodes = ArrayList.new()
+          visual_stm_nodes.add(visual_ltm_root_node)
+          visual_stm_nodes.add(node_1)
+          
+          # Add visual STM entry at time Fixation is performed.  At the time of
+          # the attention clock, visual STM won't have changed.
+          stm_item_history_field.value(model._visualStm).put(fixation._performanceTime, visual_stm_nodes) 
+          
+        elsif scenario == 6
+          visual_stm_nodes = ArrayList.new()
+          visual_stm_nodes.add(visual_ltm_root_node)
+          visual_stm_nodes.add(node_2)
+          
+          # Add visual STM entry at time Fixation is performed
+          stm_item_history_field.value(model._visualStm).put(fixation._performanceTime, visual_stm_nodes) 
+          
+          visual_stm_nodes = ArrayList.new()
+          visual_stm_nodes.add(visual_ltm_root_node)
+          visual_stm_nodes.add(node_2)
+          visual_stm_nodes.add(node_1)
+          
+          # Add visual STM entry after Fixation performed, i.e. at time 
+          # attention clock is set to
+          stm_item_history_field.value(model._visualStm).put(model._attentionClock, visual_stm_nodes)
+        end
+        
+        #########################
+        ##### INVOKE METHOD #####
+        #########################
+        
+        method.invoke(model, fixation)
+        
+        #################
+        ##### TESTS #####
+        #################
+        
+        ##### Check each VisualSpatialFieldObject's status
+        expected_visual_spatial_field_data =
+        Array.new(vsf_width){
+          Array.new(vsf_height) {
+            Array.new
+          }  
+        }
+
+        # Set default values
+        expected_visual_spatial_field_data[1][1].push(["1", "A", false, vsfo_creation_time, (fixation._performanceTime - 1)])
+        expected_visual_spatial_field_data[3][3].push(["2", "B", false, vsfo_creation_time, nil])
+        expected_visual_spatial_field_data[3][1].push(["3", "C", true, vsfo_creation_time, nil])
+        expected_visual_spatial_field_data[1][3].push(["4", "D", true, vsfo_creation_time, nil])
+        expected_visual_spatial_field_data[0][2].push(["5", "E", false, vsfo_creation_time, nil])
+        expected_visual_spatial_field_data[2][4].push(["6", "F", false, vsfo_creation_time, nil])
+        expected_visual_spatial_field_data[4][2].push(["7", "G", false, vsfo_creation_time, nil])
+        expected_visual_spatial_field_data[2][0].push(["8", "H", false, vsfo_creation_time, nil])
+        
+        if model_learning_object_locations_relative_to_self
+          expected_visual_spatial_field_data[2][2].push(["0", Scene::CREATOR_TOKEN, false, vsf_creation_time, nil])
+        end
+        
+        # Update values (if scenario should)
+        if [4,6].include?(scenario)
+          expected_visual_spatial_field_data[3][3][0][2] = true
+          expected_visual_spatial_field_data[3][3][0][4] = model._attentionClock + model._recognisedVisualSpatialFieldObjectLifespan
+          
+          expected_visual_spatial_field_data[3][1][0][2] = true
+          expected_visual_spatial_field_data[3][1][0][4] = model._attentionClock + model._recognisedVisualSpatialFieldObjectLifespan
+          
+          expected_visual_spatial_field_data[1][3][0][2] = true
+          expected_visual_spatial_field_data[1][3][0][4] = model._attentionClock + model._recognisedVisualSpatialFieldObjectLifespan
+        end
+        
+        # Check VisualSpatialFieldObject status
+        check_visual_spatial_field_against_expected(
+          visual_spatial_field, 
+          expected_visual_spatial_field_data, 
+          model._attentionClock, 
+          "in scenario " + scenario.to_s + " when the model is " + 
+          (repeat == 1 ? "not" : "") + " learning object locations relative to " +
+          "itself"
+        )
+        
+        ##### Check for correct key entry in each VisualSpatialFieldObject's 
+        ##### recognised history
+        
+        # In all scenarios except 4 and 6, this array should contain the 
+        # locations for all VisualSpatialFieldObjects.  If this is scenario 4 or 
+        # 6 and the VisualSpatialFieldObject has an identifier of 2, 3 or 4, 
+        # these VisualSpatialFieldObject's recognised status should include the 
+        # time node_1 is added to visual STM, i.e. the time the attention clock
+        # is set to, as a key (should have been tagged as recognised) and so 
+        # shouldn't be present in the array being constructed.
+        vsfo_locations_that_shouldnt_be_updated = visual_spatial_field_objects.map {
+          | object | 
+          ([4,6].include?(scenario) && ["2","3","4"].include?(object[1]) ? 
+            nil : 
+            object[0]
+          )
+        }
+
+        # If this is scenario 4 or 6and this is a VisualSpatialFieldObject with
+        # an identifier of 2, 3 or 4, this VisualSpatialFieldObject's recognised 
+        # status should include the time node_1 is added to visual STM, i.e. the 
+        # time the attention clock is set to, as a key (should have been tagged 
+        # as recognised) and so should be present in the array being constructed.
+        vsfo_locations_that_should_be_updated = visual_spatial_field_objects.map {
+          | object |
+          ([4,6].include?(scenario) && ["2","3","4"].include?(object[1]) ? 
+            object[0] : 
+            nil
+          )
+        }
+
+        for location in vsfo_locations_that_shouldnt_be_updated
+          if location != nil
+            col = location[0]
+            row = location[1]
+            vsfo = vsf_field.value(visual_spatial_field).get(col).get(row).get(0)
+            vsfo_recognised_history = vsfo_recognised_field.value(vsfo)
+
+            assert_false(
+              vsfo_recognised_history.containsKey(model._attentionClock.to_java(:int)),
+              "occurred when checking if the recognised history for the " +
+              "following VisualSpatialFieldObject does not contain a key for " +
+              "the time recognition occurs when the model is " + (repeat == 1 ? 
+              "not" : "") + " learning object locations relative to itself " +
+              "in scenario " + scenario.to_s + "\n" + vsfo.toString()
+            )
+          end
+        end
+
+        for location in vsfo_locations_that_should_be_updated
+          if location != nil
+            col = location[0]
+            row = location[1]
+            vsfo = vsf_field.value(visual_spatial_field).get(col).get(row).get(0)
+            vsfo_recognised_history = vsfo_recognised_field.value(vsfo)
+
+            assert_true(
+              vsfo_recognised_history.containsKey(model._attentionClock.to_java(:int)),
+             "occurred when checking if the recognised history for the " +
+              "following VisualSpatialFieldObject does contain a key for " +
+              "the time recognition occurs when the model is " + (repeat == 1 ? 
+              "not" : "") + " learning object locations relative to itself " +
+              "in scenario " + scenario.to_s + "\n" + vsfo.toString()
+            )
+          end
+        end
+        
+      end
+    end
+  end
+end
+
+################################################################################
+# Tests the "Chrest.tagVisualSpatialFieldObjectsFixatedOnAsRecognised()" method
+# using various scenarios that should simulate every possible scenario this 
+# method will have to handle.
+# 
+# The VisualSpatialField used in these tests is as follows 
+# (VisualSpatialFieldObjects are denoted by their identifier followed by their 
+# type in parenthesis):
+#
+# Visual-Spatial Field Used
+# =========================
+# 
+# NOTE: VisualSpatialFieldObject with identifier "0" is the creator.  This will
+#       not be present if the model is not learning object locations relative to
+#       itself.
+#  
+#       |--------|--------|--------|
+# 2   4 |  4(D)  |        |  2(B)  |
+#       |--------|--------|--------|
+# 1   3 |        | 0(CRT) |        |
+#       |--------|--------|--------|
+# 0   2 |  1(A)  |        |  3(C)  |
+#       |--------|--------|--------|
+#           2        3        4      DOMAIN-COORDINATES
+#           0        1        2      VISUAL-SPATIAL FIELD COORDINATES
+# 
+# Scenario Details
+# ================
+# 
+# - Scenario 1
+#   ~ CHREST model has not completed its current Fixation set.
+#
+# - Scenario 2
+#  ~ CHREST model has completed its current Fixation set.
+#  ~ The Fixation input to the method fixated on a Scene that does not represent
+#    a VisualSpatialField.
+#
+# - Scenario 3
+#   ~ CHREST model has completed its current Fixation set.
+#   ~ The Fixation input to the method fixated on a Scene that does represent a
+#     VisualSpatialField.
+#   ~ The latest time after considering the input Fixation's performance time 
+#     and the CHREST model's attention clock is the input Fixation performance 
+#     time, i.e. the input Fixation was not performed.
+#   ~ No VisualSpatialFieldObjects have been recognised in the Fixation set.
+#
+# - Scenario 4
+#   ~ CHREST model has completed its current Fixation set.
+#   ~ The Fixation input to the method fixated on a Scene that does represent a
+#     VisualSpatialField.
+#   ~ The latest time after considering the input Fixation's performance time 
+#     and the CHREST model's attention clock is the input Fixation performance 
+#     time, i.e. the input Fixation was not performed.
+#   ~ All VisualSpatialFieldObjects have been recognised in the Fixation set.
+#
+# - Scenario 5
+#   ~ CHREST model has completed its current Fixation set.
+#   ~ The Fixation input to the method fixated on a Scene that does represent a
+#     VisualSpatialField.
+#   ~ The latest time after considering the input Fixation's performance time 
+#     and the CHREST model's attention clock is the attention clock, i.e. the
+#     input Fixation was performed.
+#   ~ No VisualSpatialFieldObjects have been recognised in the Fixation set.
+#
+# - Scenario 6
+#   ~ CHREST model has completed its current Fixation set.
+#   ~ The latest time after considering the input Fixation's performance time 
+#     and the CHREST model's attention clock is the attention clock, i.e. the
+#     input Fixation was performed.
+#   ~ Latest time after considering input Fixation performance time and 
+#     attention clock is the attention clock
+#    All VisualSpatialFieldObjects have been recognised in the Fixation set.
+#
+# Its important to note the properties that VisualSpatialFieldObjects have in
+# order to understand the expected outcomes:
+# 
+# Visual-Spatial Field Object Details
+# ===================================
+# 
+# At the latest time after considering the input Fixation's performance time and 
+# the CHREST model's attention clock, the following properties are set as 
+# indicated for each VisualSpatialFieldObject:
+# 
+# - VisualSpatialFieldObject 1(A) 
+#   ~ Alive: false
+#   ~ Recognised: false
+#   
+# - 2(B) 
+#   ~ Alive: false
+#   ~ Recognised: true
+#   
+# - 3(C) 
+#   ~ Alive: true
+#   ~ Recognised: false
+#   
+# - 4(D) 
+#   ~ Alive: true
+#   ~ Recognised: true
+#
+# Expected Outcomes
+# =================
+# 
+# In all scenarios except 3 and 5, no VisualSpatialFieldObject's recognised 
+# status should include a key for either the Fixation's performance time or the
+# CHREST model's attention clock (depending on which is greater).  
+# 
+# In scenarios 3 and 5, VisualSpatialFieldObjects with identifiers 3 and 4 
+# should include such a key since they are alive at the Fixation's performance 
+# time or the CHREST model's attention clock (depending on which is greater) and 
+# are not included in the CHREST model's 
+# "_recognisedVisualSpatialFieldObjectIdentifiers" data structure. Also, the 
+# terminus values for these VisualSpatialFieldObjects should be set to the
+# the Fixation's performance time or the CHREST model's attention clock 
+# (depending on which is greater) plus the value for the CHREST model's 
+# "_unrecognisedVisualSpatialFieldObjectLifespan" parameter.
+#
+unit_test "tag_unrecognised_visual_spatial_field_objects_after_fixation_set_complete" do
+  
+  ##########################################################
+  ##### SET-UP PRIVATE INSTANCE METHOD/VARIABLE ACCESS #####
+  ##########################################################
+  
+  # The method to test is private so needs to be made accessible in order to 
+  # test it.
+  method = Chrest.java_class.declared_method(:tagUnrecognisedVisualSpatialFieldObjectsAfterFixationSetComplete, Fixation)
+  method.accessible = true
+  
+  # Need access to the following CHREST model variables for the following 
+  # reasons:
+  #
+  # 1. _attentionClock: needs to be set to a particular value depending on 
+  #    scenario and accessible so that variable values to be tested can be 
+  #    calculated.
+  # 
+  # 2. _performingFixations: needs to be set to a particular value depending on 
+  #    scenario.
+  #
+  # 3. _recognisedVisualSpatialFieldObjectIdentifiers: needs to be set to a 
+  #    particular value depending on scenario.
+  #
+  # 4. _unrecognisedVisualSpatialFieldObjectLifespan: needs to be accessible so 
+  #    that variable values to be tested can be calculated.
+  Chrest.class_eval{
+    field_accessor :_attentionClock,
+      :_performingFixations,
+      :_recognisedVisualSpatialFieldObjectIdentifiers,
+      :_unrecognisedVisualSpatialFieldObjectLifespan
+  }
+  
+  # Need to be able to place VisualSpatialFieldObjects precisely on a 
+  # VisualSpatialField to access to the *actual* field is required.
+  vsf_field = VisualSpatialField.java_class.declared_field("_visualSpatialField")
+  vsf_field.accessible = true
+  
+  # Need to be able to set and check the input Fixation's performance time. 
+  Fixation.class_eval{
+    field_accessor :_performanceTime
+  }
+  
+  # Need to be able to set the terminus for various VisualSpatialFieldObjects so
+  # that they are not alive when the Fixation set is completed.
+  VisualSpatialFieldObject.class_eval{
+    field_accessor :_terminus
+  }
+  
+  # Need to be able to check the recognised history of VisualSpatialFieldObjects
+  vsf_recognised_history_field = VisualSpatialFieldObject.java_class.declared_field("_recognisedHistory")
+  vsf_recognised_history_field.accessible = true
+  
+  #####################
+  ##### MAIN LOOP #####
+  #####################
+  
+  for scenario in 1..6
+    100.times do
+      
+      ######################################
+      ##### CONSTRUCT THE CHREST MODEL #####
+      ######################################
+      
+      time_model_created = 0
+      model_learning_object_locations_relative_to_self = [true, false].sample # Shouldn't affect anything
+      model = Chrest.new(time_model_created, model_learning_object_locations_relative_to_self)
+      
+      model._performingFixations = (scenario == 1 ? true : false)
+      
+      ##############################################
+      ##### CONSTRUCT THE VISUAL-SPATIAL FIELD #####
+      ##############################################
+
+      # Set visual-spatial field dimension parameters
+      vsf_width = 3
+      vsf_height = 3
+      vsf_min_col = 2
+      vsf_min_row = 2
+
+      # Set creator details
+      creator_details = nil
+      if model_learning_object_locations_relative_to_self
+        creator_details = ArrayList.new()
+        creator_details.add("0")
+        creator_details.add(Square.new(1, 1))
+      end
+
+      # Set the time the visual-spatial field is created
+      vsf_creation_time = time_model_created + 5
+
+      # Construct visual-spatial field
+      visual_spatial_field = VisualSpatialField.new(
+        "", 
+        vsf_width, 
+        vsf_height, 
+        vsf_min_col, 
+        vsf_min_row, 
+        model, 
+        creator_details, 
+        vsf_creation_time
+      )
+
+      # Create an array containing the VisualSpatialField col/row where each
+      # VisualSpatialFieldObject is located along with the 
+      # VisualSpatialFieldObjects identifier and type.  This will make placing
+      # the VisualSpatialFieldObjects much easier
+      visual_spatial_field_objects = [
+          [[0,0],"1","A"], 
+          [[2,2],"2","B"],
+          [[2,0],"3","C"],
+          [[0,2],"4","D"]
+        ]
+
+      vsfo_creation_time = vsf_creation_time + 5
+
+      # Place VisualSpatialFieldObjects
+      for visual_spatial_field_object in visual_spatial_field_objects
+        col = visual_spatial_field_object[0][0]
+        row = visual_spatial_field_object[0][1]
+        identifier = visual_spatial_field_object[1]
+        type = visual_spatial_field_object[2]
+
+        vsfo = VisualSpatialFieldObject.new(
+          identifier,
+          type,
+          model,
+          visual_spatial_field, 
+          vsfo_creation_time,
+          (["1","3"].include?(identifier) ? false : true),
+          false # Don't bother setting the terminus, yet.
+        )
+
+        # Add the VisualSpatialFieldObject to the coordinates
+        vsf_field.value(visual_spatial_field).get(col).get(row).add(vsfo)
+      end
+
+      ##############################
+      ##### CONSTRUCT FIXATION #####
+      ##############################
+      
+      time_fixation_decided_upon = vsfo_creation_time + 10
+      fixation = PeripheralSquareFixation.new(model, time_fixation_decided_upon)
+      fixation._scene = Scene.new("", vsf_width, vsf_height, vsf_min_col, vsf_min_row, (scenario == 2 ? nil : visual_spatial_field))
+      
+      ##########################################################################
+      ##### SET FIXATION PERFORMANCE TIME AND CHREST MODEL ATTENTION CLOCK #####
+      ##########################################################################
+      
+      fixation._performanceTime = time_fixation_decided_upon + 10
+      
+      # Set the model's attention clock later than the fixations performance 
+      # time if the scenario requires this.  Otherwise, leave it as its default
+      # which is currently specified to be -1.
+      if [5,6].include?(scenario) 
+        model._attentionClock = fixation._performanceTime + 10
+      end
+      
+      ###############################
+      ##### SET THE LATEST TIME #####
+      ###############################
+      
+      latest_time = [fixation._performanceTime, model._attentionClock].max
+      
+      ########################################################
+      ##### SET TERMINUS OF VISUAL-SPATIAL FIELD OBJECTS #####
+      ########################################################
+
+      # Now that the latest time has been set, the terminus for particular
+      # VisualSpatialFieldObjects can be set so that they aren't alive when 
+      # processed by the method.
+      vsf_field.value(visual_spatial_field).get(0).get(0).get(0)._terminus = latest_time - 1 
+      vsf_field.value(visual_spatial_field).get(2).get(2).get(0)._terminus = latest_time - 1
+      
+      ##################################################################
+      ##### SET RECOGNISED VisualSpatialFieldObject DATA STRUCTURE #####
+      ##################################################################
+      
+      if ![3,5].include?(scenario)
+        for visual_spatial_field_object in visual_spatial_field_objects
+          model._recognisedVisualSpatialFieldObjectIdentifiers.add(visual_spatial_field_object[1])
+        end
+      end
+      
+      ###########################
+      ##### INVOKE FUNCTION #####
+      ###########################
+      
+      method.invoke(model, fixation)
+      
+      #################
+      ##### TESTS #####
+      #################
+      
+      ##### Check each VisualSpatialFieldObject's status
+      expected_visual_spatial_field_data =
+        Array.new(vsf_width){
+          Array.new(vsf_height) {
+            Array.new
+          }  
+        }
+
+      # Set default values
+      expected_visual_spatial_field_data[0][0].push(["1", "A", false, vsfo_creation_time, (latest_time - 1)])
+      expected_visual_spatial_field_data[2][2].push(["2", "B", true, vsfo_creation_time, (latest_time - 1)])
+      expected_visual_spatial_field_data[2][0].push(["3", "C", false, vsfo_creation_time, nil])
+      expected_visual_spatial_field_data[0][2].push(["4", "D", true, vsfo_creation_time, nil])
+        
+      if model_learning_object_locations_relative_to_self
+        expected_visual_spatial_field_data[1][1].push(["0", Scene::CREATOR_TOKEN, false, vsf_creation_time, nil])
+      end
+        
+      # Update values (if scenario should)
+      if [3,5].include?(scenario)
+        
+        # 3(C) already unrecognised so just update its terminus
+        expected_visual_spatial_field_data[2][0][0][4] = latest_time + model._unrecognisedVisualSpatialFieldObjectLifespan
+
+        # 4(D) was recognised so its recognised status and terminus should both
+        # be updated
+        expected_visual_spatial_field_data[0][2][0][2] = false
+        expected_visual_spatial_field_data[0][2][0][4] = latest_time + model._unrecognisedVisualSpatialFieldObjectLifespan
+      end
+        
+      # Check VisualSpatialFieldObject status
+      check_visual_spatial_field_against_expected(
+        visual_spatial_field, 
+        expected_visual_spatial_field_data, 
+        latest_time, 
+        "in scenario " + scenario.to_s + " when the model is " + 
+        (model_learning_object_locations_relative_to_self ? "" : "not") + 
+        " learning object locations relative to itself"
+      )
+      
+      ##### Check for correct key entry in each VisualSpatialFieldObject's 
+      ##### recognised history
+      
+      # The "latest_time" variable will be used in a "compareTo" method (to see
+      # if it does/does not exist as a key in each VisualSpatialFieldObject's
+      # recognised status) so needs to be cast explicitly to a primitive Java
+      # int otherwise JRuby will complain that "java.lang.ClassCastException: 
+      # java.lang.Integer cannot be cast to java.lang.Long".  Since this 
+      # variable will be used in loops below, do it here to make the test more
+      # efficient.
+      latest_time = latest_time.to_java(:int)
+      
+      # In Scenarios 1, 2, 4, 6, this array should contain the locations for all 
+      # VisualSpatialFieldObjects.  If this is scenario 3 or 5 and the 
+      # VisualSpatialFieldObject has an identifier of 3 or 4, these 
+      # VisualSpatialFieldObject's recognised status should include the 
+      # latest_time as a key (should have been tagged as unrecognised) and so 
+      # shouldn't be present in the array being constructed.
+      vsfo_locations_that_shouldnt_be_updated = visual_spatial_field_objects.map {
+        | object | 
+        
+        ([3,5].include?(scenario) && ["3","4"].include?(object[1]) ? 
+          nil : 
+          object[0]
+        )
+      }
+      
+      vsfo_locations_that_should_be_updated = visual_spatial_field_objects.map {
+        | object |
+        # If this is scenario 3 or 5 and this is a VisualSpatialFieldObject with
+        # an identifier of 3 or 4, this VisualSpatialFieldObject's recognised 
+        # status should include the latest_time as a key (should have been 
+        # tagged as unrecognised) and so should be present in the array being 
+        # constructed.
+        ([3,5].include?(scenario) && ["3","4"].include?(object[1]) ? 
+          object[0] : 
+          nil
+        )
+      }
+      
+      for location in vsfo_locations_that_shouldnt_be_updated
+        if location != nil
+          col = location[0]
+          row = location[1]
+          vsfo = vsf_field.value(visual_spatial_field).get(col).get(row).get(0)
+          vsfo_recognised_history = vsf_recognised_history_field.value(vsfo)
+
+          assert_false(
+            vsfo_recognised_history.containsKey(latest_time),
+            "occurred when checking if the recognised history for the " +
+            "following VisualSpatialFieldObject does not contain a key for " +
+            "the latest time in scenario " + scenario.to_s + "\n" + vsfo.toString()
+          )
+        end
+      end
+      
+      for location in vsfo_locations_that_should_be_updated
+        if location != nil
+          col = location[0]
+          row = location[1]
+          vsfo = vsf_field.value(visual_spatial_field).get(col).get(row).get(0)
+          vsfo_recognised_history = vsf_recognised_history_field.value(vsfo)
+
+          assert_true(
+            vsfo_recognised_history.containsKey(latest_time),
+            "occurred when checking if the recognised history for the " +
+            "following VisualSpatialFieldObject does contain a key for " +
+            "the latest time in scenario " + scenario.to_s + "\n" + vsfo.toString()
+          )
+        end
+      end
+      
+    end
+  end
+end
+
+################################################################################
+# Tests the "Chrest.scheduleFixationsForPerformance()" using a number of 
+# Scenarios that should simulate all scenarios this method will be invoked in.
+# The test checks the following:
+# 
+# 1. Whether an exception is thrown by the method.
+# 2. The contents of the method's return value (if an exception is not thrown).
+# 3. The value of the CHREST model's Perceiver clock.
+# 
+# Scenario Details
+# ================
+# 
+# - Scenario 1
+#   ~ Input list contains one Fixation whose performance time is already set.
+# 
+# - Scenario 2
+#   ~ Input list contains one Fixation whose performance time is not set.
+#   ~ The time the Fixation has been decided upon is in the past relative to 
+#     the time the method is invoked.
+#   
+# - Scenario 3
+#   ~ Input list contains one Fixation whose performance time is not set.
+#   ~ The time the Fixation has been decided upon is in the future relative to 
+#     the time the method is invoked.
+# 
+# - Scenario 4 
+#   ~ Input list contains one Fixation whose performance time is not set.
+#   ~ The time the Fixation has been decided upon is equal to the time the 
+#     method is invoked.
+#   ~ The CHREST model's Perceiver is not free at the time the method is 
+#     invoked.
+#
+# - Scenario 5
+#   ~ Input list contains one Fixation whose performance time is not set.
+#   ~ The time the Fixation has been decided upon is equal to the time the 
+#     method is invoked.
+#   ~ The CHREST model's Perceiver is free at the time the method is invoked.
+#   
+# - Scenario 6
+#   ~ Input list contains two Fixations whose performance times are not set.
+#   ~ The time the Fixations have been decided upon is equal to the time the 
+#     method is invoked.
+#   ~ The CHREST model's Perceiver is free at the time the method is invoked.
+#
+# Expected Output
+# ===============
+#
+# - Scenario 1
+#   ~ Exception thrown: false
+#     + No Fixation in the List input to the method has a time that it is 
+#       decided upon in the past relative to the time the method is invoked and 
+#       a performance time value of null.
+#   ~ Method return value: same as list input to method.
+#     + No Fixation in the List input to the method has a decided upon time that
+#       is equal to the time the method is invoked.
+#   ~ Perceiver clock: set to default (-1)
+#     + No Fixation is scheduled for performance so the Perceiver associated 
+#       with the CHREST model is not used.
+#   
+#     
+# - Scenario 2
+#   ~ Exception thrown: true
+#     + The Fixation in the List input to the method has a time that it is 
+#       decided upon in the past relative to the time the method is invoked and 
+#       a performance time value of null.
+#   ~ Method return value: null.
+#     + Since an exception is thrown no return value is generated by the method.
+#   ~ Perceiver clock: set to default (-1)
+#     + No Fixation is scheduled for performance so the Perceiver associated 
+#       with the CHREST model is not used.
+#
+# - Scenario 3
+#   ~ Exception thrown: false
+#     + No Fixation in the List input to the method has a time that it is 
+#       decided upon in the past relative to the time the method is invoked and 
+#       a performance time value of null.
+#   ~ Method return value: same as list input to method.
+#     + No Fixation in the List input to the method has a decided upon time that
+#       is equal to the time the method is invoked.
+#   ~ Perceiver clock: set to default (-1)
+#     + No Fixation is scheduled for performance so the Perceiver associated 
+#       with the CHREST model is not used.
+#
+# - Scenario 4
+#   ~ Exception thrown: false
+#     + No Fixation in the List input to the method has a time that it is 
+#       decided upon in the past relative to the time the method is invoked and 
+#       a performance time value of null.
+#   ~ Method return value: empty list.
+#     + The Fixation in the List input to the method has a decided upon time 
+#       that is equal to the time the method is invoked but the Perceiver 
+#       associated with the CHREST model is not free to perform the Fixation so
+#       the Fixation will be abandoned.
+#   ~ Perceiver clock: set to time it is manually set to in context of this 
+#     scenario.
+#     + No Fixation is scheduled for performance so the Perceiver associated 
+#       with the CHREST model is not used.
+#       
+# - Scenario 5
+#   ~ Exception thrown: false
+#     + No Fixation in the List input to the method  has a time that it is 
+#       decided upon in the past relative to the time the method is invoked and 
+#       a performance time value of null.
+#   ~ Method return value: similar to list input to method.
+#     + The Fixation in the List input to the method has a decided upon time 
+#       that is equal to the time the method is invoked so its performed at time
+#       will be set to the time the method is invoked plus the time taken to 
+#       make a saccade by the CHREST model.
+#   ~ Perceiver clock: set to the time the Fixation is decided upon (time method
+#     is invoked) plus the time taken to make a saccade by the CHREST model.
+#     + The Fixation input is scheduled for performance so the Perceiver 
+#       associated with the CHREST model is used.
+#
+# - Scenario 6
+#   ~ Exception thrown: false
+#     + No Fixation in the List input to the method  has a time that it is 
+#       decided upon in the past relative to the time the method is invoked and 
+#       a performance time value of null.
+#   ~ Method return value: similar to list input to method.
+#     + The first Fixation in the List input to the method has a decided upon 
+#       time that is equal to the time the method is invoked so its performed at 
+#       time will be set to the time the method is invoked plus the time taken 
+#       to make a saccade by the CHREST model.  Whilst the second Fixation also
+#       has a decided upon time that is equal to the time the method is invoked,
+#       the Perceiver associated with the CHREST model will be busy performing
+#       the first Fixation in the list so the second will be abandoned.
+#   ~ Perceiver clock: set to the time the first Fixation is decided upon (time 
+#     method is invoked) plus the time taken to make a saccade by the CHREST model.
+#     + The first Fixation input is scheduled for performance so the Perceiver 
+#       associated with the CHREST model is used.
+unit_test "schedule_fixations_for_performance" do
+  
+  ###################################################
+  ##### SET-UP ACCESS TO PRIVATE METHODS/FIELDS #####
+  ###################################################
+  
+  # The method to test is private so needs to be made accessible.
+  method = Chrest.java_class.declared_method(:scheduleFixationsForPerformance, List, Java::int)
+  method.accessible = true
+  
+  # Need to be able to set and check the CHREST model's Perceiver clock.  Also
+  # need to be able to use the time taken to make a saccade to calculate a
+  # Fixation's performance time.
+  Chrest.class_eval{
+    field_accessor :_perceiverClock, :_saccadeTime
+  }
+  
+  # Need to be able to check the performance time for Fixations and use the time
+  # it is decided upon in calculations.
+  Fixation.class_eval{
+    field_accessor :_performanceTime, :_timeDecidedUpon
+  }
+  
+  #####################
+  ##### MAIN LOOP #####
+  #####################
+  
+  for scenario in 1..6
+    100.times do
+      
+      ##################################
+      ##### CONSTRUCT CHREST MODEL #####
+      ##################################
+      
+      time_model_created = 0
+      
+      # When creating the model, set the "learnObjectLocationsRelativeToAgent"
+      # construction parameter to true or false randomly. This shouldn't have
+      # any effect on the performance of the method being tested.
+      model = Chrest.new(time_model_created, [true,false].sample)
+      
+      ################################
+      ##### CONSTRUCT fixation_1 #####
+      ################################
+      
+      time_fixation_1_decided_upon = time_model_created + 10
+      fixation_1 = CentralFixation.new(time_fixation_1_decided_upon)
+      
+      if scenario == 1 then fixation_1._performanceTime = time_fixation_1_decided_upon + 20 end
+      
+      ################################
+      ##### CONSTRUCT fixation_2 #####
+      ################################
+      
+      fixation_2 = nil
+      if scenario == 6
+        fixation_2 = CentralFixation.new(time_fixation_1_decided_upon)
+      end
+      
+      ############################################################
+      ##### ADD FIXATIONS TO PARAMETER TO BE INPUT TO METHOD #####
+      ############################################################
+      
+      fixations_scheduled = ArrayList.new()
+      fixations_scheduled.add(fixation_1)
+      if fixation_2 != nil then fixations_scheduled.add(fixation_2) end
+      
+      ###################################
+      ##### SET TIME METHOD INVOKED #####
+      ###################################
+      
+      # Do this now since there is a relationship in the test between this value 
+      # and the time the fixation is to be decided upon.  Now that the latter 
+      # has been set, the former can be set appropriately.
+      time_method_invoked = (
+        scenario == 2 ? time_fixation_1_decided_upon + 1 :
+        scenario == 3 ? time_fixation_1_decided_upon - 1 :
+        time_fixation_1_decided_upon
+      )
+      
+      ###################################
+      ##### SET THE PERCEIVER CLOCK #####
+      ###################################
+      
+      # Do this now since there is a relationship in the test between this value 
+      # and the time the method is invoked.  Now that the latter has been set, 
+      # the former can be set appropriately.
+      model._perceiverClock = (
+        scenario == 4 ? time_method_invoked + 10 :
+        [5,6].include?(scenario) ? time_method_invoked :
+        model._perceiverClock #Set to default
+      )
+      
+      #########################
+      ##### INVOKE METHOD #####
+      #########################
+      
+      exception_thrown = false
+      result = nil
+      begin
+        result = method.invoke(model, fixations_scheduled, time_method_invoked)
+      rescue
+        exception_thrown = true
+      end
+      
+      #################
+      ##### TESTS #####
+      #################
+      
+      # Check if an exception is thrown
+      expected_exception_thrown = (scenario == 2 ? true : false)
+      assert_equal(
+        expected_exception_thrown, 
+        exception_thrown, 
+        "occurred when checking if an exception is thrown in scenario " + 
+        scenario.to_s
+      )
+      
+      # Check the result of the method (if an exception wasn't thrown)
+      if result != nil
+        result = result.to_java(ArrayList)
+        expected_result = ArrayList.new()
+        
+        if [1,3].include?(scenario)
+          expected_result = fixations_scheduled
+        elsif [5,6].include?(scenario)
+          fixation_1._performanceTime = fixation_1._timeDecidedUpon + model._saccadeTime
+          expected_result.add(fixation_1)
+        end
+        
+        # expected_result will be left empty in scenario 4.
+        
+        assert_equal(
+          expected_result.size(),
+          result.size(),
+          "occurred when checking size of result in scenario " + scenario.to_s
+        )
+        
+        for i in 0...expected_result.size()
+          assert_equal(
+            expected_result.get(i).toString(),
+            result.get(i).toString(),
+            "occurred when checking element + " + i.to_s + " in the contents " +
+            "of the result in scenario " + scenario.to_s
+          )
+        end
+      end
+      
+      # Check the CHREST model's Perceiver clock (this is set earlier in the 
+      # test too so this needs to be taken into account).
+      expected_perceiver_clock = (
+        scenario == 4 ? time_method_invoked + 10 :
+        [5,6].include?(scenario) ? fixation_1._timeDecidedUpon + model._saccadeTime :
+        -1
+      )
+      assert_equal(
+        expected_perceiver_clock,
+        model._perceiverClock,
+        "occurred when checking the Perceiver clock in scenario " + scenario.to_s
+      )
+    end
+  end
+end
+
 ################################################################################
 # Checks that the scheduleOrMakeNextFixation function works as expected when
-# a CHREST model's domain is set to the ChessDomain.
-#
-# To do this, a CHREST model is constructed and the scheduleOrMakeNextFixation 
-# is invoked every millisecond until it returns true.  When this is the case, 
-# the data structures used to record Fixations by the CHREST model and its 
-# associated Perceiver are checked to ensure that they are as expected.
+# a CHREST model's domain is set to each class that extends 
+# jchrest.domainSpecifics.DomainSpecifics.
 # 
-# The test is run for a 1000 times after every Fixation that can be performed is
-# performed and is then repeated twice, first with an "inexperienced" CHREST 
-# model then with an "experienced" CHREST model (Fixations generated change in 
-# the ChessDomain depending on the experienced status of a CHREST model).  
+# For each domain, the test is run until all Fixations that can be generated in
+# the domain have been performed and a VisualSpatialField has been constructed.
+# Following this, the test will be run a further 500 times using the current 
+# domain until moving on to test the next domain and repeating this whole 
+# process.  Doing this ensures a wide range of scenarios that the method should
+# be able to handle gracefully since there are a number of properties that are
+# set randomly during the course of testing this method in context of each 
+# domain.
 #
-# The board fixated on is randomly generated for each iteration of the test in 
-# order to provide as wide a breadth of test scenarios as possible.
-canonical_result_test "make_fixations_in_chess_domain" do
+# The test first creates a CHREST model and sets its "learning objects relative
+# to self parameter" according to the current DomainSpecifics.  If the domain 
+# stipulates no exact value for this parameter, its value is randomly assigned. 
+# The CHREST model's "isExperienced" property is then set at random too since,
+# in some domains, this can impact the Fixations generated.
+# 
+# A Scene for the relevant domain is then constructed and is used as the Scene
+# to fixate on.  SceneObjects present in the Scene are randomly assigned 
+# and adhere to any relevant constraints (are blind squares allowed, should the
+# creator of the Scene be encoded etc.).
+# 
+# Visual STM is then populated to enable HypothesisDiscriminationFixations to be
+# performed (since these should be generated in each domain).  These Nodes can
+# be used since their images/contents are generated by taking into consideration
+# the contents of the Scene generated above at random.  For each SceneObject 
+# "recognised" in a Node, its identifier is also added to the CHREST model's
+# "_recognisedVisualSpatialFieldObjectIdentifiers" data structure so that, if 
+# a VisualSpatialField is to be constructed following the completion of a 
+# Fixation set, some VisualSpatialFieldObjects should be recognised (this isn't
+# actually tested but the data structure should be able to be used without any
+# problems).
+# 
+# A set of Fixations is then performed with a random assignment of the parameter 
+# stipulating whether aVisualSpatialField should be created upon completion of 
+# the Fixation set being performed (as mentioned in the previous paragraph).  
+# Various checks are then performed:
+# 
+# - The CHREST model should no longer consider itself as performing a Fixation 
+#   set.
+# - The _recognisedVisualSpatialFieldObjectIdentifiers data structure should be 
+#   cleared.
+# - The Fixations scheduled data structure should be cleared.
+# - The correct number of Fixations are present in the data structure maintained 
+#   by the Perceiver associated with the CHREST model.
+# - The _fixationsAttemptedInSet variable has been reset to 0.
+# - The correct Fixations have been generated in the correct order.
+# - VisualSpatialField construction occurred/did not occur as expected.
+#
+# The method is then invoked until a new Fixation set is started and the 
+# following checks are then performed:
+#
+# - The CHREST model now considers itself as performing a new Fixation set.
+# - The correct initial Fixation according to the domain has been scheduled.
+# - The Fixation data structure of the Perceiver associated with the CHREST 
+#   model has been cleared.
+# - The Fixation to learn from according to the Perceiver has been reset to 0.
+#
+# The method is then invoked until this second Fixation set has been performed.
+# Therefore, the test checks that subsequent Fixation sets can be performed and
+# are performed as expected.
+canonical_result_test "make_fixations_in_domains" do
   
   #######################################################
   ##### SET-UP ACCESS TO PRIVATE INSTANCE VARIABLES #####
@@ -753,19 +2999,39 @@ canonical_result_test "make_fixations_in_chess_domain" do
   # 1. Need to set the domain specifics of the model to ChessDomain.
   # 2. Need to set modify visual STM to ensure a 
   #    HypothesisDiscriminationFixation can be performed.
-  # 3. Need to set the fixation field of view for the Perceiver associated with
+  # 3. Need to check the Fixations scheduled by the model.
+  # 4. Need to check if the data structure containing VisualSpatialFieldObjects
+  #    recognised during performance of the Fixation data set is cleared upon
+  #    Fixation set completion.
+  # 5. Need to set the fixation field of view for the Perceiver associated with
   #    the CHREST model so that PeripheralItemFixations and 
   #    PeripheralSquareFixations are guaranteed to be made.
+  # 6. Need to check the model's database of VisualSpatialFields since, if one
+  #    is to be constructed, the test needs to check if it is created at the 
+  #    time the Fixation set performed completes.
   Chrest.class_eval{
-    field_accessor :_domainSpecifics, :_visualStm
+    field_accessor :_domainSpecifics, 
+      :_visualStm, 
+      :_performingFixations,
+      :_fixationsScheduled, 
+      :_recognisedVisualSpatialFieldObjectIdentifiers,
+      :_fixationsAttemptedInCurrentSet
   }
   chrest_perceiver_field = Chrest.java_class.declared_field("_perceiver")
   chrest_perceiver_field.accessible = true
+  
+  chrest_vsf_field = Chrest.java_class.declared_field("_visualSpatialFields")
+  chrest_vsf_field.accessible = true
   
   # Need to set the fixation field of view for reasons described above.
   Perceiver.class_eval{
     field_accessor :_fixationFieldOfView
   }
+  
+  # Need to be able to check if the Perceiver's Fixation data structure is 
+  # cleared when an initial Fixation is generated.
+  perceiver_fixations_field = Perceiver.java_class.declared_field("_fixations")
+  perceiver_fixations_field.accessible = true
   
   # Need to access the dimensions of the chess board constructed to enable 
   # randomness in STM Node images to enable/disable 
@@ -785,8 +3051,12 @@ canonical_result_test "make_fixations_in_chess_domain" do
   Scene.class_eval{
     field_accessor :_scene
   }
+  
   scene_object_type_field = SceneObject.java_class.declared_field("_objectType")
   scene_object_type_field.accessible = true
+  
+  scene_object_identifier_field = SceneObject.java_class.declared_field("_identifier")
+  scene_object_identifier_field.accessible = true
   
   # Need access to what Fixations are performed to control test progress.
   Fixation.class_eval{
@@ -810,43 +3080,117 @@ canonical_result_test "make_fixations_in_chess_domain" do
   stm_item_history_field = Stm.java_class.declared_field("_itemHistory")
   stm_item_history_field.accessible = true
   
-  for repeat in 1..2
+  #####################
+  ##### MAIN LOOP #####
+  #####################
+  
+  for test_domain in [GenericDomain, ChessDomain, TileworldDomain]
+    test_domain = test_domain.java_class
     
-    ##########################################
-    ##### SET-UP TEST PROGRESS VARIABLES #####
-    ##########################################
-
-    # For each type of Fixation expected, add its class to an array along with 
-    # a boolean flag indicated whether that type of Fixation has been performed.
-    # Initially, none of the Fixation types expected will have been performed so
-    # set all boolean flags to false.
-    fixation_performance_flags = [
-      [HypothesisDiscriminationFixation.java_class, false],
-      [SalientManFixation.java_class, false],
-      [(repeat == 1 ? PeripheralItemFixation.java_class : GlobalStrategyFixation.java_class), false],
-      [PeripheralSquareFixation.java_class, false]
-    ]
-
-    # Set a counter since the test should be run 1000 times after all Fixations 
-    # have been performed to ensure a broad spectrum of behaviour.
-    counter = 0
+    # For each domain, add the types of Fixation expected to be encountered 
+    # during Fixation set performance to an array along with a boolean flag 
+    # indicating whether that type of Fixation has been performed.
+    fixations_expected = (
+      case test_domain
+      when GenericDomain.java_class
+        [
+          [AheadOfAgentFixation.java_class, false],
+          [CentralFixation.java_class, false],
+          [HypothesisDiscriminationFixation.java_class, false],
+          [PeripheralItemFixation.java_class, false],
+          [PeripheralSquareFixation.java_class, false]
+        ]
+      when ChessDomain.java_class
+        [  
+          [CentralFixation.java_class, false],
+          [HypothesisDiscriminationFixation.java_class, false],
+          [SalientManFixation.java_class, false],
+          [GlobalStrategyFixation.java_class, false],
+          [PeripheralItemFixation.java_class, false],
+          [PeripheralSquareFixation.java_class, false]
+        ]
+      when TileworldDomain.java_class
+        [
+          [AheadOfAgentFixation.java_class, false],
+          [HypothesisDiscriminationFixation.java_class, false],
+          [SalientObjectFixation.java_class, false],
+          [MovementFixation.java_class, false],
+          [PeripheralItemFixation.java_class, false],
+          [PeripheralSquareFixation.java_class, false]
+        ]
+      end
+    )
     
-    until counter == 1000 do
-
-      time = 0
-
+    # VisualSpatialField construction is randomised on a per-iteration basis 
+    # but still needs to be checked.  Ideally, there should be a test that 
+    # checks:
+    # 
+    # a) That a VisualSpatialField was constructed if specified
+    # b) That the VisualSpatialField was constructed at the correct time
+    # 
+    # Checking a) is simple: the test simply checks the following statement: 
+    # "if a VisualSpatialField was specified to be constructed AND at least one 
+    # Fixation in the set was performed successfully, a VisualSpatialField 
+    # should be present in the model's database of VisualSpatialFields".
+    # 
+    # However, checking b) is very problematic since its not possible to
+    # determine when attention was free after completion of the Fixation set 
+    # (did the last Fixation performed consume attention or was a previous 
+    # Fixation consuming attention when the last Fixation was performed causing 
+    # the last Fixation performed to not consume attention).  Consequently, such
+    # a test is not performed.
+    # 
+    # Like checking for Fixation performance though, the test should check that 
+    # a VisualSpatialField is constructed at some point.  To do this, the 
+    # following variable will be set to true when an iteration of the test 
+    # causes a VisualSpatialField to be constructed and only when this variable
+    # is set to true and all Fixations have been performed will the test 
+    # iteration counter increment.
+    visual_spatial_field_created = false
+    
+    #####################
+    ##### MAIN LOOP #####
+    #####################
+    
+    counter = -1
+    counter_limit = 500
+    until counter > counter_limit do
+      
+      # Since this test can take a *long* time to complete, display the progress
+      # to the user by printing the domain being tested, the current counter
+      # number and the counter limit.  This should present a user from quitting 
+      # the tests because they think a while loop is running infinitely (which
+      # may occur and there are a few of them in this test).
+      if counter == -1
+        print "\n"
+        counter = 0
+      end
+      print "    - Testing " + test_domain.to_s + ": " + counter.to_s + "/" + counter_limit.to_s + "\r"
+      
       ###########################
       ##### CONSTRUCT MODEL #####
       ###########################
+      
+      time = 0
+      
+      learn_object_locations_relative_to_self = (
+        case test_domain
+        when GenericDomain.java_class
+          [true,false].sample
+        when ChessDomain.java_class
+          false
+        when TileworldDomain.java_class
+          true
+        end
+       )
 
-      # Need to be able to specify if a CHREST model is experienced "on-the-fly"
-      # otherwise, when trying to get non-initial fixations, the model would 
-      # have to have a certain number of Nodes, n, in LTM to return "true" when 
-      # the model's "experienced" status is queried when determining if a 
-      # GlobalStrategyFixation or a PeripheralItemFixation should be made.  
-      # Thus, if n is changed this test will break in addition, performing this 
-      # learning in a test adds extra code that will just complicate an already 
-      # complex test!
+      # Fixation generation can differ depending on the domain and whether the 
+      # CHREST model making the Fixation is "experienced" or not.  Therefore, 
+      # being able to specify if a CHREST model is experienced "on-the-fly", is 
+      # desirable. Otherwise, the model would have to have learn a certain 
+      # number of Nodes, n, to become experienced.  Thus, if n is changed this 
+      # test will break and, in addition, performing this learning in this test 
+      # adds extra complexity to an already complex test!
       #
       # To circumvent this, subclass the "Chrest" java class with a jRuby class 
       # that will be used in place of the "Chrest" java class in this test. In
@@ -863,62 +3207,136 @@ canonical_result_test "make_fixations_in_chess_domain" do
         def setExperienced(bool)
           @@experienced = bool
         end
-      }.new(time, false)
+      }.new(time, learn_object_locations_relative_to_self)
 
-      if repeat == 2 then model.setExperienced(true) end
+      model_is_experienced = [true, false].sample
+      model.setExperienced(model_is_experienced)
       chrest_perceiver_field.value(model)._fixationFieldOfView = 2
+      
+      # Now that relevant CHREST model parameters have been set, some Fixations
+      # may not be expected so they should be removed from the 
+      # "fixations_expected" data structure otherwise, this test will run 
+      # forever (see below).
+      fixation_not_expected_index = fixations_expected.index(fixations_expected.detect{
+        | fixation_type_and_performance_flag |
+        fixation_type_and_performance_flag.include?(
+          case test_domain
+          when GenericDomain.java_class
+            (learn_object_locations_relative_to_self ? CentralFixation.java_class : AheadOfAgentFixation.java_class)
+          when ChessDomain.java_class
+            (model_is_experienced ? PeripheralItemFixation.java_class : GlobalStrategyFixation.java_class)
+          end
+        )
+      })
+      if fixation_not_expected_index != nil then fixations_expected.delete_at(fixation_not_expected_index) end
 
-      ####################################
-      ##### SET-UP DOMAIN PARAMETERS #####
-      ####################################
-
+      #############################################
+      ##### CONSTRUCT DOMAIN AND SET TO MODEL #####
+      #############################################
+      
+      # Set domain parameters
+      max_fixations_in_set = 10
       initial_fixation_threshold = 4
-      fixation_periphery_max_attempts = 3
-      max_fixation_attempt = 10
+      peripheral_item_fixation_max_attempts = 3
       
-      ###########################################################
-      ##### CONSTRUCT DOMAIN AND SET AS CHREST MODEL DOMAIN #####
-      ###########################################################
-      
-      chess_domain = ChessDomain.new(
-        model, 
-        initial_fixation_threshold, 
-        fixation_periphery_max_attempts, 
-        max_fixation_attempt
+      # Construct domain and set to model
+      model._domainSpecifics = (
+        case test_domain
+        when GenericDomain.java_class
+          GenericDomain.new(model, max_fixations_in_set, peripheral_item_fixation_max_attempts)
+        when ChessDomain.java_class
+          ChessDomain.new(model, initial_fixation_threshold, peripheral_item_fixation_max_attempts, max_fixations_in_set)
+        when TileworldDomain.java_class
+          TileworldDomain.new(model, max_fixations_in_set, initial_fixation_threshold, peripheral_item_fixation_max_attempts)
+        end
       )
 
-      model._domainSpecifics = chess_domain
+      ########################################
+      ##### CONSTRUCT SCENE TO FIXATE ON #####
+      ########################################
       
-      ########################
-      ##### SET-UP BOARD #####
-      ########################
+      scene_to_fixate_on = (
+        case test_domain
+        when GenericDomain.java_class
+          scene = Scene.new("GenericDomain Scene", 5, 5, 2, 2, nil)
+          
+          22.times do
+            col = rand(0...scene_width_field.value(scene))
+            row = rand(0...scene_width_field.value(scene))
+            while (
+              scene_object_type_field.value(scene._scene.get(col).get(row)) != Scene::BLIND_SQUARE_TOKEN &&
+              scene_object_type_field.value(scene._scene.get(col).get(row)) != Scene::CREATOR_TOKEN
+            )
+              col = rand(0...scene_width_field.value(scene))
+              row = rand(0...scene_width_field.value(scene))
+            end
+            
+            object_type_to_place = (rand(0..1) == 0 ? ("a".."z").to_a.sample : Scene::EMPTY_SQUARE_TOKEN)
+            scene._scene.get(col).set(row, SceneObject.new(object_type_to_place))
+          end
+          
+          if learn_object_locations_relative_to_self then scene._scene.get(2).set(2, SceneObject.new(Scene::CREATOR_TOKEN)) end
+          
+          scene
+          
+        when ChessDomain.java_class 
+          scene = ChessBoard.new("ChessBoard")
+          for col in 0...8
+            for row in 0...8
+              scene._scene.get(col).set(row, ChessObject.new(Scene::EMPTY_SQUARE_TOKEN))
+            end
+          end
 
-      chess_board = 
-        "......../" +
-        "......../" +
-        "......../" +
-        "......../" +
-        "......../" +
-        "......../" +
-        "......../" +
-        "........"
+          pieces = ["r","n","b","q","k","R","N","B","Q","K"]
+          8.times do pieces.push("p") end
+          8.times do pieces.push("P") end
+          for piece in pieces
+            col = rand(0...8)
+            row = rand(0...8)
+            while scene_object_type_field.value(scene._scene.get(col).get(row)) != Scene::EMPTY_SQUARE_TOKEN
+              col = rand(0...8)
+              row = rand(0...8)
+            end
+            scene._scene.get(col).set(row, ChessObject.new(piece))
+          end
+          
+          scene
+        
+        when TileworldDomain.java_class
+          scene = Scene.new("TileworldDomain Scene", 5, 5, 0, 0, nil)
 
-      pieces = ["r","n","b","q","k","R","N","B","Q","K"]
-      8.times do pieces.push("p") end
-      8.times do pieces.push("P") end
-      for piece in pieces
-        square = rand(0...chess_board.length)
-        while chess_board[square] != "."
-          square = rand(0...chess_board.length)
+          # Place physical objects.
+          scene._scene.get(2).set(2, SceneObject.new("0", Scene::CREATOR_TOKEN))
+          scene._scene.get(2).set(3, SceneObject.new("1", TileworldDomain::TILE_SCENE_OBJECT_TYPE_TOKEN))
+          scene._scene.get(3).set(2, SceneObject.new("2", TileworldDomain::HOLE_SCENE_OBJECT_TYPE_TOKEN))
+          scene._scene.get(0).set(4, SceneObject.new("3", TileworldDomain::OPPONENT_SCENE_OBJECT_TYPE_TOKEN ))
+          scene._scene.get(1).set(0, SceneObject.new("4", TileworldDomain::TILE_SCENE_OBJECT_TYPE_TOKEN))
+          scene._scene.get(4).set(0, SceneObject.new("5", TileworldDomain::HOLE_SCENE_OBJECT_TYPE_TOKEN))
+          scene._scene.get(1).set(2, SceneObject.new("6", TileworldDomain::HOLE_SCENE_OBJECT_TYPE_TOKEN))
+          scene._scene.get(4).set(4, SceneObject.new("7", TileworldDomain::OPPONENT_SCENE_OBJECT_TYPE_TOKEN ))
+          scene._scene.get(1).set(1, SceneObject.new("8", TileworldDomain::OPPONENT_SCENE_OBJECT_TYPE_TOKEN ))
+
+          # Fill in empty squares.
+          for col in 0...scene_width_field.value(scene)
+            for row in 0...scene_height_field.value(scene)
+              if col != 2 && (row != 1 || row != 2)
+
+                object_type = scene_object_type_field.value(scene._scene.get(col).get(row))
+                if object_type == Scene::BLIND_SQUARE_TOKEN
+                  scene._scene.get(col).set(row, SceneObject.new(Scene::EMPTY_SQUARE_TOKEN))
+                end
+              end
+            end
+          end
+          
+          scene
         end
-        chess_board[square] = piece
-      end
+      )
 
-      chess_board = ChessDomain.constructBoard(chess_board)
-
-      ###############################
-      ##### POPULATE VISUAL STM #####
-      ###############################
+      ##########################################################################
+      #####  POPULATE VISUAL STM AND RECOGNISED VisualSpatialFieldObject   ##### 
+      #####                         DATA STRUCTURE                         #####
+      ##########################################################################
     
       # Populate visual STM so that HypothesisDiscriminationFixations can be 
       # performed correctly (sometimes).  Essentially, there should be a STM 
@@ -934,23 +3352,38 @@ canonical_result_test "make_fixations_in_chess_domain" do
       # The test should introduce some variablity in behaviour since the 
       # handling of Fixations that are not performed successfully needs to be 
       # checked. Therefore, get the location of 1 randomly selected SceneObject 
-      # that does not represent an empty squares since these SceneObjects would 
-      # be stripped from the ListPattern to learn during normalisation along 
-      # with duplicate SceneObject locations.  Therefore, prevent such 
-      # ItemSquarePatterns being considered as candidates for ItemSquarePatterns 
-      # used in construction of STM Nodes.
+      # that does not represent a blind square/empty square/or the creator since 
+      # the location of such SceneObjects shouldn't be learned.  When such a 
+      # SceneObject is returned, get its identifier and add it to the recognised
+      # VisualSpatialFieldObject data structure too, for continuity.
+      
+      # Construct an array containing the types of objects that can't be learned
+      # and thus, should not appear in the contents/image of the Nodes 
+      # constructed here.
+      types_of_object_that_cant_be_learned = (
+        case test_domain
+        when GenericDomain.java_class, ChessDomain.java_class, TileworldDomain.java_class
+          [
+            Scene::EMPTY_SQUARE_TOKEN, 
+            Scene::BLIND_SQUARE_TOKEN, 
+            Scene::CREATOR_TOKEN
+          ]
+        end
+      )
 
-      ##### CONSTRUCT DEPTH 2 NODE ######
+      ##### CONSTRUCT DEPTH 2 NODE
       depth_2_node_contents_image = nil
 
-      col = rand(0...scene_width_field.value(chess_board))
-      row = rand(0...scene_height_field.value(chess_board))
-      item = scene_object_type_field.value(chess_board._scene.get(col).get(row))
+      col = rand(0...scene_width_field.value(scene_to_fixate_on))
+      row = rand(0...scene_height_field.value(scene_to_fixate_on))
+      item = scene_object_type_field.value(scene_to_fixate_on._scene.get(col).get(row))
+      identifier = scene_object_identifier_field.value(scene_to_fixate_on._scene.get(col).get(row))
 
-      while item == Scene.getEmptySquareToken()
-        col = rand(0...scene_width_field.value(chess_board))
-        row = rand(0...scene_height_field.value(chess_board))
-        item = scene_object_type_field.value(chess_board._scene.get(col).get(row))
+      while types_of_object_that_cant_be_learned.include?(item)
+        col = rand(0...scene_width_field.value(scene_to_fixate_on))
+        row = rand(0...scene_height_field.value(scene_to_fixate_on))
+        item = scene_object_type_field.value(scene_to_fixate_on._scene.get(col).get(row))
+        identifier = scene_object_identifier_field.value(scene_to_fixate_on._scene.get(col).get(row))
       end
       
       depth_2_node_contents_image = ItemSquarePattern.new(item, col, row)
@@ -960,18 +3393,23 @@ canonical_result_test "make_fixations_in_chess_domain" do
       depth_2_node_image = depth_2_node_contents
       depth_2_node = Node.new(model, depth_2_node_contents, depth_2_node_image, time)
       depth_2_link = Link.new(depth_2_node_contents, depth_2_node, time, "")
+      
+      # Add identifier to Chrest._recognisedVisualSpatialFieldObjectIdentifiers
+      model._recognisedVisualSpatialFieldObjectIdentifiers.add(identifier)
 
       ##### CONSTRUCT DEPTH 1 NODE ##### 
       depth_1_node_contents_image = nil
 
-      col = rand(0...scene_width_field.value(chess_board))
-      row = rand(0...scene_height_field.value(chess_board))
-      item = scene_object_type_field.value(chess_board._scene.get(col).get(row))
-
-      while item == Scene.getEmptySquareToken()
-        col = rand(0...scene_width_field.value(chess_board))
-        row = rand(0...scene_height_field.value(chess_board))
-        item = scene_object_type_field.value(chess_board._scene.get(col).get(row))
+      col = rand(0...scene_width_field.value(scene_to_fixate_on))
+      row = rand(0...scene_height_field.value(scene_to_fixate_on))
+      item = scene_object_type_field.value(scene_to_fixate_on._scene.get(col).get(row))
+      identifier = scene_object_identifier_field.value(scene_to_fixate_on._scene.get(col).get(row))
+      
+      while types_of_object_that_cant_be_learned.include?(item)
+        col = rand(0...scene_width_field.value(scene_to_fixate_on))
+        row = rand(0...scene_height_field.value(scene_to_fixate_on))
+        item = scene_object_type_field.value(scene_to_fixate_on._scene.get(col).get(row))
+        identifier = scene_object_identifier_field.value(scene_to_fixate_on._scene.get(col).get(row))
       end
 
       depth_1_node_contents_image = ItemSquarePattern.new(item, col, row)
@@ -986,8 +3424,11 @@ canonical_result_test "make_fixations_in_chess_domain" do
 
       time += 1
       depth_1_node._childHistory.put(time, depth_1_node_children)
+      
+      # Add identifier to Chrest._recognisedVisualSpatialFieldObjectIdentifiers
+      model._recognisedVisualSpatialFieldObjectIdentifiers.add(identifier)
 
-      ##### ADD NODE TO STM #####
+      ##### ADD DEPTH 1 NODE TO STM #####
       time += 1
       stm_items = ArrayList.new()
       stm_items.add(depth_1_node)
@@ -997,809 +3438,239 @@ canonical_result_test "make_fixations_in_chess_domain" do
       ##### MAKE FIXATIONS #####
       ##########################
     
-      until model.scheduleOrMakeNextFixation(chess_board, false, time)
+      # Randomly stipulate whether a VisualSpatialField should be constructed or
+      # not when the number of Fixations attempted equals the maximum permitted.
+      construct_visual_spatial_field = [true,false].sample
+      until !model.scheduleOrMakeNextFixation(scene_to_fixate_on, construct_visual_spatial_field, time)
         time += 1
       end
       
       #################
       ##### TESTS #####
       #################
-
-      # Ensure the correct number of Fixations have been attempted before 
-      # continuing
-      fixations_attempted = model.getPerceiver.getFixations(time)
-      assert_equal(
-        max_fixation_attempt,
-        fixations_attempted.size(),
-        "occurred when checking the number of fixations attempted"
+      
+      err_msg_append = " in the " + test_domain.to_s + " domain"
+      
+      # Check that the model isn't performing Fixations now.
+      assert_false(
+        model._performingFixations, 
+        "occurred when checking if the model is performing Fixations when " +
+        "it has completed a Fixation set" + err_msg_append
+      )
+      
+      # Check that the _recognisedVisualSpatialFieldObjectIdentifiers data 
+      # structure has been cleared.
+      assert_true(
+        model._recognisedVisualSpatialFieldObjectIdentifiers.isEmpty(),
+        "occurred when checking if the data structure containing recognised " +
+        "VisualSpatialFieldObject identifiers is cleared when a Fixation set " +
+        "is complete" + err_msg_append
+      )
+      
+      # Check that the Fixations scheduled data structure has been cleared.
+      assert_true(
+        model._fixationsScheduled.get(time.to_java(:int)).isEmpty(),
+        "occurred when checking if the data structure containing Fixations " +
+        "scheduled for execution is cleared when a Fixation set is complete" +
+        err_msg_append
       )
 
-      # Check each Fixation type according to its order of attempt.
+      # Ensure the correct number of Fixations have been attempted before 
+      # continuing.
+      fixations_attempted = perceiver_fixations_field.value(chrest_perceiver_field.value(model)).get(time.to_java(:int))
+      assert_equal(
+        max_fixations_in_set,
+        fixations_attempted.size(),
+        "occurred when checking the number of fixations attempted" + err_msg_append
+      )
+      
+      # Check that the _fixationsAttemptedInSet variable has been reset to 0
+      assert_equal(
+        0,
+        model._fixationsAttemptedInCurrentSet,
+        "occurred when checking the number of fixations attempted in the " +
+        "current set when a Fixation set is complete" + err_msg_append
+      )
+
+      # Check each Fixation type attempted according to its order of attempt.
       for f in 0...fixations_attempted.size()
         fixation = fixations_attempted.get(f)
+        
+        #########################################
+        ##### SET EXPECTED FIXATION CLASSES #####
+        #########################################
+        
         expected_fixation_classes = []
-
-        if f == 0 
-          expected_fixation_classes.push(CentralFixation.java_class)
-        elsif f.between?(1,3)
-          expected_fixation_classes.push(SalientManFixation.java_class)
-        elsif f == 4
-          expected_fixation_classes.push(HypothesisDiscriminationFixation.java_class)
-        else
-          expected_fixation_classes.push(HypothesisDiscriminationFixation.java_class)
-          expected_fixation_classes.push(repeat == 1 ? PeripheralItemFixation.java_class : GlobalStrategyFixation.java_class)
-          expected_fixation_classes.push(PeripheralSquareFixation.java_class)
-          expected_fixation_classes.push(AttackDefenseFixation.java_class)
+        
+        case test_domain
+        when GenericDomain.java_class
+          if f == 0
+            expected_fixation_classes.push(learn_object_locations_relative_to_self ? AheadOfAgentFixation : CentralFixation)
+          elsif f == 1
+            expected_fixation_classes.push(HypothesisDiscriminationFixation)
+          else
+            expected_fixation_classes.push(HypothesisDiscriminationFixation)
+            expected_fixation_classes.push(PeripheralSquareFixation)
+            expected_fixation_classes.push(PeripheralItemFixation)
+          end
+        when ChessDomain.java_class
+          if f == 0 
+            expected_fixation_classes.push(CentralFixation)
+          elsif f.between?(1,3)
+            expected_fixation_classes.push(SalientManFixation)
+          elsif f == 4
+            expected_fixation_classes.push(HypothesisDiscriminationFixation)
+          else
+            expected_fixation_classes.push(HypothesisDiscriminationFixation)
+            expected_fixation_classes.push(model_is_experienced ? GlobalStrategyFixation : PeripheralItemFixation)
+            expected_fixation_classes.push(PeripheralSquareFixation)
+            expected_fixation_classes.push(AttackDefenseFixation)
+          end
+        when TileworldDomain.java_class
+          if f == 0
+            expected_fixation_classes.push(AheadOfAgentFixation)
+          elsif f < initial_fixation_threshold
+            expected_fixation_classes.push(SalientObjectFixation)
+          elsif f == initial_fixation_threshold
+            expected_fixation_classes.push(HypothesisDiscriminationFixation)
+          else
+            expected_fixation_classes.push(HypothesisDiscriminationFixation)
+            expected_fixation_classes.push(SalientObjectFixation)
+            expected_fixation_classes.push(MovementFixation)
+            expected_fixation_classes.push(PeripheralItemFixation)
+            expected_fixation_classes.push(PeripheralSquareFixation)
+          end
         end
-        expected_fixation_classes.map!{|x| x.to_s}
 
+        expected_fixation_classes.map!{|x| x.java_class.to_s}
         assert_true(
           expected_fixation_classes.include?(fixation.java_class.to_s), 
-          "occurred when checking if fixation " + f.to_s + " was of any of the " +
-          "following types: " + expected_fixation_classes.to_s + "\nFixation details:\n" +
-          fixation.toString()
+          "occurred" + err_msg_append + " when checking if fixation " + f.to_s + 
+          " was of any of the following types: " + expected_fixation_classes.to_s + 
+          "\nFixation details:\n" + fixation.toString()
         )
-      
+
         # If the Fixation attempted was performed successfully, set the relevant
         # boolean flag in the test loop control data structure
-        fixation_performance_flags.each{|fixation_type| 
+        fixations_expected.each{|fixation_type| 
           if fixation_type[0] == fixation.java_class && fixation._performed 
             fixation_type[1] = true
           end
         }
       end
-    
-    ##############################################
-    ##### MODIFY TEST LOOP CONTROL VARIABLES #####
-    ##############################################
-    
-    all_fixations_performed = true
-    fixation_performance_flags.each{|fixation_type| 
-      if !fixation_type[1]
-        all_fixations_performed = false
-      end
-    }
-    if all_fixations_performed then counter += 1 end
-    end
-  end
-end
-
-################################################################################
-# Tests that Fixation performance in Tileworld proceeds as expected, i.e.
-# 
-# 1. All Fixations can be made (if conditions are appropriate).
-# 2. Fixations are performed in the way specified in TileworldDomain.
-# 3. Fixation performance is consistent and doesn't fail at any point.
-#
-# To verify these statements, at least 1000 Fixation sets are performed on the
-# following Scene by a CHREST model whose domain is set to an TileworldDomain
-# instance of TileworldDomain. Every possible type of SceneObject is included in 
-# the Scene fixated on so all possible scenarios should be tested.
-# 
-# The test will only end after all possible Fixation types have been performed 
-# by the CHREST model and then for 1000 Fixation sets after this.
-# 
-# Scene
-# =====
-# 
-# Notation:
-#   - SceneObjects denoted by identifiers with type in parenthesis.
-#   - Agent equipped with CHREST denoted by "SELF" type.
-#   - Blind squares denoted by "*"
-#   - Empty squares denoted by "."
-#   
-# |---------|---------|---------|---------|---------|
-# |  3(O)   |   .     |    .    |    .    |   7(O)  |
-# |---------|---------|---------|---------|---------|
-# |   .     |   .     |   1(T)  |    .    |    .    |
-# |---------|---------|---------|---------|---------|
-# |   .     |  6(H)   | 0(SELF) |   2(H)  |    .    |
-# |---------|---------|---------|---------|---------|
-# |   .     |  8(O)   |    *    |    .    |    .    |
-# |---------|---------|---------|---------|---------|
-# |   .     |  4(T)   |    *    |    .    |   5(H)  |
-# |---------|---------|---------|---------|---------|
-#
-canonical_result_test "make_fixations_in_tileworld_domain" do
-  
-  #######################################################
-  ##### SET-UP ACCESS TO PRIVATE INSTANCE VARIABLES #####
-  #######################################################
-  
-  # With regard to the CHREST model used:
-  # 
-  # 1. Need to set the domain specifics of the model to TileworldDomain.
-  # 2. Need to set modify visual STM to ensure a 
-  #    HypothesisDiscriminationFixation can be performed.
-  # 3. Need to set the fixation field of view for the Perceiver associated with
-  #    the CHREST model so that PeripheralItemFixations and 
-  #    PeripheralSquareFixations are guaranteed to be made.
-  Chrest.class_eval{
-    field_accessor :_domainSpecifics, :_visualStm
-  }
-  chrest_perceiver_field = Chrest.java_class.declared_field("_perceiver")
-  chrest_perceiver_field.accessible = true
-  
-  # Need to set the fixation field of view for reasons described above.
-  Perceiver.class_eval{
-    field_accessor :_fixationFieldOfView
-  }
-  
-  # With regard to the Scene used:
-  # 
-  # 1. Need to populate the Scene with SceneObjects so it reflects the structure 
-  #    outlined in the test preamble.
-  # 2. Need to access the dimensions of the Scene constructed to enable 
-  #    randomness in STM Node images to enable/disable 
-  #    HypothesisDiscriminationFixation performance.
-  Scene.class_eval{
-    field_accessor :_scene
-  }
-  scene_height_field = Scene.java_class.declared_field("_height")
-  scene_height_field.accessible = true
-  scene_width_field = Scene.java_class.declared_field("_width")
-  scene_width_field.accessible = true
-  
-  # Need access to SceneObject types to construct STM Nodes to enable/disable 
-  # HypothesisDiscriminationFixation performance.
-  scene_object_type_field = SceneObject.java_class.declared_field("_objectType")
-  scene_object_type_field.accessible = true
-  
-  # Need access to what Fixations are performed to control test progress.
-  Fixation.class_eval{
-    field_accessor :_performed
-  }
-  
-  # Need access to ListPattern elements to construct contents and images for STM
-  # Nodes to enable/disable HypothesisDiscriminationFixation performance.
-  ListPattern.class_eval{
-    field_accessor :_list
-  }
-  
-  # Need access to STM Node's child history to enable/disable 
-  # HypothesisDiscriminationFixation performance.
-  Node.class_eval{
-    field_accessor :_childHistory
-  }
-  
-  # Need access to visual STM items to enable/disable 
-  # HypothesisDiscriminationFixation performance.
-  stm_item_history_field = Stm.java_class.declared_field("_itemHistory")
-  stm_item_history_field.accessible = true
-  
-  ##########################################
-  ##### SET-UP TEST PROGRESS VARIABLES #####
-  ##########################################
-  
-  # For each type of Fixation expected, add its class to an array along with 
-  # a boolean flag indicated whether that type of Fixation has been performed.
-  # Initially, none of the Fixation types expected will have been performed so
-  # set all boolean flags to false.
-  fixation_performance_flags = [
-    [HypothesisDiscriminationFixation.java_class, false],
-    [SalientObjectFixation.java_class, false],
-    [MovementFixation.java_class, false],
-    [PeripheralItemFixation.java_class, false],
-    [PeripheralSquareFixation.java_class, false]
-  ]
-  
-  # Set a counter since the test should be run 1000 times after all Fixations 
-  # have been performed to ensure a broad spectrum of behaviour.
-  counter = 0
-  
-  #####################
-  ##### MAIN LOOP #####
-  #####################
-  
-  until counter == 1000
-
-    time = 0
-    
-    ###########################
-    ##### CONSTRUCT MODEL #####
-    ###########################
-    
-    model = Chrest.new(time, true)
-    chrest_perceiver_field.value(model)._fixationFieldOfView = 2
-
-    ####################################
-    ##### SET-UP DOMAIN PARAMETERS #####
-    ####################################
-    
-    max_fixation_attempt = 20
-    initial_fixation_threshold = 3
-    peripheral_item_fixation_max_attempts = 3
-    
-    ###########################################################
-    ##### CONSTRUCT DOMAIN AND SET AS CHREST MODEL DOMAIN #####
-    ###########################################################
-    
-    tileworld_domain = TileworldDomain.new(
-      model, 
-      max_fixation_attempt, 
-      initial_fixation_threshold, 
-      peripheral_item_fixation_max_attempts
-    )
-
-    model._domainSpecifics = tileworld_domain
-    
-    ###########################
-    ##### CONSTRUCT SCENE #####
-    ###########################
-    
-    # Constructed as being blind, initially.
-    scene = Scene.new("", 5, 5, 0, 0, nil)
-    
-    # Place physical objects.
-    scene._scene.get(2).set(2, SceneObject.new("0", Scene.getCreatorToken()))
-    scene._scene.get(2).set(3, SceneObject.new("1", TileworldDomain::TILE_SCENE_OBJECT_TYPE_TOKEN))
-    scene._scene.get(3).set(2, SceneObject.new("2", TileworldDomain::HOLE_SCENE_OBJECT_TYPE_TOKEN))
-    scene._scene.get(0).set(4, SceneObject.new("3", TileworldDomain::OPPONENT_SCENE_OBJECT_TYPE_TOKEN ))
-    scene._scene.get(1).set(0, SceneObject.new("4", TileworldDomain::TILE_SCENE_OBJECT_TYPE_TOKEN))
-    scene._scene.get(4).set(0, SceneObject.new("5", TileworldDomain::HOLE_SCENE_OBJECT_TYPE_TOKEN))
-    scene._scene.get(1).set(2, SceneObject.new("6", TileworldDomain::HOLE_SCENE_OBJECT_TYPE_TOKEN))
-    scene._scene.get(4).set(4, SceneObject.new("7", TileworldDomain::OPPONENT_SCENE_OBJECT_TYPE_TOKEN ))
-    scene._scene.get(1).set(1, SceneObject.new("8", TileworldDomain::OPPONENT_SCENE_OBJECT_TYPE_TOKEN ))
-    
-    # Fill in empty squares.
-    for col in 0...scene_width_field.value(scene)
-      for row in 0...scene_height_field.value(scene)
-        if col != 2 && (row != 1 || row != 2)
-          
-          object_type = scene_object_type_field.value(scene._scene.get(col).get(row))
-          if object_type == Scene.getBlindSquareToken()
-            scene._scene.get(col).set(row, SceneObject.new(Scene.getEmptySquareToken))
-          end
+      
+      # Check VisualSpatialField construction.
+      if construct_visual_spatial_field
+        if perceiver_fixations_field.value(chrest_perceiver_field.value(model)).lastEntry().getValue().to_a.any?{|fixation| fixation._performed} 
+          assert_true(
+            chrest_vsf_field.value(model).lastEntry().getValue() != nil,
+            "occurred when checking if a VisualSpatialField has been " + 
+            "constructed when it should have been after the first Fixation " +
+            "set has completed" + err_msg_append
+          )
         end
-      end
-    end
-    
-    ###############################
-    ##### POPULATE VISUAL STM #####
-    ###############################
-    
-    # Populate visual STM so that HypothesisDiscriminationFixations can be 
-    # performed correctly (sometimes).  Essentially, there should be a STM Node
-    # whose content/image contains ItemSquarePatterns that will be present in
-    # ListPatterns generated after making a Fixation on the Scene and 
-    # normalising said ListPattern.  This STM Node should then have a child 
-    # whose content/image also contains ItemSquarePatterns that will be present 
-    # in ListPatterns generated after making a Fixation on the Scene and 
-    # normalising said ListPattern. Therefore, 2 Nodes will be constructed and
-    # added to STM, the Node in STM (depth 1 Node) and the Node that is a child
-    # of the Node in STM (depth 2 Node).
-    # 
-    # The test should introduce some variablity in behaviour since the handling 
-    # of Fixations that are not performed successfully needs to be checked.  
-    # Therefore, get the location of 1 randomly selected SceneObject from 
-    # the 8 in the Scene constructed that does not represent:
-    # 
-    # 1. The creator
-    # 2. Blind squares 
-    # 3. Empty squares 
-    # 
-    # These SceneObjects would be stripped from the ListPattern to learn during 
-    # normalisation along with duplicate SceneObject locations.  Therefore, 
-    # prevent such ItemSquarePatterns being considered as candidates for 
-    # ItemSquarePatterns used in construction of STM Nodes.
-    #
-    # Note that the column and row in the ItemSquarePattern should be specified 
-    # relative to the location of the agent equipped with CHREST since the 
-    # CHREST model has been set-up with the "learn object location relative to 
-    # agent" construction parameter set to true (has to be if using the 
-    # Tileworld domain). Thus, if a HypothesisDiscriminationFixation is 
-    # generated then it is guaranteed to not be performed if coordinates in STM 
-    # Node contents/images are domain-specific since CHREST will automatically 
-    # convert coordinates to agent relative ones when fixations are made and so 
-    # STM Node Link tests will never pass when making a 
-    # HypothesisDiscriminationFixation.
-    
-    ##### CONSTRUCT DEPTH 2 NODE ######
-    depth_2_node_contents_image = nil
-    4.times do 
-      
-      col = rand(0...scene_width_field.value(scene))
-      row = rand(0...scene_height_field.value(scene))
-      item = scene_object_type_field.value(scene._scene.get(col).get(row))
-      
-      # Subtract 2 from col and row to get agent relative coordinates.
-      depth_2_node_contents_image = ItemSquarePattern.new(item, col - 2, row - 2)
-      
-      while 
-        item == Scene.getBlindSquareToken() || 
-        item == Scene.getCreatorToken() || 
-        item == Scene.getEmptySquareToken()
-      ######
-        col = rand(0...scene_width_field.value(scene))
-        row = rand(0...scene_height_field.value(scene))
-        item = scene_object_type_field.value(scene._scene.get(col).get(row))
-      end
-      
-      # Subtract 2 from col and row to get agent relative coordinates.
-      depth_2_node_contents_image = ItemSquarePattern.new(item, col - 2, row - 2)
-    end
-
-    depth_2_node_contents = ListPattern.new(Modality::VISUAL)
-    depth_2_node_contents._list.add(depth_2_node_contents_image)
-    depth_2_node_image = depth_2_node_contents
-    depth_2_node = Node.new(model, depth_2_node_contents, depth_2_node_image, time)
-    depth_2_link = Link.new(depth_2_node_contents, depth_2_node, time, "")
-    
-    ##### CONSTRUCT DEPTH 1 NODE ##### 
-    depth_1_node_contents_image = nil
-    4.times do 
-      
-      col = rand(0...scene_width_field.value(scene))
-      row = rand(0...scene_height_field.value(scene))
-      item = scene_object_type_field.value(scene._scene.get(col).get(row))
-      
-      while 
-        item == Scene.getBlindSquareToken() || 
-        item == Scene.getCreatorToken() || 
-        item == Scene.getEmptySquareToken()
-      ######
-        col = rand(0...scene_width_field.value(scene))
-        row = rand(0...scene_height_field.value(scene))
-        item = scene_object_type_field.value(scene._scene.get(col).get(row))
-      end
-      
-      # Subtract 2 from col and row to get agent relative coordinates.
-      depth_1_node_contents_image = ItemSquarePattern.new(item, col - 2, row - 2)
-    end
-    
-    depth_1_node_contents = ListPattern.new(Modality::VISUAL)
-    depth_1_node_contents._list.add(depth_1_node_contents_image)
-    depth_1_node_image = depth_1_node_contents
-    depth_1_node = Node.new(model, depth_1_node_contents, depth_1_node_image, time)
-    
-    depth_1_node_children = ArrayList.new()
-    depth_1_node_children.add(depth_2_link)
-
-    time += 1
-    depth_1_node._childHistory.put(time, depth_1_node_children)
-    
-    ##### ADD NODE TO STM #####
-    time += 1
-    stm_items = ArrayList.new()
-    stm_items.add(depth_1_node)
-    stm_item_history_field.value(model._visualStm).put(time, stm_items)
-    
-    ##########################
-    ##### MAKE FIXATIONS #####
-    ##########################
-    
-    until model.scheduleOrMakeNextFixation(scene, false, time)
-      time += 1
-    end
-
-    #################
-    ##### TESTS #####
-    #################
-    
-    # Ensure the correct number of Fixations have been attempted before 
-    # continuing
-    fixations_attempted = model.getPerceiver.getFixations(time)
-    assert_equal(
-      max_fixation_attempt,
-      fixations_attempted.size(),
-      "occurred when checking the number of fixations attempted"
-    )
-
-    # Check each Fixation type according to its order of attempt.
-    for f in 0...fixations_attempted.size()
-      fixation = fixations_attempted.get(f)
-      expected_fixation_classes = []
-
-      if f == 0
-        expected_fixation_classes.push(AheadOfAgentFixation.java_class.to_s)
-      elsif f < initial_fixation_threshold
-        expected_fixation_classes.push(SalientObjectFixation.java_class.to_s)
-      elsif f == initial_fixation_threshold
-        expected_fixation_classes.push(HypothesisDiscriminationFixation.java_class.to_s)
       else
-        expected_fixation_classes.push(HypothesisDiscriminationFixation.java_class.to_s)
-        expected_fixation_classes.push(SalientObjectFixation.java_class.to_s)
-        expected_fixation_classes.push(MovementFixation.java_class.to_s)
-        expected_fixation_classes.push(PeripheralItemFixation.java_class.to_s)
-        expected_fixation_classes.push(PeripheralSquareFixation.java_class.to_s)
+        assert_true(
+          chrest_vsf_field.value(model).lastEntry().getValue() == nil,
+          "occurred when checking if a VisualSpatialField has not been " + 
+          "constructed when it shouldn't have been after the first Fixation " +
+          "set has completed" + err_msg_append
+        )
       end
+    
+      ##############################################
+      ##### MODIFY TEST LOOP CONTROL VARIABLES #####
+      ##############################################
 
-      assert_true(
-        expected_fixation_classes.include?(fixation.java_class.to_s), 
-        "occurred when checking if fixation " + f.to_s + " was of any of the " +
-        "following types: " + expected_fixation_classes.to_s + "\nFixation details:\n" +
-        fixation.toString()
-      )
-      
-      # If the Fixation attempted was performed successfully, set the relevant
-      # boolean flag in the test loop control data structure
-      fixation_performance_flags.each{|fixation_type| 
-        if fixation_type[0] == fixation.java_class && fixation._performed 
-          fixation_type[1] = true
+      # Check for all Fixations being performed
+      all_fixations_performed = true
+      fixations_expected.each{|fixation_type| 
+        if !fixation_type[1]
+          all_fixations_performed = false
         end
       }
-    end
-    
-    ##############################################
-    ##### MODIFY TEST LOOP CONTROL VARIABLES #####
-    ##############################################
-    
-    all_fixations_performed = true
-    fixation_performance_flags.each{|fixation_type| 
-      if !fixation_type[1]
-        all_fixations_performed = false
-      end
-    }
-    if all_fixations_performed then counter += 1 end
-  end
-end
-
-################################################################################
-# Tests that Fixations on a VisualSpatialField updates the termini and 
-# recognised status of VisualSpatialFieldObjects correctly.  Two scenarios are
-# run, in the first, the agent equipped with CHREST is not learning object 
-# locations relative to itself whereas, in the second, it is.  The Scene fixated
-# on represents the following VisualSpatialField:
-# 
-# VisualSpatialField
-# ==================
-# 
-# Notation:
-# - VisualSpatialFieldObjects are denoted by their identifier and object type
-#   (in parenthesis)
-# - Agent equipped with CHREST is denoted by the object type "SELF"
-# - Coordinates whose VisualSpatialFieldObject status is unknown are denoted by
-#   the token "-"
-# 
-#       |---------|---------|---------|---------|---------|
-# 4  6  |    -    |    -    |    -    |   6(E)  |    -    |
-#       |---------|---------|---------|---------|---------|
-# 3  5  |   7(F)  |    -    |   2(A)  |    -    |    -    |
-#       |         |         |   1(A)  |         |         |
-#       |---------|---------|---------|---------|---------|
-# 2  4  |    -    |    -    | 0(SELF) |    -    |    -    |
-#       |---------|---------|---------|---------|---------|
-# 1  3  |    -    |   3(B)  |    -    |   4(C)  |    -    |
-#       |---------|---------|---------|---------|---------|
-# 0  2  |    -    |    -    |   5(D)  |    -    |    -    |
-#       |---------|---------|---------|---------|---------|
-#            2         3         4         5         6     DOMAIN-SPECIFIC COORDS
-#            0         1         2         3         4     VISUAL-SPATIAL COORDS
-# 
-# Important points to note about this VisualSpatialField:
-# - The VisualSpatialFieldObject with identifier "1" is created before the 
-#   the VisualSpatialFieldObject with identifier "2".  The reason for this 
-#   co-habitation will be explained later.
-# - The VisualSpatialFieldObjects with identifiers "5", "6" and "7" are all 
-#   recognised whilst the others are not.
-# 
-# When this VisualSpatialField is rendered as a Scene, it will look like the
-# following:
-# 
-# Scene
-# =====
-# 
-# Notation:
-# - Mimicks the notation used for the VisualSpatialField
-# - Blind squares are denoted by the token "*"
-# 
-#       |---------|---------|---------|---------|---------|
-# 4  6  |    *    |    *    |    *    |   6(E)  |    *    |
-#       |---------|---------|---------|---------|---------|
-# 3  5  |   7(F)  |    *    |   2(A)  |    *    |    *    |
-#       |---------|---------|---------|---------|---------|
-# 2  4  |    *    |    *    | 0(SELF) |    *    |    *    |
-#       |---------|---------|---------|---------|---------|
-# 1  3  |    *    |   3(B)  |    *    |   4(C)  |    *    |
-#       |---------|---------|---------|---------|---------|
-# 0  2  |    *    |    *    |   5(D)  |    *    |    *    |
-#       |---------|---------|---------|---------|---------|
-#            2         3         4         5         6     DOMAIN-SPECIFIC COORDS
-#            0         1         2         3         4     SCENE COORDS
-#         
-# Note that:
-# - The VisualSpatialFieldObject with identifier "1" is not rendered as a 
-#   SceneObject since only 1 SceneObject may be present on any Square in a 
-#   Scene.  In such a situation, the most recently created 
-#   VisualSpatialFieldObject is selected for rendering as a SceneObject and, in
-#   the test, the VisualSpatialFieldObject with identifier "2" is created after
-#   the VisualSpatialFieldObject with identifier "1".
-# - VisualSpatialField coordinates whose VisualSpatialFieldObject status is 
-#   unknown are rendered as blind squares due to the probability data structure 
-#   passed to the VisualSpatialField.getAsScene() function. 
-# 
-# Before the Scene is scanned, the CHREST model will "learn" the locations of
-# VisualSpatialFieldObjects with object types "A", "B" and "C".  Specifically, 
-# the Node learned will have content: <[A 4 5]> (or <[A 0 1]> if the CHREST 
-# model is learning object locations relative to the agent equipped with CHREST)
-# and image <[A 4 5][B 3 3][C 5 3]> (or <[A 0 1][B -1 -1][C 1 -1]> if the CHREST 
-# model is learning object locations relative to the agent equipped with 
-# CHREST).  This allows the test to verify that VisualSpatialFieldObjects 
-# referenced in both the contents AND image of a Node recognised after a 
-# Fixation is made have their termini and recognised status updated.  
-# Furthermore, both VisualSpatialFieldObjects with object type "A" should have 
-# their termini and recognised status updated (hence their co-habitation).
-# 
-# The Scene is then Fixated on, important points to note:
-# - The DomainSpecifics will specify that only 1 Fixation is to be made and this
-#   will be on Square (4, 5) triggering recognition of the Node learned earlier.
-# - The fixation field of view for the Perceiver associated with the model will
-#   be set to 0 to ensure that the Node learned will be recognised (SceneObjects
-#   on other Squares around the Square fixated on will not have their 
-#   information included in the ListPattern created and sent to 
-#   Chrest.recogniseAndLearn()).
-#
-# After the Fixation set is complete, the following statements should be true:
-# - VisualSpatialFieldObjects with identifiers "1", "2", "3" and "4" should now
-#   be recognised whilst all others should be unrecognised.
-# - VisualSpatialFieldObjects with identifiers "1", "2", "3" and "4" should now
-#   have had their termini refreshed to the time the Fixation on (4, 5) was 
-#   performed plus the time to retrieve the Node learned (2 LTM links traversed)
-#   plus the time taken to update STM with the retrieved Node plus the lifespan
-#   for recognised VisualSpatialFieldObjects defined by the CHREST model. 
-#   Termini of other VisualSpatialFieldObjects should remain unchanged.
-canonical_result_test "make_fixations_on_visual_spatial_field" do
-  
-  ####################################################
-  ##### SET-UP ACCESS TO PRIVATE INSTANCE FIELDS #####
-  ####################################################
-  
-  # Need access to the visual-spatial field so it can be populated.
-  vsf_field = VisualSpatialField.java_class.declared_field("_visualSpatialField")
-  vsf_field.accessible = true
-  
-  # Need access to the root visual LTM Node so CHREST can "learn" and various
-  # timing parameters to calculate VisualSpatialFieldObject termini.
-  Chrest.class_eval{
-    field_accessor :_visualLtm, 
-    :_ltmLinkTraversalTime,
-    :_timeToUpdateStm,
-    :_recognisedVisualSpatialFieldObjectLifespan, 
-    :_unrecognisedVisualSpatialFieldObjectLifespan
-  }
-  
-  # Need access to the child history of the root visual LTM Node so CHREST can 
-  # "learn".
-  Node.class_eval{
-    field_accessor :_childHistory
-  }
-  
-  ########################################
-  ##### CREATE TestFixation FOR TEST #####
-  ########################################
-  
-  # TestFixation will return the column and row specified when it is initialised 
-  # as a Square.
-  class TestFixation < Fixation
-    @col = nil
-    @row = nil
-    
-    def initialize(time, col, row)
-      super(time)
-      @col = col
-      @row = row
-    end
-    
-    def make(scene, time)
-      return Square.new(@col, @row)
-    end
-  end
-  
-  ######################################
-  ##### CREATE TestDomain FOR TEST #####
-  ######################################
-  
-  # TestDomain will simply return a new instance of TestFixation when its
-  # getInitialFixationInSet() and getNonInitialFixationInSet() methods are 
-  # invoked (getNonInitialFixationInSet() should never actually be called).
-  # For completeness, its normalise() function will strip any SceneObjects
-  # representing the agent equipped with CHREST, blind squares or empty squares
-  # from ListPatterns generated when a Fixation is made (this should not be
-  # used in actuality since the Perceiver will only ever fixate on Square (4, 5)
-  # which contains SceneObject with identifier "2").
-  class TestDomain < DomainSpecifics
-    
-    def initialize(model, max_fixations)
-      super(model, max_fixations)
-    end
-    
-    def normalise(pattern)
-      list_pattern = ListPattern.new(pattern.getModality());
-    
-      for prim in pattern
-        object_type = prim.getItem();
-        if( 
-          object_type != Scene.getCreatorToken() &&
-          object_type != Scene.getEmptySquareToken() &&
-          object_type != Scene.getBlindSquareToken() &&
-          !list_pattern.contains(prim)
-        )
-          list_pattern.add(prim);
-        else
-          list_pattern.add(prim);
-        end
-      end
       
-      return list_pattern
-    end
-    
-    def getInitialFixationInSet(time)
-      return TestFixation.new(time + 150, 2, 3)
-    end
-    
-    def getNonInitialFixationInSet(time)
-      return TestFixation.new(time + 150, 2, 3)
-    end
-    
-    def shouldAddNewFixation(time)
-      return true
-    end
-    
-    def shouldLearnFromNewFixations(time)
-      return false
-    end
-    
-    def isFixationSetComplete(time)
-      return false
-    end
-  end
-  
-  #########################
-  ##### SCENARIO LOOP #####
-  #########################
-  for scenario in 1..2
-    
-    ################################################################
-    ##### SET-UP TIME, CHREST MODEL AND FIXATION FIELD OF VIEW #####
-    ################################################################
-    
-    time = 0
-    model = Chrest.new(time, (scenario == 1 ? false : true))
-    model.setDomain(TestDomain.new(model, 1))
-    model.getPerceiver().setFixationFieldOfView(0)
-  
-    #####################################
-    ##### SET-UP VisualSpatialField #####
-    #####################################
-    
-    creator_details = nil
-    if scenario == 2
-      creator_details = ArrayList.new()
-      creator_details.add("0")
-      creator_details.add(Square.new(2, 2))
-    end
-    
-    visual_spatial_field = VisualSpatialField.new("", 5, 5, 2, 2, model, creator_details, time)
-    a_1 = VisualSpatialFieldObject.new("1", "A", model, visual_spatial_field, time, false, true)
-    a_2 = VisualSpatialFieldObject.new("2", "A", model, visual_spatial_field, time + 10, false, true)
-    b = VisualSpatialFieldObject.new("3", "B", model, visual_spatial_field, time, false, true)
-    c = VisualSpatialFieldObject.new("4", "C", model, visual_spatial_field, time, false, true)
-    d = VisualSpatialFieldObject.new("5", "D", model, visual_spatial_field, time, true, true)
-    e = VisualSpatialFieldObject.new("6", "E", model, visual_spatial_field, time, true, true)
-    f = VisualSpatialFieldObject.new("7", "F", model, visual_spatial_field, time, true, true)
-    vsf = vsf_field.value(visual_spatial_field)
-    vsf.get(2).get(0).add(d)
-    vsf.get(1).get(1).add(b)
-    vsf.get(3).get(1).add(c)
-    vsf.get(0).get(3).add(f)
-    vsf.get(2).get(3).add(a_1)
-    vsf.get(2).get(3).add(a_2) 
-    vsf.get(3).get(4).add(e)
-    
-    #############################################################
-    ##### SET-UP EXPECTED VisualSpatialField DATA STRUCTURE #####
-    #############################################################
-    
-    expected_visual_spatial_field_data = Array.new(5){ Array.new(5){ Array.new } }
-    if scenario == 2 then expected_visual_spatial_field_data[2][2] = [["0", Scene.getCreatorToken(), false, time, nil]] end
-    expected_visual_spatial_field_data[2][0] = [["5", "D", true, time, time + model._recognisedVisualSpatialFieldObjectLifespan]]
-    expected_visual_spatial_field_data[1][1] = [["3", "B", false, time, time + model._unrecognisedVisualSpatialFieldObjectLifespan]]
-    expected_visual_spatial_field_data[3][1] = [["4", "C", false, time, time + model._unrecognisedVisualSpatialFieldObjectLifespan]]
-    expected_visual_spatial_field_data[0][3] = [["7", "F", true, time, time + model._recognisedVisualSpatialFieldObjectLifespan]]
-    expected_visual_spatial_field_data[2][3] = [
-      ["1", "A", false, time, time + model._unrecognisedVisualSpatialFieldObjectLifespan],
-      ["2", "A", false, time + 10, time + 10 + model._unrecognisedVisualSpatialFieldObjectLifespan]
-    ]
-    expected_visual_spatial_field_data[3][4] = [["6", "E", true, time, time + model._recognisedVisualSpatialFieldObjectLifespan]]
-    
-    #####################################################
-    ##### CHECK INITIAL STATE OF VisualSpatialField #####
-    #####################################################
-    
-    # Set time to time last VisualSpatialFieldObject (has identifier "2")
-    time = time + 10
-    
-    # Now, check that the initial state of the VisualSpatialField is as expected
-    check_visual_spatial_field_against_expected(
-      visual_spatial_field, 
-      expected_visual_spatial_field_data, 
-      time, 
-      "when checking the initial state of the VisualSpatialField"
-    )
-    
-    ##############################################
-    ##### LEARN LOCATION OF "A", "B" AND "C" #####
-    ##############################################
-    
-    a_isp = (scenario == 1 ? ItemSquarePattern.new("A", 4, 5) : ItemSquarePattern.new("A", 0, 1))
-    b_isp = (scenario == 1 ? ItemSquarePattern.new("B", 3, 3) : ItemSquarePattern.new("B", -1, -1))
-    c_isp = (scenario == 1 ? ItemSquarePattern.new("C", 5, 3) : ItemSquarePattern.new("C", 1, -1))
-    
-    node_contents = ListPattern.new(Modality::VISUAL)
-    node_contents.add(a_isp)
-    
-    node_image = ListPattern.new(Modality::VISUAL)
-    node_image.append(node_contents)
-    node_image.add(b_isp)
-    node_image.add(c_isp)
+      # Check for VisualSpatialFieldConstruction
+      if chrest_vsf_field.value(model).lastEntry().getValue() != nil then visual_spatial_field_created = true end
       
-    node = Node.new(model, node_contents, node_image, time)
-    node_link = Link.new(node_contents, node, time, "")
-    
-    # Link Node to Visual LTM Root Node
-    visual_ltm_root_child_history = model._visualLtm._childHistory
-    visual_ltm_root_children = ArrayList.new()
-    visual_ltm_root_children.add(node_link)
-    visual_ltm_root_child_history.put(time += 1, visual_ltm_root_children)
-    
-    #############################################
-    ##### GET VisualSpatialField AS A SCENE #####
-    #############################################
-    
-    # Specify that VisualSpatialField coordinates whose VisualSpatialFieldObject
-    # status is unknown should be encoded as SceneObjects that represent blind
-    # Squares.
-    unknown_prob = TreeMap.new()
-    unknown_prob.put(1.0, Scene.getBlindSquareToken())
-    time += 5
-    visual_spatial_field_scene = visual_spatial_field.getAsScene(time, unknown_prob)
-
-    ##########################
-    ##### MAKE FIXATIONS #####
-    ##########################
-    
-    until model.scheduleOrMakeNextFixation(visual_spatial_field_scene, false, time)
+      # Increment the test iteration counter accordingly.
+      if all_fixations_performed && visual_spatial_field_created then counter += 1 end
+      
+      ############################################################
+      ##### CHECK THAT THE METHOD WILL LOOP AFTER COMPLETION #####
+      ############################################################
+      
+      # Invoke the method until it returns true, i.e. it has started a new 
+      # Fixation set.
       time += 1
+      until model.scheduleOrMakeNextFixation(scene_to_fixate_on, false, time)
+        time += 1
+      end
+      
+      # Check that the model now considers itself as performing a new Fixtaion
+      # set
+      assert_true(
+        model._performingFixations, 
+        "occurred when checking if the model is performing Fixations when " +
+        "it should have started a new Fixation set" + err_msg_append
+      )
+      
+      # Check that the correct initial Fixation has been scheduled.
+      assert_equal(
+        1,
+        model._fixationsScheduled.get(time.to_java(:int)).size(),
+        "occurred when checking the size of the CHREST model's scheduled " +
+        "Fixations data structure after starting a new Fixation set" + err_msg_append
+      )
+      
+      expected_initial_fixation = (
+        case test_domain
+        when GenericDomain.java_class
+          learn_object_locations_relative_to_self ? AheadOfAgentFixation : CentralFixation
+        when ChessDomain.java_class
+          CentralFixation
+        when TileworldDomain.java_class
+          AheadOfAgentFixation
+        end
+      ).java_class
+      
+      assert_equal(
+        expected_initial_fixation,
+        model._fixationsScheduled.get(time.to_java(:int)).get(0).java_class,
+        "occurred when checking the type of the initial Fixation in the CHREST " + 
+        "model's scheduled Fixations data structure after starting a new Fixation set" +
+        err_msg_append
+      )
+      
+      # Check that Perceiver's Fixations data structure has been cleared.
+      assert_true(
+        perceiver_fixations_field.value(chrest_perceiver_field.value(model)).get(time.to_java(:int)).isEmpty(),
+        "occurred when checking if the Perceiver's Fixation data structure is " +
+        "cleared after starting a new Fixation set" + err_msg_append
+      )
+      
+      # Check that the fixation to learn from according to the Perceiver has 
+      # been reset to 0.
+      assert_equal(
+        chrest_perceiver_field.value(model)._fixationToLearnFrom,
+        0,
+        "occurred when checking if the Perceiver's Fixation to learn from is " + 
+        "reset to 0 after starting a new Fixation set" + err_msg_append
+      )
+      
+      ########################################
+      ##### PERFORM ANOTHER FIXATION SET #####
+      ########################################
+      
+      until !model.scheduleOrMakeNextFixation(scene_to_fixate_on, false, time)
+        time += 1
+      end
     end
-    
-    #############################################################
-    ##### UPDATE EXPECTED VisualSpatialField DATA STRUCTURE #####
-    #############################################################
-    
-    time_recognition_occurs = time + (model._ltmLinkTraversalTime * 2) + model._timeToUpdateStm
-    
-    expected_visual_spatial_field_data[2][0][0][2] = false
-    expected_visual_spatial_field_data[2][0][0][4] = time_recognition_occurs + model._unrecognisedVisualSpatialFieldObjectLifespan
-    
-    expected_visual_spatial_field_data[1][1][0][2] = true
-    expected_visual_spatial_field_data[1][1][0][4] = time_recognition_occurs + model._recognisedVisualSpatialFieldObjectLifespan
-    
-    expected_visual_spatial_field_data[3][1][0][2] = true
-    expected_visual_spatial_field_data[3][1][0][4] = time_recognition_occurs + model._recognisedVisualSpatialFieldObjectLifespan
-    
-    expected_visual_spatial_field_data[0][3][0][2] = false
-    expected_visual_spatial_field_data[0][3][0][4] = time_recognition_occurs + model._unrecognisedVisualSpatialFieldObjectLifespan
-    
-    expected_visual_spatial_field_data[2][3][0][2] = true
-    expected_visual_spatial_field_data[2][3][0][4] = time_recognition_occurs + model._recognisedVisualSpatialFieldObjectLifespan
-    
-    expected_visual_spatial_field_data[2][3][1][2] = true
-    expected_visual_spatial_field_data[2][3][1][4] = time_recognition_occurs + model._recognisedVisualSpatialFieldObjectLifespan
-    
-    expected_visual_spatial_field_data[3][4][0][2] = false
-    expected_visual_spatial_field_data[3][4][0][4] = time_recognition_occurs + model._unrecognisedVisualSpatialFieldObjectLifespan
-    
-    #################################################################
-    ##### CHECK STATE OF VisualSpatialField AFTER FIXATION MADE #####
-    #################################################################
-    
-    check_visual_spatial_field_against_expected(
-      visual_spatial_field, 
-      expected_visual_spatial_field_data, 
-      [time, model.getAttentionClock].max, 
-      "when checking the state of the VisualSpatialField after scanning"
-    )
   end
+  
+  # Done to make terminal output pretty (will print result of test on a new 
+  # line after the counter display for the domain)
+  puts "\n"
 end
 
 ################################################################################
@@ -2365,7 +4236,6 @@ end
 # At this point, an unrecognised VisualSpatialFieldObject will have been 
 # refreshed by referencing the coordinates of the unrecognised 
 # VisualSpatialFieldObject to refresh.
-
 process_test "construct_visual_spatial_field" do
   
   for scenario in 1..2
