@@ -317,7 +317,7 @@ public class Chrest extends Observable {
     
     //Set creation time and resource clocks.
     this._creationTime = time;
-    this._domainSpecifics = new GenericDomain(this, 10);
+    this._domainSpecifics = new GenericDomain(this, 10, 3);
     this._learnObjectLocationsRelativeToAgent = learnObjectLocationsRelativeToAgent;
     
     /******************************/

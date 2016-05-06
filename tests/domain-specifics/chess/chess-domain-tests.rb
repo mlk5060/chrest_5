@@ -2119,6 +2119,10 @@ unit_test "get_non_initial_fixation_in_set" do
     field_accessor :_scene, :_performanceTime, :_timeDecidedUpon, :_performed, :_colFixatedOn, :_rowFixatedOn, :_objectSeen
   }
   
+  Scene.class_eval{
+    field_accessor :_scene
+  }
+  
   # Scene dimensions need to be accessed at times, grant access here.
   scene_width_field = Scene.java_class.declared_field("_width")
   scene_width_field.accessible = true
@@ -2197,13 +2201,10 @@ unit_test "get_non_initial_fixation_in_set" do
       "RNBQKBNR"
     board = ChessDomain.constructBoard(chess_board)
 
-    #########################################################################
-    ##### SET-UP FIXATION DATA STRUCTURE FOR CHREST MODEL AND PERCEIVER #####
-    #########################################################################
+    ########################################################
+    ##### SET-UP FIXATION DATA STRUCTURE FOR PERCEIVER #####
+    ########################################################
     
-    # Lists are used in the Fixation data structures for CHREST and the 
-    # Perceiver so set them up now.
-    fixations_to_make = ArrayList.new()
     fixations_attempted = ArrayList.new()
 
     ######################################################################
