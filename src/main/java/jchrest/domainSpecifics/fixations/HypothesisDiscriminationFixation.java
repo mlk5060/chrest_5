@@ -137,6 +137,10 @@ public class HypothesisDiscriminationFixation extends Fixation{
    */
   @Override
   public Square make(Scene scene, int time) {
+    this._model.printDebugStatement("===== HypothesisDiscriminationFixation.make() =====");
+    this._model.printDebugStatement("- Attempting to make Fixation on Scene with name '" + scene.getName() + "' at time " + time);
+    Square fixationPoint = null;
+    
     if(!scene.isBlind()){
       this._model.printDebugStatement("- Scene is not entirely blind");
       
@@ -212,7 +216,8 @@ public class HypothesisDiscriminationFixation extends Fixation{
               //
               // 1. The square to fixate on is present in the current Scene.
               // 2. The square to fixate on is not blind.
-              // 3. No Fixation has been performed prior to this Fixation's 
+              // 3. The square to fixate on does not contain the Scene creator.
+              // 4. No Fixation has been performed prior to this Fixation's 
               //    attempt to be made OR the most recently performed Fixation 
               //    did not focus on the same Square in the domain as this 
               //    Fixation is proposing (this Fixation, if made would then 
@@ -221,7 +226,7 @@ public class HypothesisDiscriminationFixation extends Fixation{
               //    domain, the absolue domain coordinates proposed to be 
               //    fixated on now and those fixated on in the previous Fixation 
               //    are checked.
-              // 4. The time that this Fixation has been requested at is equal 
+              // 5. The time that this Fixation has been requested at is equal 
               //    to or after its performance time.  Otherwise, an attempt is 
               //    being made to make this Fixation before its performance time 
               //    and this should not be permitted.
@@ -246,7 +251,8 @@ public class HypothesisDiscriminationFixation extends Fixation{
               this._model.printDebugStatement(
                 "- Checking if Fixation can be made (all statements must evaluate to true):" +
                 "\n   ~ Potential Fixation on Square represented in Scene: " + (contentsOfPotentialFixation != null) +
-                "\n   ~ Potential Fixation on non-blind Square: " + !(contentsOfPotentialFixation.getObjectType().equals(Scene.getBlindSquareToken())) +
+                "\n   ~ Potential Fixation on non-blind Square: " + !(contentsOfPotentialFixation.getObjectType().equals(Scene.BLIND_SQUARE_TOKEN)) +
+                "\n   ~ Potential Fixation on Square not occupied by the Scene creator: " + !(contentsOfPotentialFixation.getObjectType().equals(Scene.CREATOR_TOKEN)) +
                 "\n   ~ Potential Fixation on different Square to previous Fixation: " + !(domainSquareToPotentiallyFixateOn.equals(domainSquareFixatedOnInMostRecentFixationPerformed)) +
                 "\n      + Potential Fixation (domain-specific coords): " + domainSquareToPotentiallyFixateOn.toString() + 
                 "\n      + Most recent Fixation performed (domain-specific coords): " + 
@@ -261,13 +267,15 @@ public class HypothesisDiscriminationFixation extends Fixation{
                 //Check statement 1
                 (contentsOfPotentialFixation != null) &&
                 //Check statement 2
-                !(contentsOfPotentialFixation.getObjectType().equals(Scene.getBlindSquareToken())) &&
-                //Check statement 3 (if no Fixation has previously been made, 
+                !(contentsOfPotentialFixation.getObjectType().equals(Scene.BLIND_SQUARE_TOKEN)) &&
+                //Check statement 3
+                !(contentsOfPotentialFixation.getObjectType().equals(Scene.CREATOR_TOKEN)) &&
+                //Check statement 4 (if no Fixation has previously been made, 
                 //the domain square prev. fixated on variable will be set to 
                 //null so the test will evaluate to true since potentialFixation
                 //is not null since it was asserted so above).
                 (!domainSquareToPotentiallyFixateOn.equals(domainSquareFixatedOnInMostRecentFixationPerformed)) &&
-                //Check statement 4
+                //Check statement 5
                 (this.getPerformanceTime() <= time)
               ) {
                 this._model.printDebugStatement("- Making Fixation");
@@ -300,15 +308,18 @@ public class HypothesisDiscriminationFixation extends Fixation{
                     }
                   }
                 }
-
+                
                 //"Make" the fixation.
-                return potentialFixation;
+                fixationPoint = potentialFixation;
               }
             }
           }
         }
       //}
     }
-    return null;
+    
+    this._model.printDebugStatement("- Returning " + (fixationPoint == null ? "null" : fixationPoint.toString()));
+    this._model.printDebugStatement("===== RETURN HypothesisDiscriminationFixation.make() =====");
+    return fixationPoint;
   }
 }

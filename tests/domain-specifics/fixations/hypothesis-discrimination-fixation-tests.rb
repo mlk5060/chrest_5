@@ -11,7 +11,7 @@ unit_test "constructor" do
 end
 
 ################################################################################
-# 11 scenarios are tested here and repeated twice: the first repeat has the
+# Various scenarios are tested here and repeated twice: the first repeat has the
 # CHREST model created learning object locations not-relative to the agent
 # equipped with CHREST whereas the second repeat does.
 # 
@@ -81,8 +81,19 @@ end
 #     specifies a Square present in the Scene to make the fixation in context 
 #     of.
 #   - Square specified is blind
-#
+#   
 # Scenario 11: Fail
+#   - Scene not entirely blind.
+#   - Time fixation is to be made is after visual STM has Nodes added.
+#   - First child of visual STM hypothesis has non-empty test on link to it
+#   - First item of test on link to first child of visual STM hypothesis is
+#     an ItemSquarePattern
+#   - First item of test on link to first child of visual STM hypothesis 
+#     specifies a Square present in the Scene to make the fixation in context 
+#     of.
+#   - Square specified contains the Scene creator
+#
+# Scenario 12: Fail
 #   - Scene not entirely blind.
 #   - Time fixation is to be made is after visual STM has Nodes added.
 #   - First child of visual STM hypothesis has non-empty test on link to it
@@ -113,7 +124,7 @@ unit_test "make" do
   perceiver_fixations.accessible = true
   
   for repeat in 1..2
-    for scenario in 1..11
+    for scenario in 1..12
       
       ########################
       ##### SETUP CHREST #####
@@ -155,9 +166,9 @@ unit_test "make" do
         scene_state = scene_field.value(scene)
         scene_state.get(0).set(0, SceneObject.new("1", "T"))
         scenario == 10 ? 
-          scene_state.get(1).set(1, SceneObject.new(Scene.getBlindSquareToken(), Scene.getBlindSquareToken())) :
+          scene_state.get(1).set(1, SceneObject.new(Scene::BLIND_SQUARE_TOKEN)) :
           scene_state.get(1).set(1, SceneObject.new("2", "H"))
-        if repeat == 2 then scene_state.get(0).set(2, SceneObject.new("0", Scene.getCreatorToken())) end
+        if repeat == 2 then scene_state.get(0).set(2, SceneObject.new("0", Scene::CREATOR_TOKEN)) end
       end
 
       ########################
@@ -212,10 +223,17 @@ unit_test "make" do
         node_3_contents.add(
           (scenario == 8 ? 
             Pattern.makeString("Bad") : 
-            ItemSquarePattern.new(
-              "H", 
-              (repeat == 1 ? 5 : 1), 
-              (repeat == 1 ? 5 : -1)
+            (scenario == 11 ?
+              ItemSquarePattern.new(
+                Scene::CREATOR_TOKEN,
+                (repeat == 1 ? 4 : 0), 
+                (repeat == 1 ? 6 : 0)
+              ) :
+              ItemSquarePattern.new(
+                "H", 
+                (repeat == 1 ? 5 : 1), 
+                (repeat == 1 ? 5 : -1)
+              )
             )
           )
         )
@@ -263,10 +281,10 @@ unit_test "make" do
       ##### SETUP PRIOR FIXATION #####
       ################################
       
-      # In scenario 11, add a Fixation that was made after the model was created 
+      # In scenario 12, add a Fixation that was made after the model was created 
       # which fixated on the same Square as that which will be proposed by the 
       # HypothesisDiscriminationFixation.
-      if scenario == 11
+      if scenario == 12
         prev_fixation = CentralFixation.new(model_creation_time)
         prev_fixation._performanceTime = (model_creation_time + 1)
         prev_fixation._performed = true
