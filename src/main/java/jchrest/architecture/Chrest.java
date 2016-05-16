@@ -2176,6 +2176,198 @@ public class Chrest extends Observable {
   /********************************/
   
   /**
+   * Attempts to learn a production between the {@code visualNode} and {@code
+   * actionNode} specified.
+   * 
+   * For such an attempt to be made, the following statements must all evaluate 
+   * to {@link java.lang.Boolean#TRUE}:
+   * <ol type="1">
+   *  <li>{@link #this} must be "alive" at the {@code time} specified.</li>
+   *  <li>
+   *    The attention of {@link #this} must be free at the {@code time} 
+   *    specified.
+   *  </li>
+   *  <li>
+   *    The {@code visualNode} and {@code actionNode} specified must be present
+   *    in {@link jchrest.lib.Modality#VISUAL} and {@link 
+   *    jchrest.lib.Modality#ACTION} {@link jchrest.architecture.Stm} at the
+   *    {@code time} specified.
+   *  </li>
+   *  <li>
+   *    The cognition of {@link #this} must be free after {@link 
+   *    jchrest.lib.Modality#VISUAL} and {@link jchrest.lib.Modality#ACTION} 
+   *    {@link jchrest.architecture.Stm} have been searched for the {@code 
+   *    visualNode} and {@code actionNode} specified.
+   *  </li>
+   * </ol>
+   * 
+   * This method may consume the <i>attentional</i> and <i>cognitive</i> 
+   * resources of {@link #this}:
+   * <ul>
+   *  <li>
+   *    Attention is consumed when searching {@link jchrest.lib.Modality#VISUAL} 
+   *    and {@link jchrest.lib.Modality#ACTION} {@link jchrest.architecture.Stm}.  
+   *    The search is performed linearly from the hypothesis {@link 
+   *    jchrest.architecture.Node} of the relevant {@link 
+   *    jchrest.architecture.Stm} to the "last" {@link 
+   *    jchrest.architecture.Node}.  For each {@link jchrest.architecture.Stm} 
+   *    position searched, attention is consumed for the value specified by 
+   *    {@link #this#getTimeToRetrieveItemFromStm()}.
+   *  </li>
+   *  <li>
+   *    Cognition is consumed if an attempt to learn a production is successful.  
+   *    The actual time cognition is consumed until is equal to the time the 
+   *    {@link jchrest.architecture.Stm} search completes plus the value 
+   *    returned by {@link #this#getAddProductionTime()}.
+   *  </li>
+   * </ul>
+   * 
+   * @param visualNode
+   * @param actionNode
+   * @param time
+   * 
+   * @return 
+   */
+  public boolean learnProduction(Node visualNode, Node actionNode, int time){
+    this.printDebugStatement("===== Chrest.learnProduction() =====");
+    this.printDebugStatement(
+      "- Attempting to learn production between Node " + visualNode.getReference() + 
+      " and Node " + actionNode.getReference() + " at time " + time
+    );
+    boolean productionLearned = false;
+    
+    //////////////////////////////
+    ///// PRELIMINARY CHECKS /////
+    //////////////////////////////
+    
+    this.printDebugStatement(
+      "- Checking if the following statements all evaluate to true: " +
+      "\n  ~ Model is alive at the time this method is requested: " + (this._creationTime <= time) + 
+      "\n  ~ Attention is free at the time this method is requested: " + (this.isAttentionFree(time)) +
+      "\n  ~ Visual Node specified exists at the time specified: " + (visualNode.getCreationTime() <= time) +
+      "\n  ~ Action Node specified exists at the time specified: " + (actionNode.getCreationTime() <= time) + 
+      "\n  ~ Visual Node specified has Visual modality: " + (visualNode.getModality() == Modality.VISUAL) +
+      "\n  ~ Action Node specified has Action modality: " + (actionNode.getModality() == Modality.ACTION) +
+      "\n  ~ Visual Node specified is not the Visual LTM root Node: " + (!visualNode.isRootNode()) +
+      "\n  ~ Action Node specified is not the Action LTM root Node: " + (!actionNode.isRootNode())
+    );
+    
+    if(
+      this._creationTime <= time && 
+      this.isAttentionFree(time) &&
+      visualNode.getCreationTime() <= time &&
+      actionNode.getCreationTime() <= time &&
+      visualNode.getModality() == Modality.VISUAL &&
+      actionNode.getModality() == Modality.ACTION &&
+      !visualNode.isRootNode() &&
+      !actionNode.isRootNode()
+    ){
+      this.printDebugStatement("    + All OK");
+      
+      ///////////////////////////////////////////
+      ///// CHECK VISUAL STM FOR visualNode /////
+      ///////////////////////////////////////////
+      
+      this.printDebugStatement("- Checking if the visual Node specified is in visual STM");
+      boolean visualNodeInStm = false;
+      List<Node> visualStm = this.getStm(Modality.VISUAL).getContents(time);
+      for(Node visualStmNode : visualStm){
+        time += this._timeToRetrieveItemFromStm;
+        
+        this.printDebugStatement(
+          "  ~ Incremented time by time taken to retrieve item from STM (" + 
+          this._timeToRetrieveItemFromStm + "). Checking if the visual " +
+          "STM Node retrieved's reference (" + visualStmNode.getReference() + 
+          ") is equal to the visual Node specified's reference (" + 
+          visualNode.getReference() + ")"
+        );
+        if(visualStmNode.getReference() == visualNode.getReference()){
+          
+          this.printDebugStatement("    + Visual STM Node matches visualNode, ending search");
+          visualNodeInStm = true;
+          break;
+        }
+      }
+      
+      ///////////////////////////////////////////
+      ///// CHECK ACTION STM FOR actionNode /////
+      ///////////////////////////////////////////
+      
+      this.printDebugStatement("- Checking if the action Node specified is in action STM");
+      boolean actionNodeInStm = false;
+      
+      List<Node> actionStm = this.getStm(Modality.ACTION).getContents(time);
+      for(Node actionStmNode : actionStm){
+        time += this._timeToRetrieveItemFromStm;
+        
+        this.printDebugStatement(
+          "  ~ Incremented time by time taken to retrieve item from STM (" + 
+          this._timeToRetrieveItemFromStm + "). Checking if the action " +
+          "STM Node retrieved's reference (" + actionStmNode.getReference() + 
+          ") is equal to the action Node specified's reference (" + 
+          actionNode.getReference() + ")"
+        );
+        if(actionStmNode.getReference() == actionNode.getReference()){
+          
+          this.printDebugStatement("    + Action STM Node matches actionNode, ending search");
+          actionNodeInStm = true;
+          break;
+        }
+      }
+      
+      ///////////////////////////////
+      ///// SET ATTENTION CLOCK /////
+      ///////////////////////////////
+      
+      this.printDebugStatement("- Setting attention clock to time after visual/action Node search: " + time);
+      this._attentionClock = time;
+      
+      ////////////////////////////////////////////
+      ///// CHECK IF PRODUCTION CAN BE ADDED /////
+      ////////////////////////////////////////////
+      
+      this.printDebugStatement(
+        "- Checking if the following all evaluate to true:" +
+        "\n  ~ The visualNode specified is in visual STM: " + visualNodeInStm +
+        "\n  ~ The actionNode specified is in action STM: " + actionNodeInStm +
+        "\n  ~ Cognition is free at time " + time + ": " + this.isCognitionFree(time)
+      );
+      if(visualNodeInStm && actionNodeInStm && this.isCognitionFree(time)){
+        this.printDebugStatement("    + All OK");
+        
+        /////////////////////////////////////
+        ///// ATTEMPT TO ADD PRODUCTION /////
+        /////////////////////////////////////
+        
+        time += this._addProductionTime;
+        this.printDebugStatement(
+          "- Attempting to add production at the current time plus the time " +
+          "taken to add a production (" + this._addProductionTime + "), i.e. " +
+          "at time " + time
+        );
+        productionLearned = visualNode.addProduction(actionNode, 0.0, time);
+        if(productionLearned){
+          this._cognitionClock = time;
+          this.printDebugStatement("- Production added successfully, setting the cognition clock to " + time);
+        }
+        else{
+          this.printDebugStatement("- Production not added successfully, exiting");
+        }
+      }
+      else{
+        this.printDebugStatement("    + One or more conditions evaluated to false, exiting");
+      }
+    }
+    else{
+      this.printDebugStatement("    + One or more conditions evaluated to false, exiting");
+    }
+    
+    this.printDebugStatement("- Returning " + productionLearned);
+    this.printDebugStatement("===== RETURN Chrest.learnProduction() =====");
+    return productionLearned;
+  }
+  
+  /**
    * Determines the {@link jchrest.lib.Modality} of the two {@link 
    * jchrest.architecture.Node Nodes} passed as parameters and creates the 
    * relevant type of association between them if {@link 
@@ -2367,25 +2559,6 @@ public class Chrest extends Observable {
         }
         else{
           this.printDebugStatement("  ~ Semantic links exist between both nodes in both directions, exiting.");
-        }
-      }
-      else if(
-        nodeToAssociateFromModality.equals(Modality.VISUAL) && 
-        nodeToAssociateToModality.equals(Modality.ACTION)
-      ){
-        this.printDebugStatement("  ~ Attempting to create a production");
-        
-        this.printDebugStatement("- Checking if nodes have a production between them already");
-        HashMap<Node, Double> productions = nodeToAssociateFrom.getProductions(time);
-        if(productions != null && !productions.containsKey(nodeToAssociateTo)){
-          
-          time += this._addProductionTime;
-          this.printDebugStatement(
-            "  ~ Nodes do not have a production between them already, " +
-            "creating production and incrementing time by add production time " +
-            "specified (" + this._addProductionTime + ") to " + time
-          );
-          associationCreated = nodeToAssociateFrom.addProduction(nodeToAssociateTo, 0.0, time);
         }
       }
       else if(
@@ -2975,10 +3148,26 @@ public class Chrest extends Observable {
    * relevant {@link jchrest.architecture.Stm} modality associated with {@link 
    * #this} at the time passed.
    * 
-   * If an association can be created using the {@code nodeToAdd} then this will
-   * also occur (see {@link #this#associateNodes(jchrest.architecture.Node, 
-   * jchrest.architecture.Node, int)}).  Note that semantic link creation is
-   * only attempted if other applicable associations can not be made.
+   * If invoking {@link jchrest.architecture.Node#getModality()} on the {@code 
+   * nodeToAdd} returns {@link jchrest.lib.Modality#VERBAL} and there is a 
+   * {@link jchrest.architecture.Node} in {@link jchrest.lib.Modality#VISUAL} 
+   * {@link jchrest.architecture.Stm} in the hypothesis position that returns
+   * {@link java.lang.Boolean#FALSE} when {@link 
+   * jchrest.architecture.Node#isRootNode()} is invoked upon it, {@link 
+   * jchrest.architecture.Chrest#associateNodes(jchrest.architecture.Node, 
+   * jchrest.architecture.Node, int)} is invoked, potentially creating a 
+   * <i>naming</i> link between the two @link jchrest.architecture.Node Nodes}.
+   * 
+   * If a naming link is not created/applicable, creation of a <i>semantic</i> 
+   * link is attempted between the {@code nodeToAdd} and the {@link 
+   * jchrest.architecture.Node} in the hypothesis position of the {@link 
+   * jchrest.architecture.Stm} {@link jchrest.lib.Modality} equal to the result
+   * of invoking  {@link jchrest.architecture.Node#getModality()} on the {@code 
+   * nodeToAdd}.  If there is a {@link jchrest.architecture.Node} in the 
+   * hypothesis position of the relevant {@link jchrest.architecture.Stm} {@link 
+   * jchrest.lib.Modality}, invoking {@link 
+   * jchrest.architecture.Node#isRootNode()} upon it must return {@link 
+   * java.lang.Boolean#FALSE} for a semantic link to be created.
    * 
    * If the {@link jchrest.architecture.Node} is added to a {@link 
    * jchrest.architecture.Stm}, the attention clock of {@link #this} will be 
@@ -3034,7 +3223,7 @@ public class Chrest extends Observable {
         if (!_frozen) notifyObservers ();
 
         boolean nonSemanticAssociationsCreated = false;
-        if(nodeToAddModality.equals(Modality.ACTION) || nodeToAddModality.equals(Modality.VERBAL)){
+        if(nodeToAddModality.equals(Modality.VERBAL)){
           List<Node> visualStmContents = this.getStm(Modality.VISUAL).getContents(time);
           if(visualStmContents != null && !visualStmContents.isEmpty()){
             Node visualStmHypothesis = visualStmContents.get(0);

@@ -30,28 +30,10 @@ require_relative "visual-spatial-field-tests.rb"
 #   ~ Node to associate to is not a root node
 #   
 #   ~ Node to associate from modality is VISUAL and node to associate to 
-#     modality is ACTION
-#   ~ Association already exists
-#
-# - Scenario 5
-#   ~ Cognition is free
-#   ~ Node to associate from is not a root node
-#   ~ Node to associate to is not a root node
-#   
-#   ~ Node to associate from modality is VISUAL and node to associate to 
-#     modality is ACTION
-#   ~ Association does not already exist
-#   
-# - Scenario 6
-#   ~ Cognition is free
-#   ~ Node to associate from is not a root node
-#   ~ Node to associate to is not a root node
-#   
-#   ~ Node to associate from modality is VISUAL and node to associate to 
 #     modality is VERBAL
 #   ~ Association already exists
 #
-# - Scenario 7
+# - Scenario 5
 #   ~ Cognition is free
 #   ~ Node to associate from is not a root node
 #   ~ Node to associate to is not a root node
@@ -63,7 +45,7 @@ require_relative "visual-spatial-field-tests.rb"
 # The following scenarios are now repeated with each type of Modality specified
 # in CHREST.  
 # 
-# - Scenario 8/12/16
+# - Scenario 6/10/14
 #   ~ Cognition is free
 #   ~ Node to associate from is not a root node
 #   ~ Node to associate to is not a root node
@@ -72,7 +54,7 @@ require_relative "visual-spatial-field-tests.rb"
 #     modality.
 #   ~ Node to associate from and node to associate to images are not similar
 #
-# - Scenario 9/13/17
+# - Scenario 7/11/15
 #   ~ Cognition is free
 #   ~ Node to associate from is not a root node
 #   ~ Node to associate to is not a root node
@@ -83,7 +65,7 @@ require_relative "visual-spatial-field-tests.rb"
 #   ~ Node to associate from already linked to node to associate to
 #   ~ Node to associate to not already linked to node to associate from
 #     
-# - Scenario 10/14/18
+# - Scenario 8/12/16
 #   ~ Cognition is free
 #   ~ Node to associate from is not a root node
 #   ~ Node to associate to is not a root node
@@ -94,7 +76,7 @@ require_relative "visual-spatial-field-tests.rb"
 #   ~ Node to associate from not already linked to node to associate to
 #   ~ Node to associate to already linked to node to associate from
 #
-# - Scenario 11/15/19
+# - Scenario 9/13/17
 #   ~ Cognition is free
 #   ~ Node to associate from is not a root node
 #   ~ Node to associate to is not a root node
@@ -110,21 +92,19 @@ require_relative "visual-spatial-field-tests.rb"
 #
 # - The following scenarios should report false and the cognition clock of the 
 #   CHREST model should not differ from the time the function is requested.
-#   ~ 1, 2, 3, 4, 6, 8, 12, 16
+#   ~ 1, 2, 3, 4, 6, 10, 14
 #   
 # - The following scenarios should report true but and the cognition clock of 
 #   the CHREST model should be set to the time indicated.
-#   ~ Scenario 5
-#     > Time function requested + time to add production
 #     
-#   ~ Scenario 7
+#   ~ Scenario 5
 #     > Time function requested + time to add naming link
 #     
-#   ~ Scenarios 9/10/13/14/17/18
+#   ~ Scenarios 7/9/11/12/15/16
 #     > Time function requested + node comparison time + time to add semantic 
 #       link
 #     
-#   ~ Scenarios 11/15/19
+#   ~ Scenarios 9/13/17
 #     > Time function requested + node comparison time + (time to add semantic 
 #       link * 2)
 process_test "associateNodes" do
@@ -147,7 +127,7 @@ process_test "associateNodes" do
   node_root_node_field = Node.java_class.declared_field("_rootNode")
   node_root_node_field.accessible = true
   
-  for scenario in 1..19
+  for scenario in 1..17
     time = 0
     model = Chrest.new(time, true)
     
@@ -159,8 +139,8 @@ process_test "associateNodes" do
     
     # Set modality
     node_1_modality = Modality::VISUAL
-    if [12..15].include?(scenario) then node_1_modality = Modality::ACTION end
-    if [16..19].include?(scenario) then node_1_modality = Modality::VERBAL end
+    if [10..13].include?(scenario) then node_1_modality = Modality::ACTION end
+    if [14..17].include?(scenario) then node_1_modality = Modality::VERBAL end
     
     node_1_contents_and_image = ListPattern.new(node_1_modality)
     node_1 = Node.new(model, node_1_contents_and_image, node_1_contents_and_image, time)
@@ -171,8 +151,8 @@ process_test "associateNodes" do
     ############################
     
     node_2_modality = Modality::VISUAL
-    if [4,5].include?(scenario) || [12..15].include?(scenario) then node_2_modality = Modality::ACTION end
-    if [6,7].include?(scenario) || [16..19].include?(scenario) then node_2_modality = Modality::VERBAL end
+    if [10..13].include?(scenario) then node_2_modality = Modality::ACTION end
+    if [4,5].include?(scenario) || [14..17].include?(scenario) then node_2_modality = Modality::VERBAL end
     
     node_2_contents_and_image = ListPattern.new(node_2_modality)
     node_2 = Node.new(model, node_2_contents_and_image, node_2_contents_and_image, time)
@@ -182,14 +162,8 @@ process_test "associateNodes" do
     ##### SET-UP EXISTING ASSOCIATIONS #####
     ########################################
     
-    if [4,6,9,13,17].include?(scenario)
-      if scenario == 4 
-        association_with_node_2 = HashMap.new()
-        association_with_node_2.put(node_2, 0.0)
-        association_history = HistoryTreeMap.new()
-        association_history.put(time, association_with_node_2)
-        node_1._productionHistory = association_history
-      elsif scenario == 6
+    if [4,7,11,15].include?(scenario)
+      if scenario == 4
         association_history = HistoryTreeMap.new()
         association_history.put(time, node_2)
         node_1._namedByHistory = association_history
@@ -202,7 +176,7 @@ process_test "associateNodes" do
       end
     end
     
-    if [10,14,18].include?(scenario)
+    if [8,12,16].include?(scenario)
       association_with_node_1 = ArrayList.new()
       association_with_node_1.add(node_1)
       association_history = HistoryTreeMap.new()
@@ -214,7 +188,7 @@ process_test "associateNodes" do
     ##### SET SIMILARITY THRESHOLD #####
     ####################################
     
-    if [8,12,16].include?(scenario)
+    if [6,10,14].include?(scenario)
       model._nodeImageSimilarityThreshold = 1
     else
       model._nodeImageSimilarityThreshold = 0
@@ -231,18 +205,16 @@ process_test "associateNodes" do
     #################################
     
     expected_result = true
-    if [1,2,3,4,6,8,12,16].include?(scenario) then expected_result = false end
+    if [1,2,3,4,6,10,14].include?(scenario) then expected_result = false end
     
     expected_cognition_clock = -1
     if scenario == 1
       expected_cognition_clock = time + 5
     elsif scenario == 5
-      expected_cognition_clock = time + model._addProductionTime
-    elsif scenario == 7
       expected_cognition_clock = time + model._namingLinkCreationTime
-    elsif [9,10,13,14,17,18].include?(scenario)
+    elsif [7,8,11,12,15,16].include?(scenario)
       expected_cognition_clock = time + model._nodeComparisonTime + model._semanticLinkCreationTime
-    elsif [11,15,19].include?(scenario)
+    elsif [9,13,17].include?(scenario)
       expected_cognition_clock = time + model._nodeComparisonTime + (model._semanticLinkCreationTime * 2)
     end
     
@@ -254,6 +226,207 @@ process_test "associateNodes" do
     assert_equal(expected_cognition_clock, model._cognitionClock, "occurred when checking the cognition clock in scenario " + scenario.to_s)
   end
   
+end
+
+################################################################################
+# Tests the "Chrest.learnProductions()" method using all scenarios that could
+# possibly occur.  Details of these Scenarios are provided below and each is
+# repeated a number of times to ensure consistency of behaviour.
+# 
+# Scenario Descriptions
+# =====================
+# 
+# Scenario 1: Model not alive at time method invoked
+# Scenario 2: Model's attention not free at time method invoked
+# Scenario 3: Visual Node not alive at time method invoked
+# Scenario 4: Visual Node specified doesn't have Visual modality
+# Scenario 5: Visual Node specified is the visual LTM root Node
+# Scenario 6: Action Node not alive at time method invoked
+# Scenario 7: Action Node specified doesn't have Action modality
+# Scenario 8: Action Node specified is the action LTM root Node
+# Scenario 9: Visual Node not present in visual STM
+# Scenario 10: Action Node not present in action STM
+# Scenario 11: Cognition not free after visual and action Nodes found
+# Scenario 12: Visual Node already has action Node as production
+# Scenario 13: All OK
+#
+process_test "learnProduction" do
+  
+  #######################################################
+  ##### SET-UP ACCESS TO PRIVATE INSTANCE VARIABLES #####
+  #######################################################
+  
+  # Set-up access to CHREST variables.
+  Chrest.class_eval{
+    field_accessor :_attentionClock, 
+    :_cognitionClock, 
+    :_visualLtm, 
+    :_actionLtm,
+    :_visualStm,
+    :_actionStm,
+    :_timeToRetrieveItemFromStm,
+    :_addProductionTime
+  }
+  
+  # Set-up access to STM variables.
+  stm_item_history_field = Stm.java_class.declared_field("_itemHistory")
+  stm_item_history_field.accessible = true
+  
+  # Set-up access to Node variables.
+  node_creation_time_field = Node.java_class.declared_field("_creationTime")
+  node_creation_time_field.accessible = true
+  
+  node_production_history_field = Node.java_class.declared_field("_productionHistory")
+  node_production_history_field.accessible = true
+  
+  #########################
+  ##### SCENARIO LOOP #####
+  #########################
+  
+  for scenario in 1..13
+    20.times do
+      
+      # First, set the time the function is to be invoked since a number of
+      # scenario caveats are based on this.
+      time_function_invoked = 0
+      
+      ##################################
+      ##### CONSTRUCT CHREST MODEL #####
+      ##################################
+      
+      chrest_model_creation_time = (scenario == 1 ? time_function_invoked + 1 : 0)
+      model = Chrest.new(chrest_model_creation_time, [true,false].sample)
+      
+      #########################################################
+      ##### SET ATTENTION CLOCK (IF REQUIRED BY SCENARIO) #####
+      #########################################################
+      
+      if scenario == 2 then model._attentionClock = time_function_invoked + 1 end
+      
+      ###########################
+      ##### CONSTRUCT NODES #####
+      ###########################
+      
+      # Set visual Node details according to scenario.
+      time_visual_node_created = (scenario == 3 ? time_function_invoked + 1 : chrest_model_creation_time)
+      visual_node_contents = ListPattern.new((
+        scenario == 4 ? (Modality.values().to_a - [Modality::VISUAL]).sample : 
+        Modality::VISUAL
+      ))
+      
+      # Construct the visual Node.
+      visual_node = (
+        scenario == 5 ? model._visualLtm :
+        Node.new(model, visual_node_contents, visual_node_contents, time_visual_node_created)
+      )
+      
+      # Set action Node details according to scenario.
+      time_action_node_created = (scenario == 6 ? time_function_invoked + 1 : chrest_model_creation_time)
+      action_node_contents = ListPattern.new((
+        scenario == 7 ? (Modality.values().to_a - [Modality::ACTION]).sample : 
+        Modality::ACTION
+      ))
+      
+      # Construct the action Node.
+      action_node = (
+        scenario == 8 ? model._actionLtm :
+        Node.new(model, action_node_contents, action_node_contents, time_action_node_created)
+      )
+      
+      # Manually set the creation time for the visual and action Node in 
+      # scenario 1 since, if the Nodes are created before the CHREST model they
+      # are associated with, the Node constructor will throw a Runtime 
+      # Exception.  In scenario 1, the creation time of the Nodes will be equal
+      # to the creation time of the CHREST model so the CHREST model "alive" 
+      # check in "Chrest.learnProduction()" won't be isolated. To isolate it, 
+      # the creation times of the Nodes needs to be set manually.
+      if scenario == 1
+        node_creation_time_field.set_value(visual_node, time_function_invoked)
+        node_creation_time_field.set_value(action_node, time_function_invoked)
+      end
+      
+      #########################################################
+      ##### POPULATE VISUAL STM (IF REQUIRED BY SCENARIO) #####
+      #########################################################
+      
+      if scenario != 9
+        visual_stm_contents = ArrayList.new()
+        visual_stm_contents.add(visual_node)
+        
+        visual_stm = HistoryTreeMap.new()
+        visual_stm.put(time_function_invoked, visual_stm_contents)
+        
+        stm_item_history_field.set_value(model._visualStm, visual_stm)
+      end
+      
+      ##########################################################
+      ##### POPULATE ACTION STM (IF REQUIRED BY SCENARIO)  #####
+      ##########################################################
+      
+      if scenario != 10
+        action_stm_contents = ArrayList.new()
+        action_stm_contents.add(action_node)
+        
+        action_stm = HistoryTreeMap.new()
+        action_stm.put(time_function_invoked, action_stm_contents)
+        
+        stm_item_history_field.set_value(model._actionStm, action_stm)
+      end
+      
+      #########################################################
+      ##### SET COGNITION CLOCK (IF REQUIRED BY SCENARIO) #####
+      #########################################################
+      
+      if scenario == 11 then model._cognitionClock = (time_function_invoked + (model._timeToRetrieveItemFromStm * 2) + 1) end
+      
+      ##########################################################
+      ##### CONSTRUCT PRODUCTION (IF REQUIRED BY SCENARIO) #####
+      ##########################################################
+      
+      if scenario == 12
+        visual_node_productions = HashMap.new()
+        visual_node_productions.put(action_node, 0.0)
+        
+        visual_node_production_history = HistoryTreeMap.new()
+        visual_node_production_history.put(time_function_invoked, visual_node_productions)
+        
+        node_production_history_field.set_value(visual_node, visual_node_production_history)
+      end
+      
+      #########################
+      ##### INVOKE METHOD #####
+      #########################
+      
+      return_value = model.learnProduction(visual_node, action_node, time_function_invoked)
+      
+      ##################################
+      ##### SET EXPECTED VARIABLES #####
+      ##################################
+      
+      expected_return_value = (scenario == 13 ? true : false)
+      expected_attention_clock = (
+        scenario == 1 ? 0 :
+        scenario == 2 ? time_function_invoked + 1 :
+        scenario.between?(3,8) ? -1 : 
+        scenario.between?(9,10) ? time_function_invoked + model._timeToRetrieveItemFromStm :
+        time_function_invoked + (model._timeToRetrieveItemFromStm * 2)
+      )
+      expected_cognition_clock = (
+        scenario == 1 ? 0 :
+        scenario == 11 ? model._attentionClock + 1 :
+        scenario != 13 ? -1 : 
+        expected_attention_clock + model._addProductionTime
+    )
+      
+      #################
+      ##### TESTS #####
+      #################
+      
+      assert_equal(expected_return_value, return_value, "occurred when checking the return value of the method in scenario " + scenario.to_s)
+      assert_equal(expected_attention_clock, model._attentionClock, "occurred when checking the attention clock in scenario " + scenario.to_s)
+      assert_equal(expected_cognition_clock, model._cognitionClock, "occurred when checking the cognition clock in scenario " + scenario.to_s)
+    end
+  end
 end
 
 ################################################################################
