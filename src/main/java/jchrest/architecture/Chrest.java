@@ -1886,9 +1886,13 @@ public class Chrest extends Observable {
   /**  
    * Retrieves the {@link jchrest.architecture.Node} reached after sorting the 
    * {@link jchrest.lib.ListPattern} provided through the long-term memory of
-   * {@link #this} and places it into the relevant {@link 
-   * jchrest.architecture.Stm} (the {@link jchrest.lib.ListPattern} is sorted 
-   * vertically at first, then horizontally).
+   * {@link #this} vertically, then horizontally.
+   * 
+   * If a non-root {@link jchrest.architecture.Node} is retrieved, it is placed 
+   * into the relevant {@link jchrest.architecture.Stm} {@link 
+   * jchrest.lib.Modality} based on the result of invoking {@link 
+   * jchrest.architecture.Node#getModality()} on the {@link 
+   * jchrest.architecture.Node} retrieved.
    * 
    * Modifies the cognition and attention clocks.
    * 
@@ -1918,7 +1922,11 @@ public class Chrest extends Observable {
       (considerTimeAndAddRecognisedNodeToStm ? "will" : "will not") + " be " +
       "added to STM."
     );
-
+    
+    ////////////////////////////////////////////////////
+    ///// CHECK AVAILABILITY OF COGNITIVE RESOURCE /////
+    ////////////////////////////////////////////////////
+    
     if(considerTimeAndAddRecognisedNodeToStm){
       this.printDebugStatement(
         "- Checking if cognition resource free (is the current value " + 
@@ -1932,7 +1940,10 @@ public class Chrest extends Observable {
       if(considerTimeAndAddRecognisedNodeToStm) this.printDebugStatement("- Cognition resource free.");
       this.printDebugStatement("- Attempting to recognise " + pattern.toString() + ".");
       
-      //Get root node for modality.
+      ////////////////////////////////////////
+      ///// DETERMINE MODALITY TO SEARCH /////
+      ////////////////////////////////////////
+      
       Node currentNode = this.getLtmModalityRootNode(pattern);
       
       this.printDebugStatement(
@@ -1948,6 +1959,10 @@ public class Chrest extends Observable {
         
         time += this._ltmLinkTraversalTime;
       }
+      
+      ///////////////////////////////////
+      ///// TRAVERSE LTM VERTICALLY /////
+      ///////////////////////////////////
       
       List<Link> currentNodeTestLinks = currentNode.getChildren(time);
       ListPattern sortedPattern = pattern;
@@ -1993,36 +2008,60 @@ public class Chrest extends Observable {
         }
       }
       
-      this.printDebugStatement(
-        "- Descended vertically through long-term memory network as far " + 
-        "as possible.  Searching horizontally through long-term memory network " +
-        "for a more informative node by searching the semantic links of node " + 
-        currentNode.getReference()
-      );
-      
       if(considerTimeAndAddRecognisedNodeToStm){
         this.printDebugStatement("- Cognition clock will be set to the current time (" + time + ").");
         this._cognitionClock = time;
       }
       
-      // try to retrieve a more informative node in semantic links
-      currentNode = this.searchSemanticLinks(currentNode, this._maximumSemanticLinkSearchDistance, time, false);
+      /////////////////////////////////////
+      ///// CHECK FOR NON-RECOGNITION /////
+      /////////////////////////////////////
+      
       this.printDebugStatement(
-        "- Semantic link search retrieved node with reference " + 
-        currentNode.getReference() + "."
+        "- Descended vertically through long-term memory network as far " + 
+        "as possible.  If a non-root Node has been retrieved, recognition " +
+        "will continue"
       );
       
-      if(considerTimeAndAddRecognisedNodeToStm){
-        
+      if(!currentNode.isRootNode()){
+      
+        this.printDebugStatement("- A non-root Node has been retrieved.");
         this.printDebugStatement(
-          "- Current time will now be set to the value of the cognition " +
-          "clock, i.e. the time semantic link search completed: " + 
-          this._cognitionClock + ".  Adding node " + currentNode.getReference() + 
-          " to STM."
+          "-Searching horizontally through long-term memory for a more " +
+          "informative node by searching the semantic links of node " + 
+          currentNode.getReference()
         );
         
-        time = this._cognitionClock;
-        this.addToStm (currentNode, time);
+        /////////////////////////////////////
+        ///// TRAVERSE LTM HORIZONTALLY /////
+        /////////////////////////////////////
+      
+        // try to retrieve a more informative node in semantic links
+        currentNode = this.searchSemanticLinks(currentNode, this._maximumSemanticLinkSearchDistance, time, false);
+        this.printDebugStatement(
+          "- Semantic link search retrieved node with reference " + 
+          currentNode.getReference() + "."
+        );
+        
+        //////////////////////
+        ///// ADD TO STM /////
+        //////////////////////
+        
+        if(considerTimeAndAddRecognisedNodeToStm){
+
+          this.printDebugStatement(
+            "- Current time will now be set to the value of the cognition " +
+            "clock, i.e. the time semantic link search completed: " + 
+            this._cognitionClock + ".  Adding node " + currentNode.getReference() + 
+            " to STM."
+          );
+
+          time = this._cognitionClock;
+          this.addToStm (currentNode, time);
+        }
+      }
+      else{
+        this.printDebugStatement("Root Node retrieved, exiting");
       }
       
       // return retrieved node

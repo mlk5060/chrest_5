@@ -436,13 +436,13 @@ unit_test "add_fixation" do
       # 
       # Essentially, the expected attention clock value differs depending on 
       # scenario for the same reasons as the expected cognition clock value does. 
+      # In scenarios 8, 11, 20 and 23, nothing is recognised when Fixations are
+      # learned from so STM isn't updated whereas in 9, 12, 21 and 24, a 
+      # non-root Node is recognised so is added to STM, consuming attention.
       expected_attention_clock = 
-        (scenario == 8 || scenario == 11 || scenario == 20 || scenario == 23 ?
-          fixation._performanceTime + (model.getLtmLinkTraversalTime()) + model.getTimeToUpdateStm() :
-          (scenario == 9 || scenario == 12 || scenario == 21 || scenario == 24 ?
-            fixation._performanceTime + (model.getLtmLinkTraversalTime() * 2) + model.getTimeToUpdateStm() :
-            time - 1
-          )
+        (scenario == 9 || scenario == 12 || scenario == 21 || scenario == 24 ?
+          fixation._performanceTime + (model.getLtmLinkTraversalTime() * 2) + model.getTimeToUpdateStm() :
+          time - 1
         )
         
       # Set expected VisualSpatialField data
