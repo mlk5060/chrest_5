@@ -3266,6 +3266,12 @@ public class Chrest extends Observable {
           List<Node> visualStmContents = this.getStm(Modality.VISUAL).getContents(time);
           if(visualStmContents != null && !visualStmContents.isEmpty()){
             Node visualStmHypothesis = visualStmContents.get(0);
+            this.printDebugStatement(
+              "- The Node to add has " + Modality.VERBAL.toString() + " " +
+              "modality and visual STM has Node " + 
+              visualStmHypothesis.getReference() + " as its hypothesis.  " +
+              "Attempting to associate these Nodes."
+            );
             nonSemanticAssociationsCreated = this.associateNodes(visualStmHypothesis, nodeToAdd, time);
           }
         }
@@ -3274,7 +3280,16 @@ public class Chrest extends Observable {
           List<Node> stmContents = stm.getContents(time);
           if(stmContents != null && !stmContents.isEmpty()){
             Node stmHypothesis = stmContents.get(0);
-            this.associateNodes(stmHypothesis, nodeToAdd, time);
+            
+            this.printDebugStatement(
+              "- The Node to add has " + nodeToAdd.getModality().toString() + " " +
+              "modality and " + nodeToAdd.getModality().toString() + " STM has Node " + 
+              stmHypothesis.getReference() + " as its hypothesis.  " +
+              "Attempting to associate these Nodes if they aren't the same Node."
+            );
+            if(nodeToAdd.getReference() != stmHypothesis.getReference()){
+              this.associateNodes(stmHypothesis, nodeToAdd, time);
+            }
           }
         }
         
