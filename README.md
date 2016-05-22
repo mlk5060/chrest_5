@@ -15,7 +15,7 @@ human cognitive behaviour and processes.
 	to/from other cognitive structures
 * Separation of long and short term memory
 	* Long-term memory implemented as a discrimination network
-	* SHort-term memory implemented as a psudeo FIFO list.
+	* SHort-term memory implemented as a pseudo FIFO list.
 * Ability to learn (store) strings, numbers and locations of objects in 2D space
 in action, verbal and visual modalities
 * Ability to create associate learned information together both automatically
@@ -31,7 +31,7 @@ and manually
 
 ## Using jChrest ##
 
-Simply run the Jar file in the `target` folder to load the CHREST GUI.
+Simply run the Jar file in the `target` folder to load the jChrest GUI.
 
 ## Compiling jChrest ##
 
@@ -80,7 +80,7 @@ case.  Indeed, we recommend using this command instead of `buildr package` since
 running tests should also verify if new code breaks existing code.
 
 *NOTE:* the test suite does not as of yet offer 100% code coverage and cannot
-therefore guarantee that modifications to exisiting code does not break other
+therefore guarantee that modifications to existing code does not break other
 existing code.
 
 ### Documentation ###
