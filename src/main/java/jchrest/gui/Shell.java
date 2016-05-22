@@ -61,7 +61,7 @@ public class Shell extends JFrame implements Observer {
   private JTable _executionHistoryTable;
   
   public Shell () {
-    super ("CHREST 4");
+    super ("jCHREST");
 
     setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
     createMenuBar (0);
@@ -89,11 +89,11 @@ public class Shell extends JFrame implements Observer {
     setLocationRelativeTo (null);
     setTheme ("Nimbus");
         
-    _model.addObserver(this);
     //_model.setNotLoadedIntoExperiment();
     //_model.setNotEngagedInExperiment();
     
     this._executionHistoryOperations.add("");
+    _model.addObserver(this);
   }
 
   private void createMenuBar (int time) {
