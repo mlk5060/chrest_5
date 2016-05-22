@@ -208,28 +208,62 @@ public class ListPattern extends Pattern implements Iterable<PrimitivePattern> {
   }
 
   /** 
-   * Two patterns match if they are both ListPatterns and this ListPattern
-   * is a presequence of given pattern. 
+   * Determines whether {@link #this} and the {@code pattern} specified match.
+   * 
+   * @param pattern
+   * 
+   * @return If the following conditions all evaluate to {@link 
+   * java.lang.Boolean#TRUE} then {@link java.lang.Boolean#TRUE} is returned.  
+   * Otherwise, {@link java.lang.Boolean#FALSE} is returned:
+   * <ul>
+   *  <li>{@code pattern} is also a {@link jchrest.lib.ListPattern}</li>
+   *  <li>
+   *    Invoking {@link jchrest.lib.ListPattern#getModality()} on {@link #this}
+   *    and {@code pattern} returns the same {@link jchrest.lib.Modality}.
+   *  </li>
+   *  <li>
+   *    If {@link #this} is "finished":
+   *    <ul>
+   *      <li>
+   *        The same value for {@link jchrest.lib.ListPattern#size()} must be
+   *        returned when it is invoked on {@link #this} and {@code pattern}.
+   *      </li>
+   *      <li>
+   *        {@code pattern} must also be "finished"
+   *      </li>
+   *    </ul>
+   *  </li>
+   *  <li>
+   *    If {@link #this} is not "finished" the value for {@link 
+   *    jchrest.lib.ListPattern#size()} must be less than or equal to the result
+   *    for this method when invoked in context of {@code pattern}.
+   *  </li>
+   *  <li>
+   *    The ordering of {@link jchrest.lib.PrimitivePattern PrimitivePatterns}
+   *    in {@link #this} must match the ordering of {@link 
+   *    jchrest.lib.PrimitivePattern PrimitivePatterns} in {@code pattern}.
+   *  </li>
+   * </ul>
    */
   @Override
-  public boolean matches (Pattern givenPattern) {
-    if (!(givenPattern instanceof ListPattern)) return false;
-    ListPattern pattern = (ListPattern)givenPattern;
+  public boolean matches (Pattern pattern) {
+    if (!(pattern instanceof ListPattern)) return false;
+    ListPattern patternToMatchAgainst = (ListPattern)pattern;
 
-    if (_modality != pattern._modality) return false;
+    if (this._modality != patternToMatchAgainst._modality) return false;
 
     // check relative sizes of patterns
-    if (isFinished ()) {
-      if (size () != pattern.size ()) return false;
-      if (!pattern.isFinished ()) return false;
+    if (this.isFinished ()) {
+      if (this.size () != patternToMatchAgainst.size()) return false;
+      if (!patternToMatchAgainst.isFinished ()) return false;
 
     } else {
       // this pattern cannot be larger than given pattern to match it.
-      if (size () > pattern.size ()) return false;
+      if (this.size () > patternToMatchAgainst.size ()) return false;
     }
     // now just check that the items in this pattern match up with the given pattern
     for (int i = 0, n = size (); i < n; ++i) {
-      if (!pattern.getItem(i).equals(getItem (i))) {
+      if (!patternToMatchAgainst.getItem(i).equals(this.getItem (i))) {
         return false; // false if any item not the same
       }
     }
