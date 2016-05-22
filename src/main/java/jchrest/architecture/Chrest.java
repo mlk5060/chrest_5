@@ -936,72 +936,33 @@ public class Chrest extends Observable {
    * @param pattern Assumed to contain one "finished" {@link 
    * jchrest.lib.PrimitivePattern}.
    * @param time The time the primitive should be added to LTM.
-   * @return An {@link java.util.ArrayList} whose first element contains a
-   * {@link jchrest.architecture.Node} and whose second element contains a 
-   * {@link java.lang.Boolean} value indicating if a primitive was learned.  
-   * Possible values for these elements and the conditions that produce them are 
-   * as follows:
-   * <ul>
-   *  <li>
-   *    This {@link #this} doesn't exist at the time specified.
-   *    <ul>
-   *      <li>Element 1: null</li>
-   *      <li>Element 2: {@link java.lang.Boolean#FALSE}</li>
-   *    </ul>
-   *  </li>
-   *  <li>
-   *    This {@link #this} does exist at the time specified.
-   *    <ul>
-   *      <li>
-   *        See return values for {@link jchrest.architecture.Node#addChild(
-   *        jchrest.lib.ListPattern, jchrest.architecture.Node, int, 
-   *        java.lang.String)}. 
-   *      </li>
-   *    </ul>
-   *  </li>
-   * </ul>
+   * 
+   * @return See return values for {@link 
+   * jchrest.architecture.Node#addChild(jchrest.lib.ListPattern, 
+   * jchrest.architecture.Node, int, java.lang.String)}.
    */
   private boolean learnPrimitive (ListPattern pattern, int time) {
+    this.printDebugStatement("===== Chrest.learnPrimitive() =====");
+    this.printDebugStatement("- Attemtping to learn " + pattern.toString() + " as a primitive at time " + time);
+    
     assert(pattern.isFinished () && pattern.size () == 1);
-    String func = "- learnPrimitive: ";
-    
-    this.printDebugStatement(
-      func + "Attemtping to learn " + pattern.toString() + " as a primitive " + 
-      "at time " + time + ". Checking if model exists at this time"
-    );
-    
-    if(this.getCreationTime() <= time){
-    
-      ListPattern contents = pattern.clone ();
-      contents.setNotFinished ();
-      
-      Node child = new Node (
-        this, 
-        contents, 
-        new ListPattern (pattern.getModality ()), 
-        time
-      );
-      
-      this.printDebugStatement(
-        func + "Model exists at time specified, appending new child node with ref: " + 
-        child.getReference() + " and image '" + child.getImage(time) + "' to the " + 
-        pattern.getModalityString() + " root node by a link containing test: " + 
-        contents.toString() + "."
-      );
 
-      return this.getLtmModalityRootNode(pattern).addChild(
-        contents, 
-        child, 
-        time, 
-        this.getCurrentExperimentName()
-      );
-    }
-    else{
-      this.printDebugStatement(func + "Model does not exist at this time, returning false.");
-      this.printDebugStatement(func + "RETURN");
-    }
+    ListPattern contents = pattern.clone();
+    contents.setNotFinished();
+
+    Node primitive = new Node(this, contents, new ListPattern(pattern.getModality()), time);
+
+    this.printDebugStatement(
+      "- Attempting to append new child Node with ref: " + primitive.getReference() + 
+      " and image '" + primitive.getImage(time) + "' to the " + pattern.getModalityString() + 
+      " root node by a link containing test: " + contents.toString() + "."
+    );
+
+    boolean result = this.getLtmModalityRootNode(pattern).addChild(contents, primitive, time, this.getCurrentExperimentName());
     
-    return false;
+    this.printDebugStatement("Returning " + result);
+    this.printDebugStatement("===== RETURN Chrest.learnPrimitive() =====");
+    return result;
   }
   
   /**
