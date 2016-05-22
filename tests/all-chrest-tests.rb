@@ -8,11 +8,11 @@ require "securerandom"
 include TestFramework
 
 # Import all required Java classes
-import "java.awt.Color"
-import "java.util.List"
-import "java.util.ArrayList"
-import "java.util.HashMap"
-import "java.util.TreeMap"
+java_import "java.awt.Color"
+java_import "java.util.List"
+java_import "java.util.ArrayList"
+java_import "java.util.HashMap"
+java_import "java.util.TreeMap"
 
 # Import all CHREST package classes.
 [
@@ -23,7 +23,7 @@ import "java.util.TreeMap"
   "Stm",
   "VisualSpatialField"
 ].each do |klass|
-  import "jchrest.architecture.#{klass}"
+  java_import "jchrest.architecture.#{klass}"
 end
 
 [
@@ -32,7 +32,7 @@ end
   "Scene",
   "SceneObject"
 ].each do |klass|
-  import "jchrest.domainSpecifics.#{klass}"
+  java_import "jchrest.domainSpecifics.#{klass}"
 end
 
 [
@@ -40,7 +40,7 @@ end
   "ChessDomain",
   "ChessObject"
 ].each do |klass|
-  import "jchrest.domainSpecifics.chess.#{klass}"
+  java_import "jchrest.domainSpecifics.chess.#{klass}"
 end
 
 [
@@ -48,7 +48,7 @@ end
   "GlobalStrategyFixation",
   "SalientManFixation"
 ].each do |klass|
-  import "jchrest.domainSpecifics.chess.fixations.#{klass}"
+  java_import "jchrest.domainSpecifics.chess.fixations.#{klass}"
 end
 
 [
@@ -58,26 +58,26 @@ end
   "PeripheralItemFixation",
   "PeripheralSquareFixation"
 ].each do |klass|
-  import "jchrest.domainSpecifics.fixations.#{klass}"
+  java_import "jchrest.domainSpecifics.fixations.#{klass}"
 end
 
 [
   "GenericDomain"
 ].each do |klass|
-  import "jchrest.domainSpecifics.generic.#{klass}"
+  java_import "jchrest.domainSpecifics.generic.#{klass}"
 end
 
 [
   "TileworldDomain"
 ].each do |klass|
-  import "jchrest.domainSpecifics.tileworld.#{klass}"
+  java_import "jchrest.domainSpecifics.tileworld.#{klass}"
 end
 
 [
   "MovementFixation",
   "SalientObjectFixation"
 ].each do |klass|
-  import "jchrest.domainSpecifics.tileworld.fixations.#{klass}"
+  java_import "jchrest.domainSpecifics.tileworld.fixations.#{klass}"
 end
 
 [
@@ -92,7 +92,7 @@ end
   "StringPattern",
   "VisualSpatialFieldObject"
 ].each do |klass|
-  import "jchrest.lib.#{klass}"
+  java_import "jchrest.lib.#{klass}"
 end
 
 # Pick up all ruby test files except this one
