@@ -770,12 +770,12 @@ process_test "image functionality" do
   end
   
   # Check that the output of Node.extendImage() is as expected.
-  assert_equal(nil, invalid_image_extension_invalid_time_result, "occurred when checking the Node returned after attempting to extend a Node's image with an invalid ListPattern at an invalid time")
-  assert_equal(nil, invalid_image_extension_valid_time_result, "occurred when checking the Node returned after attempting to extend a Node's image with an invalid ListPattern at a valid time")
-  assert_equal(nil, valid_image_extension_invalid_time_result, "occurred when checking the Node returned after attempting to extend a Node's image with a valid ListPattern at an invalid time")
-  assert_equal(nil, rewrite_history_1, "occurred when checking the Node returned after attempting to extend a Node's image with a valid ListPattern at a time that would have rewrote the Node's image history (1)")
-  assert_equal(nil, rewrite_history_2, "occurred when checking the Node returned after attempting to extend a Node's image with a valid ListPattern at a time that would have rewrote the Node's image history (2)")
-  assert_equal(node, valid_image_extension_valid_time_result, "occurred when checking the Node returned after attempting to extend a Node's image with an valid ListPattern at a valid time")
+  assert_false(invalid_image_extension_invalid_time_result, "occurred when attempting to extend a Node's image with an invalid ListPattern at an invalid time")
+  assert_false(invalid_image_extension_valid_time_result, "occurred when attempting to extend a Node's image with an invalid ListPattern at a valid time")
+  assert_false(valid_image_extension_invalid_time_result, "occurred when attempting to extend a Node's image with a valid ListPattern at an invalid time")
+  assert_false(rewrite_history_1, "occurred when attempting to extend a Node's image with a valid ListPattern at a time that would have rewrote the Node's image history (1)")
+  assert_false(rewrite_history_2, "occurred when attempting to extend a Node's image with a valid ListPattern at a time that would have rewrote the Node's image history (2)")
+  assert_true(valid_image_extension_valid_time_result, "occurred when attempting to extend a Node's image with an valid ListPattern at a valid time")
   
   # Check that the root node images haven't been changed
   Modality.values().each do |modality|

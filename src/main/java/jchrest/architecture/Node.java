@@ -12,7 +12,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Observable;
-import jchrest.lib.ExecutionHistoryOperations;
 import jchrest.lib.HistoryTreeMap;
 import jchrest.lib.ItemSquarePattern;
 import jchrest.lib.ListPattern;
@@ -349,146 +348,119 @@ public class Node extends Observable {
    * be added.
    * @param currentExperimentName
    * 
-   * @return If any of the following are true, {@link java.lang.Boolean#FALSE}
-   * is returned:
+   * @return If any of the following are true, {@link java.lang.Boolean#FALSE} 
+   * is returned otherwise, {@link java.lang.Boolean#TRUE} is returned:
    * <ul>
    *  <li>
    *    This {@link #this} and the {@link jchrest.architecture.Node} to add
-   *    as a child are the same {@link jchrest.architecture.Node}.
+   *    as a child are the same {@link jchrest.architecture.Node} (same result
+   *    for {@link jchrest.architecture.Node#getReference()}.
    *  </li>
    *  <li>
-   *    This {@link #this} does not exist at the time passed.
+   *    This {@link #this} or the {@link jchrest.architecture.Node} to add as a 
+   *    child do not exist at the {@code time} specified.
    *  </li>
    *  <li>
-   *    The {@link jchrest.architecture.Node} to add as a child does not 
-   *    exist at the time passed.
+   *    The result of invoking {@link jchrest.architecture.Node#getModality()} 
+   *    on {@link #this} and the {@code childToAdd} are not equal.
    *  </li>
    *  <li>
-   *    The modality{@link jchrest.lib.Modality} of this {@link #this}'s 
-   *    image and the image of the child {@link jchrest.architecture.Node} 
-   *    are not the same.
-   *   </li>
-   *   <li>
-   *    The child history of this {@link #this} is being rewritten (see
+   *    The {@code test} specified already exists as a test for {@link #this} or
+   *    the {@code childToAdd} is already a child of {@link #this}.
+   *  </li>
+   *  <li>
+   *    An attempt is made to rewrite the child history of {@link #this} (see
    *    {@link jchrest.lib.HistoryTreeMap#put(java.lang.Integer, 
    *    java.lang.Object)). 
-   *   </li>
-   *   <li>
-   *    The {@link jchrest.lib.ListPattern} specified already 
-   *    exists as a test for {@link #this}.
-   *   </li>
+   *  </li>
    * </ul>
-   * 
-   * Otherwise, {@link java.lang.Boolean#TRUE} is returned.
    */
   boolean addChild(ListPattern test, Node childToAdd, int time, String currentExperimentName) {
-    
-    //Set-up history variables
-    HashMap<String, Object> historyRowToInsert = new HashMap<>();
-    historyRowToInsert.put(Chrest._executionHistoryTableTimeColumnName, time);
-
-    //Generic operation name setter for current method.  Ensures for the row to 
-    //be added that, if this method's name is changed, the entry for the 
-    //"Operation" column in the execution history table will be updated without 
-    //manual intervention and "Filter By Operation" queries run on the execution 
-    //history DB table will still work.
-    class Local{};
-    historyRowToInsert.put(Chrest._executionHistoryTableOperationColumnName, 
-      ExecutionHistoryOperations.getOperationString(this.getClass(), Local.class.getEnclosingMethod())
-    );
-    historyRowToInsert.put(Chrest._executionHistoryTableInputColumnName, "Test: " + test.toString() + "\nChild node ref: " + childToAdd.getReference());
-    historyRowToInsert.put(Chrest._executionHistoryTableDescriptionColumnName, "Using input to create new test & child from node " + this.getReference() + ".");
-    
-    String func = "- " + Local.class.getEnclosingMethod().getName() + ": ";
-    
-    this._model.printDebugStatement(func + "START");
+    this._model.printDebugStatement("===== Node.addChild() =====");
     this._model.printDebugStatement(
-      func + "Node " + childToAdd.getReference() + " is to be added as a child to " +
-      "node " + this.getReference() + " at time " + time + ".  Checking if " + 
-      "these nodes aren't the same, both exist at the time the " + 
-      "child is to be added and whether the modality of the nodes are the same."
+      "- Node " + childToAdd.getReference() + " is to be added as a child to " +
+      "Node " + this.getReference() + " at time " + time + " using a link with " +
+      "test " + test.toString()
     );
+    this._model.printDebugStatement(
+      "Checking if the following statements all evaluate to true: " + 
+      "\n  ~ Node to add child to and child to add aren't the same: " + (this.getReference() != childToAdd.getReference()) +
+      "\n  ~ Node to add child to and child to add both exist at the time the child is to be added: " + (this.getCreationTime() <= time && childToAdd.getCreationTime() <= time) +
+      "\n  ~ The modality of the Node to add child to and child to add are the same: " + (this.getModality() == childToAdd.getModality())
+    );
+    
+    boolean childAdded = false;
     
     if(
-      this != childToAdd &&
-      this.getCreationTime() <= time &&
-      childToAdd.getCreationTime() <= time &&
+      this.getReference() != childToAdd.getReference() &&
+      (this.getCreationTime() <= time && childToAdd.getCreationTime() <= time) &&
       this.getModality() == childToAdd.getModality()
     ){
       
+      this._model.printDebugStatement("  ~ All OK");
       this._model.printDebugStatement(
-        func + "Checks passed, checking if the test that will exist on the " +
-        "link from parent to child is already present on an link from " +
-        "the parent to the child or if the child to add is already a child of " +
-        "the parent."
+        "- Checking if the test that will exist on the link from parent to " +
+        "child is already present on an link from the parent to the child or " +
+        "if the child to add is already a child of the parent."
       );
-        
+      
+      boolean testOrChildAlreadyPresent = false;
       List<Link> children = this.getChildren(time);
       if(children != null){
         for (Link testLink : children) {
-          if(testLink.getTest().equals(test) || testLink.getChildNode() == childToAdd) {
-            historyRowToInsert.put(Chrest._executionHistoryTableDescriptionColumnName, "Test pattern specified (" + test.toString() + ") is already a test for node " + this.getReference() + ", exiting.");
-            historyRowToInsert.put(Chrest._executionHistoryTableOutputColumnName, "Node (ref: " + this.getReference() + ")");
-            this._model.addEpisodeToExecutionHistory(historyRowToInsert);
-
-            this._model.printDebugStatement(
-              func + "Test is already present on a link from parent to child " +
-              "node or the child to add is already a child of the parent, " + 
-              "returning false"
-            );
-            this._model.printDebugStatement(func + "RETURN");
-
-            return false;
+          this._model.printDebugStatement(
+            "  ~ Checking link with test " + testLink.getTest() + " and child " +
+            "Node with reference " + testLink.getChildNode().getReference()
+          );
+          if(testLink.getTest().equals(test) || testLink.getChildNode().getReference() == childToAdd.getReference()) {
+            this._model.printDebugStatement("    + Match");
+            testOrChildAlreadyPresent = true;
+            break;
           }
         }
       }
       
-      this._model.printDebugStatement(
-        func + "Test does not already exist on a link from parent to child and " + 
-        "the child to add is not already a child of the parent so " +
-        "an attempt will be made to add the child to the parent at time " + 
-        time + "."
-      );
+      if(!testOrChildAlreadyPresent){
+        this._model.printDebugStatement(
+          "- Test does not already exist on a link from parent to child and " + 
+          "the child to add is not already a child of the parent so " +
+          "an attempt will be made to add the child to the parent at time " + 
+          time + "."
+        );
 
-      List<Link> testLinksToAdd = new ArrayList<>();
-      testLinksToAdd.add(new Link (test, childToAdd, time, currentExperimentName));
-      if(children != null) testLinksToAdd.addAll(children);
-      boolean updateChildHistorySuccessful = (boolean)this._childHistory.put(time, testLinksToAdd);
-      
-      if(updateChildHistorySuccessful){
-        historyRowToInsert.put(Chrest._executionHistoryTableDescriptionColumnName, "New test link with test " + test + " and child with ref " + childToAdd.getReference() + " added to node " + this.getReference() + " at time specified.");
-        historyRowToInsert.put(Chrest._executionHistoryTableOutputColumnName, "Array: Node (ref: " + childToAdd.getReference() +", true");     
-        this._model.addEpisodeToExecutionHistory(historyRowToInsert);
+        List<Link> testLinksToAdd = new ArrayList<>();
+        testLinksToAdd.add(new Link (test, childToAdd, time, currentExperimentName));
+        if(children != null) testLinksToAdd.addAll(children);
+        boolean updateChildHistorySuccessful = (boolean)this._childHistory.put(time, testLinksToAdd);
 
-        this.setChanged();
-        this.notifyObservers();
-
-        this._model.printDebugStatement(func + "Addition of child to parent successful, returning true");
-        this._model.printDebugStatement(func + "RETURN");
-        return true;
+        if(updateChildHistorySuccessful){
+          this._model.printDebugStatement("- Addition of child to parent successful");
+          childAdded = true;
+          this.setChanged();
+          this.notifyObservers();
+        }
+        else{
+          this._model.printDebugStatement(
+            "- An attempt to re-write the child history of the parent Node has " +
+            "been detected, exiting"
+          );
+        }
       }
       else{
-        this._model.printDebugStatement(func + "Addition of child to parent unsuccessful, returning false");
+        this._model.printDebugStatement(
+          "- Either the test to use already exists as a test link from the " +
+          "Node to add the child to or the child Node is already linked to by " +
+          "by the parent, exiting."
+        );
       }
     }
     else{
-    
-      historyRowToInsert.put(Chrest._executionHistoryTableDescriptionColumnName, "Creation time for node " + this.getReference() + " or the child node is later than the time this operation is requested, exiting.");
-      historyRowToInsert.put(Chrest._executionHistoryTableOutputColumnName, "Array: null, false");     
-      this._model.addEpisodeToExecutionHistory(historyRowToInsert);
-
-      this._model.printDebugStatement(func + "Checks not passed, either the parent and child are the same (" +
-        (this == childToAdd) + "), the parent does not exist at the time the child " + 
-        "is to be added (" + (this.getCreationTime() > time) + ", the child " +
-        "does not exist at the time it is to be added to the parent " +
-        (childToAdd.getCreationTime() > time) + " or the modalities of the parent " +
-        "and child are not equal (" + (this.getModality() != 
-        childToAdd.getModality()) + "), returning false."
-      );
+      this._model.printDebugStatement("  ~ Statement evaluated to false, exiting.");
     }
     
-    this._model.printDebugStatement(func + "RETURN");
-    return false;
+    this._model.printDebugStatement("- Returning " + childAdded);
+    this._model.printDebugStatement("===== RETURN Node.discriminate() =====");
+    return childAdded;
   }
   
   /**
@@ -605,68 +577,63 @@ public class Node extends Observable {
    * Attempts to append new information in the {@link jchrest.lib.ListPattern} 
    * provided to this {@link #this}'s image at the time specified.
    * 
-   * @param extension Assumed to be non-empty.
-   * @param time The time at which this {@link #this}'s image will be extended
-   * with the new information.
+   * @param extension Assumed that invoking {@link 
+   * jchrest.lib.ListPattern#isEmpty()} on this would return {@link 
+   * java.lang.Boolean#FALSE}.
+   * @param time The time that the image of {@link #this} will be extended with
+   * with {@code extension}.
    * 
-   * @return If the {@link jchrest.lib.ListPattern} extension is not the same 
-   * modality as {@link #this}, {@link #this} does not exist at the time the 
-   * image is to be extended, or the result of {@link #this#setImage(
-   * jchrest.lib.ListPattern, int) is {@link java.lang.Boolean#FALSE} then null
-   * is returned.  Otherwise, {@link #this} is returned.
+   * @return If the following statements all evaluate to {@link 
+   * java.lang.Boolean#TRUE}, {@link java.lang.Boolean#TRUE} is returned 
+   * otherwise, {@link java.lang.Boolean#FALSE} is returned:
+   * <ul>
+   *  <li>
+   *    Invoking {@link jchrest.lib.ListPattern#getModality()} on {@code 
+   *    extension} equals the result of invoking {@link 
+   *    jchrest.architecture.Node#getModality()} on {@link #this}.
+   *  </li>
+   *  <li>
+   *    {@link #this} exists at the {@code time} specified.
+   *  </li>
+   *  <li>
+   *    {@link jchrest.architecture.Node.setImage(jchrest.lib.ListPattern, int) 
+   *    returns {@link java.lang.Boolean#TRUE}
+   *  </li>
+   * </ul>
+   * 
    */
-  Node extendImage (ListPattern extension, int time) {
-    String func = "- extendImage: ";
-    
-    this._model.printDebugStatement(func + "START");
+  boolean extendImage(ListPattern extension, int time) {
+    this._model.printDebugStatement("===== Node.extendImage() =====");
     this._model.printDebugStatement(
-      func + "Image of node " + this.getReference() + " is to be extended " + 
-      "with pattern " + extension.toString() + " at time " + time + ". " +
-      "Checking if this node exists at the time specified and the modality " + 
-      "of the pattern to extend node " + this.getReference() + "'s image with " +
-      "(" + extension.getModalityString() + ") is the same modality as " +
-      "node " + this.getReference() + "'s image (" + 
-      this.getModality() + ")."
+      "- The image of Node " + this.getReference() + " is to be extended " + 
+      "(familiarised) with pattern " + extension.toString() + " at time " + time
+    );
+    
+    boolean imageExtendedSuccessfully = false;
+    
+    this._model.printDebugStatement(
+      "Checking if:" +
+      "\n  ~ The Node to familiarise exists at the time specified:" + (this._creationTime <= time) +
+      "\n  ~ The modality of the input pattern matches the modality of the node to familiarise: " + (this.getModality() == extension.getModality())
     );
     
     if(
       this._creationTime <= time &&
       this.getModality() == extension.getModality()
     ){
-      ListPattern newImage = this._model.getDomainSpecifics().normalise(this.getImage(time).append(extension));
+      this._model.printDebugStatement("  ~ All OK, familiarising Node");
       
-      this._model.printDebugStatement(
-        func + "Checks passed, extending node " + this.getReference() + "'s "+
-        "image to: " + newImage.toString() + " (normalised using domain " + 
-        "specifics i.e. " + 
-        this._model.getDomainSpecifics().getClass().getSimpleName() + 
-        ".normalise())."
-      );
-
-      boolean imageSetSuccessfully = this.setImage (
-        newImage, 
-        time
-      );
-
-      if(imageSetSuccessfully){
-        this._model.printDebugStatement(
-          func + "Image extended successfully, returning node " + 
-          this.getReference() + "."
-        );
-        this._model.printDebugStatement(func + "RETURN");
-        
-        return this;
-      }
-      else {
-        this._model.printDebugStatement(func + "Image extended unsuccessfully, returning null");
-      }
+      ListPattern newImage = this._model.getDomainSpecifics().normalise(this.getImage(time).append(extension));
+      imageExtendedSuccessfully = this.setImage(newImage, time);
+      this._model.printDebugStatement("- Image extension " + (imageExtendedSuccessfully ? "successful" : "unsuccessful"));
     }
     else {
-      this._model.printDebugStatement(func + "Checks failed, returning null");
+      this._model.printDebugStatement("  ~ A statement evaluated to false, exiting");
     }
     
-    this._model.printDebugStatement(func + "RETURN");
-    return null;
+    this._model.printDebugStatement("- Returning " + imageExtendedSuccessfully);
+    this._model.printDebugStatement("===== RETURN Node.extendImage() =====");
+    return imageExtendedSuccessfully;
   }
   
   /********************************/

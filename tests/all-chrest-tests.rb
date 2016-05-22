@@ -2,6 +2,7 @@
 # Assumes base of compiled Chrest code is on the CLASSPATH
 # e.g. jruby -J-cp bin all-chrest-tests.rb
 
+require 'jruby/core_ext'
 require "java" 
 require "modellers_testing_framework"
 require "securerandom"
@@ -87,8 +88,10 @@ end
   "HistoryTreeMap",
   "NumberPattern",
   "Pattern",
+  "PrimitivePattern",
   "ReinforcementLearning",
   "Square",
+  "Status",
   "StringPattern",
   "VisualSpatialFieldObject"
 ].each do |klass|

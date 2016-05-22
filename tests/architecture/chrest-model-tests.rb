@@ -8,129 +8,1129 @@ require_relative "visual-spatial-field-tests.rb"
 ################################################################################
 
 ################################################################################
-#
-# Scenario Descriptions
-# =====================
-#
-# - Scenario 1
-#   ~ Cognition isn't free
-#   
-# - Scenario 2
-#   ~ Cognition is free
-#   ~ Node to associate from is a root node
+# Tests the "Chrest.discriminate()" method using a number of scenarios that 
+# trigger each type of discrimination in the method.
 # 
-# - Scenario 3
-#   ~ Cognition is free
-#   ~ Node to associate from is not a root node
-#   ~ Node to associate to is a root node
-#   
-# - Scenario 4
-#   ~ Cognition is free
-#   ~ Node to associate from is not a root node
-#   ~ Node to associate to is not a root node
-#   
-#   ~ Node to associate from modality is VISUAL and node to associate to 
-#     modality is VERBAL
-#   ~ Association already exists
+# To ensure consistency of method behaviour, each scenario is repeated:
+# 1. With all PrimitivePattern types
+# 2. With all Modality values
+# 3. 10 times with each PrimitivePattern and Modality permutation
+#  
+# To save on documentation, ItemSquarePatterns are used to describe this test
+# although, as stated, StringPatterns and NumberPatterns are also used during
+# testing.
 #
-# - Scenario 5
-#   ~ Cognition is free
-#   ~ Node to associate from is not a root node
-#   ~ Node to associate to is not a root node
-#   
-#   ~ Node to associate from modality is VISUAL and node to associate to 
-#     modality is VERBAL
-#   ~ Association does not already exist
-#   
-# The following scenarios are now repeated with each type of Modality specified
-# in CHREST.  
+# Scenario 1: new information is empty and $ is known
+# Scenario 2: new information is empty and $ is not known
+# Scenario 3: new information is not empty and not known
+# Scenario 4: new information is not empty and is known. After being recognised,
+#             the new information matches the contents of the recognised Node.
+# Scenario 5: new information is not empty and is known. After being recognised,
+#             the new information does not match the contents of the recognised 
+#             Node.
+# Scenario 6: discrimination fails since the new test to add to the node to 
+#             discriminate from already exists as a test on the node to #
+#             discriminate.
 # 
-# - Scenario 6/10/14
-#   ~ Cognition is free
-#   ~ Node to associate from is not a root node
-#   ~ Node to associate to is not a root node
-#   
-#   ~ Node to associate from modality is equal to node to associate from 
-#     modality.
-#   ~ Node to associate from and node to associate to images are not similar
-#
-# - Scenario 7/11/15
-#   ~ Cognition is free
-#   ~ Node to associate from is not a root node
-#   ~ Node to associate to is not a root node
-#   
-#   ~ Node to associate from modality is equal to node to associate from 
-#     modality.
-#   ~ Node to associate from and node to associate to images are similar
-#   ~ Node to associate from already linked to node to associate to
-#   ~ Node to associate to not already linked to node to associate from
-#     
-# - Scenario 8/12/16
-#   ~ Cognition is free
-#   ~ Node to associate from is not a root node
-#   ~ Node to associate to is not a root node
-#   
-#   ~ Node to associate from modality is equal to node to associate from 
-#     modality.
-#   ~ Node to associate from and node to associate to images are similar
-#   ~ Node to associate from not already linked to node to associate to
-#   ~ Node to associate to already linked to node to associate from
-#
-# - Scenario 9/13/17
-#   ~ Cognition is free
-#   ~ Node to associate from is not a root node
-#   ~ Node to associate to is not a root node
-#   
-#   ~ Node to associate from modality is equal to node to associate from 
-#     modality.
-#   ~ Node to associate from and node to associate to images are similar
-#   ~ Node to associate from not already linked to node to associate to
-#   ~ Node to associate to not already linked to node to associate from
-#
-# Expected Outcomes
+# Method Parameters
 # =================
-#
-# - The following scenarios should report false and the cognition clock of the 
-#   CHREST model should not differ from the time the function is requested.
-#   ~ 1, 2, 3, 4, 6, 10, 14
+# 
+# 1. Node to discriminate from contents: <[T 0 1]>
+# 2. ListPattern that "triggers" discrimination: 
+#    - Scenario 1, 2: <[T 0 1]>
+#    - Scenario 3, 4: <[T 0 1][H 0 2]>
+#    - Scenario 5: <[T 0 1][H 0 2][O 0 3]>
 #   
-# - The following scenarios should report true but and the cognition clock of 
-#   the CHREST model should be set to the time indicated.
+# Given the parameters above, the new information in each scenario is as follows
+# (the Node to discriminate from contents is subtracted from the ListPattern 
+# that "triggers" discrimination):
+#   - Scenario 1, 2: <[]> (no new information)
+#   - Scenario 3, 4: <[H 0 2]>
+#   - Scenario 5: <[H 0 2][O 0 3]>
+#   
+# Expected Output
+# ===============
+# 
+# This test checks the following information after the method has been invoked
+# for each scenario repeat:
+# 
+# - The result of the method invocation.
+#   ~ For scenarios 1-5, the method should return a DISCRIMINATION_SUCCESSFUL 
+#     status, the DISCRIMINATION_FAILED status should be returned in scenario 6.
 #     
-#   ~ Scenario 5
-#     > Time function requested + time to add naming link
+# - The model's cognition clock value.
+#   ~ For scenarios 1-5, this should equal the time the method is invoked plus
+#     the time taken by the model to discriminate since discrimination should
+#     always occur in these scenarios.  For scenario 6, the cognition clock 
+#     should be set to its default value since discrimination should not occur.
 #     
-#   ~ Scenarios 7/9/11/12/15/16
-#     > Time function requested + node comparison time + time to add semantic 
-#       link
-#     
-#   ~ Scenarios 9/13/17
-#     > Time function requested + node comparison time + (time to add semantic 
-#       link * 2)
-process_test "associateNodes" do
+# - The number of children for each Node in LTM.
+# - The test on each Node's child link in LTM.
+# - The ordering of child links for each Node in LTM.
+# - The contents of each Node in LTM.
+# 
+# To illustrate the expected outcomes for the 4 pieces of information above, 
+# LTM diagrams are provided below: 
+# 
+# ------------
+# LTM Diagrams
+# ------------
+# 
+# - "o" denotes the modality root node
+# - "|" and "-" denote test links from a node
+# - "{}" denotes the test on a link
+# - "()" denotes a Node.  The Node's reference is given after the opening 
+#   parenthesis followed by a colon.
+# - "<[]>" denotes a ListPattern.  If this is in {}, the ListPattern is the test
+#   on the link, if it is in (), the ListPattern is the contents of the Node.
+#   
+# NOTE: The "stacking" of Links in the diagrams below indicates the order in 
+#       which children are declared for the parent Node.  For example, in 
+#       scenario 1, Node 3 is the first child of the modality root and Node
+#       4 is the second child.  This is important since this ordering must be 
+#       adhered to when the children of each Node is checked during testing.
+#
+# ~~~~~~~~~~
+# Scenario 1
+# ~~~~~~~~~~
+# 
+# BEFORE METHOD INVOCATION
+# o
+# |--{<[T 0 1]>}--(3: <[T 0 1]>)
+# |
+# |--{<[$]>}--(4: <[$]>)
+# 
+# AFTER METHOD INVOCATION
+# o
+# |--{<[T 0 1]>}--(3: <[T 0 1]>)
+# |               |
+# |               |--{<[$]>}--(5: <[T 0 1]$>)
+# |
+# |--{<[$]>}--(4: <[$]>)
+# 
+# ~~~~~~~~~~
+# Scenario 2
+# ~~~~~~~~~~
+# 
+# BEFORE METHOD INVOCATION
+# o
+# |--{<[T 0 1]>}--(3: <[T 0 1]>)
+#  
+# AFTER METHOD INVOCATION
+# o
+# |--{<[$]>}--(4: <[$]>)
+# |
+# |--{<[T 0 1]>}--(3: <[T 0 1]>)
+# 
+# ~~~~~~~~~~
+# Scenario 3
+# ~~~~~~~~~~
+# 
+# BEFORE METHOD INVOCATION
+# o
+# |--{<[T 0 1]>}--(3: <[T 0 1]>)
+#  
+# 
+# AFTER METHOD INVOCATION
+# o
+# |--{<[H 0 2>}--(4: <[H 0 2]>)
+# |
+# |--{<[T 0 1]>}--(3: <[T 0 1]>)
+#
+# ~~~~~~~~~~
+# Scenario 4
+# ~~~~~~~~~~
+# 
+# BEFORE METHOD INVOCATION
+# o
+# |--{<[T 0 1]>}--(3: <[T 0 1]>)
+# |
+# |--{<[H 0 2>}--(4: <[H 0 2]>)
+# 
+# AFTER METHOD INVOCATION
+# o
+# |--{<[T 0 1]>}--(3: <[T 0 1]>)
+# |               |
+# |               |--{<[H 0 2]>}--(5: <[T 0 1][H 0 2]>)
+# |
+# |--{<[H 0 2>}--(4: <[H 0 2]>)
+# 
+# ~~~~~~~~~~
+# Scenario 5
+# ~~~~~~~~~~
+# 
+# BEFORE METHOD INVOCATION
+# o
+# |--{<[T 0 1]>}--(3: <[T 0 1]>)
+# |
+# |--{<[$]>}--(4: <[$]>)
+# |
+# |--{<[H 0 2>}--(5: <[H 0 2 $]>) <-- NOTE: end delimiter causes a mismatch
+# 
+#
+# AFTER METHOD INVOCATION
+# o
+# |--{<[T 0 1]>}--(3: <[T 0 1]>)
+# |               |
+# |               |--{<[H 0 2]>}--(6: <[T 0 1][H 0 2]>)
+# |
+# |--{<[$]>}--(4: <[$]>)
+# |
+# |--{<[H 0 2>}--(5: <[H 0 2 $]>)
+# 
+# ~~~~~~~~~~
+# Scenario 6
+# ~~~~~~~~~~
+# 
+# BEFORE/AFTER METHOD INVOCATION
+# o
+# |--{<[T 0 1]>}--(3: <[T 0 1]>)
+# |               |
+# |               |--{<[H 0 2>}--(5: <[T 0 1][H 0 2]>)
+# |
+# |--{<[H 0 2]>}--(4: <[H 0 2]>)
+#
+process_test "discriminate" do
+  discriminate_method = Chrest.java_class.declared_method(:discriminate, Node, ListPattern, Java::int)
+  discriminate_method.accessible = true
   
   Chrest.class_eval{
-    field_accessor :_addProductionTime, 
+    field_accessor :_actionLtm, 
+    :_verbalLtm, 
+    :_visualLtm, 
     :_cognitionClock, 
-    :_namingLinkCreationTime,
-    :_nodeComparisonTime,
-    :_nodeImageSimilarityThreshold,
-    :_semanticLinkCreationTime
+    :_discriminationTime
   }
   
-  associate_nodes_method = Chrest.java_class.declared_method(:associateNodes, Node.java_class, Node.java_class, Java::int)
-  associate_nodes_method.accessible = true
+  ListPattern.class_eval{
+    field_accessor :_list, :_finished
+  }
   
   Node.class_eval{
-    field_accessor :_namedByHistory, :_productionHistory, :_semanticLinksHistory
+    field_accessor :_childHistory
   }
-  node_root_node_field = Node.java_class.declared_field("_rootNode")
-  node_root_node_field.accessible = true
   
-  for scenario in 1..17
-    time = 0
-    model = Chrest.new(time, true)
-    
+  node_root_field = Node.java_class.declared_field("_rootNode")
+  node_root_field.accessible = true
+  
+  node_reference_field = Node.java_class.declared_field("_reference")
+  node_reference_field.accessible = true
+  
+  node_contents_field = Node.java_class.declared_field("_contents")
+  node_contents_field.accessible = true
+  
+  link_test_field = Link.java_class.declared_field("_test")
+  link_test_field.accessible = true
+  
+  for scenario in 1..6
+    for pattern_type in PrimitivePattern.subclasses
+      for modality in Modality.values()
+        10.times do
+          
+          # Create an array to store the Nodes used in the scenario to make 
+          # testing easier.
+          nodes_in_ltm = []
+          
+          #######################
+          ##### TEST SET-UP #####
+          #######################
+          
+          time = 0
+          
+          # No matter if CHREST is learning object locations relative to the 
+          # agent equipped with it, this function should act the same so 
+          # randomly specify this 
+          model = Chrest.new(time, [true, false].sample)
+          
+          time_function_invoked = time + 50
+          
+          #############################
+          ##### CREATE PRIMITIVES #####
+          #############################
+          
+          primitive_1 = (
+            pattern_type == ItemSquarePattern ? ItemSquarePattern.new("T", 0, 1) :
+            pattern_type == NumberPattern ? NumberPattern.create(42) :
+            pattern_type == StringPattern ? StringPattern.create("foo") :
+            raise("A subclass of PrimitivePattern #{pattern_type} has not had its initialisation defined")
+          )
+          
+          primitive_2 = (
+            pattern_type == ItemSquarePattern ? ItemSquarePattern.new("H", 0, 2) :
+            pattern_type == NumberPattern ? NumberPattern.create(43) :
+            pattern_type == StringPattern ? StringPattern.create("bar") :
+            raise("A subclass of PrimitivePattern #{pattern_type} has not had its initialisation defined")
+          )
+          
+          primitive_3 = (
+            pattern_type == ItemSquarePattern ? ItemSquarePattern.new("O", 0, 3) :
+            pattern_type == NumberPattern ? NumberPattern.create(44) :
+            pattern_type == StringPattern ? StringPattern.create("baz") :
+            raise("A subclass of PrimitivePattern #{pattern_type} has not had its initialisation defined")
+          )
+          
+          ##################################
+          ##### GET MODALITY ROOT NODE #####
+          ##################################
+          
+          ltm_modality_root_node = (
+            modality == Modality::ACTION ? model._actionLtm :
+            modality == Modality::VERBAL ? model._verbalLtm :
+            model._visualLtm
+          )
+          
+          ltm_modality_root_node_child_links = ArrayList.new()
+          nodes_in_ltm.push(ltm_modality_root_node)
+          
+          ############################################
+          ##### CREATE NODE TO DISCRIMINATE FROM #####
+          ############################################
+          
+          # Create Node
+          node_to_discriminate_from_contents = ListPattern.new(modality)
+          node_to_discriminate_from_contents._list.add(primitive_1)
+          node_to_discriminate_from = Node.new(model, node_to_discriminate_from_contents, ListPattern.new(modality), time)
+          
+          # Create Link to Node
+          link_1_test = ListPattern.new(modality)
+          link_1_test._list.add(primitive_1)
+          link_1 = Link.new(link_1_test, node_to_discriminate_from, time, "")
+          
+          # Add Link to modality root Node child history
+          ltm_modality_root_node_child_links.add(link_1)
+          nodes_in_ltm.push(node_to_discriminate_from)
+          
+          ####################################
+          ##### CREATE INPUT ListPattern #####
+          ####################################
+          
+          input_list_pattern = ListPattern.new(modality)
+          input_list_pattern._list.add(primitive_1)
+          
+          if scenario > 2
+            input_list_pattern._list.add(primitive_2)
+          end
+          
+          if scenario == 5 then input_list_pattern._list.add(primitive_3) end
+          
+          # In scenario 6, the new information shouldn't be recognised so should
+          # be learned as a primitive however, this should fail since it already 
+          # exists as a test from the root modality.  Create this situation now.
+          if scenario == 6 
+            link_test = ListPattern.new(modality)
+            link_test._list.add(primitive_2)
+            node = Node.new(model, link_test, ListPattern.new(modality), time_function_invoked)
+            link = Link.new(link_test, node, time_function_invoked, "")
+            ltm_modality_root_node_child_links.add(link)
+            
+            node_contents = ListPattern.new(modality)
+            node_contents._list.add(primitive_1)
+            node_contents._list.add(primitive_2)
+            node = Node.new(model, node_contents, ListPattern.new(modality), time_function_invoked)
+            link = Link.new(link_test, node, time_function_invoked, "")
+            node_to_discriminate_from_child_history = ArrayList.new()
+            node_to_discriminate_from_child_history.add(link)
+            node_to_discriminate_from._childHistory.put(time_function_invoked, node_to_discriminate_from_child_history)
+          end
+          
+          ######################################################
+          ##### CREATE ListPattern FINISHED DELIMITER NODE #####
+          ######################################################
+          
+          # Required during testing so make the ListPattern accessible to the
+          # whole test not just inside the block below.
+          end_primitive = ListPattern.new(modality)
+          end_primitive._finished = true
+          
+          if scenario == 1 || scenario == 5
+            
+            # Create Node
+            finished_delimiter_node = Node.new(model, end_primitive, ListPattern.new(modality), time_function_invoked)
+            
+            # Create Link to Node
+            finished_delimiter_link_test = ListPattern.new(modality)
+            finished_delimiter_link_test._finished = true
+            finished_delimiter_link = Link.new(finished_delimiter_link_test, finished_delimiter_node, time_function_invoked, "")
+            
+            # Add Link to modality root Node child history
+            ltm_modality_root_node_child_links.add(finished_delimiter_link)
+            
+            nodes_in_ltm.push(finished_delimiter_node)
+          end
+
+          ##################################
+          ##### "LEARN" AUXILLARY NODE #####
+          ##################################
+          
+          if [4,5].include?(scenario)
+            node_to_learn_contents = ListPattern.new(modality)
+            node_to_learn_contents._list.add(primitive_2)
+            if scenario == 5 then node_to_learn_contents._finished = true end
+            node_to_learn = Node.new(model, node_to_learn_contents, ListPattern.new(modality), time_function_invoked)
+            
+            node_to_learn_link_test = ListPattern.new(modality)
+            node_to_learn_link_test._list.add(primitive_2)
+            node_to_learn_link = Link.new(node_to_learn_link_test, node_to_learn, time_function_invoked, "")
+            
+            ltm_modality_root_node_child_links.add(node_to_learn_link)
+            
+            nodes_in_ltm.push(node_to_learn)
+          end
+          
+          #########################
+          ##### "LEARN" NODES #####
+          #########################
+          
+          ltm_modality_root_node._childHistory.put(time_function_invoked, ltm_modality_root_node_child_links)
+          
+          #########################
+          ##### INVOKE METHOD #####
+          #########################
+
+          result = discriminate_method.invoke(
+            model, 
+            node_to_discriminate_from, 
+            input_list_pattern, 
+            time_function_invoked
+          )
+          
+          #################
+          ##### TESTS #####
+          #################
+          
+          # Check overall result
+          assert_equal(
+            (scenario == 6 ?
+              Status::DISCRIMINATION_FAILED :
+              Status::DISCRIMINATION_SUCCESSFUL
+            ).to_s,
+            result.to_s,
+            "occurred in scenario " + scenario.to_s
+          )
+          
+          # Check cognition clock
+          assert_equal(
+            (scenario != 6 ? 
+              time_function_invoked + model._discriminationTime :
+              -1
+            ),
+            model._cognitionClock,
+            "occurred when checking the cognition clock in scenario " + scenario.to_s
+          )
+          
+          # Check Node details.
+          for node in nodes_in_ltm
+            node_ref = node_reference_field.value(node)
+            child_links = node._childHistory.lastEntry().getValue()
+            
+            ######################################
+            ##### SET EXPECTED CHILDREN SIZE #####
+            ######################################
+            
+            # All Nodes are expected to have no children by default.
+            expected_child_links_size = 0
+            
+            # If the current Node is a root Node, the number of children will
+            # vary depending on the current scenario.
+            if node_root_field.value(node) == true
+              expected_child_links_size = (scenario == 5 ? 3 : 2)
+            else
+
+              # The node to discriminate from should have no children in 
+              # scenarios 2 and 3 but 1 in others.
+              if node_ref == 3 
+                if ![2,3].include?(scenario) then expected_child_links_size = 1 end
+              end
+            end
+            
+            #############################################
+            ##### SET EXPECTED TESTS ON CHILD LINKS #####
+            #############################################
+            
+            # Construct an Array that will be used to store the test links of
+            # the current Node in the order in which they occur in the Node.
+            expected_child_link_tests = []
+            
+            # Root Node.
+            if node_root_field.value(node) == true
+              
+              case scenario
+              when 1
+                expected_child_link_tests.push(primitive_1)
+                expected_child_link_tests.push(end_primitive)
+              when 2
+                expected_child_link_tests.push(end_primitive)
+                expected_child_link_tests.push(primitive_1)
+              when 3 
+                expected_child_link_tests.push(primitive_2)
+                expected_child_link_tests.push(primitive_1)
+              when 4
+                expected_child_link_tests.push(primitive_1)
+                expected_child_link_tests.push(primitive_2)
+              when 5
+                expected_child_link_tests.push(primitive_1)
+                expected_child_link_tests.push(end_primitive)
+                expected_child_link_tests.push(primitive_2)
+              when 6
+                expected_child_link_tests.push(primitive_1)
+                expected_child_link_tests.push(primitive_2)
+              end
+            else
+               
+              if node_ref == 3 
+                if scenario == 1 then expected_child_link_tests.push(end_primitive) end
+                if [4,5,6].include?(scenario) then expected_child_link_tests.push(primitive_2) end
+              end
+            end
+            
+            # Wrap each expected test link in the array in a ListPattern unless
+            # its already one (i.e. the end delimeter).  Otherwise,
+            # asserting their equality with actual test links won't work since
+            # actual test links are ListPatterns, not PrimitivePatterns.
+            expected_child_link_tests.map!{|test| 
+              if test.class != ListPattern 
+                lp = ListPattern.new(modality)
+                lp._list.add(test)
+                lp
+              else
+                test
+              end
+            }
+            
+            #################################
+            ##### SET EXPECTED CONTENTS #####
+            #################################
+            
+            expected_contents = ListPattern.new(modality)
+            
+            # Root Node.
+            if node_root_field.value(node) == true
+              expected_contents._list.add(StringPattern.create("Root"))
+            else node_root_field.value(node) == false
+              case node_ref
+                
+              when 3
+                expected_contents._list.add(primitive_1)
+                
+              when 4
+                if [1,2,5].include?(scenario)
+                  expected_contents._finished = true
+                elsif [3,4].include?(scenario)
+                  expected_contents._list.add(primitive_2)
+                end
+                
+              when 5
+                if scenario == 1
+                  expected_contents._list.add(primitive_1)
+                  expected_contents._finished = true
+                elsif scenario == 4
+                  expected_contents._list.add(primitive_1)
+                  expected_contents._list.add(primitive_2)
+                elsif scenario == 5
+                  expected_contents._list.add(primitive_2)
+                  expected_contents._finished = true
+                elsif scenario == 6
+                  expected_contents._list.add(primitive_1)
+                  expected_contents._list.add(primitive_2)
+                end
+                
+              when 6
+                if scenario == 5
+                  expected_contents._list.add(primitive_1)
+                  expected_contents._list.add(primitive_2)
+                end
+              end
+            end
+            
+            assert_equal(
+              expected_child_links_size, 
+              child_links.size(), 
+              "occurred when checking the number of child links for Node " +
+              "with reference " + node_ref.to_s + " in scenario " + scenario.to_s
+            )
+            
+            for link in 0...child_links.size()
+              assert_equal(
+                expected_child_link_tests[link].to_s,
+                link_test_field.value(child_links[link]).to_s,
+                "occurred when checking child link " + link.to_s + " for Node " +
+                "with reference " + node_ref.to_s + " in scenario " + scenario.to_s
+              )
+            end
+            
+            assert_equal(
+              expected_contents.to_s,
+              node_contents_field.value(node).to_s,
+              "occurred when checking contents of Node with reference " + 
+              node_ref.to_s + " in scenario " + scenario.to_s
+            )
+          end
+        end
+      end
+    end
+  end
+end
+
+################################################################################
+# Tests the "Chrest.familiarise()" method using a number of scenarios that 
+# trigger each branch of the decision tree in the method.
+# 
+# To ensure consistency of method behaviour, each scenario is repeated:
+# 1. With all PrimitivePattern types
+# 2. With all Modality values
+# 3. 10 times with each PrimitivePattern and Modality permutation
+#  
+# To save on documentation, ItemSquarePatterns are used to describe this test
+# although, as stated, StringPatterns and NumberPatterns are also used during
+# testing.
+#
+# Scenario 1: No new information in ListPattern that triggers familiarisation
+# Scenario 2: New information in ListPattern that triggers familiarisation 
+#             unrecognised
+# Scenario 3: New information in ListPattern that triggers familiarisation 
+#             recognised
+# Scenario 4: Familiarisation fails when extending image since a history rewrite
+#             is attempted on the Node to familiarise's image history when an
+#             attempt is made to extend the image during familiarisation.
+# 
+# Method Parameters
+# =================
+# 
+# 1. Node to familiarise image: <[T 0 1]>
+# 2. ListPattern that "triggers" familiarisation
+#    - Scenario 1: <[T 0 1]>
+#    - Scenario 2, 3, 4: <[T 0 1][H 0 2]>
+#   
+# Given the parameters above, the new information in each scenario is as follows
+# (the Node to familiarise's image is subtracted from the ListPattern that 
+# "triggers" familiarisation and the first PrimtivePattern in the remainder is
+# collected):
+#   - Scenario 1: <[]> (no new information)
+#   - Scenario 2, 3, 4: <[H 0 2]>
+#   
+# Expected Output
+# ===============
+# 
+# This test checks the following information after the method has been invoked
+# for each scenario repeat:
+# 
+# - The result of the method invocation.
+#   ~ Scenario 1: FAMILIARISATION_FAILED
+#   ~ Scenario 2: DISCRIMINATION_SUCCESSFUL
+#   ~ Scenario 3: FAMILIARISATION_SUCCESSFUL
+#   ~ Scenario 4: FAMILIARISATION_FAILED
+#     
+# - The model's cognition clock value.
+#   ~ Scenario 1: should be set to its default value since familiarisation 
+#                 should not occur.
+#   ~ Scenario 2: should equal the time the method is invoked plus the time 
+#                 taken by the model to discriminate since discrimination should
+#                 occur
+#   ~ Scenario 3: should equal the time the method is invoked plus the time 
+#                 taken by the model to familiarise since familiarisation should
+#                 occur
+#   ~ Scenario 4: should be set to its default value since familiarisation 
+#                 should not occur
+#     
+# - The number of children for each Node in LTM.
+# - The test on each Node's child link in LTM.
+# - The ordering of child links for each Node in LTM.
+# - The image of each Node in LTM.
+# 
+# To illustrate the expected outcomes for the 4 pieces of information above, 
+# LTM diagrams are provided below: 
+# 
+# ------------
+# LTM Diagrams
+# ------------
+# 
+# - "o" denotes the modality root node
+# - "|" and "-" denote test links from a node
+# - "{}" denotes the test on a link
+# - "()" denotes a Node.  The Node's reference is given after the opening 
+#   parenthesis followed by a colon.
+# - "<[]>" denotes a ListPattern.  If this is in {}, the ListPattern is the test
+#   on the link, if it is in (), the ListPattern is the image of the Node.
+#   
+# NOTE: The "stacking" of Links in the diagrams below indicates the order in 
+#       which children are declared for the parent Node.  For example, in 
+#       scenario 2, Node 4 is the first child of the modality root and Node
+#       3 is the second child.  This is important since this ordering must be 
+#       adhered to when the children of each Node is checked during testing.
+#
+# ~~~~~~~~~~
+# Scenario 1
+# ~~~~~~~~~~
+#
+# BEFORE/AFTER METHOD INVOCATION
+# o
+# |--{<[T 0 1]>}--(3: <[T 0 1]>)
+# 
+# ~~~~~~~~~~
+# Scenario 2
+# ~~~~~~~~~~
+#
+# BEFORE METHOD INVOCATION
+# o
+# |--{<[T 0 1]>}--(3: <[T 0 1]>)
+#
+# AFTER METHOD INVOCATION
+# o
+# |--{<[H 0 2]>}--(4: <[]>)
+# |
+# |--{<[T 0 1]>}--(3: <[T 0 1]>)
+#
+# ~~~~~~~~~~
+# Scenario 3
+# ~~~~~~~~~~
+#
+# BEFORE METHOD INVOCATION
+# o
+# |--{<[T 0 1]>}--(3: <[T 0 1]>)
+# |
+# |--{<[H 0 2]>}--(4: <[H 0 2]>)
+#
+# AFTER METHOD INVOCATION
+# o
+# |--{<[T 0 1]>}--(3: <[T 0 1][H 0 2]>)
+# |
+# |--{<[H 0 2]>}--(4: <[H 0 2]>)
+#
+# ~~~~~~~~~~
+# Scenario 4
+# ~~~~~~~~~~
+#
+# BEFORE/AFTER METHOD INVOCATION
+# o
+# |--{<[T 0 1]>}--(3: <[T 0 1]>)
+# |
+# |--{<[H 0 2]>}--(4: <[H 0 2]>)
+#
+process_test "familiarise" do
+  chrest_familiarisation_method = Chrest.java_class.declared_method(:familiarise, Node, ListPattern, Java::int)
+  chrest_familiarisation_method.accessible = true
+  
+  Chrest.class_eval{
+    field_accessor :_actionLtm,
+      :_verbalLtm,
+      :_visualLtm,
+      :_familiarisationTime,
+      :_discriminationTime
+  }
+  
+  ListPattern.class_eval{
+    field_accessor :_list
+  }
+  
+  Node.class_eval{
+    field_accessor :_childHistory, :_imageHistory
+  }
+  
+  node_reference_field = Node.java_class.declared_field("_reference")
+  node_reference_field.accessible = true
+  
+  node_root_field = Node.java_class.declared_field("_rootNode")
+  node_root_field.accessible = true
+  
+  node_image_field = Node.java_class.declared_field("_imageHistory")
+  node_image_field.accessible = true
+  
+  link_test_field = Link.java_class.declared_field("_test")
+  link_test_field.accessible = true
+  
+  for scenario in 1..4
+    for pattern_type in PrimitivePattern.subclasses
+      for modality in Modality.values()
+        10.times do
+          
+          # Create an array to store the Nodes used in the scenario to make 
+          # testing easier.
+          nodes_in_ltm = []
+          
+          time = 0
+          
+          # No matter if CHREST is learning object locations relative to the 
+          # agent equipped with it, this function should act the same so 
+          # randomly specify this 
+          model = Chrest.new(time, [true, false].sample)
+          
+          time_method_invoked = time + 50
+          
+          #############################
+          ##### CREATE PRIMITIVES #####
+          #############################
+          
+          primitive_1 = (
+            pattern_type == ItemSquarePattern ? ItemSquarePattern.new("T", 0, 1) :
+            pattern_type == NumberPattern ? NumberPattern.create(42) :
+            pattern_type == StringPattern ? StringPattern.create("foo") :
+            raise("A subclass of PrimitivePattern #{pattern_type} has not had its initialisation defined")
+          )
+          
+          primitive_2 = (
+            pattern_type == ItemSquarePattern ? ItemSquarePattern.new("H", 0, 2) :
+            pattern_type == NumberPattern ? NumberPattern.create(43) :
+            pattern_type == StringPattern ? StringPattern.create("bar") :
+            raise("A subclass of PrimitivePattern #{pattern_type} has not had its initialisation defined")
+          )
+          
+          ##################################
+          ##### GET MODALITY ROOT NODE #####
+          ##################################
+          
+          ltm_modality_root_node = (
+            modality == Modality::ACTION ? model._actionLtm :
+            modality == Modality::VERBAL ? model._verbalLtm :
+            model._visualLtm
+          )
+          
+          ltm_modality_root_node_child_links = ArrayList.new()
+          nodes_in_ltm.push(ltm_modality_root_node)
+          
+          ###########################################
+          ##### CREATE NODE TO FAMILIARISE FROM #####
+          ###########################################
+          
+          # Create Node
+          node_to_familiarise_contents = ListPattern.new(modality)
+          node_to_familiarise_contents._list.add(primitive_1)
+          node_to_familiarise_image = ListPattern.new(modality)
+          node_to_familiarise_image._list.add(primitive_1)
+          node_to_familiarise = Node.new(
+            model, 
+            node_to_familiarise_contents, 
+            node_to_familiarise_image, 
+            time_method_invoked
+          )
+          
+          # In scenario 4, set the image history so that the image is changed
+          # at a time after the method is invoked so that, when an attempt is 
+          # made to extend the node to familiarise's image, a history rewrite 
+          # occurs causing the extension and thus, familiarisation, to fail.
+          if scenario == 4
+            bogus_image_history = ListPattern.new(modality)
+            bogus_image_history.add(primitive_1)
+            bogus_image_history.add(primitive_2)
+            node_to_familiarise._imageHistory.put(
+              time_method_invoked + model._familiarisationTime * 100, 
+              bogus_image_history
+            )
+          end
+          
+          # Create Link to Node
+          link_1_test = ListPattern.new(modality)
+          link_1_test._list.add(primitive_1)
+          link_1 = Link.new(link_1_test, node_to_familiarise, time, "")
+          
+          # Add Link to modality root Node child history
+          ltm_modality_root_node_child_links.add(link_1)
+          nodes_in_ltm.push(node_to_familiarise)
+          
+          ####################################
+          ##### CREATE INPUT ListPattern #####
+          ####################################
+          
+          input_list_pattern = ListPattern.new(modality)
+          input_list_pattern._list.add(primitive_1)
+          
+          if scenario > 1
+            input_list_pattern._list.add(primitive_2)
+          end
+
+          ##################################
+          ##### "LEARN" AUXILLARY NODE #####
+          ##################################
+          
+          if [3,4].include?(scenario)
+            node_to_learn_contents = ListPattern.new(modality)
+            node_to_learn_contents._list.add(primitive_2)
+            node_to_learn_image = ListPattern.new(modality)
+            node_to_learn_image._list.add(primitive_2)
+            node_to_learn = Node.new(model, node_to_learn_contents, node_to_learn_image, time_method_invoked)
+            
+            node_to_learn_link_test = ListPattern.new(modality)
+            node_to_learn_link_test._list.add(primitive_2)
+            node_to_learn_link = Link.new(node_to_learn_link_test, node_to_learn, time_method_invoked, "")
+            
+            ltm_modality_root_node_child_links.add(node_to_learn_link)
+            
+            nodes_in_ltm.push(node_to_learn)
+          end
+          
+          #########################
+          ##### "LEARN" NODES #####
+          #########################
+          
+          ltm_modality_root_node._childHistory.put(time_method_invoked, ltm_modality_root_node_child_links)
+          
+          #########################
+          ##### INVOKE METHOD #####
+          #########################
+          
+          result = chrest_familiarisation_method.invoke(model, node_to_familiarise, input_list_pattern, time_method_invoked)
+          
+          #################
+          ##### TESTS #####
+          #################
+          
+          # Check method return value
+          expected_result = (
+            [1,4].include?(scenario) ? Status::FAMILIARISATION_FAILED :
+            scenario == 2 ? Status::DISCRIMINATION_SUCCESSFUL :
+            Status::FAMILIARISATION_SUCCESSFUL
+          )
+          assert_equal(
+            expected_result.to_s,
+            result.to_s,
+            "occurred in scenario " + scenario.to_s
+          )
+          
+          # Check cognition clock
+          expected_cognition_clock = (
+            scenario == 2 ? time_method_invoked + model._discriminationTime :
+            scenario == 3 ? time_method_invoked + model._familiarisationTime :
+            -1
+          )
+          assert_equal(
+            expected_cognition_clock,
+            model._cognitionClock,
+            "occurred when checking the cognition clock in scenario " + scenario.to_s
+          )
+          
+          # Check Node details.
+          for node in nodes_in_ltm
+            node_ref = node_reference_field.value(node)
+            child_links = node._childHistory.lastEntry().getValue()
+            
+            ######################################
+            ##### SET EXPECTED CHILDREN SIZE #####
+            ######################################
+            
+            # All Nodes are expected to have no children by default.
+            expected_child_links_size = 0
+            
+            # If the current Node is a root Node, the number of children will
+            # vary depending on the current scenario.
+            if node_root_field.value(node) == true
+              expected_child_links_size = (scenario == 1 ? 1 : 2)
+            end
+            
+            #############################################
+            ##### SET EXPECTED TESTS ON CHILD LINKS #####
+            #############################################
+            
+            # Construct an Array that will be used to store the test links of
+            # the current Node in the order in which they occur in the Node.
+            expected_child_link_tests = []
+            
+            # Only the root Node should have children.  Its children differ
+            # depending on the current scenario.
+            if node_root_field.value(node) == true
+              
+              case scenario
+              when 1
+                expected_child_link_tests.push(primitive_1)
+              when 2
+                expected_child_link_tests.push(primitive_2)
+                expected_child_link_tests.push(primitive_1)
+              when 3
+                expected_child_link_tests.push(primitive_1)
+                expected_child_link_tests.push(primitive_2)
+              when 4
+                expected_child_link_tests.push(primitive_1)
+                expected_child_link_tests.push(primitive_2)
+              end
+            end
+            
+            # Wrap each expected test link in the array in a ListPattern 
+            # otherwise, asserting their equality with actual test links won't 
+            # work since actual test links are ListPatterns, not 
+            # PrimitivePatterns.
+            expected_child_link_tests.map!{|test| 
+                lp = ListPattern.new(modality)
+                lp._list.add(test)
+                lp
+            }
+            
+            ##############################
+            ##### SET EXPECTED IMAGE #####
+            ##############################
+            
+            expected_image = ListPattern.new(modality)
+            
+            # Root Node.
+            if node_root_field.value(node) == true
+              expected_image._list.add(StringPattern.create("Root"))
+            else node_root_field.value(node) == false
+              case node_ref
+                
+              when 3
+                expected_image._list.add(primitive_1)
+                
+                # In scenarios 3 and 4 the last image entry will be a 
+                # ListPattern containing primitives 1 and 2.  In scenario 3, 
+                # this is because familiarisation occurs, in scenario 4 its 
+                # because the last image entry is the bogus image.
+                if [3,4].include?(scenario) then expected_image._list.add(primitive_2) end
+              when 4
+                if scenario != 2 then expected_image._list.add(primitive_2) end
+              end
+            end
+            
+            assert_equal(
+              expected_child_links_size, 
+              child_links.size(), 
+              "occurred when checking the number of child links for Node " +
+              "with reference " + node_ref.to_s + " in scenario " + scenario.to_s
+            )
+            
+            for link in 0...child_links.size()
+              assert_equal(
+                expected_child_link_tests[link].to_s,
+                link_test_field.value(child_links[link]).to_s,
+                "occurred when checking child link " + link.to_s + " for Node " +
+                "with reference " + node_ref.to_s + " in scenario " + scenario.to_s
+              )
+            end
+            
+            assert_equal(
+              expected_image.to_s,
+              node_image_field.value(node).getLastEntry.getValue().to_s,
+              "occurred when checking image of Node with reference " + 
+              node_ref.to_s + " in scenario " + scenario.to_s
+            )
+          end
+        end
+      end
+    end
+  end
+end
+
+################################################################################
+# Tests "Chrest.recogniseAndLearn" using all possible scenarios that can occur
+# with regard to factors that dictate how this method operates:
+# 
+# Scenario 1: method invoked when cognition isn't free
+# Scenario 2: method invoked when cognition is free but input already learned
+# Scenario 3: method invoked when cognition is free, input isn't already 
+#             learned but model "randomly" refuses to learn
+# Scenario 4: method invoked when cognition is free, input isn't already 
+#             learned, model doesn't "randomly" refuse to learn and 
+#             discrimination should occur.
+# Scenario 5: method invoked when cognition is free, input isn't already 
+#             learned, model doesn't "randomly" refuse to learn and 
+#             familiarisation should occur.
+# 
+# Each Scenario is repeated so that:
+# 
+#  - Each type of PrimitivePattern is included as the content of the ListPattern 
+#    input to the method.
+#  - Each Modality is used as the modality of the ListPattern input to the 
+#    method.
+#
+# Each Scenario permutation is also repeated 10 times to ensure consistency of
+# behaviour.
+canonical_result_test "recognise_and_learn" do
+  Chrest.class_eval{
+    field_accessor :_cognitionClock, :_actionLtm, :_verbalLtm, :_visualLtm, :_rho
+  }
+  
+  ListPattern.class_eval{
+    field_accessor :_list
+  }
+  
+  Node.class_eval{
+    field_accessor :_childHistory
+  }
+  
+  for scenario in 1..5
+    for pattern_type in PrimitivePattern.subclasses
+      for modality in Modality.values()
+        10.times do
+          
+          #######################
+          ##### TEST SET-UP #####
+          #######################
+          
+          time = 0
+          
+          # No matter if CHREST is learning object locations relative to the 
+          # agent equipped with it, this function should act the same so 
+          # randomly specify this 
+          model = Chrest.new(time, [true,false].sample)
+
+          time_function_invoked = time + 50
+          
+          input_contents = (
+            pattern_type == ItemSquarePattern ? ItemSquarePattern.new("T", 0, 1) :
+            pattern_type == NumberPattern ? NumberPattern.create(42) :
+            pattern_type == StringPattern ? StringPattern.create("foobar") :
+            raise("A subclass of PrimitivePattern #{pattern_type} has not had its initialisation defined")
+          )
+          input = ListPattern.new(modality)
+          input._list.add(input_contents)
+
+          #########################################
+          ##### IMPLEMENT SCENARIO CONDITIONS #####
+          #########################################
+          
+          if scenario == 1 then model._cognitionClock = time_function_invoked + 1 end
+          
+          # In scenarios 2 and 5, the ListPattern input should be learned to
+          # certain extents.  Manually edit LTM so that this is the case.
+          if scenario == 2 || scenario == 5
+            
+            # Get the LTM for the modality of the ListPattern to be input.
+            ltm_modality_root_node = (
+              modality == Modality::ACTION ? model._actionLtm :
+              modality == Modality::VERBAL ? model._verbalLtm :
+              model._visualLtm
+            )
+            
+            # In scenario 2, the input should be completely known so the image 
+            # of the Node retrieved should equal the ListPattern input.  In 
+            # scenario 5, the image of the Node recognised given the ListPattern
+            # input should not be equal to the ListPattern input so that 
+            # familiarisation occurs.
+            node = Node.new(model, input, (scenario == 2 ? input : ListPattern.new(modality)), time_function_invoked)
+            link = Link.new(input, node, time_function_invoked, "")
+            ltm_modality_root_node_history = ArrayList.new()
+            ltm_modality_root_node_history.add(link)
+            ltm_modality_root_node._childHistory.put(time_function_invoked, ltm_modality_root_node_history)
+          end
+
+          # In scenario 3 the model should refuse to learn so set the model's
+          # rho parameter to 0 so that it is guaranteed to refuse to learn.
+          if scenario == 3 then model._rho = 0.0 end
+          
+          #########################
+          ##### INVOKE METHOD #####
+          #########################
+          
+          result = model.recogniseAndLearn(input, time_function_invoked)
+          
+          
+          expected_result = (
+            scenario == 1 ? Status::COGNITION_BUSY :
+            scenario == 2 ? Status::INPUT_ALREADY_LEARNED :
+            scenario == 3 ? Status::LEARNING_REFUSED :
+            scenario == 4 ? Status::DISCRIMINATION_SUCCESSFUL :
+            Status::FAMILIARISATION_SUCCESSFUL
+          )
+          
+          ################
+          ##### TEST #####
+          ################
+          
+          # Invoke .name() on result and expected_result otherwise, the test 
+          # will never evaluate to true since its comparing two different 
+          # instances of the same Enum type!
+          assert_equal(expected_result.name(), result.name(), "occurred in scenario " + scenario.to_s)
+        end
+      end
+    end
+  end
+end
     if scenario == 1 then model._cognitionClock = time + 5 end
     
     ############################
@@ -723,182 +1723,6 @@ end
 #  model.setLearningClock(201)
 #  assert_equal(model.getLearningClock(), model.getMaximumClockValue())
 #end
-
-# Learning affects both the cognitive and attention clocks since information
-# needs be sorted and added to LTM (cognition required), after sorting, the 
-# retrieved node is also added to STM (attention required).  This test therefore
-# focuses on checking the attention and cognitive clocks to see if they are set
-# as expected.
-process_test "recogniseAndLearn" do
-  
-  ##################
-  ### TEST SETUP ###
-  ##################
-  
-  # Set test time since learning is all about time
-  test_time = 0
-  
-  # Create new CHREST model
-  model = Chrest.new(test_time, false)
-  
-  # Learning parameter setup
-  model.setLtmLinkTraversalTime(10)
-  model.setFamiliarisationTime(2000)
-  model.setDiscriminationTime(10000)
-  model.setMaximumSemanticLinkSearchDistance(2)
-  model.setTimeToUpdateStm(50)
-  model.setRho(1.0) #The model will never randomly refuse to learn.
-  
-  # Construct patterns to learn.
-  patternA = Pattern.makeVisualList(["B", "I", "F"].to_java(:String))
-  patternB = Pattern.makeVisualList(["X", "A", "Q"].to_java(:String))
-  
-  #############
-  ### TESTS ###
-  #############
-  
-  # Check that the attention and cognition clocks are setup as expected.
-  assert_equal(test_time - 1, model.getAttentionClock(), "see test 1")
-  assert_equal(test_time - 1, model.getCognitionClock(), "see test 2")
-  
-  ##############################################################################
-  # Trigger discrimination: new node for 'B' (ref: 3) should be created (node 
-  # 3's image will be empty).
-  model.recogniseAndLearn(patternA, test_time)
-  
-  # Since LTM is empty expect for modality root nodes, patternA's modality just
-  # needs to be sorted incurring 1 LTM link traversal time cost.
-  sorting_time = test_time + model.getLtmLinkTraversalTime()
-  
-  expected_attention_clock = sorting_time + model.getTimeToUpdateStm()
-  expected_cognition_clock = test_time + model.getLtmLinkTraversalTime() + model.getDiscriminationTime()
-  assert_equal(expected_attention_clock, model.getAttentionClock(), "see test 3")
-  assert_equal(expected_cognition_clock, model.getCognitionClock(), "see test 4")
-  
-  ##############################################################################
-  # Trigger familiarisation: node 3 should have 'B' added to its image.
-  test_time = model.getCognitionClock() # Set test time to that the 
-                                        # 'recogniseAndLearn' invocation will 
-                                        # not be ignored due to cognitive 
-                                        # resources not being available at the
-                                        # time of invocation.
-  model.recogniseAndLearn(patternA, test_time) 
-  
-  # When patternA is input for learning, its modality will be sorted and then 
-  # the test link that connects the modality root to node 3 will be traversed.
-  sorting_time = test_time + (model.getLtmLinkTraversalTime() * 2)
-  
-  expected_attention_clock = sorting_time + model.getTimeToUpdateStm()
-  expected_cognition_clock = sorting_time + model.getFamiliarisationTime()
-  assert_equal(expected_attention_clock, model.getAttentionClock(), "see test 5")
-  assert_equal(expected_cognition_clock, model.getCognitionClock(), "see test 6")
-  
-  ##############################################################################
-  # Check that the model does not learn new information when its cognitive 
-  # resources are busy.
-  test_time = model.getCognitionClock() - 1
-  model.recogniseAndLearn(patternB, test_time)
-  
-  assert_equal(expected_attention_clock, model.getAttentionClock(), "see test 7")
-  assert_equal(expected_cognition_clock, model.getCognitionClock(), "see test 8")
-  assert_equal(1, model.getLtmSize(model.getCognitionClock()), "see test 9")
-
-  ##############################################################################
-  # Trigger discrimination: new node for 'I' (ref: 4) should be created (node 
-  # 4's image will be empty).
-  test_time = model.getCognitionClock() # Set test time to that the 
-                                        # 'recogniseAndLearn' invocation will 
-                                        # not be ignored due to cognitive 
-                                        # resources not being available at the
-                                        # time of invocation.
-  model.recogniseAndLearn(patternA, test_time)
-  
-  # When patternA is input for learning, its modality will be sorted and then 
-  # the test link that connects the modality root to node 3 will be traversed.
-  sorting_time = test_time + (model.getLtmLinkTraversalTime() * 2)
-  
-  expected_attention_clock = sorting_time + model.getTimeToUpdateStm()
-  expected_cognition_clock = sorting_time + model.getDiscriminationTime()
-  assert_equal(expected_attention_clock, model.getAttentionClock(), "see test 10")
-  assert_equal(expected_cognition_clock, model.getCognitionClock(), "see test 11")
-  
-  ##############################################################################
-  # Trigger familiarisation: node 3 should have 'I' added to its image.
-  test_time = model.getCognitionClock() # Set test time to that the 
-                                        # 'recogniseAndLearn' invocation will 
-                                        # not be ignored due to cognitive 
-                                        # resources not being available at the
-                                        # time of invocation.
-  model.recogniseAndLearn(patternA, test_time)
-  
-  # When patternA is input for learning, its modality will be sorted and then 
-  # the test link that connects the modality root to node 3 will be traversed.
-  sorting_time = test_time + (model.getLtmLinkTraversalTime() * 2)
-  
-  expected_attention_clock = sorting_time + model.getTimeToUpdateStm()
-  expected_cognition_clock = sorting_time + model.getFamiliarisationTime()
-  assert_equal(expected_attention_clock, model.getAttentionClock(), "see test 12")
-  assert_equal(expected_cognition_clock, model.getCognitionClock(), "see test 13")
-  
-  ##############################################################################
-  # Trigger discrimination: new node for 'F' (ref: 5) should be created (node 
-  # 5's image will be empty).
-  test_time = model.getCognitionClock() # Set test time to that the 
-                                        # 'recogniseAndLearn' invocation will 
-                                        # not be ignored due to cognitive 
-                                        # resources not being available at the
-                                        # time of invocation.
-  model.recogniseAndLearn(patternA, test_time)
-  
-  # When patternA is input for learning, its modality will be sorted and then 
-  # the test link that connects the modality root to node 3 will be traversed.
-  sorting_time = test_time + (model.getLtmLinkTraversalTime() * 2)
-  
-  expected_attention_clock = sorting_time + model.getTimeToUpdateStm()
-  expected_cognition_clock = sorting_time + model.getDiscriminationTime()
-  assert_equal(expected_attention_clock, model.getAttentionClock(), "see test 14")
-  assert_equal(expected_cognition_clock, model.getCognitionClock(), "see test 15")
-  
-  ##############################################################################
-  # Trigger familiarisation: node 3 should have 'F' added to its image.
-  test_time = model.getCognitionClock() # Set test time to that the 
-                                        # 'recogniseAndLearn' invocation will 
-                                        # not be ignored due to cognitive 
-                                        # resources not being available at the
-                                        # time of invocation.
-  model.recogniseAndLearn(patternA, test_time)
-  
-  # When patternA is input for learning, its modality will be sorted and then 
-  # the test link that connects the modality root to node 3 will be traversed.
-  sorting_time = test_time + (model.getLtmLinkTraversalTime() * 2)
-  
-  expected_attention_clock = sorting_time + model.getTimeToUpdateStm()
-  expected_cognition_clock = sorting_time + model.getFamiliarisationTime()
-  assert_equal(expected_attention_clock, model.getAttentionClock(), "see test 16")
-  assert_equal(expected_cognition_clock, model.getCognitionClock(), "see test 17")
-  
-  ##############################################################################
-  # No change triggered: when patternA is input for learning again, the model 
-  # should recognise that it has been fully learned so the cognition and 
-  # attention clocks should be set to the times associated with recognition only
-  # (no learning should occur).
-  test_time = model.getCognitionClock() # Set test time to that the 
-                                        # 'recogniseAndLearn' invocation will 
-                                        # not be ignored due to cognitive 
-                                        # resources not being available at the
-                                        # time of invocation.
-  model.recogniseAndLearn(patternA, test_time)
-  
-  # When patternA is input for learning, its modality will be sorted and then 
-  # the test link that connects the modality root to node 3 will be traversed.
-  sorting_time = test_time + (model.getLtmLinkTraversalTime() * 2)
-  
-  expected_attention_clock = sorting_time + model.getTimeToUpdateStm()
-  expected_cognition_clock = sorting_time
-  assert_equal(expected_attention_clock, model.getAttentionClock(), "see test 18")
-  assert_equal(expected_cognition_clock, model.getCognitionClock(), "see test 19")
-end
-
 
 ################################################################################
 # Tests the "Chrest.getInitialFixation()" method.

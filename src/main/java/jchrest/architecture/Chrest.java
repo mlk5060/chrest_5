@@ -1752,41 +1752,74 @@ public class Chrest extends Observable {
    * memory network of {@link #this} (see {@link #recognise(
    * jchrest.lib.ListPattern, int)), add the {@link jchrest.architecture.Node}
    * recognised to the relevant {@link jchrest.architecture.Stm} {@link 
-   * jchrest.lib.Modality} and recogniseAndLearn the {@link jchrest.lib.ListPattern} if 
+   * jchrest.lib.Modality} and learn the {@link jchrest.lib.ListPattern} if 
    * the image of the {@link jchrest.architecture.Node} recognised does not 
    * exactly match the {@link jchrest.lib.ListPattern} provided.
    * 
    * @param pattern
    * @param time
+   * 
+   * @return 
+   * <ul>
+   *  <li>
+   *    {@link jchrest.lib.Status#COGNITION_BUSY} if the cognitive resource of 
+   *    {@link #this} is busy at the {@code time} specified.
+   *  </li>
+   *  <li>
+   *    {@link jchrest.lib.Status#INPUT_ALREADY_LEARNED} if the {@code pattern}
+   *    specified causes the recognition of a {@link jchrest.architecture.Node}
+   *    from long-term memory that returns {@code pattern} when {@link 
+   *    jchrest.architecture.Node#getImage(int)} is invoked on it.
+   *  </li>
+   *  <li>
+   *    {@link jchrest.lib.Status#LEARNING_REFUSED} if {@link #this} randomly
+   *    refuses to learn even if the {@code pattern} retrieves a {@link 
+   *    jchrest.architecture.Node} from long-term memory that doesn't return 
+   *    {@code pattern} when {@link jchrest.architecture.Node#getImage(int)} is 
+   *    invoked on it.
+   *  </li>
+   *  <li>
+   *    {@link jchrest.lib.Status#DISCRIMINATION_SUCCESSFUL} if discrimination 
+   *    is attempted and is successful.
+   *  </li>
+   *  <li>
+   *    {@link jchrest.lib.Status#DISCRIMINATION_FAILED} if discrimination is
+   *    attempted but fails.
+   *  </li>
+   *  <li>
+   *    {@link jchrest.lib.Status#FAMILIARISATION_SUCCESSFUL} if familiarisation 
+   *    is attempted and is successful.
+   *  </li>
+   *  <li>
+   *    {@link jchrest.lib.Status#FAMILIARISATION_FAILED} if familiarisation is
+   *    attempted but fails.
+   *  </li>
+   * </ul>
    */
-  public void recogniseAndLearn (ListPattern pattern, Integer time) {
-    String func = "- learn: ";
-    
-    this.printDebugStatement(func + "START");
-    this.printDebugStatement(
-      func + "Recognising and learning " + pattern.toString() + " at time " + 
-      time + "."
-    );
+  public ChrestStatus recogniseAndLearn (ListPattern pattern, int time) { 
+    this.printDebugStatement("===== Chrest.recogniseAndLearn() =====");
+    this.printDebugStatement("- Recognising and learning " + pattern.toString() + " at time " + time);
+    ChrestStatus result;
     
     //Try to recognise the pattern specified; will return null if the cognition
     //resource is not free.
-    Node node = recognise (pattern, time, true);
+    Node nodeRecognised = recognise(pattern, time, true);
     
     this.printDebugStatement(
-      func + "Recognition returned " + (node == null ? 
+      "- Recognition returned " + (nodeRecognised == null ? 
         "null" : 
-        "node with reference " + node.getReference()
+        "node with reference " + nodeRecognised.getReference()
       )
     );
     
     // If the node recognised is != null, i.e. the cognition resource is free, 
     // continue.
-    if (node != null) { 
+    if(nodeRecognised != null){ 
       
       //Set current time to be equal to the cognitive clock since lerning should 
       //only continue after a node has been retrieved from LTM.
       this.printDebugStatement(
-        func + "Node recognised, the current time will be " +
+        "- A Node has been recognised, the current time will be " +
         "set to the current value of the cognition clock (" + 
         this._cognitionClock + ") since learning can only continue after LTM " +
         "retrieval is complete."
@@ -1794,54 +1827,61 @@ public class Chrest extends Observable {
       
       time = this._cognitionClock;
       
-      //The model should only try to recogniseAndLearn if the image of the recognised node
+      //The model should only try to learn if the image of the recognised node
       //differs from pattern provided.
-      ListPattern recognisedNodeImage = node.getImage(time);
+      ListPattern recognisedNodeImage = nodeRecognised.getImage(time);
       
-      this.printDebugStatement(
-        func + "Checking if recognised node image (" + 
-        recognisedNodeImage.toString() + ") differs from the pattern passed " + 
-        "to this function (" + pattern.toString() + ") and whether the model " +
-        "doesn't randomly refuse to learn.  If both conditions are true, " + 
-        "learning will occur."
-      );
-      
-      if (!recognisedNodeImage.equals(pattern) && Math.random() < _rho) {
-        
+      if(recognisedNodeImage.equals(pattern)){
         this.printDebugStatement(
-          func + "Conditions both evaluate to true so learning will be " +
-          "performed"
+          "- The image of the recognised Node (" + recognisedNodeImage.toString() + ") " +
+          "matches the input pattern so the input has been learned therefore, " +
+          "no learning will occur, exiting"
+        );
+        result = ChrestStatus.INPUT_ALREADY_LEARNED;
+      }
+      else if(Math.random() >= _rho){
+        this.printDebugStatement("- The model randomly refused to learn, exiting");
+        result = ChrestStatus.LEARNING_REFUSED;
+      }
+      else {
+        this.printDebugStatement(
+          "- The image of the recognised Node (" + recognisedNodeImage.toString() + ") " +
+          "does not match the input pattern so the input has not been fully learned " +
+          "and the model did not randomly refuse to learn, determining if discrimination " +
+          "or familiarisation should occur."
+        );
+        this.printDebugStatement(
+          "- If any of the following statements evaluate to true, discrimination " +
+          "will occur.  Otherwise, familiarisation will occur." +
+          "\n  ~ Is the Node recognised a root LTM Node: " + nodeRecognised.isRootNode() +
+          "\n  ~ Does the image of the Node recognised mismatch the input pattern: " + !recognisedNodeImage.matches(pattern) +
+          "\n  ~ Is the image of the Node recognised 'finished': " + recognisedNodeImage.isFinished()
         );
 
-        //NOTE: discrimination and familiarisation return boolean values but 
-        //      they aren't assigned to a variable since they should never 
-        //      return false if program execution gets to this stage.
         if (
-          node == this.getLtmModalityRootNode(pattern) || //i.e. pattern not recognised at all
+          nodeRecognised.isRootNode() || //i.e. pattern not recognised at all
           !recognisedNodeImage.matches(pattern) || //pattern recognised but image mismatched
           recognisedNodeImage.isFinished() //can't add to image (familiarisation not allowed)
         ){
-          this.discriminate(node, pattern, time);
+          this.printDebugStatement("- Discrimination will occur.");
+          result = this.discriminate(nodeRecognised, pattern, time);
         } else  { 
-          this.familiarise(node, pattern, time);
+          this.printDebugStatement("- Familiarisation will occur.");
+          result = this.familiarise(nodeRecognised, pattern, time);
         }
-      }
-      else{
-        this.printDebugStatement(
-          func + "Either the input pattern and image of the node recognised " +
-          "are exactly the same (" + recognisedNodeImage.equals(pattern) + ") " + 
-          "or they differ but the model randomly refused to learn."
-        );
       }
     }
     else{
+      result = ChrestStatus.COGNITION_BUSY;
       this.printDebugStatement(
-        func + "Cognitive resource isn't free; neither recognition or learning " +
-        "performed."
+        "- Recognition returned null so the cognitive resource isn't free; " +
+        "neither recognition or learning can be performed, exiting."
       );
     }
     
-    this.printDebugStatement(func + "RETURN");
+    this.printDebugStatement("Returning " + result.name());
+    this.printDebugStatement("===== RETURN Chrest.recogniseAndLearn() =====");
+    return result;
   }
   
   /**  
@@ -2612,145 +2652,127 @@ public class Chrest extends Observable {
    * If successful, discrimination will set the cognition clock of {@link #this}
    * to the time the new {@link jchrest.architecture.Node} is added to the 
    * long-term memory network of {@link #this}.
-   * 
+   * <p>
    * <b>NOTE:</b> It is assumed that the cognition resource is free at the time 
-   * that discrimination is requested.  Therefore, this function should only be 
-   * called as part of a public function that should ensure that the time 
-   * specified is one where the cognition resource is free.  If this is not the
-   * case, a {@link java.lang.NullPointerException} will be thrown when 
-   * determination of what is new in the {@link jchrest.lib.ListPattern} 
-   * specified.
+   * that discrimination is requested.  Therefore, this method should only be 
+   * called by another method which should ensure that the cognitive resource 
+   * is free at the {@code time} specified.  If this is not the case, a {@link 
+   * java.lang.NullPointerException} will be thrown when the method attempts to 
+   * determine if there are unlearened {@link jchrest.lib.PrimitivePattern 
+   * PrimitivePatterns} in the {@code pattern} specified.
    * 
-   * Note: in CHREST 2 tests are pointers to nodes.  This can be 
-   * implemented using a Link interface, and having a LinkNode class, 
-   * so that checking if test passed is done through the interface.
-   * This may be needed later for semantic/template learning.
-   * 
-   * @param nodeToDiscriminateFrom The {@link jchrest.architecture.Node} that 
-   * this function will be applied to.
-   * @param pattern The information that should be used to discriminate.
+   * @param nodeToDiscriminateFrom 
+   * @param pattern The information that triggered discrimination.
    * @param time
    * 
-   * @return {@link java.lang.Boolean#TRUE} if discrimination is successful,
-   * {@link java.lang.Boolean#FALSE} if not.
+   * @return Either {@link jchrest.lib.Status#DISCRIMINATION_SUCCESSFUL} or
+   * {@link jchrest.lib.Status#DISCRIMINATION_FAILED}.
    */
-  private boolean discriminate (Node nodeToDiscriminateFrom, ListPattern pattern, int time) {
-    String func = "- discriminate: ";
+  private ChrestStatus discriminate (Node nodeToDiscriminateFrom, ListPattern pattern, int time) {
+    this.printDebugStatement("===== Chrest.discriminate() =====");
+    boolean discriminationSuccessful;
     
-    //Set-up history variables.
-    HashMap<String, Object> historyRowToInsert = new HashMap<>();
-    historyRowToInsert.put(Chrest._executionHistoryTableTimeColumnName, time);
-
-    //Generic operation name setter for current method.  Ensures for the row to 
-    //be added that, if this method's name is changed, the entry for the 
-    //"Operation" column in the execution history table will be updated without 
-    //manual intervention and "Filter By Operation" queries run on the execution 
-    //history DB table will still work.
-    class Local{};
-    historyRowToInsert.put(Chrest._executionHistoryTableOperationColumnName, 
-      ExecutionHistoryOperations.getOperationString(this.getClass(), Local.class.getEnclosingMethod())
-    );
+    //////////////////////////////////////////////
+    ///// GET NEW INFORMATION IN ListPattern /////
+    //////////////////////////////////////////////
     
-    ListPattern newInformation = pattern.remove (nodeToDiscriminateFrom.getContents());
+    ListPattern newInformation = pattern.remove(nodeToDiscriminateFrom.getContents());
+    
+    //If there is no new information, set the new information to the end 
+    //delimiter so that the model can check if it is recognised.
+    if(newInformation.isEmpty()) newInformation.setFinished();
 
     this.printDebugStatement(
-      func + "Reference of node to discriminate from: " + 
+      "- Node to discriminate from reference: " + 
       nodeToDiscriminateFrom.getReference() + ", pattern that triggered " + 
       "discrimination: " + pattern.toString() + ", time discrimination " +
-      "invoked: " + time + ".  New information in pattern that triggered " +
+      "invoked: " + time + ", new information in pattern that triggered " +
       "discrimination: " + newInformation + "."
     );
+    
+    /////////////////////////////////////
+    ///// RECOGNISE NEW INFORMATION /////
+    /////////////////////////////////////
+    
+    //Recognition at this stage doesn't incur a time cost since its assumed that
+    //the recognition that occured during the method that invokes 
+    //Chrest.discriminate() has identified what needs to be learned and whether
+    //it is known.  Recognition is called here for the purposes of code, not 
+    //because its assumed to occur in human-beings.
+    this.printDebugStatement("- Attempting to recognise new information");
+    Node nodeRetrievedAfterRecognisingNewInformation = this.recognise(newInformation, time, false);
+    this.printDebugStatement(
+      "- Reference of Node retrieved after recognising new information: " + 
+        nodeRetrievedAfterRecognisingNewInformation.getReference()
+    );
 
-    historyRowToInsert.put(Chrest._executionHistoryTableInputColumnName, pattern.toString() + "(" + pattern.getModalityString() + ")");
-    String description = "New info to learn: '" + newInformation.toString() + "'. Checking if empty...";
+    ////////////////////////
+    ///// DISCRIMINATE /////
+    ////////////////////////
+    
+    this.printDebugStatement("- Discrimination will now occur at time " + (time + this._discriminationTime));
+    time += this._discriminationTime;
 
     //If the new information is empty it must be handled differently to the way
     //it would be handled if it were not empty.  Unfortunately, it is not 
     //therefore possible to combine how the new information is ultimately added
     //to LTM.
-    time += this._discriminationTime;
-    boolean discriminationSuccessful;
-    
-    if (newInformation.isEmpty()) {
-
-      // Convert new information so that is is no longer empty but rather, an 
-      // end chunk delimeter.
-      newInformation.setFinished();
+    if(newInformation.isEmpty()){
       
       this.printDebugStatement(
-        func + "New information is empty so the model will now check if " +
-        newInformation.toString() + " has been learned."
+        "- New information is empty, checking if " + newInformation.toString() + 
+        " has been recognised/learned."
       );
       
-      boolean endChunkDelimiterKnown = this.recognise(newInformation, time, false).getContents().equals (newInformation);
+      boolean endChunkDelimiterKnown = nodeRetrievedAfterRecognisingNewInformation.getContents().equals(newInformation);
       
-      // 1. < $ > known
+      //1. < $ > known, use as test
       if(endChunkDelimiterKnown){
 
-        // 2. if so, use as test
-        description += "New info encoded in LTM, add as test to node " + nodeToDiscriminateFrom.getReference() + ".";
-        historyRowToInsert.put(Chrest._executionHistoryTableDescriptionColumnName, description);
-        this.addEpisodeToExecutionHistory(historyRowToInsert);
         this.printDebugStatement(
-          func +  newInformation.toString() + " has been learned so it will " +
+          "  ~ " +  newInformation.toString() + " has been learned so it will " +
           "be added as a test on a new link from " + 
           nodeToDiscriminateFrom.getReference() + "."
         );
 
         discriminationSuccessful = nodeToDiscriminateFrom.addChild(newInformation, time);
       }
-      // 2. < $ > not known
+      // 2. < $ > not known, learn as primitive but not using 
+      //    Chrest.learnPrimtive since that function sets the pattern passed to 
+      //    not finished so the end chunk delimiter would be lost.
       else {
+        this.printDebugStatement("  ~ " + newInformation.toString() + " has not been learned so it will be learned as a primitive.");
 
-        description += "New info not encoded in LTM, add as test to " + newInformation.getModalityString() + " root node.";
-        historyRowToInsert.put(Chrest._executionHistoryTableDescriptionColumnName, description);
-        this.addEpisodeToExecutionHistory(historyRowToInsert);
-        this.printDebugStatement(
-          func +  newInformation.toString() + " has not been learned so it will " +
-          "be learned as a primitive."
-        );
-
-        //Can't use this.learnPrimitive() here since that function sets the 
-        //pattern passed to not finished so the end chunk delimiter would be
-        //lost.
         Node child = new Node (this, newInformation, newInformation, time);
         discriminationSuccessful = this.getLtmModalityRootNode(newInformation)
           .addChild(newInformation, child, time, this.getCurrentExperimentName());
       }
     }
-    //Cases 3, 4 or 5 if new information isn't empty.
+    //New information isn't empty.
     else{
       
       this.printDebugStatement(
-        func + "New information is not empty so the model will now check if " +
+        "- New information is not empty so the model will now check if " +
         newInformation.toString() + " has been learned."
       );
-      Node recognisedNode = this.recognise (newInformation, time, false);
       
-      description += "Recognised '" + recognisedNode.getImage(time).toString() + "', node ref: " + recognisedNode.getReference() + "). ";
-
-      // 3. if root node is recognised, then the primitive must be learnt
-      if (recognisedNode == this.getLtmModalityRootNode(pattern)) {
-        description += "Modality root node, add first item of new info as test to this root node.";
-        historyRowToInsert.put(Chrest._executionHistoryTableDescriptionColumnName, description);
-        this.addEpisodeToExecutionHistory(historyRowToInsert);
+      //3. New information unrecognised, learn first item as a primitive
+      if (nodeRetrievedAfterRecognisingNewInformation.isRootNode()) {
         this.printDebugStatement(
-          func +  newInformation.toString() + " has not been learned so it will " +
+          "  ~ " + newInformation.toString() + " has not been learned so it will " +
           "be learned as a primitive."
         );
         
         discriminationSuccessful = this.learnPrimitive(newInformation.getFirstItem(), time);
       } 
-      // 4. recognised node can be used as a test
-      else if (recognisedNode.getContents().matches (newInformation)) {
-        ListPattern testPattern = recognisedNode.getContents().clone ();
-        
-        description += "Contents of rec. node matches new info. Add " + recognisedNode.getContents().toString() + " as test to node " + nodeToDiscriminateFrom.getReference() + ".";
-        historyRowToInsert.put(Chrest._executionHistoryTableDescriptionColumnName, description);
-        this.addEpisodeToExecutionHistory(historyRowToInsert);
+      //4. New information recognised and contents of recognised Node match 
+      //   input (will occur if contents unfinished.  Use 
+      //   recognised node contents can be used as a test
+      else if (nodeRetrievedAfterRecognisingNewInformation.getContents().matches (newInformation)) {
+        ListPattern testPattern = nodeRetrievedAfterRecognisingNewInformation.getContents().clone ();
         
         this.printDebugStatement(
-          func +  newInformation.toString() + " has been learned and " +
+          "  ~ " + newInformation.toString() + " has been learned and " +
           testPattern.toString() + " will be used as a test on a new link " +
           "from node " + nodeToDiscriminateFrom.getReference() + "."
         );
@@ -2761,15 +2783,11 @@ public class Chrest extends Observable {
       // NB: first-item must be in network as node was not the root 
       //     node
       else {
-        ListPattern firstItem = newInformation.getFirstItem ();
-        firstItem.setNotFinished ();
-        
-        description += "but image does not match new info. Add " + firstItem.toString() + " as test to node " + nodeToDiscriminateFrom.getReference() + ".";
-        historyRowToInsert.put(Chrest._executionHistoryTableDescriptionColumnName, description);
-        this.addEpisodeToExecutionHistory(historyRowToInsert);
+        ListPattern firstItem = newInformation.getFirstItem();
+        firstItem.setNotFinished();
         
         this.printDebugStatement(
-          func +  newInformation.toString() + " has been learned but only " +
+          "  ~ " + newInformation.toString() + " has been learned but only " +
           "the first item from the new information (" + firstItem.toString() + 
           ") will be used on a new link from node " + 
           nodeToDiscriminateFrom.getReference() + "."
@@ -2780,18 +2798,20 @@ public class Chrest extends Observable {
     }
     
     this.printDebugStatement(
-      func + "Discrimination " + (discriminationSuccessful ? "was" : 
-      "was not") + " successful so the cognition clock " + 
-      (discriminationSuccessful ? "will be set to the time discrimination " + 
-      "ends (" + time + ")" : "will not be altered") + "."
+      "- Discrimination " + (discriminationSuccessful ? "was" : "was not") + 
+      " successful so the cognition clock " + (discriminationSuccessful ? 
+      "will be set to the time discrimination ends (" + time + ")" :
+      "will not be altered") + "."
     );
     
     if(discriminationSuccessful){
       this._cognitionClock = time;
     }
     
-    this.printDebugStatement(func + "RETURN");
-    return discriminationSuccessful;
+    ChrestStatus discriminationResult = (discriminationSuccessful ? ChrestStatus.DISCRIMINATION_SUCCESSFUL : ChrestStatus.DISCRIMINATION_FAILED);
+    this.printDebugStatement("- Returning " + discriminationResult.name());
+    this.printDebugStatement("===== RETURN Chrest.discriminate() =====");
+    return discriminationResult;
   }
   
   /**
@@ -2813,104 +2833,72 @@ public class Chrest extends Observable {
    * @param time The time the new information should be added to the
    * {@link jchrest.architecture.Node} to familiarise's image.
    * 
-   * @return {@link java.lang.Boolean#TRUE} if familiarisation is successful,
-   * {@link java.lang.Boolean#FALSE} if not.
+   * @return Either {@link jchrest.lib.Status#FAMILIARISATION_SUCCESSFUL} or
+   * {@link jchrest.lib.Status#FAMILIARISATION_FAILED}.
    */
-  private boolean familiarise (Node nodeToFamiliarise, ListPattern pattern, int time) {
-    String func = "- familiarise: ";
-    
-    //Set-up history variables.
-    HashMap<String, Object> historyRowToInsert= new HashMap<>();
-    historyRowToInsert.put(Chrest._executionHistoryTableTimeColumnName, time);
-    
-    //Generic operation name setter for current method.  Ensures for the row to 
-    //be added that, if this method's name is changed, the entry for the 
-    //"Operation" column in the execution history table will be updated without 
-    //manual intervention and "Filter By Operation" queries run on the execution 
-    //history DB table will still work.
-    class Local{};
-    historyRowToInsert.put(Chrest._executionHistoryTableOperationColumnName, 
-      ExecutionHistoryOperations.getOperationString(this.getClass(), Local.class.getEnclosingMethod())
-    );
+  private ChrestStatus familiarise (Node nodeToFamiliarise, ListPattern pattern, int time) {
+    this.printDebugStatement("===== Chrest.familiarise() ====");
+    boolean familiarisationSuccessful = false;
     
     ListPattern newInformation = pattern.remove(nodeToFamiliarise.getImage(time)).getFirstItem();
-    newInformation.setNotFinished ();
+    newInformation.setNotFinished();
 
-    historyRowToInsert.put(Chrest._executionHistoryTableInputColumnName, pattern.toString() + "(" + pattern.getModalityString() + ")");
-    String description = "New info in input: " + newInformation.toString();
-    
     this.printDebugStatement(
-      func + "Reference of node to attempt familiarisation on: " + 
+      "- Reference of node to attempt familiarisation on: " + 
       nodeToFamiliarise.getReference() + ", pattern that triggered " + 
       "familiarisation: " + pattern.toString() + ", time familiarisation " +
       "invoked: " + time + ".  New information in pattern that triggered " +
       "familiarisation: " + newInformation + "."
     );
 
-    // EXIT if nothing new to recogniseAndLearn
-    if (newInformation.isEmpty ()) {  
-      description += ", empty.";
-      historyRowToInsert.put(Chrest._executionHistoryTableDescriptionColumnName, description);
-      this.addEpisodeToExecutionHistory(historyRowToInsert);
-      
-      this.printDebugStatement(func + "No new information in pattern that triggered familiarisation.");
-      this.printDebugStatement(func + "RETURN");
-      
-      return false;
-    }
+    this.printDebugStatement("- Checking if there is any new information to learn (" + !newInformation.isEmpty() + ")");
+    if(!newInformation.isEmpty()) {  
+      this.printDebugStatement("  ~ There is new information to learn.");
 
-    // Note: CHREST 2 had the idea of not familiarising if image size exceeds 
-    // the max of 5 and 2*contents-size.  This avoids overly large images.
-    // This idea is not implemented here.
-    //
-    Node recognisedNode = this.recognise (newInformation, time, false);
-    description += ", not empty, node " + recognisedNode.getReference() + " recognised.  ";
+      // Note: CHREST 2 had the idea of not familiarising if image size exceeds 
+      // the max of 5 and 2*contents-size.  This avoids overly large images.
+      // This idea is not implemented here.
+      this.printDebugStatement("- Attemtping to recognise new informaion");
+      Node recognisedNode = this.recognise(newInformation, time, false);
 
-    if (recognisedNode == this.getLtmModalityRootNode (pattern)) {
-
-      // primitive not known, so recogniseAndLearn it
-      description += "New information not recognised, learning as primitive.";
-      historyRowToInsert.put(Chrest._executionHistoryTableDescriptionColumnName, description);
-      this.addEpisodeToExecutionHistory(historyRowToInsert);
-      this.printDebugStatement(func + "New information unrecognised, learning via. discrimination.");
-
-      return this.discriminate(recognisedNode, newInformation, time);
-
-    } else {
-
-      // extend image with new item
-      description += "New information recognised, extending Node " + nodeToFamiliarise.getReference() + "'s image.";
-      historyRowToInsert.put(Chrest._executionHistoryTableDescriptionColumnName, description);
-      this.addEpisodeToExecutionHistory(historyRowToInsert);
-      
-      this.printDebugStatement(
-        func + "New information recognised, attempting to add new information " +
-        "to image of node " +  nodeToFamiliarise.getReference() + " at current " + 
-        "time (" + time + ") plus the time taken to familiarise (" +
-         this._familiarisationTime+ ")."
-      );
-
-      time += this._familiarisationTime;
-      Node familiarisationResult = nodeToFamiliarise.extendImage (newInformation, time);
-      
-      if(familiarisationResult != null){
+      if(recognisedNode.isRootNode()){
+        this.printDebugStatement("  ~ New information unrecognised, learning via. discrimination.");
+        this.printDebugStatement("===== RETURN Chrest.familiarisation() =====");
+        return this.discriminate(recognisedNode, newInformation, time);
+      } 
+      else {
         this.printDebugStatement(
-          func + "Familiarisation successful, setting cognition clock to the " +
-          "time node " + nodeToFamiliarise.getReference() + " is familiarised (" + 
-          time + ") and returning true."
+          "  ~ New information recognised, attempting to add new information " +
+          "to image of node " +  nodeToFamiliarise.getReference() + " at current " + 
+          "time (" + time + ") plus the time taken to familiarise (" +
+           this._familiarisationTime+ ")."
         );
-        this.printDebugStatement(func + "RETURN");
+
+        time += this._familiarisationTime;
+        familiarisationSuccessful = nodeToFamiliarise.extendImage(newInformation, time);
+      
+        if(familiarisationSuccessful){
+          this.printDebugStatement(
+            "- Familiarisation successful, setting cognition clock to the " +
+            "time node " + nodeToFamiliarise.getReference() + " is familiarised (" + 
+            time + ")."
+          );
         
-        this._cognitionClock = time;
-        return true;
-      }
-      else{
-        this.printDebugStatement(func + "Familiarisation unsuccessful, returning false.");
-        this.printDebugStatement(func + "RETURN");
-        
-        return false;
+          this._cognitionClock = time;
+        }
+        else{
+          this.printDebugStatement("- Familiarisation unsuccessful, exiting.");
+        }
       }
     }
+    else{
+      this.printDebugStatement("  ~ There is no new information to learn, exiting.");
+    }
+    
+    ChrestStatus result = (familiarisationSuccessful ? ChrestStatus.FAMILIARISATION_SUCCESSFUL : ChrestStatus.FAMILIARISATION_FAILED);
+    this.printDebugStatement("Returning " + result.name());
+    this.printDebugStatement("===== RETURN Chrest.familiarise() =====");
+    return result;
   }
   
   /**
