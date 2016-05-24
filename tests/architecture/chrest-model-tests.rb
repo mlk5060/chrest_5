@@ -401,8 +401,8 @@ process_test "discriminate" do
           # Check overall result
           assert_equal(
             (scenario == 6 ?
-              Status::DISCRIMINATION_FAILED :
-              Status::DISCRIMINATION_SUCCESSFUL
+              ChrestStatus::DISCRIMINATION_FAILED :
+              ChrestStatus::DISCRIMINATION_SUCCESSFUL
             ).to_s,
             result.to_s,
             "occurred in scenario " + scenario.to_s
@@ -875,9 +875,9 @@ process_test "familiarise" do
           
           # Check method return value
           expected_result = (
-            [1,4].include?(scenario) ? Status::FAMILIARISATION_FAILED :
-            scenario == 2 ? Status::DISCRIMINATION_SUCCESSFUL :
-            Status::FAMILIARISATION_SUCCESSFUL
+            [1,4].include?(scenario) ? ChrestStatus::FAMILIARISATION_FAILED :
+            scenario == 2 ? ChrestStatus::DISCRIMINATION_SUCCESSFUL :
+            ChrestStatus::FAMILIARISATION_SUCCESSFUL
           )
           assert_equal(
             expected_result.to_s,
@@ -1111,11 +1111,11 @@ canonical_result_test "recognise_and_learn" do
           
           
           expected_result = (
-            scenario == 1 ? Status::COGNITION_BUSY :
-            scenario == 2 ? Status::INPUT_ALREADY_LEARNED :
-            scenario == 3 ? Status::LEARNING_REFUSED :
-            scenario == 4 ? Status::DISCRIMINATION_SUCCESSFUL :
-            Status::FAMILIARISATION_SUCCESSFUL
+            scenario == 1 ? ChrestStatus::COGNITION_BUSY :
+            scenario == 2 ? ChrestStatus::INPUT_ALREADY_LEARNED :
+            scenario == 3 ? ChrestStatus::LEARNING_REFUSED :
+            scenario == 4 ? ChrestStatus::DISCRIMINATION_SUCCESSFUL :
+            ChrestStatus::FAMILIARISATION_SUCCESSFUL
           )
           
           ################
@@ -1131,6 +1131,131 @@ canonical_result_test "recognise_and_learn" do
     end
   end
 end
+
+################################################################################
+#
+# Scenario Descriptions
+# =====================
+#
+# - Scenario 1
+#   ~ Cognition isn't free
+#   
+# - Scenario 2
+#   ~ Cognition is free
+#   ~ Node to associate from is a root node
+# 
+# - Scenario 3
+#   ~ Cognition is free
+#   ~ Node to associate from is not a root node
+#   ~ Node to associate to is a root node
+#   
+# - Scenario 4
+#   ~ Cognition is free
+#   ~ Node to associate from is not a root node
+#   ~ Node to associate to is not a root node
+#   
+#   ~ Node to associate from modality is VISUAL and node to associate to 
+#     modality is VERBAL
+#   ~ Association already exists
+#
+# - Scenario 5
+#   ~ Cognition is free
+#   ~ Node to associate from is not a root node
+#   ~ Node to associate to is not a root node
+#   
+#   ~ Node to associate from modality is VISUAL and node to associate to 
+#     modality is VERBAL
+#   ~ Association does not already exist
+#   
+# The following scenarios are now repeated with each type of Modality specified
+# in CHREST.  
+# 
+# - Scenario 6/10/14
+#   ~ Cognition is free
+#   ~ Node to associate from is not a root node
+#   ~ Node to associate to is not a root node
+#   
+#   ~ Node to associate from modality is equal to node to associate from 
+#     modality.
+#   ~ Node to associate from and node to associate to images are not similar
+#
+# - Scenario 7/11/15
+#   ~ Cognition is free
+#   ~ Node to associate from is not a root node
+#   ~ Node to associate to is not a root node
+#   
+#   ~ Node to associate from modality is equal to node to associate from 
+#     modality.
+#   ~ Node to associate from and node to associate to images are similar
+#   ~ Node to associate from already linked to node to associate to
+#   ~ Node to associate to not already linked to node to associate from
+#     
+# - Scenario 8/12/16
+#   ~ Cognition is free
+#   ~ Node to associate from is not a root node
+#   ~ Node to associate to is not a root node
+#   
+#   ~ Node to associate from modality is equal to node to associate from 
+#     modality.
+#   ~ Node to associate from and node to associate to images are similar
+#   ~ Node to associate from not already linked to node to associate to
+#   ~ Node to associate to already linked to node to associate from
+#
+# - Scenario 9/13/17
+#   ~ Cognition is free
+#   ~ Node to associate from is not a root node
+#   ~ Node to associate to is not a root node
+#   
+#   ~ Node to associate from modality is equal to node to associate from 
+#     modality.
+#   ~ Node to associate from and node to associate to images are similar
+#   ~ Node to associate from not already linked to node to associate to
+#   ~ Node to associate to not already linked to node to associate from
+#
+# Expected Outcomes
+# =================
+#
+# - The following scenarios should report false and the cognition clock of the 
+#   CHREST model should not differ from the time the function is requested.
+#   ~ 1, 2, 3, 4, 6, 10, 14
+#   
+# - The following scenarios should report true but and the cognition clock of 
+#   the CHREST model should be set to the time indicated.
+#     
+#   ~ Scenario 5
+#     > Time function requested + time to add naming link
+#     
+#   ~ Scenarios 7/9/11/12/15/16
+#     > Time function requested + node comparison time + time to add semantic 
+#       link
+#     
+#   ~ Scenarios 9/13/17
+#     > Time function requested + node comparison time + (time to add semantic 
+#       link * 2)
+process_test "associateNodes" do
+  
+  Chrest.class_eval{
+    field_accessor :_addProductionTime, 
+    :_cognitionClock, 
+    :_namingLinkCreationTime,
+    :_nodeComparisonTime,
+    :_nodeImageSimilarityThreshold,
+    :_semanticLinkCreationTime
+  }
+  
+  associate_nodes_method = Chrest.java_class.declared_method(:associateNodes, Node.java_class, Node.java_class, Java::int)
+  associate_nodes_method.accessible = true
+  
+  Node.class_eval{
+    field_accessor :_namedByHistory, :_productionHistory, :_semanticLinksHistory
+  }
+  node_root_node_field = Node.java_class.declared_field("_rootNode")
+  node_root_node_field.accessible = true
+  
+  for scenario in 1..17
+    time = 0
+    model = Chrest.new(time, true)
+    
     if scenario == 1 then model._cognitionClock = time + 5 end
     
     ############################
@@ -1225,7 +1350,204 @@ end
     assert_equal(expected_result, result, "occurred when checking the result in scenario " + scenario.to_s)
     assert_equal(expected_cognition_clock, model._cognitionClock, "occurred when checking the cognition clock in scenario " + scenario.to_s)
   end
+end
+
+################################################################################
+# Tests the "Chrest.searchStm()" method using all possible scenarios that could
+# occur.
+# 
+# Scenario Descriptions
+# =====================
+# 
+# Scenario 1: Attention not free
+# Scenario 2: STM contents null (method invoked before STM exists but when 
+#             attention is free)
+# Scenario 3: STM contents empty
+# Scenario 4: STM contents not empty and does not contain matching Nodes
+# Scenario 5: STM contents not empty and contains matching Nodes (ensures that
+#             multiple matching Nodes are returned).
+#
+# Each Scenario is repeated so that:
+# 
+#  - Each type of PrimitivePattern is included as the content of the ListPattern 
+#    input to the method.
+#  - Each Modality is used as the modality of the ListPattern input to the 
+#    method.
+#  - Each scenario with each PrimitivePattern and Modality permutation is 
+#    repeated 10 times to ensure consistency of behaviour.
+#
+# Tests Performed
+# ===============
+# 
+# At the conclusion of each scenario, the result of the method is checked and, 
+# since the attention clock may be modified by this method, the model's 
+# attention clock is checked.
+# 
+# Expected Outcomes
+# =================
+# 
+# See code.
+#
+process_test "search_stm" do
+  Chrest.class_eval{
+    field_accessor :_attentionClock, 
+    :_actionStm, 
+    :_verbalStm, 
+    :_visualStm,
+    :_timeToRetrieveItemFromStm,
+    :_nodeComparisonTime
+  }
   
+  ListPattern.class_eval{
+    field_accessor :_list
+  }
+  
+  stm_item_history_field = Stm.java_class.declared_field("_itemHistory")
+  stm_item_history_field.accessible = true
+  
+  for scenario in 1..5
+    for modality in Modality.values()
+      for primitive_pattern in PrimitivePattern.subclasses
+        10.times do
+          
+          ##########################
+          ##### INITIAL SET-UP #####
+          ##########################
+          
+          time = 0
+          model = Chrest.new(time, [true, false].sample)
+          time_method_invoked = time + 10
+          
+          ##############################################
+          ##### CREATE ListPattern TO USE AS INPUT #####
+          ##############################################
+
+          list_pattern = ListPattern.new(modality)
+          list_pattern._list.add((
+            primitive_pattern == ItemSquarePattern ? ItemSquarePattern.new("T", 0, 1) :
+            primitive_pattern == NumberPattern ? NumberPattern.create(42) :
+            primitive_pattern == StringPattern ? StringPattern.create("foo") :
+            raise("PrimitivePattern " + primitive_pattern.java_class.to_s + " not supported")
+          ))
+          list_pattern._list.add((
+            primitive_pattern == ItemSquarePattern ? ItemSquarePattern.new("H", 0, 2) :
+            primitive_pattern == NumberPattern ? NumberPattern.create(43) :
+            primitive_pattern == StringPattern ? StringPattern.create("bar") :
+            raise("PrimitivePattern " + primitive_pattern.java_class.to_s + " not supported")
+          ))
+        
+          ############################
+          ##### CREATE STM NODES #####
+          ############################
+          
+          # Node 1 will not match
+          stm_node_1_contents = ListPattern.new(modality)
+          stm_node_1_contents._list.add((
+            primitive_pattern == ItemSquarePattern ? ItemSquarePattern.new("H", 0, 2) :
+            primitive_pattern == NumberPattern ? NumberPattern.create(43) :
+            primitive_pattern == StringPattern ? StringPattern.create("bar") :
+            raise("PrimitivePattern " + primitive_pattern.java_class.to_s + " not supported")
+          ))
+          stm_node_1 = Node.new(model, stm_node_1_contents, ListPattern.new(modality), time_method_invoked)
+
+          # Node 2 will not match
+          stm_node_2_contents = ListPattern.new(modality)
+          stm_node_2_contents._list.add((
+            primitive_pattern == ItemSquarePattern ? ItemSquarePattern.new("O", 0, 3) :
+            primitive_pattern == NumberPattern ? NumberPattern.create(44) :
+            primitive_pattern == StringPattern ? StringPattern.create("baz") :
+            raise("PrimitivePattern " + primitive_pattern.java_class.to_s + " not supported")
+          ))
+          stm_node_2 = Node.new(model, stm_node_2_contents, ListPattern.new(modality), time_method_invoked)
+          
+          # Node 3 will match
+          stm_node_3_contents = ListPattern.new(modality)
+          stm_node_3_contents._list.add((
+            primitive_pattern == ItemSquarePattern ? ItemSquarePattern.new("T", 0, 1) :
+            primitive_pattern == NumberPattern ? NumberPattern.create(42) :
+            primitive_pattern == StringPattern ? StringPattern.create("foo") :
+            raise("PrimitivePattern " + primitive_pattern.java_class.to_s + " not supported")
+          ))
+          stm_node_3 = Node.new(model, stm_node_3_contents, ListPattern.new(modality), time_method_invoked)
+
+          # Node 4 will match
+          stm_node_4_contents = ListPattern.new(modality)
+          stm_node_4_contents._list.add((
+            primitive_pattern == ItemSquarePattern ? ItemSquarePattern.new("T", 0, 1) :
+            primitive_pattern == NumberPattern ? NumberPattern.create(42) :
+            primitive_pattern == StringPattern ? StringPattern.create("foo") :
+            raise("PrimitivePattern " + primitive_pattern.java_class.to_s + " not supported")
+          ))
+          stm_node_4_contents._list.add((
+            primitive_pattern == ItemSquarePattern ? ItemSquarePattern.new("H", 0, 2) :
+            primitive_pattern == NumberPattern ? NumberPattern.create(43) :
+            primitive_pattern == StringPattern ? StringPattern.create("bar") :
+            raise("PrimitivePattern " + primitive_pattern.java_class.to_s + " not supported")
+          ))
+          stm_node_4 = Node.new(model, stm_node_4_contents, ListPattern.new(modality), time_method_invoked)
+          
+          ############################
+          ##### CREATE SCENARIOS #####
+          ############################
+          
+          if scenario == 1 then model._attentionClock = time_method_invoked + 10 end
+          if scenario == 2 then time_method_invoked = time - 1 end
+          # In scenario 3, nothing should be altered (STM will be empty)
+          if [4,5].include?(scenario)
+            stm = (
+              modality == Modality::ACTION ? model._actionStm :
+              modality == Modality::VERBAL ? model._verbalStm :
+              modality == Modality::VISUAL ? model._visualStm :
+              raise("Modality " + modality.name() + " not supported")
+            )
+            
+            stm_contents = ArrayList.new()
+            stm_contents.add(stm_node_1)
+            stm_contents.add(stm_node_2)
+            
+            if scenario == 5
+              stm_contents.add(stm_node_3)
+              stm_contents.add(stm_node_4)
+            end
+
+            stm_item_history_field.value(stm).put(time_method_invoked, stm_contents)
+          end
+
+          #########################
+          ##### INVOKE METHOD #####
+          #########################
+          
+          result = model.searchStm(list_pattern, time_method_invoked)
+          
+          ##################################
+          ##### SET EXPECTED VARIABLES #####
+          ##################################
+          
+          expected_result = nil
+          if [2,3,4].include?(scenario) then expected_result = ArrayList.new() end
+          if scenario == 5
+            expected_result = ArrayList.new()
+            expected_result.add(stm_node_3)
+            expected_result.add(stm_node_4)
+          end
+          
+          expected_attention_clock = (
+            scenario == 1 ? time_method_invoked + 10 :
+            scenario == 4 ? time_method_invoked + ((model._timeToRetrieveItemFromStm + model._nodeComparisonTime) * 2) :
+            scenario == 5 ? time_method_invoked + ((model._timeToRetrieveItemFromStm + model._nodeComparisonTime) * 4) :
+            -1
+          )
+          
+          #################
+          ##### TESTS #####
+          #################
+          
+          assert_equal(expected_result, result, "occurred when checking the result returned in scenario " + scenario.to_s)
+          assert_equal(expected_attention_clock, model._attentionClock, "occurred when checking the attention clock in scenario " + scenario.to_s)
+        end
+      end
+    end
+  end
 end
 
 ################################################################################
@@ -1236,21 +1558,50 @@ end
 # Scenario Descriptions
 # =====================
 # 
-# Scenario 1: Model not alive at time method invoked
+# Scenario 1: Model does not exist at time method invoked
 # Scenario 2: Model's attention not free at time method invoked
-# Scenario 3: Visual Node not alive at time method invoked
-# Scenario 4: Visual Node specified doesn't have Visual modality
-# Scenario 5: Visual Node specified is the visual LTM root Node
-# Scenario 6: Action Node not alive at time method invoked
-# Scenario 7: Action Node specified doesn't have Action modality
-# Scenario 8: Action Node specified is the action LTM root Node
-# Scenario 9: Visual Node not present in visual STM
-# Scenario 10: Action Node not present in action STM
-# Scenario 11: Cognition not free after visual and action Nodes found
-# Scenario 12: Visual Node already has action Node as production
-# Scenario 13: All OK
+# Scenario 3: Visual Node specified doesn't have Visual modality
+# Scenario 4: Action Node specified doesn't have Action modality
+# Scenario 5: No matching nodes in visual STM
+# Scenario 6: No matching nodes in action STM
+# Scenario 7: Production not added successfully (checks that cognition clock setting ignored)
+# 
+# In the following scenario, a production is added (checks that cognition clock 
+# setting performed) but the Node selected from STM differs (checks the Node
+# selection functionality)
+# 
+# Scenario 8: Visual STM consists of two Nodes: one whose contents equals the
+#             visual input and another whose contents matches the visual input.
+# Scenario 9: Visual STM consists of two Nodes: one whose contents matches the
+#             visual input and another whose contents matches the visual input
+#             more than the first.
+# Scenario 10: Action STM consists of two Nodes: one whose contents equals the
+#              action input and another whose contents matches the action input.
+# Scenario 11: Action STM consists of two Nodes: one whose contents matches the
+#              action input and another whose contents matches the action input
+#              more than the first.
+#              
+# Tests Performed
+# ===============
+# 
+# - Method return value.
+# - Exception thrown?
+# - Model's cognition clock.
+# - Visual Node's productions.
+# 
+# Tests Expected But Not Performed
+# ================================
+# 
+# - Model's attention clock: this is altered by the "Chrest.searchStm()" method
+#   and is tested there.  Since this method does not alter it directly, it
+#   assumes it is set correctly so as to not duplicate tests.
+#   
+# Expected Output
+# ===============
+# 
+# See code.
 #
-process_test "learnProduction" do
+process_test "learn_production" do
   
   #######################################################
   ##### SET-UP ACCESS TO PRIVATE INSTANCE VARIABLES #####
@@ -1265,6 +1616,7 @@ process_test "learnProduction" do
     :_visualStm,
     :_actionStm,
     :_timeToRetrieveItemFromStm,
+    :_nodeComparisonTime,
     :_addProductionTime
   }
   
@@ -1273,158 +1625,305 @@ process_test "learnProduction" do
   stm_item_history_field.accessible = true
   
   # Set-up access to Node variables.
+  Node.class_eval{
+    field_accessor :_productionHistory
+  }
+  
   node_creation_time_field = Node.java_class.declared_field("_creationTime")
   node_creation_time_field.accessible = true
   
-  node_production_history_field = Node.java_class.declared_field("_productionHistory")
-  node_production_history_field.accessible = true
+  node_root_node_field = Node.java_class.declared_field("_rootNode")
+  node_root_node_field.accessible = true
+  
+  # Set-up access to ListPattern variables
+  ListPattern.class_eval{
+    field_accessor :_modality
+  }
   
   #########################
   ##### SCENARIO LOOP #####
   #########################
   
-  for scenario in 1..13
-    20.times do
+  for scenario in 1..11
+    for primitive_pattern in PrimitivePattern.subclasses
+      10.times do
       
-      # First, set the time the function is to be invoked since a number of
-      # scenario caveats are based on this.
-      time_function_invoked = 0
+        # First, set the time the method is to be invoked since a number of
+        # scenario caveats are based on this.
+        time_method_invoked = 0
+
+        ##################################
+        ##### CONSTRUCT CHREST MODEL #####
+        ##################################
+
+        chrest_model_creation_time = (scenario == 1 ? time_method_invoked + 1 : 0)
+        model = Chrest.new(chrest_model_creation_time, [true,false].sample)
+        
+        ############################################
+        ##### CONSTRUCT ListPattern PRIMITIVES #####
+        ############################################
+        
+        # Construct visual primitives
+        visual_primitive_1 = (
+          primitive_pattern == ItemSquarePattern ? ItemSquarePattern.new("T", 0, 1) :
+          primitive_pattern == NumberPattern ? NumberPattern.create(42) :
+          primitive_pattern == StringPattern ? StringPattern.create("foo") :
+          raise("PrimitivePattern " + primitive_pattern.java_class.to_s + " not supported")
+        )
+        
+        visual_primitive_2 = (
+          primitive_pattern == ItemSquarePattern ? ItemSquarePattern.new("H", 0, 2) :
+          primitive_pattern == NumberPattern ? NumberPattern.create(43) :
+          primitive_pattern == StringPattern ? StringPattern.create("bar") :
+          raise("PrimitivePattern " + primitive_pattern.java_class.to_s + " not supported")
+        )
+        
+        visual_primitive_3 = (
+          primitive_pattern == ItemSquarePattern ? ItemSquarePattern.new("O", 0, 3) :
+          primitive_pattern == NumberPattern ? NumberPattern.create(44) :
+          primitive_pattern == StringPattern ? StringPattern.create("baz") :
+          raise("PrimitivePattern " + primitive_pattern.java_class.to_s + " not supported")
+        )
+        
+        # Construct action primitives
+        action_primitive_1 = (
+          primitive_pattern == ItemSquarePattern ? ItemSquarePattern.new("PT", 0, 1) :
+          primitive_pattern == NumberPattern ? NumberPattern.create(0) :
+          primitive_pattern == StringPattern ? StringPattern.create("oof") :
+          raise("PrimitivePattern " + primitive_pattern.java_class.to_s + " not supported")
+        )
+        
+        action_primitive_2 = (
+          primitive_pattern == ItemSquarePattern ? ItemSquarePattern.new("MV", 90, 1) :
+          primitive_pattern == NumberPattern ? NumberPattern.create(1) :
+          primitive_pattern == StringPattern ? StringPattern.create("rab") :
+          raise("PrimitivePattern " + primitive_pattern.java_class.to_s + " not supported")
+        )
+        
+        action_primitive_3 = (
+          primitive_pattern == ItemSquarePattern ? ItemSquarePattern.new("MV", 0, 1) :
+          primitive_pattern == NumberPattern ? NumberPattern.create(2) :
+          primitive_pattern == StringPattern ? StringPattern.create("zab") :
+          raise("PrimitivePattern " + primitive_pattern.java_class.to_s + " not supported")
+        )
+
+        ########################################
+        ##### CONSTRUCT INPUT ListPatterns #####
+        ########################################
+
+        visual_list_pattern = ListPattern.new(Modality::VISUAL)
+        visual_list_pattern.add(visual_primitive_1)
+        visual_list_pattern.add(visual_primitive_2)
+        visual_list_pattern.add(visual_primitive_3)
+         
+        action_list_pattern = ListPattern.new(Modality::ACTION)
+        action_list_pattern.add(action_primitive_1)
+        action_list_pattern.add(action_primitive_2)
+        action_list_pattern.add(action_primitive_3)
+        
+        ###########################
+        ##### CONSTRUCT NODES #####
+        ###########################
+        
+        # Construct the visual Nodes (2 should always be the production source).
+        visual_node_1_contents = ListPattern.new(Modality::VISUAL)
+        visual_node_1_contents._list.add(visual_primitive_1)
+        
+        visual_node_2_contents = ListPattern.new(Modality::VISUAL)
+        visual_node_2_contents._list.add(visual_primitive_1)
+        visual_node_2_contents._list.add(visual_primitive_2)
+        
+        visual_node_1 = Node.new(model, visual_node_1_contents, ListPattern.new(Modality::VISUAL), chrest_model_creation_time)
+        visual_node_2 = Node.new(model, visual_node_2_contents, ListPattern.new(Modality::VISUAL), chrest_model_creation_time)
+        
+        # Construct the action Nodes (2 should always be the production source).
+        action_node_1_contents = ListPattern.new(Modality::ACTION)
+        action_node_1_contents._list.add(action_primitive_1)
+        
+        action_node_2_contents = ListPattern.new(Modality::ACTION)
+        action_node_2_contents._list.add(action_primitive_1)
+        action_node_2_contents._list.add(action_primitive_2)
+        
+        action_node_1 = Node.new(model, action_node_1_contents, ListPattern.new(Modality::ACTION), chrest_model_creation_time)
+        action_node_2 = Node.new(model, action_node_2_contents, ListPattern.new(Modality::ACTION), chrest_model_creation_time)
+        
+        nodes = [visual_node_1, visual_node_2, action_node_1, action_node_2]
+
+        #############################
+        ##### CREATE SCENARIOS  #####
+        #############################
+
+        # Scenario 1 created when model constructed.
+        if scenario == 2 then model._attentionClock = time_method_invoked + 1 end
+        if scenario == 3 then visual_list_pattern._modality = (Modality.values().to_a - [Modality::VISUAL]).sample end
+        if scenario == 4 then action_list_pattern._modality = (Modality.values().to_a - [Modality::ACTION]).sample end
+        
+        # Populate visual STM
+        if scenario != 5
+          visual_stm_contents = ArrayList.new()
+          visual_stm_contents.add(visual_node_1)
+          visual_stm_contents.add(visual_node_2)
+
+          visual_stm = HistoryTreeMap.new()
+          visual_stm.put(time_method_invoked, visual_stm_contents)
+
+          stm_item_history_field.set_value(model._visualStm, visual_stm)
+        end
+        
+        # Populate action STM
+        if scenario != 6
+          action_stm_contents = ArrayList.new()
+          action_stm_contents.add(action_node_1)
+          action_stm_contents.add(action_node_2)
+
+          action_stm = HistoryTreeMap.new()
+          action_stm.put(time_method_invoked, action_stm_contents)
+
+          stm_item_history_field.set_value(model._actionStm, action_stm)
+        end
+        
+        if scenario == 7 then node_root_node_field.set_value(visual_node_2, true) end
+        if scenario == 8 then visual_node_2_contents._list.add(visual_primitive_3) end
+        if scenario == 9 then action_node_2_contents._list.add(action_primitive_3) end
+        # Nothing should be altered in scenarios 10 & 11.
+
+        #########################
+        ##### INVOKE METHOD #####
+        #########################
+
+        return_value = nil
+        exception_thrown = false
+        begin
+          return_value = model.learnProduction(visual_list_pattern, action_list_pattern, time_method_invoked)
+        rescue
+          exception_thrown = true
+        end
+
+        ##################################
+        ##### SET EXPECTED VARIABLES #####
+        ##################################    
+
+        expected_return_value = (
+          scenario == 1 ? ChrestStatus::MODEL_DOES_NOT_EXIST_AT_TIME :
+          scenario == 2 ? ChrestStatus::ATTENTION_BUSY :
+          scenario == 3 ? nil :
+          scenario == 4 ? nil :
+          scenario == 5 ? ChrestStatus::VISION_NOT_IN_STM :
+          scenario == 6 ? ChrestStatus::ACTION_NOT_IN_STM :
+          scenario == 7 ? ChrestStatus::LEARN_PRODUCTION_FAILED :
+          ChrestStatus::LEARN_PRODUCTION_SUCCESSFUL
+        )
       
-      ##################################
-      ##### CONSTRUCT CHREST MODEL #####
-      ##################################
-      
-      chrest_model_creation_time = (scenario == 1 ? time_function_invoked + 1 : 0)
-      model = Chrest.new(chrest_model_creation_time, [true,false].sample)
-      
-      #########################################################
-      ##### SET ATTENTION CLOCK (IF REQUIRED BY SCENARIO) #####
-      #########################################################
-      
-      if scenario == 2 then model._attentionClock = time_function_invoked + 1 end
-      
-      ###########################
-      ##### CONSTRUCT NODES #####
-      ###########################
-      
-      # Set visual Node details according to scenario.
-      time_visual_node_created = (scenario == 3 ? time_function_invoked + 1 : chrest_model_creation_time)
-      visual_node_contents = ListPattern.new((
-        scenario == 4 ? (Modality.values().to_a - [Modality::VISUAL]).sample : 
-        Modality::VISUAL
-      ))
-      
-      # Construct the visual Node.
-      visual_node = (
-        scenario == 5 ? model._visualLtm :
-        Node.new(model, visual_node_contents, visual_node_contents, time_visual_node_created)
-      )
-      
-      # Set action Node details according to scenario.
-      time_action_node_created = (scenario == 6 ? time_function_invoked + 1 : chrest_model_creation_time)
-      action_node_contents = ListPattern.new((
-        scenario == 7 ? (Modality.values().to_a - [Modality::ACTION]).sample : 
-        Modality::ACTION
-      ))
-      
-      # Construct the action Node.
-      action_node = (
-        scenario == 8 ? model._actionLtm :
-        Node.new(model, action_node_contents, action_node_contents, time_action_node_created)
-      )
-      
-      # Manually set the creation time for the visual and action Node in 
-      # scenario 1 since, if the Nodes are created before the CHREST model they
-      # are associated with, the Node constructor will throw a Runtime 
-      # Exception.  In scenario 1, the creation time of the Nodes will be equal
-      # to the creation time of the CHREST model so the CHREST model "alive" 
-      # check in "Chrest.learnProduction()" won't be isolated. To isolate it, 
-      # the creation times of the Nodes needs to be set manually.
-      if scenario == 1
-        node_creation_time_field.set_value(visual_node, time_function_invoked)
-        node_creation_time_field.set_value(action_node, time_function_invoked)
+        expected_exception_thrown = ([3,4].include?(scenario) ? true : false)
+
+        # The cognition clock should only be set if a production is learned, 
+        # otherwise it is set to its default.  Its default value is the time its
+        # associated model is created -1 so, in scenario 1, this is set to the
+        # time the method is invoked (since the model in this scenario is 
+        # created 1ms after the method is invoked) and in all other scenarios up
+        # to 7, it is set to -1ms since the associated model is created at 0ms.
+        # 
+        # In scenarios 8-11, the cognition clock should be set to the time the 
+        # method is invoked plus the time taken to search and compare 2 Nodes in 
+        # Visual and Action STM each, plus the time taken by the model to add a 
+        # production.
+        expected_cognition_clock = (
+          scenario == 1 ? time_method_invoked : 
+          scenario <= 7 ? -1 :
+          time_method_invoked + (((model._timeToRetrieveItemFromStm + model._nodeComparisonTime) * 2) * 2) + model._addProductionTime
+        )
+        
+        expected_visual_node_1_productions = HistoryTreeMap.new()
+        expected_visual_node_1_productions.put(chrest_model_creation_time, HashMap.new())
+        expected_visual_node_2_productions = HistoryTreeMap.new()
+        expected_visual_node_2_productions.put(chrest_model_creation_time, HashMap.new())
+        expected_action_node_1_productions = HistoryTreeMap.new()
+        expected_action_node_1_productions.put(chrest_model_creation_time, HashMap.new())
+        expected_action_node_2_productions = HistoryTreeMap.new()
+        expected_action_node_2_productions.put(chrest_model_creation_time, HashMap.new())
+        
+        # Visual node 1 and both action nodes should never be the source of a
+        # production should should not have their production history altered.
+        # However, visual node 2 should have a production added in scenarios 
+        # 8-11 whose terminus is the second action node.
+        if scenario >= 8
+          visual_node_2_productions = HashMap.new()
+          visual_node_2_productions.put(action_node_2, 0.0)
+          expected_visual_node_2_productions.put(expected_cognition_clock, visual_node_2_productions)
+        end
+        
+        expected_node_production_histories = [
+          expected_visual_node_1_productions,
+          expected_visual_node_2_productions,
+          expected_action_node_1_productions,
+          expected_action_node_2_productions
+        ]
+
+        #################
+        ##### TESTS #####
+        #################
+        
+        assert_equal(expected_return_value, return_value, "occurred when checking the return value of the method in scenario " + scenario.to_s)
+        assert_equal(expected_exception_thrown, exception_thrown, "occurred when checking if an exception is thrown in scenario " + scenario.to_s)
+        assert_equal(expected_cognition_clock, model._cognitionClock, "occurred when checking the cognition clock in scenario " + scenario.to_s)
+        
+        # Check Node production states.
+        for n in 0...nodes.size()
+          node_production_history = nodes[n]._productionHistory.entrySet().toArray()
+          expected_production_history = expected_node_production_histories[n].entrySet().toArray()
+          
+          assert_equal(
+            expected_production_history.size(), 
+            node_production_history.size(), 
+            "occurred when checking the number of production history entries " +
+            "for node " + n.to_s  + " in scenario " + scenario.to_s
+          )
+          
+          for o in 0...node_production_history.length
+            node_production_entry = node_production_history[o]
+            expected_production_entry = expected_production_history[o]
+            
+            assert_equal(
+              expected_production_entry.getKey(),
+              node_production_entry.getKey(),
+              "occurred when checking the key for production history entry " + 
+              o.to_s + " for node " + n.to_s  + " in scenario " + scenario.to_s
+            )
+            
+            node_productions = node_production_entry.getValue().entrySet().toArray()
+            expected_node_productions = expected_production_entry.getValue().entrySet().toArray()
+            
+            assert_equal(
+              node_productions.length,
+              expected_node_productions.length,
+              "occurred when checking the number of productions for production " +
+              "history entry " + o.to_s + " for node " + n.to_s  + " in scenario " + 
+              scenario.to_s
+            )
+            
+            for p in 0...node_productions.length
+              node_production = node_productions[p]
+              expected_node_production = expected_node_productions[p]
+              
+              assert_equal(
+                expected_node_production.getKey(), 
+                node_production.getKey(),
+                "occurred when checking the key of production " + p.to_s + 
+                "in production history entry " + o.to_s + " for node " + n.to_s + 
+                " in scenario " + scenario.to_s
+              )
+              
+              assert_equal(
+                expected_node_production.getValue(), 
+                node_production.getValue(),
+                "occurred when checking the value of production " + p.to_s + 
+                "in production history entry " + o.to_s + " for node " + n.to_s + 
+                " in scenario " + scenario.to_s
+              )
+            end
+          end
+        end
       end
-      
-      #########################################################
-      ##### POPULATE VISUAL STM (IF REQUIRED BY SCENARIO) #####
-      #########################################################
-      
-      if scenario != 9
-        visual_stm_contents = ArrayList.new()
-        visual_stm_contents.add(visual_node)
-        
-        visual_stm = HistoryTreeMap.new()
-        visual_stm.put(time_function_invoked, visual_stm_contents)
-        
-        stm_item_history_field.set_value(model._visualStm, visual_stm)
-      end
-      
-      ##########################################################
-      ##### POPULATE ACTION STM (IF REQUIRED BY SCENARIO)  #####
-      ##########################################################
-      
-      if scenario != 10
-        action_stm_contents = ArrayList.new()
-        action_stm_contents.add(action_node)
-        
-        action_stm = HistoryTreeMap.new()
-        action_stm.put(time_function_invoked, action_stm_contents)
-        
-        stm_item_history_field.set_value(model._actionStm, action_stm)
-      end
-      
-      #########################################################
-      ##### SET COGNITION CLOCK (IF REQUIRED BY SCENARIO) #####
-      #########################################################
-      
-      if scenario == 11 then model._cognitionClock = (time_function_invoked + (model._timeToRetrieveItemFromStm * 2) + 1) end
-      
-      ##########################################################
-      ##### CONSTRUCT PRODUCTION (IF REQUIRED BY SCENARIO) #####
-      ##########################################################
-      
-      if scenario == 12
-        visual_node_productions = HashMap.new()
-        visual_node_productions.put(action_node, 0.0)
-        
-        visual_node_production_history = HistoryTreeMap.new()
-        visual_node_production_history.put(time_function_invoked, visual_node_productions)
-        
-        node_production_history_field.set_value(visual_node, visual_node_production_history)
-      end
-      
-      #########################
-      ##### INVOKE METHOD #####
-      #########################
-      
-      return_value = model.learnProduction(visual_node, action_node, time_function_invoked)
-      
-      ##################################
-      ##### SET EXPECTED VARIABLES #####
-      ##################################
-      
-      expected_return_value = (scenario == 13 ? true : false)
-      expected_attention_clock = (
-        scenario == 1 ? 0 :
-        scenario == 2 ? time_function_invoked + 1 :
-        scenario.between?(3,8) ? -1 : 
-        scenario.between?(9,10) ? time_function_invoked + model._timeToRetrieveItemFromStm :
-        time_function_invoked + (model._timeToRetrieveItemFromStm * 2)
-      )
-      expected_cognition_clock = (
-        scenario == 1 ? 0 :
-        scenario == 11 ? model._attentionClock + 1 :
-        scenario != 13 ? -1 : 
-        expected_attention_clock + model._addProductionTime
-    )
-      
-      #################
-      ##### TESTS #####
-      #################
-      
-      assert_equal(expected_return_value, return_value, "occurred when checking the return value of the method in scenario " + scenario.to_s)
-      assert_equal(expected_attention_clock, model._attentionClock, "occurred when checking the attention clock in scenario " + scenario.to_s)
-      assert_equal(expected_cognition_clock, model._cognitionClock, "occurred when checking the cognition clock in scenario " + scenario.to_s)
     end
   end
 end

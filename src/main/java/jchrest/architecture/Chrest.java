@@ -2216,22 +2216,32 @@ public class Chrest extends Observable {
   /********************************/
   
   /**
-   * Attempts to learn a production between the {@code visualNode} and {@code
-   * actionNode} specified.
+   * Attempts to learn a production between the {@code vision} and {@code
+   * action} specified.
    * 
-   * For such an attempt to be made, the following statements must all evaluate 
-   * to {@link java.lang.Boolean#TRUE}:
+   * To learn a production, the following statements must all evaluate to {@link 
+   * java.lang.Boolean#TRUE}:
    * <ol type="1">
-   *  <li>{@link #this} must be "alive" at the {@code time} specified.</li>
+   *  <li>{@link #this} must exist at the {@code time} specified.</li>
    *  <li>
    *    The attention of {@link #this} must be free at the {@code time} 
    *    specified.
    *  </li>
    *  <li>
-   *    The {@code visualNode} and {@code actionNode} specified must be present
+   *    The {@code vision} and {@code action} specified must return {@link 
+   *    jchrest.lib.Modality#VISUAL} and {@link jchrest.lib.Modality#ACTION}
+   *    respectively when {@link jchrest.lib.ListPattern#getModality()} is 
+   *    invoked on them.
+   *  </li>
+   *  <li>
+   *    The {@code vision} and {@code action} specified must be present
    *    in {@link jchrest.lib.Modality#VISUAL} and {@link 
    *    jchrest.lib.Modality#ACTION} {@link jchrest.architecture.Stm} at the
-   *    {@code time} specified.
+   *    {@code time} specified, i.e. a non-null and non-empty {@link 
+   *    java.util.List} must be returned by {@link 
+   *    jchrest.architecture.Chrest#searchStm(jchrest.lib.ListPattern, int)} 
+   *    when the {@code vision} and {@code action} specified are passed as 
+   *    parameters.
    *  </li>
    *  <li>
    *    The cognition of {@link #this} must be free after {@link 
@@ -2241,24 +2251,39 @@ public class Chrest extends Observable {
    *  </li>
    * </ol>
    * 
+   * After invoking {@link 
+   * jchrest.architecture.Chrest#searchStm(jchrest.lib.ListPattern, int)}, the
+   * {@link jchrest.architecture.Node Nodes} selected for use in the production
+   * to be learned may not return {@link java.lang.Boolean#TRUE} when {@link 
+   * jchrest.architecture.Node#getContents()} is compared to the {@code vision} 
+   * or {@code action} using {@link 
+   * jchrest.lib.ListPattern#equals(java.lang.Object)}.  Thus, 
+   * "over-generalisation" can occur in such scenarios.  For example, in 
+   * Tileworld, the {@code vision} passed may be {@code <[T 0 1][H 1 1][H 0 2]>} 
+   * and the {@code action} passed may be to push the tile ahead north, i.e. 
+   * {@code <[PT 0 1]>}.  However, if {@code <[T 0 1][H 1 1][H 0 2]>} is not 
+   * exactly represented by a {@link jchrest.architecture.Node} in {@link 
+   * jchrest.architecture.Stm} but {@code <[T 0 1][H 1 1]>} is, the production 
+   * learned will be equal to "whenever a tile can be seen on the square 
+   * immediately ahead and a hole can be seen to the right of the tile, push the 
+   * tile north" rather than "whenever a tile can be seen on the square 
+   * immediately ahead and <b>two holes can be seen, one to the right of the 
+   * tile and the other north of the tile</b>, push the tile north".
+   * 
    * This method may consume the <i>attentional</i> and <i>cognitive</i> 
    * resources of {@link #this}:
    * <ul>
    *  <li>
-   *    Attention is consumed when searching {@link jchrest.lib.Modality#VISUAL} 
-   *    and {@link jchrest.lib.Modality#ACTION} {@link jchrest.architecture.Stm}.  
-   *    The search is performed linearly from the hypothesis {@link 
-   *    jchrest.architecture.Node} of the relevant {@link 
-   *    jchrest.architecture.Stm} to the "last" {@link 
-   *    jchrest.architecture.Node}.  For each {@link jchrest.architecture.Stm} 
-   *    position searched, attention is consumed for the value specified by 
-   *    {@link #this#getTimeToRetrieveItemFromStm()}.
+   *    If attention is free at the {@code time} specified, attention is 
+   *    consumed according to the documentation for {@link 
+   *    jchrest.architecture.Chrest#searchStm(jchrest.lib.ListPattern, int)}.
    *  </li>
    *  <li>
    *    Cognition is consumed if an attempt to learn a production is successful.  
    *    The actual time cognition is consumed until is equal to the time the 
-   *    {@link jchrest.architecture.Stm} search completes plus the value 
-   *    returned by {@link #this#getAddProductionTime()}.
+   *    {@link jchrest.architecture.Chrest#searchStm(jchrest.lib.ListPattern, 
+   *    int)} completes plus the value returned by {@link 
+   *    #this#getAddProductionTime()}.
    *  </li>
    * </ul>
    * 
@@ -2266,15 +2291,49 @@ public class Chrest extends Observable {
    * @param actionNode
    * @param time
    * 
-   * @return 
+   * @return The following conditions will cause the following {@link 
+   * jchrest.lib.ChrestStatus} to be returned (note that conditions are 
+   * cumulative, i.e. when checking the second condition, the first condition
+   * does not apply):
+   * <ol type="1">
+   *  <li>
+   *    If {@link #this} does not exist at the {@code time} specified, {@link 
+   *    jchrest.lib.ChrestStatus#MODEL_DOES_NOT_EXIST_AT_TIME} is returned.
+   *  </li>
+   *  <li>
+   *    If {@link jchrest.architecture.Chrest#isAttentionFree(int)} returns 
+   *    {@link java.lang.Boolean#FALSE} when invoked in context of {@link #this} 
+   *    and {@code time} is specified as a parameter, {@link 
+   *    jchrest.lib.ChrestStatus#ATTENTION_BUSY} is returned.
+   *  </li>
+   *  <li>
+   *    If {@link jchrest.architecture.Chrest#searchStm(jchrest.lib.ListPattern, 
+   *    int)} does not return a {@link jchrest.architecture.Node} whose contents
+   *    match the {@code vision} specified, {@link 
+   *    jchrest.lib.ChrestStatus#VISION_NOT_IN_STM} is returned.
+   *  </li>
+   *  <li>
+   *    If {@link jchrest.architecture.Chrest#searchStm(jchrest.lib.ListPattern, 
+   *    int)} does return a {@link jchrest.architecture.Node} whose contents
+   *    match the {@code vision} specified, but does not return a {@link 
+   *    jchrest.architecture.Node} whose contents match the {@code action} 
+   *    specified, {@link jchrest.lib.ChrestStatus#ACTION_NOT_IN_STM} is 
+   *    returned.
+   *  </li>
+   *  <li>
+   *    See return values for {@link 
+   *    jchrest.architecture.Node#addProduction(jchrest.architecture.Node, 
+   *    java.lang.Double, int)}.
+   *  </li>
+   * </ol>
    */
-  public boolean learnProduction(Node visualNode, Node actionNode, int time){
+  public ChrestStatus learnProduction(ListPattern vision, ListPattern action, int time){
     this.printDebugStatement("===== Chrest.learnProduction() =====");
     this.printDebugStatement(
-      "- Attempting to learn production between Node " + visualNode.getReference() + 
-      " and Node " + actionNode.getReference() + " at time " + time
+      "- Attempting to learn a production between the vision (" + vision.toString() + 
+      ") and action (" + action.toString() + ") specified at time " + time
     );
-    boolean productionLearned = false;
+    ChrestStatus result = ChrestStatus.LEARN_PRODUCTION_FAILED;
     
     //////////////////////////////
     ///// PRELIMINARY CHECKS /////
@@ -2282,129 +2341,235 @@ public class Chrest extends Observable {
     
     this.printDebugStatement(
       "- Checking if the following statements all evaluate to true: " +
-      "\n  ~ Model is alive at the time this method is requested: " + (this._creationTime <= time) + 
+      "\n  ~ This CHREST model exists at the time this method is requested: " + (this._creationTime <= time) + 
       "\n  ~ Attention is free at the time this method is requested: " + (this.isAttentionFree(time)) +
-      "\n  ~ Visual Node specified exists at the time specified: " + (visualNode.getCreationTime() <= time) +
-      "\n  ~ Action Node specified exists at the time specified: " + (actionNode.getCreationTime() <= time) + 
-      "\n  ~ Visual Node specified has Visual modality: " + (visualNode.getModality() == Modality.VISUAL) +
-      "\n  ~ Action Node specified has Action modality: " + (actionNode.getModality() == Modality.ACTION) +
-      "\n  ~ Visual Node specified is not the Visual LTM root Node: " + (!visualNode.isRootNode()) +
-      "\n  ~ Action Node specified is not the Action LTM root Node: " + (!actionNode.isRootNode())
+      "\n  ~ Vision specified has Visual modality: " + (vision.getModality() == Modality.VISUAL) +
+      "\n  ~ Action specified has Action modality: " + (action.getModality() == Modality.ACTION)
     );
     
     if(
       this._creationTime <= time && 
       this.isAttentionFree(time) &&
-      visualNode.getCreationTime() <= time &&
-      actionNode.getCreationTime() <= time &&
-      visualNode.getModality() == Modality.VISUAL &&
-      actionNode.getModality() == Modality.ACTION &&
-      !visualNode.isRootNode() &&
-      !actionNode.isRootNode()
+      vision.getModality() == Modality.VISUAL &&
+      action.getModality() == Modality.ACTION
     ){
       this.printDebugStatement("    + All OK");
       
-      ///////////////////////////////////////////
-      ///// CHECK VISUAL STM FOR visualNode /////
-      ///////////////////////////////////////////
-      
-      this.printDebugStatement("- Checking if the visual Node specified is in visual STM");
-      boolean visualNodeInStm = false;
-      List<Node> visualStm = this.getStm(Modality.VISUAL).getContents(time);
-      for(Node visualStmNode : visualStm){
-        time += this._timeToRetrieveItemFromStm;
-        
-        this.printDebugStatement(
-          "  ~ Incremented time by time taken to retrieve item from STM (" + 
-          this._timeToRetrieveItemFromStm + "). Checking if the visual " +
-          "STM Node retrieved's reference (" + visualStmNode.getReference() + 
-          ") is equal to the visual Node specified's reference (" + 
-          visualNode.getReference() + ")"
-        );
-        if(visualStmNode.getReference() == visualNode.getReference()){
-          
-          this.printDebugStatement("    + Visual STM Node matches visualNode, ending search");
-          visualNodeInStm = true;
-          break;
-        }
-      }
-      
-      ///////////////////////////////////////////
-      ///// CHECK ACTION STM FOR actionNode /////
-      ///////////////////////////////////////////
-      
-      this.printDebugStatement("- Checking if the action Node specified is in action STM");
-      boolean actionNodeInStm = false;
-      
-      List<Node> actionStm = this.getStm(Modality.ACTION).getContents(time);
-      for(Node actionStmNode : actionStm){
-        time += this._timeToRetrieveItemFromStm;
-        
-        this.printDebugStatement(
-          "  ~ Incremented time by time taken to retrieve item from STM (" + 
-          this._timeToRetrieveItemFromStm + "). Checking if the action " +
-          "STM Node retrieved's reference (" + actionStmNode.getReference() + 
-          ") is equal to the action Node specified's reference (" + 
-          actionNode.getReference() + ")"
-        );
-        if(actionStmNode.getReference() == actionNode.getReference()){
-          
-          this.printDebugStatement("    + Action STM Node matches actionNode, ending search");
-          actionNodeInStm = true;
-          break;
-        }
-      }
-      
-      ///////////////////////////////
-      ///// SET ATTENTION CLOCK /////
-      ///////////////////////////////
-      
-      this.printDebugStatement("- Setting attention clock to time after visual/action Node search: " + time);
-      this._attentionClock = time;
-      
-      ////////////////////////////////////////////
-      ///// CHECK IF PRODUCTION CAN BE ADDED /////
-      ////////////////////////////////////////////
+      //////////////////////////////
+      ///// GET MATCHING NODES /////
+      //////////////////////////////
+
+      ///// GET MATCHING VISUAL NODES /////
       
       this.printDebugStatement(
-        "- Checking if the following all evaluate to true:" +
-        "\n  ~ The visualNode specified is in visual STM: " + visualNodeInStm +
-        "\n  ~ The actionNode specified is in action STM: " + actionNodeInStm +
-        "\n  ~ Cognition is free at time " + time + ": " + this.isCognitionFree(time)
+        "- Checking if visual STM is empty (" + 
+        this.getStm(Modality.VISUAL).getContents(time).isEmpty() + "), if it " +
+        "is, it will not be searched for Nodes matching the vision input."
       );
-      if(visualNodeInStm && actionNodeInStm && this.isCognitionFree(time)){
-        this.printDebugStatement("    + All OK");
+      
+      List<Node> matchingVisualNodes = new ArrayList();
+      if(!this.getStm(Modality.VISUAL).getContents(time).isEmpty()){
+        this.printDebugStatement("  ~ Visual STM is not empty, searching for Nodes whose contents match vision"); 
         
-        /////////////////////////////////////
-        ///// ATTEMPT TO ADD PRODUCTION /////
-        /////////////////////////////////////
-        
-        time += this._addProductionTime;
-        this.printDebugStatement(
-          "- Attempting to add production at the current time plus the time " +
-          "taken to add a production (" + this._addProductionTime + "), i.e. " +
-          "at time " + time
-        );
-        productionLearned = visualNode.addProduction(actionNode, 0.0, time);
-        if(productionLearned){
-          this._cognitionClock = time;
-          this.printDebugStatement("- Production added successfully, setting the cognition clock to " + time);
-        }
-        else{
-          this.printDebugStatement("- Production not added successfully, exiting");
-        }
+        //Since this method checks that attention is free and that visual STM is
+        //not empty before program control gets to here, it can be safely 
+        //assumed that attention will be consumed during this.searchStm() since 
+        //visual STM is not empty.  Thus, before searching action STM, the 
+        //current time according to the scope of this method can be safely set 
+        //to the value of this model's attention clock after the search since it 
+        //is only this search that will have affected this model's cognition 
+        //clock.  Setting this time correctly is important since, the action STM 
+        //search may return null incorrectly due to attention being consumed by 
+        //performing the visual STM searcg.
+        matchingVisualNodes = this.searchStm(vision, time);
+        time = this._attentionClock;
+        this.printDebugStatement("- Visual STM search complete, current time set to time search completes (" + time + ")");
       }
       else{
-        this.printDebugStatement("    + One or more conditions evaluated to false, exiting");
+        this.printDebugStatement("  ~ Visual STM is empty"); 
+      }
+      
+      ///// GET MATCHING ACTION NODES /////
+      
+      this.printDebugStatement(
+        "- Checking if action STM is empty (" + 
+        this.getStm(Modality.VISUAL).getContents(time).isEmpty() + "), if it " +
+        "is, it will not be searched for Nodes matching the action input."
+      );
+      
+      List<Node> matchingActionNodes = new ArrayList(); 
+      if(!this.getStm(Modality.ACTION).getContents(time).isEmpty()){
+        this.printDebugStatement("  ~ Action STM is not empty, searching for Nodes whose contents match action"); 
+      
+        //Like the visual STM search above, setting the current time correctly 
+        //is important here: the next time the current time is used is when a 
+        //production is created (if applicable) and this should occur after the
+        //visual and action STM searches.
+        matchingActionNodes = this.searchStm(action, time);
+        time = Math.max(time, this._attentionClock);
+        this.printDebugStatement("- Action STM search complete, current time set to time search completes (" + time + ")");
+      }
+      else{
+        this.printDebugStatement("  ~ Action STM is empty"); 
+      }
+      
+      this.printDebugStatement("- Time after searches complete: " + time);
+      
+      ArrayList<List<Node>> matchingVisualAndActionNodes = new ArrayList();
+      matchingVisualAndActionNodes.add(matchingVisualNodes);
+      matchingVisualAndActionNodes.add(matchingActionNodes);
+      this.printDebugStatement("- Matching Nodes: \n  ~ Visual:");
+      for(Node node : matchingVisualAndActionNodes.get(0)){
+        this.printDebugStatement("    + Ref: " + node.getReference() + ", contents: " + node.getContents().toString());
+      }
+      this.printDebugStatement("  ~ Action:");
+      for(Node node : matchingVisualAndActionNodes.get(1)){
+        this.printDebugStatement("    + Ref: " + node.getReference() + ", contents: " + node.getContents().toString());
+      }
+      
+      ////////////////////////////////////////////////////
+      ///// DETERMINE NODES TO BE USED IN PRODUCTION /////
+      ////////////////////////////////////////////////////
+      
+      //Set up a data structure that will specify the visual/action Node to be
+      //used in the production and whether the vision/action input to this 
+      //method needs to be learned (learning required if none of the images of
+      //the visual/action Nodes that match equal the vision/action input).  
+      Node[] nodesToBeUsed = new Node[2];
+      
+      for(int i = 0; i < matchingVisualAndActionNodes.size(); i++){
+        ListPattern input = (i == 0 ? vision : action);
+        String inputType = (i == 0 ? "vision" : "action");
+        String modality = (i == 0 ? "visual" : "action");
+        this.printDebugStatement(
+            "- Setting the " + modality + " Node to use in the production to " +
+            "either the first Node returned whose contents equals the " + inputType +
+            " or, if no such Node has been returned, the Node returned whose " +
+            "contents match the " + inputType + " most (biggest ListPattern that " +
+            "matches)"
+          );
+      
+        List<Node> matchingNodes = matchingVisualAndActionNodes.get(i);
+        for(Node node : matchingNodes){
+          this.printDebugStatement("  ~ Processing Node " + node.getReference());
+        
+          ListPattern nodeContents = node.getContents();
+          this.printDebugStatement("    + Contents: " + nodeContents);
+          
+          /////////////////////////////////////////
+          ///// CHECK IF CONTENTS EQUAL INPUT /////
+          /////////////////////////////////////////
+          
+          if(nodeContents.equals(input)){
+            this.printDebugStatement(
+              "      = Contents equals " + inputType + ", setting this Node to " +
+              "be the " + modality + " Node to use in the production and ending " +
+              "search for " + modality + " Node to use in production"
+            );
+            nodesToBeUsed[i] = node;
+            break;
+          }
+          
+          /////////////////////////////////////////
+          ///// CHECK IF CONTENTS MATCH INPUT /////
+          /////////////////////////////////////////
+          
+          //Node must match (only matches nodes are returned in list being 
+          //iterated through) so, if the visual Node recognised hasn't been set 
+          //yet or, if one has but this Node's contents are bigger than the 
+          //visual Node currently recognised, set this Node to be the visual 
+          //Node recognised.
+          else if(
+            nodesToBeUsed[i] == null || 
+            nodesToBeUsed[i].getContents().size() < nodeContents.size()
+          ){
+          
+            this.printDebugStatement(
+              "    + Either no " + modality + " STM Node has been set to use " + 
+              "in the production yet (" + (nodesToBeUsed[i] == null) + ") or the " + 
+              modality + " STM Node to use in the production has been set " +
+              "already but the size of its contents are smaller than this " +
+              "Node's (" + (nodesToBeUsed[i] != null && 
+              nodesToBeUsed[i].getContents().size() < nodeContents.size()) + 
+              ").  Regardless, this Node will be set to the " + modality + 
+              " Node to be used in the production, for the moment"
+            );
+            nodesToBeUsed[i] = node;
+          }
+          else{
+            this.printDebugStatement(
+              "    + The contents of this node does not equal the " + inputType + 
+              " and is not bigger than the contents of the current Node to " +
+              "use in the production"
+            );
+          }
+        }
+      }
+      
+      //////////////////////////
+      ///// ADD PRODUCTION /////
+      //////////////////////////
+      
+      this.printDebugStatement(
+        "- Checking if a visual and action Node have been specified for use " +
+        "in creating the production."
+      );
+      
+      Node visualNode = nodesToBeUsed[0];
+      Node actionNode = nodesToBeUsed[1];
+      
+      if(visualNode != null && actionNode != null){
+        this.printDebugStatement(
+          "  ~ Visual and action Nodes specified, attempting to add " +
+          "production between Nodes " + visualNode.getReference() + " and " + 
+          actionNode.getReference() + " at current time (" + time + ") plus " +
+          "the time taken to add a production (" + this._addProductionTime + ")"
+        );
+        time += this._addProductionTime;
+        result = visualNode.addProduction(actionNode, 0.0, time);
+        
+        if(result == ChrestStatus.LEARN_PRODUCTION_SUCCESSFUL){
+          this.printDebugStatement(
+            "    + Production added successfully, setting cognition clock to " +
+            "the time the production was added (" + time + ")"
+          );
+          this._cognitionClock = time;
+        }
+        else{
+          this.printDebugStatement("    + Production not added");
+        }
+      }
+      else if(visualNode == null){
+        this.printDebugStatement("  ~ Visual Node not specified, exiting");
+        result = ChrestStatus.VISION_NOT_IN_STM;
+      }
+      else if(actionNode == null){
+        this.printDebugStatement("  ~ Action Node not specified, exiting");
+        result = ChrestStatus.ACTION_NOT_IN_STM;
       }
     }
     else{
       this.printDebugStatement("    + One or more conditions evaluated to false, exiting");
+      if(this._creationTime > time){
+        result = ChrestStatus.MODEL_DOES_NOT_EXIST_AT_TIME;
+      }
+      else if(!this.isAttentionFree(time)){
+        result = ChrestStatus.ATTENTION_BUSY;
+      }
+      else if(vision.getModality() == Modality.VISUAL || action.getModality() == Modality.ACTION){
+        throw new IllegalArgumentException(
+          "The vision or action specified does not have the correct modality " +
+          "\n- Does the vision specified (" + vision.toString() + ") have visual " + 
+          "modality: " + (vision.getModality() == Modality.VISUAL) +
+          "\n- Does the action specified (" + action.toString() + ") have action " + 
+          "modality: " + (action.getModality() == Modality.ACTION)
+        );
+      }
     }
     
-    this.printDebugStatement("- Returning " + productionLearned);
+    this.printDebugStatement("- Returning " + result.name());
     this.printDebugStatement("===== RETURN Chrest.learnProduction() =====");
-    return productionLearned;
+    return result;
   }
   
   /**
@@ -3110,25 +3275,120 @@ public class Chrest extends Observable {
   /*****************************************/
   
   /**
+   * Invokes {@link jchrest.architecture.Stm#getContents(int)} on the {@link 
+   * jchrest.architecture.Stm} {@link jchrest.lib.Modality} of the {@code 
+   * pattern} specified and searches the {@link jchrest.architecture.Node Nodes}
+   * returned for any whose {@link jchrest.architecture.Node#getContents()} 
+   * result matches the {@code pattern} specified.
+   * 
+   * If {@link jchrest.architecture.Chrest#isAttentionFree(int)} returns {@link 
+   * java.lang.Boolean#TRUE} at the {@code time} specified and invoking {@link 
+   * jchrest.architecture.Stm#getContents(int)} on the {@link 
+   * jchrest.architecture.Stm} {@link jchrest.lib.Modality} of the {@code 
+   * pattern} specified returns some {@link jchrest.architecture.Node Nodes}, 
+   * attention will be consumed until some time <i>A</i>.  <i>A</i> will equal
+   * the {@code time} specified, <i>T</i>, plus the product of the number of 
+   * {@link jchrest.architecture.Node Nodes} returned, <i>N</i>, multiplied by 
+   * the total of the time taken to retrieve a {@link jchrest.architecture.Node} 
+   * from {@link jchrest.architecture.Stm}, <i>R</i>, plus the time taken to 
+   * compare a {@link jchrest.architecture.Node}, <i>C</i>.  As an equation:
+   * 
+   * A = T + (N * (R + C))
+   * 
    * @param pattern
    * @param time
    * 
-   * @return {@link java.lang.Boolean#TRUE} if the {@link 
-   * jchrest.lib.ListPattern} passed is present as an image of a {@link 
-   * jchrest.architecture.Node} in the {@link jchrest.architecture.Stm} whose 
-   * {@link jchrest.lib.Modality} matches that of the {@link 
-   * jchrest.lib.ListPattern} passed at the time specified.
+   * @return If {@link jchrest.architecture.Chrest#isAttentionFree(int)} 
+   * returns {@link java.lang.Boolean#FALSE}, {@code null} is returned.
+   * <p>
+   * If {@link jchrest.architecture.Node Nodes} match the condition stated 
+   * above, a {@link java.util.List} of these {@link jchrest.architecture.Node 
+   * Nodes} will be returned.
+   * </p>
+   * If no {@link jchrest.architecture.Node Nodes} match the condition stated 
+   * above, an empty {@link java.util.List} will be returned.
    */
-  public boolean presentInStm(ListPattern pattern, int time){
-    List<Node> contents = this.getStm(pattern.getModality()).getContents(time);
+  public List<Node> searchStm(ListPattern pattern, int time){
+    this.printDebugStatement("===== Chrest.searchStm() =====");
+    List<Node> matchingNodes = null;
     
-    if(contents!= null){
-      ArrayList<ListPattern> stmNodeImages = new ArrayList();
-      contents.forEach(Node -> stmNodeImages.add(Node.getImage(time)));
-      if(stmNodeImages.contains(pattern)) return true;
+    //////////////////////////////////////
+    ///// CHECK IF ATTENTION IS FREE /////
+    //////////////////////////////////////
+    
+    this.printDebugStatement("- Checking if attention is free at time method invoked " + time);
+    if(this.isAttentionFree(time)){
+      this.printDebugStatement("  ~ Attention is free");
+      
+      ////////////////////////////
+      ///// GET STM CONTENTS /////
+      ////////////////////////////
+      
+      this.printDebugStatement("- Getting contents of " + pattern.getModality().toString() + " at time " + time);
+      matchingNodes = new ArrayList();
+      List<Node> stmContents = this.getStm(pattern.getModality()).getContents(time);
+
+      if(stmContents != null && !stmContents.isEmpty()){
+        this.printDebugStatement("  ~ STM contents are not null or empty");
+        
+        this.printDebugStatement("- Checking STM contents for any Nodes whose contents matches " + pattern.toString());
+        
+        ////////////////////////////////
+        ///// PROCESS STM CONTENTS /////
+        ////////////////////////////////
+        
+        for(Node stmNode : stmContents){
+          time += this._timeToRetrieveItemFromStm + this._nodeComparisonTime;
+          this.printDebugStatement(
+            "  ~ Processing Node with reference " + stmNode.getReference() + ". " +
+            "Incremented time by time taken to retrieve a Node from STM (" + 
+            this._timeToRetrieveItemFromStm + ") plus the time taken to compare " +
+            "a Node (" + this._nodeComparisonTime + "). Time now equals " + time
+          );
+
+          this.printDebugStatement(
+            "    + Checking if STM Node contents (" + stmNode.getContents().toString() +
+            ") is a pre-sequence (matches) " + pattern.toString()
+          );
+          if(stmNode.getContents().matches(pattern)){
+            this.printDebugStatement("      = Match, adding Node " + stmNode.getReference() + " to the list to be returned");
+            matchingNodes.add(stmNode);
+          }
+          else{
+            this.printDebugStatement("      = No match, processing next Node");
+          }
+        }
+        
+        /////////////////////////////
+        ///// CONSUME ATTENTION /////
+        /////////////////////////////
+        
+        this._attentionClock = time;
+      }
+      else{
+        this.printDebugStatement("  ~ STM contents are null (" + (stmContents == null) + ") or empty, exiting");
+      }
+    }
+    else{
+      this.printDebugStatement("  ~ Attention is not free, exiting");
     }
     
-    return false;
+    //////////////////
+    ///// RETURN /////
+    //////////////////
+    
+    if(matchingNodes == null){
+      this.printDebugStatement("- Returning null");  
+    }
+    else if(matchingNodes.isEmpty()){
+      this.printDebugStatement("- Returning an empty list");
+    }
+    else{
+      this.printDebugStatement("- Returning Nodes with references: ");
+      for(Node node : matchingNodes) this.printDebugStatement("  ~ " + node.getReference());
+    }
+    this.printDebugStatement("===== RETURN Chrest.searchStm() =====");
+    return matchingNodes;
   }
   
   /**

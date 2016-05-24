@@ -12,6 +12,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Observable;
+import jchrest.lib.ChrestStatus;
 import jchrest.lib.HistoryTreeMap;
 import jchrest.lib.ItemSquarePattern;
 import jchrest.lib.ListPattern;
@@ -652,52 +653,74 @@ public class Node extends Observable {
   }
   
   /**
-   * Add the new production specified to this {@link #this}'s productions at the 
-   * time specified so long as the following conditions all evaluate to true:
+   * Attempts to add the {@code node} specified to the productions of {@link 
+   * #this} with the {@code productionValue} specified at the {@code time}
+   * specified.
+   * 
+   * A production will be created if the following conditions all evaluate to 
+   * {@link java.lang.Boolean#TRUE}:
    * 
    * <ul>
    *  <li>
-   *    This {@link #this}'s creation time is less than or equal to the time 
-   *    specified
+   *    Invoking {@link jchrest.architecture.Node#getCreationTime()} on {@link 
+   *    #this} and the {@code node} specified is less than or equal to the 
+   *    {@code time} specified.
    *  </li>
    *  <li>
-   *    The creation time of the action {@link jchrest.architecture.Node} to add
-   *    as a production is less than or equal to the time specified
+   *    Invoking {@link jchrest.architecture.Node#getModality()} on {@link 
+   *    #this} and the {@code node} specified returns {@link 
+   *    jchrest.lib.Modality#VISUAL} and {@link jchrest.lib.Modality##ACTION},
+   *    respectively.
    *  </li>
    *  <li>
-   *    This {@link #this}'s {@link jchrest.lib.Modality} is {@link 
-   *    jchrest.lib.Modality#VISUAL}
+   *    Invoking {@link jchrest.architecture.Node#isRootNode()} on both {@link 
+   *    #this} and the {@code node} specified returns {@link 
+   *    java.lang.Boolean#FALSE}.
    *  </li>
    *  <li>
-   *    The {@link jchrest.lib.Modality} of the {@link 
-   *    jchrest.architecture.Node} to add as a production is {@link 
-   *    jchrest.lib.Modality#ACTION}
+   *    A production between {@link #this} and the {@code node} specified does
+   *    not already exist at the {@code time} specified.
    *  </li>
    *  <li>
-   *    This {@link #this} is not a root {@link jchrest.architecture.Node}
-   *  </li>
-   *  <li>
-   *    The {@link jchrest.architecture.Node} to add as a production is not a 
-   *    root {@link jchrest.architecture.Node}
-   *  </li>
-   *  <li>
-   *    This function is not attempting to rewrite the production history of 
-   *    this {@link #this}
+   *    Adding the production will not rewrite the production history of {@link 
+   *    #this}.
    *  </li>
    * </ul>
    * 
-   * @param time The time the production should be created.
-   * @param node
-   * @param productionValue
-   * @return True if a production was added, false if not.
+   * @param time The time the production should be added.
+   * @param node The {@link jchrest.architecture.Node} that the production 
+   * should terminate with.
+   * @param productionValue  The initial value for the production.
+   * 
+   * @return If a production is added, {@link 
+   * jchrest.lib.ChrestStatus#LEARN_PRODUCTION_SUCCESSFUL} will be returned. 
+   * Otherwise, if the production already exists, {@link 
+   * jchrest.lib.ChrestStatus#PRODUCTION_ALREADY_LEARNED} will be returned or,
+   * if this is not the case, {@link 
+   * jchrest.lib.ChrestStatus#LEARN_PRODUCTION_FAILED} is returned.
    */
-  boolean addProduction(Node node, Double productionValue, int time){
+  ChrestStatus addProduction(Node node, Double productionValue, int time){
+    this._model.printDebugStatement("===== Node.addProduction() =====");
+    this._model.printDebugStatement(
+      "- Attempting to add a production between Node " + this.getReference() +
+      " and Node " + node.getReference() + " at time " + time
+    );
+    ChrestStatus result;
     
     //No need to check if this node and the node to create a production between
     //are the same since they must have different modalities.  The implication
     //is that the same node cannot belong to two modalities and since the 
     //modality of the nodes to create a production between are checked below, 
-    //this will ensure that this node cannot creation a production to itself. 
+    //this will ensure that this node cannot creation a production to itself.
+    this._model.printDebugStatement(
+      "- Checking if the following statements all evaluate to true: " +
+      "\n  ~ Was Node " + this.getReference() + " created on/before the time specified: " + (this.getCreationTime() <= time) +
+      "\n  ~ Was Node " + node.getReference() + " created on/before the time specified: " + (node.getCreationTime() <= time) +
+      "\n  ~ Does Node " + this.getReference() + " have visual modality: " + (this.getModality() == Modality.VISUAL) +
+      "\n  ~ Does Node " + node.getReference() + " have action modality: " + (node.getModality() == Modality.ACTION) +
+      "\n  ~ Is Node " + this.getReference() + " not a root Node: " + (!this.isRootNode()) +
+      "\n  ~ Is Node " + node.getReference() + " not a root Node: " + (!node.isRootNode())
+    );
     if(
       this.getCreationTime() <= time &&
       node.getCreationTime() <= time &&
@@ -706,24 +729,42 @@ public class Node extends Observable {
       !this.isRootNode() &&
       !node.isRootNode()
     ){
+      this._model.printDebugStatement("    + All OK");
+      
+      this._model.printDebugStatement("- Checking if production already exists for Node " + this.getReference());
       HashMap<Node, Double> currentProductions = this.getProductions(time);
       if(currentProductions != null && !currentProductions.containsKey(node)){
+        this._model.printDebugStatement("  ~ Production does not already exist");
+        
+        this._model.printDebugStatement("- Attempting to add production");
         HashMap<Node, Double> newProductions = new HashMap();
         newProductions.put(node, productionValue);
         newProductions.putAll(currentProductions);
-
         boolean addProductionSuccessful = (boolean)this._productionHistory.put(time, newProductions);
 
         if(addProductionSuccessful){
+          this._model.printDebugStatement("  ~ Production added successfully");
           this.setChanged();
           this.notifyObservers();
-
-          return true;
+          result = ChrestStatus.LEARN_PRODUCTION_SUCCESSFUL;
+        }
+        else{
+          this._model.printDebugStatement("  ~ Production not added successfully");
+          result = ChrestStatus.LEARN_PRODUCTION_FAILED;
         }
       }
+      else{
+        this._model.printDebugStatement("  ~ Production already exists, exiting");
+        result = ChrestStatus.PRODUCTION_ALREADY_LEARNED;
+      }
+    }
+    else{
+      this._model.printDebugStatement("    + A statement evaluated to false, exiting");
+      result = ChrestStatus.LEARN_PRODUCTION_FAILED;
     }
     
-    return false;
+    this._model.printDebugStatement("===== RETURN Node.addProduction() =====");
+    return result;
   }
   
   /**

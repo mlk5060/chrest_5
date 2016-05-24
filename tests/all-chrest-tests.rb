@@ -91,7 +91,7 @@ end
   "PrimitivePattern",
   "ReinforcementLearning",
   "Square",
-  "Status",
+  "ChrestStatus",
   "StringPattern",
   "VisualSpatialFieldObject"
 ].each do |klass|

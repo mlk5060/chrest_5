@@ -867,15 +867,50 @@ process_test "production functionality" do
   # Test that each of the sub-conditions of the major conditional in the 
   # "Node.addProduction" function evaluate to false and block production 
   # creation correctly.
-  assert_false(visual_node_1.addProduction(action_node_1, 0.0, time_visual_node_1_created - 1), "occurred when attempting to add a production to the visual node before the visual node exists")
-  assert_false(visual_node_1.addProduction(action_node_1, 0.0, time_action_node_1_created - 1), "occurred when attempting to add a production to the visual node before the action node exists")
-  assert_false(action_node_1.addProduction(visual_node_1, 0.0, time_action_node_1_created), "occurred when attempting to add a visual node as a production to an action node")
+  assert_equal(
+    ChrestStatus::LEARN_PRODUCTION_FAILED,
+    visual_node_1.addProduction(action_node_1, 0.0, time_visual_node_1_created - 1), 
+    "occurred when attempting to add a production to the visual node before the visual node exists"
+  )
+  
+  assert_equal(
+    ChrestStatus::LEARN_PRODUCTION_FAILED,
+    visual_node_1.addProduction(action_node_1, 0.0, time_action_node_1_created - 1), 
+    "occurred when attempting to add a production to the visual node before the action node exists"
+  )
+  
+  assert_equal(
+    ChrestStatus::LEARN_PRODUCTION_FAILED,
+    action_node_1.addProduction(visual_node_1, 0.0, time_action_node_1_created), 
+    "occurred when attempting to add a visual node as a production to an action node"
+  )
+  
   Modality.values().each do |modality|
-    assert_false(
+    if modality != Modality::VISUAL
+      non_visual_node = Node.new(model, ListPattern.new(modality), ListPattern.new(modality), time_action_node_1_created)
+      assert_equal(
+        ChrestStatus::LEARN_PRODUCTION_FAILED,
+        non_visual_node.addProduction(action_node_1, 0.0, time_action_node_1_created), 
+        "occurred when attempting to add a production and the source Node is not a visual Node"
+      )
+    end
+    
+    if modality != Modality::ACTION
+      non_action_node = Node.new(model, ListPattern.new(modality), ListPattern.new(modality), time_action_node_1_created)
+      assert_equal(
+        ChrestStatus::LEARN_PRODUCTION_FAILED,
+        visual_node_1.addProduction(non_action_node, 0.0, time_action_node_1_created), 
+        "occurred when attempting to add a production and the terminal Node is not an action Node"
+      )
+    end
+    
+    assert_equal(
+      ChrestStatus::LEARN_PRODUCTION_FAILED,
       model.getLtmModalityRootNode(modality).addProduction(action_node_1, 0.0, time_action_node_1_created),
       "occurred when attempting to add a production whose source is the " + modality.toString() + " root node"
     )
-    assert_false(
+    assert_equal(
+      ChrestStatus::LEARN_PRODUCTION_FAILED,
       visual_node_1.addProduction(model.getLtmModalityRootNode(modality), 0.0, time_action_node_1_created),
       "occurred when attempting to add a production whose terminus is the " + modality.toString() + " root node"
     )
@@ -885,12 +920,50 @@ process_test "production functionality" do
   # the "Node.addProduction" function should evaluate to false.
   time_first_production_added = time_action_node_2_created + 10
   time_second_production_added = time_first_production_added + 10
-  assert_true(visual_node_1.addProduction(action_node_1, 0.0, time_first_production_added), "occurred when checking the result of adding the first production")
-  assert_true(visual_node_1.addProduction(action_node_2, 0.0, time_second_production_added), "occurred when checking the result of adding the second production")
   
-  # Try to rewrite production history.
-  assert_false(visual_node_1.addProduction(action_node_1, 0.0, time_first_production_added - 1), "occurred when trying to rewrite the node's production history (1)")
-  assert_false(visual_node_1.addProduction(action_node_1, 0.0, time_first_production_added), "occurred when trying to rewrite the node's production history (2)")
+  assert_equal(
+    ChrestStatus::LEARN_PRODUCTION_SUCCESSFUL,
+    visual_node_1.addProduction(action_node_1, 0.0, time_first_production_added), 
+    "occurred when checking the result of adding the first production"
+  )
+  
+  assert_equal(
+    ChrestStatus::LEARN_PRODUCTION_SUCCESSFUL,
+    visual_node_1.addProduction(action_node_2, 0.0, time_second_production_added), 
+    "occurred when checking the result of adding the second production"
+  )
+  
+  # Try to add the same productions again
+  time_first_production_added_again = time_second_production_added + 10
+  time_second_production_added_again = time_first_production_added_again + 10
+  
+  assert_equal(
+    ChrestStatus::PRODUCTION_ALREADY_LEARNED,
+    visual_node_1.addProduction(action_node_1, 0.0, time_first_production_added_again), 
+    "occurred when checking the result of attempting to add the first production when it already exists"
+  )
+  
+  assert_equal(
+    ChrestStatus::PRODUCTION_ALREADY_LEARNED,
+    visual_node_1.addProduction(action_node_2, 0.0, time_second_production_added_again), 
+    "occurred when checking the result of attempting to add the second production when it already exists"
+  )
+  
+  # Try to rewrite production history (do this with a new node so that the 
+  # 'existing production' check isn't triggered).
+  new_action_node = Node.new(model, ListPattern.new(Modality::ACTION), ListPattern.new(Modality::ACTION), time_visual_node_1_created)
+  
+  assert_equal(
+    ChrestStatus::LEARN_PRODUCTION_FAILED,
+    visual_node_1.addProduction(new_action_node, 0.0, time_first_production_added - 1), 
+    "occurred when trying to rewrite the node's production history (1)"
+  )
+  
+  assert_equal(
+    ChrestStatus::LEARN_PRODUCTION_FAILED,
+    visual_node_1.addProduction(new_action_node, 0.0, time_first_production_added), 
+    "occurred when trying to rewrite the node's production history (2)"
+  )
   
   #######################################
   ### "reinforceProduction()" TESTING ###
