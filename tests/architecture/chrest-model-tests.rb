@@ -2393,6 +2393,91 @@ unit_test "generate_action_using_visual_pattern_recognition" do
   end
 end
 
+################################################################################
+# 1: Invoke method when model not created
+# 2: Invoked method when attention isn't free
+# 3: Invoke method when STM is empty
+# 4: Invoke method when STM not empty but index too big
+# 5: Invoke method when STM is not empty, index is OK and bigger than 1 (checks 
+#    that multiplication of time-to-retrieve-stm-item is OK).
+unit_test "get_stm_item" do
+  Chrest.class_eval{
+    field_accessor :_attentionClock, 
+    :_actionStm,
+    :_verbalStm,
+    :_visualStm,
+    :_timeToRetrieveItemFromStm
+  }
+  
+  stm_item_history_field = Stm.java_class.declared_field("_itemHistory")
+  stm_item_history_field.accessible = true
+  
+  for scenario in 1..5
+    for modality in Modality.values()
+      chrest_model_creation_time = 0
+      model = Chrest.new(chrest_model_creation_time, [true, false].sample)
+
+      stm_index = 2
+      
+      ############################
+      ##### CREATE SCENARIOS #####
+      ############################
+      
+      # Time method invoked in scenario 1 should be before CHREST model creation
+      # time
+      time_method_invoked = (
+        scenario == 1 ? chrest_model_creation_time - 1 :
+        chrest_model_creation_time + 10
+      )
+      
+      # In scenario 2, the model's attention clock should be greater than the
+      # time the method is invoked.
+      if scenario == 2 then model._attentionClock = time_method_invoked + 1 end
+      
+      ##### POPULATE STM #####
+      
+      node_1 = Node.new(model, ListPattern.new(modality), ListPattern.new(modality), chrest_model_creation_time)
+      node_2 = Node.new(model, ListPattern.new(modality), ListPattern.new(modality), chrest_model_creation_time)
+      
+      stm = (
+        modality == Modality::ACTION ? model._actionStm :
+        modality == Modality::VERBAL ? model._verbalStm :
+        modality == Modality::VISUAL ? model._visualStm :
+        raise("Modality " + modality.name() + " not supported")
+      )
+
+      # In scenario 3, STM should be empty.  In scenario 4, add Node 1 only so 
+      # index is too big.  In scenario 5, add Nodes 1 and 2 so that index is OK 
+      # and greater than 1
+      stm_items = ArrayList.new()
+      if scenario == 4 then stm_items.add(node_1) end
+      if scenario == 5 then stm_items.add(node_1); stm_items.add(node_2); end
+      
+      stm_item_history_field.value(stm).put(time_method_invoked, stm_items)
+      
+      #########################
+      ##### INVOKE METHOD #####
+      #########################
+      
+      result = model.getStmItem(modality, stm_index, time_method_invoked)
+      
+      ##################################
+      ##### SET EXPECTED VARIABLES #####
+      ##################################
+      
+      expected_result = (scenario == 5 ? node_2 : nil)
+      expected_attention_clock = (
+        scenario == 2 ? time_method_invoked + 1 :
+        scenario == 5 ? time_method_invoked + (model._timeToRetrieveItemFromStm * 2):
+        chrest_model_creation_time - 1
+      )
+      
+      assert_equal(expected_result, result, "occurred when checking the method result in scenario " + scenario.to_s)
+      assert_equal(expected_attention_clock, model._attentionClock, "occurred when checking the attention clock in scenario " + scenario.to_s)
+    end
+  end
+end
+
 #unit_test "get maximum clock value" do
 #  model = Chrest.new(0, GenericDomain.java_class)
 #  

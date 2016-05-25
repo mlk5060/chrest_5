@@ -3288,6 +3288,94 @@ public class Chrest extends Observable {
   /*****************************************/
   
   /**
+   * Attempts to retrieve the {@link jchrest.architecture.Node} from the {@code
+   * index} specified at the {@code time} specified from the {@link 
+   * jchrest.architecture.Stm} {@link jchrest.lib.Modality} specified.
+   * <p>
+   * If successful, this method will consume the attention resource of {@link 
+   * #this} according to the following equation where <i>A</i> is the attention
+   * clock of {@link #this}, <i>t</i> is the {@code time} specified, <i>r</i> 
+   * is the result of {@link #this#getTimeToRetrieveItemFromStm()} and <i>i</i> 
+   * is the {@code index} specified.
+   * <p>
+   * A = t + (r * i)
+   * 
+   * @param stmModality
+   * @param index Non-zero indexed, i.e. if the first {@link 
+   * jchrest.architecture.Node} in the {@code stmModality} specified is 
+   * required, pass 1.
+   * @param time
+   * 
+   * @return {@code null} if any of the following statements evaluate to {@link 
+   * java.lang.Boolean#TRUE}.  Otherwise, the {@link jchrest.architecture.Node} 
+   * in the {@code index} specified at the {@code time} specified in the {@link 
+   * jchrest.architecture.Stm} {@link jchrest.lib.Modality} specified by {@code 
+   * stmModality} is returned.
+   * <ul>
+   *  <li>{@link #this} does not exist at the {@code time} specified.</li>
+   *  <li>
+   *    {@link #this#isAttentionFree(int)} returns {@link 
+   *    java.lang.Boolean#FALSE} at the {@code time} specified.
+   *  </li>
+   *  <li>
+   *    The {@code index} specified is greater than the number of
+   *    {@link jchrest.architecture.Node Nodes} in the {@link 
+   *    jchrest.architecture.Stm} {@link jchrest.lib.Modality} specified at the
+   *    {@code time} specified.
+   *  </li>
+   * </ul>
+   */
+  public Node getStmItem(Modality stmModality, int index, int time){
+    this.printDebugStatement("===== Chrest.getStmItem() =====");
+    this.printDebugStatement(
+      "- Attempting to get the Node in position " + index + " from " + 
+      stmModality.toString() + " at time " + time
+    );
+    
+    Node stmItem = null;
+    List<Node> stmContents = this.getStm(stmModality).getContents(time);
+    
+    this.printDebugStatement(
+      "- Checking if the following statements all evaluate to true: " +
+      "\n  ~ This model exists at the time specified: " + (this.getCreationTime() <= time) +
+      "\n  ~ The attention of this model is free at the time specified: " + this.isAttentionFree(time) +
+      "\n  ~ The index specified is smaller than or equal to the number of Nodes in STM at the time specified: " + (index <= stmContents.size())
+    );
+    if(
+      this.getCreationTime() <= time && 
+      this.isAttentionFree(time) &&
+      index <= stmContents.size()
+    ){
+      this.printDebugStatement("- All OK");
+      
+      //Set the attention clock to the index * the time taken to retrieve a node
+      //from STM.  Note that the index is 0 indexed so needs to have 1 added.
+      this._attentionClock = time + (this._timeToRetrieveItemFromStm * index); 
+      this.printDebugStatement(
+        "- Attention clock is set to " + this._attentionClock + ", i.e the " +
+        "time specified (" + time + ") plus the product of the time taken to " +
+        "retrieve an item from STM (" + this._timeToRetrieveItemFromStm + ") " +
+        "multiplied by the index specified (" + index + ")"
+      );
+      
+      stmItem = stmContents.get(index - 1);
+    }
+    else{
+      this.printDebugStatement("- A statement evaluated to false, exiting");
+    }
+    
+    this.printDebugStatement(
+      "- Returning " + (stmItem == null ? 
+        "null" : 
+        "Node with reference " + stmItem.getReference() + ", contents " + 
+        stmItem.getContents() + " and image " + stmItem.getImage(time)
+      )
+    );
+    this.printDebugStatement("===== RETURN Chrest.getStmItem() =====");
+    return stmItem;
+  }
+  
+  /**
    * Invokes {@link jchrest.architecture.Stm#getContents(int)} on the {@link 
    * jchrest.architecture.Stm} {@link jchrest.lib.Modality} of the {@code 
    * pattern} specified and searches the {@link jchrest.architecture.Node Nodes}
