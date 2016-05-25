@@ -869,19 +869,19 @@ process_test "production functionality" do
   # creation correctly.
   assert_equal(
     ChrestStatus::LEARN_PRODUCTION_FAILED,
-    visual_node_1.addProduction(action_node_1, 0.0, time_visual_node_1_created - 1), 
+    visual_node_1.addProduction(action_node_1, time_visual_node_1_created - 1), 
     "occurred when attempting to add a production to the visual node before the visual node exists"
   )
   
   assert_equal(
     ChrestStatus::LEARN_PRODUCTION_FAILED,
-    visual_node_1.addProduction(action_node_1, 0.0, time_action_node_1_created - 1), 
+    visual_node_1.addProduction(action_node_1, time_action_node_1_created - 1), 
     "occurred when attempting to add a production to the visual node before the action node exists"
   )
   
   assert_equal(
     ChrestStatus::LEARN_PRODUCTION_FAILED,
-    action_node_1.addProduction(visual_node_1, 0.0, time_action_node_1_created), 
+    action_node_1.addProduction(visual_node_1, time_action_node_1_created), 
     "occurred when attempting to add a visual node as a production to an action node"
   )
   
@@ -890,7 +890,7 @@ process_test "production functionality" do
       non_visual_node = Node.new(model, ListPattern.new(modality), ListPattern.new(modality), time_action_node_1_created)
       assert_equal(
         ChrestStatus::LEARN_PRODUCTION_FAILED,
-        non_visual_node.addProduction(action_node_1, 0.0, time_action_node_1_created), 
+        non_visual_node.addProduction(action_node_1, time_action_node_1_created), 
         "occurred when attempting to add a production and the source Node is not a visual Node"
       )
     end
@@ -899,19 +899,19 @@ process_test "production functionality" do
       non_action_node = Node.new(model, ListPattern.new(modality), ListPattern.new(modality), time_action_node_1_created)
       assert_equal(
         ChrestStatus::LEARN_PRODUCTION_FAILED,
-        visual_node_1.addProduction(non_action_node, 0.0, time_action_node_1_created), 
+        visual_node_1.addProduction(non_action_node, time_action_node_1_created), 
         "occurred when attempting to add a production and the terminal Node is not an action Node"
       )
     end
     
     assert_equal(
       ChrestStatus::LEARN_PRODUCTION_FAILED,
-      model.getLtmModalityRootNode(modality).addProduction(action_node_1, 0.0, time_action_node_1_created),
+      model.getLtmModalityRootNode(modality).addProduction(action_node_1, time_action_node_1_created),
       "occurred when attempting to add a production whose source is the " + modality.toString() + " root node"
     )
     assert_equal(
       ChrestStatus::LEARN_PRODUCTION_FAILED,
-      visual_node_1.addProduction(model.getLtmModalityRootNode(modality), 0.0, time_action_node_1_created),
+      visual_node_1.addProduction(model.getLtmModalityRootNode(modality), time_action_node_1_created),
       "occurred when attempting to add a production whose terminus is the " + modality.toString() + " root node"
     )
   end
@@ -923,13 +923,13 @@ process_test "production functionality" do
   
   assert_equal(
     ChrestStatus::LEARN_PRODUCTION_SUCCESSFUL,
-    visual_node_1.addProduction(action_node_1, 0.0, time_first_production_added), 
+    visual_node_1.addProduction(action_node_1, time_first_production_added), 
     "occurred when checking the result of adding the first production"
   )
   
   assert_equal(
     ChrestStatus::LEARN_PRODUCTION_SUCCESSFUL,
-    visual_node_1.addProduction(action_node_2, 0.0, time_second_production_added), 
+    visual_node_1.addProduction(action_node_2, time_second_production_added), 
     "occurred when checking the result of adding the second production"
   )
   
@@ -939,13 +939,13 @@ process_test "production functionality" do
   
   assert_equal(
     ChrestStatus::PRODUCTION_ALREADY_LEARNED,
-    visual_node_1.addProduction(action_node_1, 0.0, time_first_production_added_again), 
+    visual_node_1.addProduction(action_node_1, time_first_production_added_again), 
     "occurred when checking the result of attempting to add the first production when it already exists"
   )
   
   assert_equal(
     ChrestStatus::PRODUCTION_ALREADY_LEARNED,
-    visual_node_1.addProduction(action_node_2, 0.0, time_second_production_added_again), 
+    visual_node_1.addProduction(action_node_2, time_second_production_added_again), 
     "occurred when checking the result of attempting to add the second production when it already exists"
   )
   
@@ -955,13 +955,13 @@ process_test "production functionality" do
   
   assert_equal(
     ChrestStatus::LEARN_PRODUCTION_FAILED,
-    visual_node_1.addProduction(new_action_node, 0.0, time_first_production_added - 1), 
+    visual_node_1.addProduction(new_action_node, time_first_production_added - 1), 
     "occurred when trying to rewrite the node's production history (1)"
   )
   
   assert_equal(
     ChrestStatus::LEARN_PRODUCTION_FAILED,
-    visual_node_1.addProduction(new_action_node, 0.0, time_first_production_added), 
+    visual_node_1.addProduction(new_action_node, time_first_production_added), 
     "occurred when trying to rewrite the node's production history (2)"
   )
   
@@ -1016,7 +1016,7 @@ process_test "production functionality" do
   values = productions_after_first_production_added_but_before_second.values()
   assert_equal(1, productions_after_first_production_added_but_before_second.size(), "occurred when checking the number of productions after adding one production")
   assert_true(productions.contains(action_node_1), "occurred when checking if the first action node is present in the set of productions returned after adding one production")
-  assert_true(values[0] == 0.0, "occurred when checking the value in the set of productions after adding one production")
+  assert_true(values[0] == 1.0, "occurred when checking the value in the set of productions after adding one production")
   
   productions_after_second_production_added = visual_node_1.getProductions(time_second_production_added)
   productions = productions_after_second_production_added.keySet()
@@ -1024,13 +1024,13 @@ process_test "production functionality" do
   assert_equal(2, visual_node_1.getProductions(time_second_production_added).size(), "occurred when checking the number of productions after adding two productions")
   assert_true(productions.contains(action_node_1), "occurred when checking if the first action node is present in the set of productions returned after adding two productions")
   assert_true(productions.contains(action_node_2), "occurred when checking if the second action node is present in the set of productions returned after adding two productions")
-  assert_true(values[0] == 0.0, "occurred when checking the first value in the set of productions returned after adding two productions")
-  assert_true(values[1] == 0.0, "occurred when checking the second value in the set of productions returned after adding two productions")
+  assert_true(values[0] == 1.0, "occurred when checking the first value in the set of productions returned after adding two productions")
+  assert_true(values[1] == 1.0, "occurred when checking the second value in the set of productions returned after adding two productions")
   
   productions_and_values_before_reinforcement = visual_node_1.getProductions(time_first_production_reinforced - 1)
   productions_and_values_after_reinforcement = visual_node_1.getProductions(time_first_production_reinforced + 1)
-  assert_equal(0.0, productions_and_values_before_reinforcement.get(action_node_2), "occurred when checking the value of the production that is reinforced before the reinforcement occurs")
-  assert_equal(1.0, productions_and_values_after_reinforcement.get(action_node_2), "occurred when checking the value of the production that is reinforced after the reinforcement occurs")
+  assert_equal(1.0, productions_and_values_before_reinforcement.get(action_node_2), "occurred when checking the value of the production that is reinforced before the reinforcement occurs")
+  assert_equal(2.0, productions_and_values_after_reinforcement.get(action_node_2), "occurred when checking the value of the production that is reinforced after the reinforcement occurs")
 end
 
 ################################################################################

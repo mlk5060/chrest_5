@@ -687,10 +687,13 @@ public class Node extends Observable {
    *  </li>
    * </ul>
    * 
-   * @param time The time the production should be added.
+   * If a production is successfully created, its initial value will equal 1.0 
+   * so that it has a chance of being selected via roulette wheel selection 
+   * (see {@link jchrest.architecture.Chrest#generateActionUsingVisualPatternRecognition(int)}.
+   * 
    * @param node The {@link jchrest.architecture.Node} that the production 
    * should terminate with.
-   * @param productionValue  The initial value for the production.
+   * @param time The time the production should be added.
    * 
    * @return If a production is added, {@link 
    * jchrest.lib.ChrestStatus#LEARN_PRODUCTION_SUCCESSFUL} will be returned. 
@@ -699,7 +702,7 @@ public class Node extends Observable {
    * if this is not the case, {@link 
    * jchrest.lib.ChrestStatus#LEARN_PRODUCTION_FAILED} is returned.
    */
-  ChrestStatus addProduction(Node node, Double productionValue, int time){
+  ChrestStatus addProduction(Node node, int time){
     this._model.printDebugStatement("===== Node.addProduction() =====");
     this._model.printDebugStatement(
       "- Attempting to add a production between Node " + this.getReference() +
@@ -738,7 +741,7 @@ public class Node extends Observable {
         
         this._model.printDebugStatement("- Attempting to add production");
         HashMap<Node, Double> newProductions = new HashMap();
-        newProductions.put(node, productionValue);
+        newProductions.put(node, 1.0);
         newProductions.putAll(currentProductions);
         boolean addProductionSuccessful = (boolean)this._productionHistory.put(time, newProductions);
 

@@ -2539,7 +2539,7 @@ public class Chrest extends Observable {
           "the time taken to add a production (" + this._addProductionTime + ")"
         );
         time += this._addProductionTime;
-        result = visualNode.addProduction(actionNode, 0.0, time);
+        result = visualNode.addProduction(actionNode, time);
         
         if(result == ChrestStatus.LEARN_PRODUCTION_SUCCESSFUL){
           this.printDebugStatement(

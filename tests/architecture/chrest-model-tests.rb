@@ -1848,7 +1848,7 @@ process_test "learn_production" do
         # 8-11 whose terminus is the second action node.
         if scenario >= 8
           visual_node_2_productions = HashMap.new()
-          visual_node_2_productions.put(action_node_2, 0.0)
+          visual_node_2_productions.put(action_node_2, 1.0)
           expected_visual_node_2_productions.put(expected_cognition_clock, visual_node_2_productions)
         end
         
