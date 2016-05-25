@@ -14,6 +14,7 @@ import java.io.Writer;
 import java.lang.reflect.Field;
 import java.sql.SQLException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -21,6 +22,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Observable;
+import java.util.Random;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.TreeMap;
@@ -30,6 +32,8 @@ import jchrest.domainSpecifics.SceneObject;
 import jchrest.gui.experiments.Experiment;
 import jchrest.lib.*;
 import jchrest.lib.ReinforcementLearning.Theory;
+import org.uncommons.watchmaker.framework.EvaluatedCandidate;
+import org.uncommons.watchmaker.framework.selection.RouletteWheelSelection;
 
 /**
  * A CHREST model.
@@ -88,6 +92,7 @@ public class Chrest extends Observable {
   private int _recognisedVisualSpatialFieldObjectLifespan = 10000; 
   private int _unrecognisedVisualSpatialFieldObjectLifespan = 8000;
   private int _timeToMoveVisualSpatialFieldObject = 50;  //From "Mental Imagery and Chunks" by Gobet and Waters
+  private int _timeToCheckNodeForProductions = 40;
   
   // Cognitive parameters
   private int _cognitionClock;
@@ -509,6 +514,10 @@ public class Chrest extends Observable {
     return this._timeToAccessVisualSpatialField;
   }
   
+  public int getTimeToCheckNodeForProductions(){
+    return this._timeToCheckNodeForProductions;
+  }
+  
   public int getTimeToCreateNamingLink(){
     return this._namingLinkCreationTime;
   }
@@ -583,6 +592,10 @@ public class Chrest extends Observable {
   
   public void setAddProductionTime (int time) {
     this._addProductionTime = time;
+  }
+  
+  public void setTimeToCheckNodeForProductions(int time){
+    this._timeToCheckNodeForProductions = time;
   }
   
   public void setDiscriminationTime (int time) {
@@ -3564,6 +3577,174 @@ public class Chrest extends Observable {
     }
     
     this.printDebugStatement("===== RETURN Chrest.replaceStmHypothesis() =====");
+  }
+  
+  /**
+   * Selects an {@link jchrest.lib.Modality#ACTION} {@link 
+   * jchrest.architecture.Node} that is linked to via. a production from one of
+   * the {@link jchrest.lib.Modality#VISUAL} {@link jchrest.architecture.Node 
+   * Nodes} currently in {@link jchrest.lib.Modality#VISUAL} {@link 
+   * jchrest.architecture.Stm}.
+   * 
+   * The {@link jchrest.lib.Modality#ACTION} {@link jchrest.architecture.Node} 
+   * selected is selected using two rounds of {@link 
+   * org.uncommons.watchmaker.framework.selection.RouletteWheelSelection}.  The
+   * first round considers all {@link jchrest.lib.Modality#VISUAL} {@link 
+   * jchrest.architecture.Node Nodes} currently in {@link 
+   * jchrest.lib.Modality#VISUAL} {@link jchrest.architecture.Stm} that contain
+   * productions.  These {@link jchrest.lib.Modality#VISUAL} {@link 
+   * jchrest.architecture.Node Nodes} are selected between based upon their 
+   * total information content, i.e. the result of invoking {@link 
+   * jchrest.lib.ListPattern#size()} on the result of invoking {@link 
+   * jchrest.architecture.Node#getAllInformation(int)} on them.  Therefore, 
+   * {@link jchrest.lib.Modality#VISUAL} {@link jchrest.architecture.Node Nodes}
+   * that are better known have a greater chance of being selected. After 
+   * selecting a {@link jchrest.lib.Modality#VISUAL} {@link 
+   * jchrest.architecture.Node}, its productions are selected between based upon 
+   * their values. 
+   * 
+   * @return A two-element {@link jchrest.architecture.Node} {@link 
+   * java.util.Arrays Array}.  If no {@link jchrest.lib.Modality#VISUAL} or 
+   * {@link jchrest.lib.Modality#ACTION} {@link jchrest.architecture.Node} can 
+   * be selected, both elements will equal {@code null}. Otherwise, the first 
+   * element will equal the {@link jchrest.lib.Modality#VISUAL} {@link 
+   * jchrest.architecture.Node} selected and the second element will equal the
+   * {@link jchrest.lib.Modality#ACTION} {@link jchrest.architecture.Node} 
+   * selected.
+   */
+  public Node[] generateActionUsingVisualPatternRecognition(int time){
+    this.printDebugStatement("===== Chrest.generateActionUsingVisualPatternRecognition() =====");
+    this.printDebugStatement("- Invoked at time " + time);
+    Node visualNodeSelected = null;
+    Node actionNodeSelected = null;
+    Node[] visualAndActionNodesSelected = new Node[2];
+    RouletteWheelSelection rws = new RouletteWheelSelection();
+    
+    this.printDebugStatement(
+      "- Checking if the following statements are both true:" +
+      "\n  ~ This model exists at the time specified: " + (this.getCreationTime() <= time) +
+      "\n  ~ The attention of this model is free at the time specified: " + this.isAttentionFree(time)
+    );
+    if(this.getCreationTime() <= time && this.isAttentionFree(time)){
+      this.printDebugStatement("    + All OK.");
+      
+      List<Node> visualStmContents = this.getStm(Modality.VISUAL).getContents(time);
+      
+      //Visual STM contents can be assumed to be not null safely since null is 
+      //only returned if STM doesn't exist at the time its contents are 
+      //retrieved.  However, if program control gets to here, its been assured 
+      //that the model exists at this time and STMs are created when the model
+      //is.  Therefore, null should not be returned.
+      this.printDebugStatement("- Checking if visual STM is empty at this time");
+      if(!visualStmContents.isEmpty()){
+        this.printDebugStatement("  ~ Visual STM is not empty at this time");
+        
+        /////////////////////////////////////////////////
+        ///// GET VISUAL STM NODES WITH PRODUCTIONS /////
+        /////////////////////////////////////////////////
+        
+        this.printDebugStatement("- Getting any visual STM Nodes with productions");
+        ArrayList<EvaluatedCandidate<Node>> visualNodesToSelectFrom = new ArrayList();
+        for(Node visualStmNode : visualStmContents){
+          time += this._timeToRetrieveItemFromStm;
+          this.printDebugStatement(
+            "  ~ Retrieved visual Node with ref " + visualStmNode.getReference() +
+            ", contents: " + visualStmNode.getContents().toString() + " and " +
+            "image: " + visualStmNode.getImage(time).toString() + ".  Incremented " +
+            "current time by the time taken to retrieve a Node from STM (" + 
+            this._timeToRetrieveItemFromStm + ").  Current time now equal to: " + time
+          );
+          
+          if(!visualStmNode.getProductions(time).isEmpty()){
+            time += this._timeToCheckNodeForProductions;
+            this.printDebugStatement(
+              "    + Node has productions.  Incremented current time by time " +
+              "taken to check a Node for productions (" + 
+              this._timeToCheckNodeForProductions + ").  Current time now equal " +
+              "to: " + time
+            );
+            visualNodesToSelectFrom.add(new EvaluatedCandidate(visualStmNode, visualStmNode.getAllInformation(time).size()));
+          }
+          else{
+            this.printDebugStatement("    + Node has no productions, checking next visual STM Node");
+          }
+          
+          this._attentionClock = time;
+        }
+        this.printDebugStatement(
+          "- Attention clock set to " + this._attentionClock + " after " +
+          "identifying visual STM Nodes with produtions"
+        );
+        
+        //////////////////////////////////////////////////////
+        ///// SELECT A VISUAL NODE TO GET AN ACTION FROM /////
+        //////////////////////////////////////////////////////
+        
+        if(!visualNodesToSelectFrom.isEmpty()){
+          this.printDebugStatement("- Selecting a visual Node for pattern-recognition from the following: " + visualNodesToSelectFrom.toString());
+          List<Node> visualNodesSelected = rws.select(visualNodesToSelectFrom, true, 1, new Random());
+          if(!visualNodesSelected.isEmpty()){
+            visualNodeSelected = visualNodesSelected.get(0);
+            this.printDebugStatement("  ~ Visual Node with reference " + visualNodeSelected.getReference() + " was selected");
+          }
+          else{
+            this.printDebugStatement("  ~ No visual Node was selected, exiting");
+          }
+        }
+        else{
+          this.printDebugStatement("- No visual STM Nodes contain productions, exiting");
+        }
+        
+        /////////////////////////////////////////////////////
+        ///// GET ACTION FROM VISUAL NODE'S PRODUCTIONS /////
+        /////////////////////////////////////////////////////
+        
+        if(visualNodeSelected != null){
+          ArrayList<EvaluatedCandidate<Node>> productionsToSelectFrom = new ArrayList();
+          for(Entry<Node, Double> productions : visualNodeSelected.getProductions(time).entrySet()){
+            productionsToSelectFrom.add(new EvaluatedCandidate(productions.getKey(), productions.getValue()));
+          }
+          
+          this.printDebugStatement(
+            "- Selecting an action from Node " + visualNodeSelected.getReference() + 
+            "'s productions at time " + time + ", i.e." + productionsToSelectFrom.toString()
+          );
+          List<Node> actionNodesSelected = rws.select(productionsToSelectFrom, true, 1, new Random());
+          
+          if(!actionNodesSelected.isEmpty()){
+            actionNodeSelected = actionNodesSelected.get(0);
+            this.printDebugStatement(
+              "  ~ Action Node with ref " + actionNodeSelected.getReference() +
+              ", contents " + actionNodeSelected.getContents().toString() + 
+              "and image " + actionNodeSelected.getImage(time).toString() + 
+              "selected."
+            );
+          }
+          else{
+            this.printDebugStatement("  ~ No action Node selected, exiting");
+          }
+        }
+      }
+      else{
+        this.printDebugStatement("  ~ Visual STM is empty at this time, exiting");
+      }
+    } 
+    else{
+      this.printDebugStatement("    + A statement evaluated to false, exiting.");
+    }
+    
+    ///////////////////////////////
+    ///// ASSIGN RETURN VALUE /////
+    ///////////////////////////////
+    
+    if(visualNodeSelected != null && actionNodeSelected != null){
+      visualAndActionNodesSelected[0] = visualNodeSelected;
+      visualAndActionNodesSelected[1] = actionNodeSelected;
+    }
+    
+    this.printDebugStatement("- Returning " + Arrays.toString(visualAndActionNodesSelected));
+    this.printDebugStatement("===== RETURN Chrest.generateActionUsingVisualPatternRecognition() =====");
+    return visualAndActionNodesSelected;
   }
   
   /********************************/

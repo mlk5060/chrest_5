@@ -2206,6 +2206,193 @@ process_test "reinforce_production" do
   end
 end
 
+################################################################################
+# Tests the "Chrest.generateActionUsingVisualPatternRecognition()" function
+# using all possible scenarios that can occur.  Each scenario is repeated 20 
+# times after all possible values have been returned by the method.
+# 
+# Scenario Descriptions
+# =====================
+# 
+# Scenario 1: No visual Nodes in visual STM so no visual Nodes selected
+# Scenario 2: Visual Nodes in visual STM but neither contain productions 
+# Scenario 3: Visual Nodes in visual STM, visual Node 1 has a production that is 
+#             guaranteed to be selected, visual Node 2 has no productions.
+# Scenario 4: Visual Nodes in visual STM, all visual Nodes have productions with
+#             equal weights.
+#
+# Tests Performed
+# ===============
+# - Method return value
+# - Cognition clock
+#
+unit_test "generate_action_using_visual_pattern_recognition" do
+  
+  Chrest.class_eval{
+    field_accessor :_visualStm, 
+    :_timeToRetrieveItemFromStm, 
+    :_timeToCheckNodeForProductions, 
+    :_attentionClock
+  }
+  
+  ListPattern.class_eval{
+    field_accessor :_list
+  }
+  
+  stm_item_history_field = Stm.java_class.declared_field("_itemHistory")
+  stm_item_history_field.accessible = true
+  
+  Node.class_eval{
+    field_accessor :_productionHistory
+  }
+  
+  for scenario in 1..4
+    
+    # Initialise repeat control variables.  Each scenario should be repeated 
+    # 20 times after all expected return values from the method have been
+    # returned.  The counter keeps track of repeats, the array stores references
+    # of Nodes that have been returned.
+    counter = 0
+    results_encountered = [] 
+    
+    while counter < 20
+      chrest_model_creation_time = 0
+      model = Chrest.new(chrest_model_creation_time, [true, false].sample)
+      
+      ###############################
+      ##### CREATE VISUAL NODES #####
+      ###############################
+      
+      visual_node_1_contents = ListPattern.new(Modality::VISUAL);
+      visual_node_1_contents._list.add(ItemSquarePattern.new("T", 0, -1));
+      visual_node_1 = Node.new(model, visual_node_1_contents, ListPattern.new(Modality::VISUAL), chrest_model_creation_time);
+      
+      visual_node_2_contents = ListPattern.new(Modality::VISUAL);
+      visual_node_2_contents._list.add(ItemSquarePattern.new("H", 4, 2));
+      visual_node_2 = Node.new(model, visual_node_2_contents, ListPattern.new(Modality::VISUAL), chrest_model_creation_time);
+      
+      ###############################
+      ##### CREATE ACTION NODES #####
+      ###############################
+      
+      action_node_1_contents = ListPattern.new(Modality::ACTION);
+      action_node_1_contents._list.add(ItemSquarePattern.new("Push", 270, 1));
+      action_node_1 = Node.new(model, action_node_1_contents, ListPattern.new(Modality::ACTION), chrest_model_creation_time);
+      
+      action_node_2_contents = ListPattern.new(Modality::ACTION);
+      action_node_2_contents._list.add(ItemSquarePattern.new("Walk", 0, 1));
+      action_node_2 = Node.new(model, action_node_2_contents, ListPattern.new(Modality::ACTION), chrest_model_creation_time);
+      
+      action_node_3_contents = ListPattern.new(Modality::ACTION);
+      action_node_3_contents._list.add(ItemSquarePattern.new("Jump", 90, 2));
+      action_node_3 = Node.new(model, action_node_3_contents, ListPattern.new(Modality::ACTION), chrest_model_creation_time);
+      
+      action_node_4_contents = ListPattern.new(Modality::ACTION);
+      action_node_4_contents._list.add(ItemSquarePattern.new("Run", 180, 1));
+      action_node_4 = Node.new(model, action_node_4_contents, ListPattern.new(Modality::ACTION), chrest_model_creation_time);
+      
+      ############################
+      ##### CREATE SCENARIOS #####
+      ############################
+      visual_stm_history = ArrayList.new()
+      
+      if scenario != 1
+        visual_stm_history.add(visual_node_1)
+        visual_stm_history.add(visual_node_2)
+      end
+      
+      # Set-up productions, in scenario 2, nodes will have no productions
+      if [3,4].include?(scenario)
+        
+        visual_node_1_productions = HashMap.new()
+        visual_node_1_productions.put(action_node_1, (scenario == 3 ? 0.0 : 1.0))
+        visual_node_1_productions.put(action_node_2, 1.0)
+        visual_node_1_production_history = HistoryTreeMap.new()
+        visual_node_1_production_history.put(chrest_model_creation_time, visual_node_1_productions)
+        visual_node_1._productionHistory = visual_node_1_production_history
+
+        if scenario == 4
+          visual_node_2_productions = HashMap.new()
+          visual_node_2_productions.put(action_node_3, 1.0)
+          visual_node_2_productions.put(action_node_4, 1.0)
+          visual_node_2_production_history = HistoryTreeMap.new()
+          visual_node_2_production_history.put(chrest_model_creation_time, visual_node_2_productions)
+          visual_node_2._productionHistory = visual_node_2_production_history
+        end
+      end
+      
+      
+      
+      stm_item_history_field.value(model._visualStm).put(chrest_model_creation_time, visual_stm_history)
+      
+      #########################
+      ##### INVOKE METHOD #####
+      #########################
+      
+      time_method_invoked = chrest_model_creation_time + 10
+      result = model.generateActionUsingVisualPatternRecognition(time_method_invoked)
+      result_visual_node = (result[0] == nil ? nil : result[0].getReference())
+      result_action_node = (result[1] == nil ? nil : result[1].getReference())
+      if !results_encountered.include?([result_visual_node, result_action_node]) 
+        results_encountered.push([result_visual_node, result_action_node]) 
+      end
+
+      ###############################
+      ##### SET EXPECTED VALUES #####
+      ###############################
+      
+      expected_result = []
+      if [1,2].include?(scenario) then expected_result.push([nil, nil]) end
+      if scenario == 3 then expected_result.push([visual_node_1, action_node_2]) end
+      if scenario == 4  
+        expected_result.push([visual_node_1, action_node_1])
+        expected_result.push([visual_node_1, action_node_2])
+        expected_result.push([visual_node_2, action_node_3])
+        expected_result.push([visual_node_2, action_node_4])
+      end
+      
+      expected_attention_clock = (
+        scenario == 1 ? chrest_model_creation_time - 1 :
+        scenario == 2 ? time_method_invoked + (model._timeToRetrieveItemFromStm * 2) :
+        scenario == 3 ? time_method_invoked + (model._timeToRetrieveItemFromStm * 2) + model._timeToCheckNodeForProductions :
+        time_method_invoked + (model._timeToRetrieveItemFromStm * 2) + (model._timeToCheckNodeForProductions * 2)
+      )
+      
+      #################
+      ##### TESTS #####
+      #################
+      
+      # Check method return value
+      expected_result_in_results = false
+      
+      visual_node_returned = result[0]
+      action_node_returned = result[1]
+   
+      for ex_r in expected_result
+        expected_visual_node = ex_r[0]
+        expected_action_node = ex_r[1]
+        if 
+          expected_visual_node == visual_node_returned && 
+          expected_action_node == action_node_returned 
+        then 
+          expected_result_in_results = true
+        end
+      end
+
+      assert_true(expected_result_in_results, "occurred in scenario " + scenario.to_s)
+      
+      # Check attention clock
+      assert_equal(expected_attention_clock, model._attentionClock, "occurred in scenario " + scenario.to_s)
+      
+      #############################
+      ##### INCREMENT COUNTER #####
+      #############################
+      
+      if results_encountered.size() == (scenario == 4 ? 4 : 1) then counter += 1 end
+    end
+  end
+end
+
 #unit_test "get maximum clock value" do
 #  model = Chrest.new(0, GenericDomain.java_class)
 #  
