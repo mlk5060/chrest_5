@@ -99,10 +99,11 @@ end
 end
 
 # Pick up all ruby test files except this one
-Dir.glob(File.dirname(__FILE__) + "/**/*.rb") do |file|
+Dir.glob(File.dirname(__FILE__) + "/architecture/chrest-model-tests.rb") do |file|
   require file unless 
   File.expand_path(file) == File.expand_path(__FILE__)
 end
 
 puts "Testing CHREST:"
-TestFramework.run_all_tests
+#TestFramework.run_all_tests
+TestFramework.run_unit_tests

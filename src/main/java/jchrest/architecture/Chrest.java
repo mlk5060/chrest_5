@@ -83,6 +83,7 @@ public class Chrest extends Observable {
   
   private int _ltmLinkTraversalTime = 10; //From "Perception and Memory in Chess" by deGroot and Gobet
   private int _timeToUpdateStm = 50; //From "Perception and Memory in Chess" by deGroot and Gobet
+  private int _timeToRetrieveFixationFromPerceiver = 30;
   private int _timeToRetrieveItemFromStm = 10;
   private int _timeToAccessVisualSpatialField = 100; //From "Mental Imagery and Chunks" by Gobet and Waters
   private int _timeToEncodeRecognisedSceneObjectAsVisualSpatialFieldObject = 5;
@@ -545,6 +546,10 @@ public class Chrest extends Observable {
   public int getTimeToProcessUnrecognisedSceneObjectDuringVisualSpatialFieldConstruction(){
     return _timeToProcessUnrecognisedSceneObjectDuringVisualSpatialFieldConstruction;
   }
+  
+  public int getTimeToRetrieveFixationFromPerceiver(){
+    return this._timeToRetrieveFixationFromPerceiver;
+  }
 
   public int getTimeToRetrieveItemFromStm(){
     return this._timeToRetrieveItemFromStm;
@@ -728,13 +733,17 @@ public class Chrest extends Observable {
   public void setTimeToProcessUnrecognisedSceneObjectDuringVisualSpatialFieldConstruction(int time){
     this._timeToProcessUnrecognisedSceneObjectDuringVisualSpatialFieldConstruction = time;
   }
-
-  public void setTimeToUpdateStm(int timeToUpdateStm){
-    this._timeToUpdateStm = timeToUpdateStm;
+  
+  public void setTimeToRetrieveFixationFromPerceiver(int time){
+    this._timeToRetrieveFixationFromPerceiver = time;
   }
   
   public void setTimeToRetrieveItemFromStm(int timeToRetrieveItemFromStm){
     this._timeToRetrieveItemFromStm = timeToRetrieveItemFromStm;
+  }
+
+  public void setTimeToUpdateStm(int timeToUpdateStm){
+    this._timeToUpdateStm = timeToUpdateStm;
   }
   
   public void setUnrecognisedVisualSpatialFieldObjectLifespan(int lifespan){
@@ -3348,8 +3357,6 @@ public class Chrest extends Observable {
     ){
       this.printDebugStatement("- All OK");
       
-      //Set the attention clock to the index * the time taken to retrieve a node
-      //from STM.  Note that the index is 0 indexed so needs to have 1 added.
       this._attentionClock = time + (this._timeToRetrieveItemFromStm * index); 
       this.printDebugStatement(
         "- Attention clock is set to " + this._attentionClock + ", i.e the " +
@@ -4969,6 +4976,89 @@ public class Chrest extends Observable {
     this.printDebugStatement("- Returning " + fixationsScheduled.toString());
     this.printDebugStatement("===== RETURN Chrest.scheduleFixationsForPerformance() =====");
     return fixationsScheduled;
+  }
+  
+  /**
+   * Attempts to retrieve {@link jchrest.domainSpecifics.Fixation} at the 
+   * {@code index} specified from the result of invoking {@link 
+   * jchrest.architecture.Perceiver#getFixationsPerformed(int)} at the {@code 
+   * time} specified.
+   * <p>
+   * <p>
+   * If successful, this method will consume the attention resource of {@link 
+   * #this} according to the following equation where <i>A</i> is the attention
+   * clock of {@link #this}, <i>t</i> is the {@code time} specified, <i>r</i> 
+   * is the result of {@link #this#getTimeToRetrieveFixationFromPerceiver()} and 
+   * <i>i</i> is the {@code index} specified.
+   * <p>
+   * A = t + (r * i)
+   * <p>
+   * 
+   * @param index Non-zero indexed.  Since the most recent {@link 
+   * jchrest.domainSpecifics.Fixation} performed should be retrieved quicker 
+   * than the first {@link jchrest.domainSpecifics.Fixation} performed, 
+   * specifying 1 for this parameter will retrieve the most recent {@link 
+   * jchrest.domainSpecifics.Fixation} performed.
+   * @param time
+   * 
+   * @return {@code null} if any of the following statements evaluate to {@link 
+   * java.lang.Boolean#TRUE}.  Otherwise, the {@link 
+   * jchrest.domainSpecifics.Fixation} performed at the {@code index} specified 
+   * at the {@code time} specified is returned.
+   * <ul>
+   *  <li>{@link #this} does not exist at the {@code time} specified.</li>
+   *  <li>
+   *    {@link #this#isAttentionFree(int)} returns {@link 
+   *    java.lang.Boolean#FALSE} at the {@code time} specified.
+   *  </li>
+   *  <li>
+   *    The {@code index} specified is greater than the result of invoking
+   *    {@link java.util.List#size()} on the result of invoking {@link 
+   *    jchrest.architecture.Perceiver#getFixationsPerformed(int)} at the {@code 
+   *    time} specified.
+   *  </li>
+   * </ul>
+   */
+  public Fixation getFixationPerformed(int index, int time){
+    this.printDebugStatement("===== Chrest.getFixationPerformed() =====");
+    this.printDebugStatement(
+      "- Attempting to get the Fixation in position " + index + " that was " +
+      "performed at time " + time
+    );
+    
+    Fixation fixation = null;
+    List<Fixation> fixationsPerformed = this._perceiver.getFixationsPerformed(time);
+    
+    this.printDebugStatement(
+      "- Checking if the following statements all evaluate to true: " +
+      "\n  ~ This model exists at the time specified: " + (this.getCreationTime() <= time) +
+      "\n  ~ The attention of this model is free at the time specified: " + this.isAttentionFree(time) +
+      "\n  ~ The index specified is smaller than or equal to the number of Fixations performed at the time specified: " + (index <= fixationsPerformed.size())
+    );
+    if(
+      this.getCreationTime() <= time &&
+      this.isAttentionFree(time) &&
+      index <= fixationsPerformed.size()
+    ){
+      this.printDebugStatement("- All OK");
+      
+      this._attentionClock = time + (index * this._timeToRetrieveFixationFromPerceiver);
+      fixation = fixationsPerformed.get(fixationsPerformed.size() - index);
+      
+      this.printDebugStatement(
+        "- Attention clock is set to " + this._attentionClock + ", i.e the " +
+        "time specified (" + time + ") plus the product of the time taken to " +
+        "retrieve a Fixation (" + this._timeToRetrieveItemFromStm + ") " +
+        "multiplied by the index specified (" + index + ")"
+      );
+    }
+    else{
+      this.printDebugStatement("- A statement evaluated to false, exiting");
+    }
+    
+    this.printDebugStatement("- Returning " + (fixation == null ? "null" : fixation.toString()));
+    this.printDebugStatement("===== RETURN Chrest.getFixationPerformed() =====");
+    return fixation;
   }
   
   /**********************************************/

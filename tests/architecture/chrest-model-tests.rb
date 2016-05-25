@@ -2478,6 +2478,110 @@ unit_test "get_stm_item" do
   end
 end
 
+################################################################################
+# 1: Invoke method when model not created
+# 2: Invoked method when attention isn't free
+# 3: Invoke method when no Fixations have been performed is empty
+# 4: Invoke method when Fixations have been performed but index too big
+# 5: Invoke method when Fixations have been performed, index is OK and bigger 
+#    than 1 (checks that multiplication of time-to-retrieve-fixation-from-perceiver 
+#    is OK).
+unit_test "get_fixation_performed" do
+  Chrest.class_eval{
+    field_accessor :_attentionClock, 
+    :_actionStm,
+    :_verbalStm,
+    :_visualStm,
+    :_timeToRetrieveFixationFromPerceiver
+  }
+  
+  chrest_perceiver_field = Chrest.java_class.declared_field("_perceiver")
+  chrest_perceiver_field.accessible = true
+  
+  perceiver_fixation_history_field = Perceiver.java_class.declared_field("_fixations")
+  perceiver_fixation_history_field.accessible = true
+  
+  fixation_performed_field = Fixation.java_class.declared_field("_performed")
+  fixation_performed_field.accessible = true
+  
+  fixation_performance_time_field = Fixation.java_class.declared_field("_performanceTime")
+  fixation_performance_time_field.accessible = true
+  
+  for scenario in 1..5
+    chrest_model_creation_time = 0
+    model = Chrest.new(chrest_model_creation_time, [true, false].sample)
+
+    fixation_index = 2
+
+    ############################
+    ##### CREATE SCENARIOS #####
+    ############################
+
+    # Time method invoked in scenario 1 should be before CHREST model creation
+    # time
+    time_method_invoked = (
+      scenario == 1 ? chrest_model_creation_time - 1 :
+      chrest_model_creation_time + 30
+    )
+
+    # In scenario 2, the model's attention clock should be greater than the
+    # time the method is invoked.
+    if scenario == 2 then model._attentionClock = time_method_invoked + 1 end
+
+    ##### POPULATE PERCEIVER'S FIXATIONS #####
+
+    # Fixations 1 and 3 will be performed, fixation 2 will not, this will allow
+    # the test to verify that Fixations that aren't performed are not considered
+    fixation_1 = CentralFixation.new(chrest_model_creation_time)
+    fixation_performed_field.set_value(fixation_1, true)
+    fixation_performance_time_field.set_value(fixation_1, chrest_model_creation_time)
+    
+    fixation_2 = CentralFixation.new(chrest_model_creation_time)
+    fixation_performed_field.set_value(fixation_2, false)
+    fixation_performance_time_field.set_value(fixation_2, chrest_model_creation_time)
+    
+    fixation_3 = CentralFixation.new(chrest_model_creation_time)
+    fixation_performed_field.set_value(fixation_3, true)
+    fixation_performance_time_field.set_value(fixation_3, chrest_model_creation_time)
+
+    # In scenario 3, the Perceiver's Fixations should be empty.  In scenario 4, 
+    # add Fixations 1 and 2 only so index is too big (should only be 1 Fixation
+    # returned since 2 is not performed).  In scenario 5, add all Fixations so 
+    # that index is OK and greater than 1
+    perceiver_fixations = ArrayList.new()
+    if scenario == 4 
+      perceiver_fixations.add(fixation_1)
+      perceiver_fixations.add(fixation_2)
+    elsif scenario == 5 
+      perceiver_fixations.add(fixation_1) 
+      perceiver_fixations.add(fixation_2)
+      perceiver_fixations.add(fixation_3)
+    end
+
+    perceiver_fixation_history_field.value(chrest_perceiver_field.value(model)).put(time_method_invoked, perceiver_fixations)
+
+    #########################
+    ##### INVOKE METHOD #####
+    #########################
+
+    result = model.getFixationPerformed(fixation_index, time_method_invoked)
+
+    ##################################
+    ##### SET EXPECTED VARIABLES #####
+    ##################################
+
+    expected_result = (scenario == 5 ? fixation_1 : nil)
+    expected_attention_clock = (
+      scenario == 2 ? time_method_invoked + 1 :
+      scenario == 5 ? time_method_invoked + (model._timeToRetrieveFixationFromPerceiver * 2):
+      chrest_model_creation_time - 1
+    )
+
+    assert_equal(expected_result, result, "occurred when checking the method result in scenario " + scenario.to_s)
+    assert_equal(expected_attention_clock, model._attentionClock, "occurred when checking the attention clock in scenario " + scenario.to_s)
+  end
+end
+
 #unit_test "get maximum clock value" do
 #  model = Chrest.new(0, GenericDomain.java_class)
 #  
