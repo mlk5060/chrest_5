@@ -292,19 +292,6 @@ process_test "getter and setters" do
   assert_true(stm.setCapacity(1, time_stm_capacity_modified_first), "see test 23")
   assert_true(stm.setCapacity(6, time_stm_capacity_modified_second), "see test 24")
   
-  #####################################################################
-  ### TEST THAT REWRITING HISTORY WITH ALL METHODS ABOVE IS BLOCKED ###
-  #####################################################################
-  
-  # Go from the time node 1 was created so that checks on STM and node creation 
-  # times are not triggered.
-  for time in time_node_1_created..time_stm_capacity_modified_second
-    assert_false(stm.add(node_1, time), "see test 25 at time " + time.to_s)
-    assert_false(stm.replace_hypothesis(node_1, time), "see test 26 at time " + time.to_s)
-    assert_false(stm.clear(time), "see test 27 at time " + time.to_s)
-    assert_false(stm.setCapacity(5, time), "see test 28 at time " + time.to_s)
-  end
-  
   #===============================#
   #==== GETTER FUNCTION TESTS ====#
   #===============================#

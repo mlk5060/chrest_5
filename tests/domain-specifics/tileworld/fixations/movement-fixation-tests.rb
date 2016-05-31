@@ -401,7 +401,7 @@ unit_test "make" do
       if scenario != 2
         perceiver_fixations = ArrayList.new()
         perceiver_fixations.add(previous_fixation)
-        perceiver_fixations_field.value(chrest_perceiver_field.value(model)).put(previous_fixation._performanceTime, perceiver_fixations)
+        perceiver_fixations_field.value(chrest_perceiver_field.value(model)).put(previous_fixation._performanceTime.to_java(:int), perceiver_fixations)
       end
 
       ######################################

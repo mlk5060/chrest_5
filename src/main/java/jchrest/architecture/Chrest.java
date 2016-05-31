@@ -18,6 +18,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -129,9 +130,9 @@ public class Chrest extends Observable {
   private Node _verbalLtm;
   private Node _actionLtm;
   
-  private HistoryTreeMap _totalNumberVisualLtmNodes = new HistoryTreeMap();
-  private HistoryTreeMap _totalNumberVerbalLtmNodes = new HistoryTreeMap();
-  private HistoryTreeMap _totalNumberActionLtmNodes = new HistoryTreeMap();
+  private TreeMap _totalNumberVisualLtmNodes = new TreeMap();
+  private TreeMap _totalNumberVerbalLtmNodes = new TreeMap();
+  private TreeMap _totalNumberActionLtmNodes = new TreeMap();
   private int _nextLtmNodeReference = 0;
   
   /**
@@ -389,7 +390,7 @@ public class Chrest extends Observable {
       modalityString = modalityString.substring(0, 1).toUpperCase() + modalityString.substring(1).toLowerCase();
       
       try {
-        HistoryTreeMap modalityNodeCountVariable = (HistoryTreeMap)Chrest.class.getDeclaredField("_totalNumber" + modalityString + "LtmNodes").get(this);
+        TreeMap modalityNodeCountVariable = (TreeMap)Chrest.class.getDeclaredField("_totalNumber" + modalityString + "LtmNodes").get(this);
         modalityNodeCountVariable.put(time, 0);
       } catch (NoSuchFieldException | SecurityException | IllegalArgumentException | IllegalAccessException ex) {
         Logger.getLogger(Chrest.class.getName()).log(Level.SEVERE, null, ex);
@@ -796,7 +797,7 @@ public class Chrest extends Observable {
       modalityString = modalityString.substring(0, 1).toUpperCase() + modalityString.substring(1).toLowerCase();
       
       try {
-        HistoryTreeMap modalityNodeCountVariable = (HistoryTreeMap)Chrest.class.getDeclaredField("_totalNumber" + modalityString + "LtmNodes").get(this);
+        TreeMap modalityNodeCountVariable = (TreeMap)Chrest.class.getDeclaredField("_totalNumber" + modalityString + "LtmNodes").get(this);
         Entry<Integer, Object> entry= modalityNodeCountVariable.floorEntry(time);
         if(entry != null){
           return (Integer)entry.getValue();
@@ -849,7 +850,7 @@ public class Chrest extends Observable {
       String modalityString = modality.toString();
       modalityString = modalityString.substring(0, 1).toUpperCase() + modalityString.substring(1).toLowerCase();
       
-      HistoryTreeMap modalityNodeCountVariable = (HistoryTreeMap)Chrest.class.getDeclaredField("_totalNumber" + modalityString + "LtmNodes").get(this);
+      TreeMap modalityNodeCountVariable = (TreeMap)Chrest.class.getDeclaredField("_totalNumber" + modalityString + "LtmNodes").get(this);
       Entry<Integer, Object> entry= modalityNodeCountVariable.floorEntry(time);
       if(entry != null){
         Integer currentCount = (Integer)entry.getValue();
@@ -1150,7 +1151,7 @@ public class Chrest extends Observable {
   protected int getProductionCount(Node node, boolean recurse, int time){
     int count = 0;
     
-    HashMap<Node, Double> productions = node.getProductions(time);
+    LinkedHashMap<Node, Double> productions = node.getProductions(time);
     if(productions != null){
       count = productions.size();
       

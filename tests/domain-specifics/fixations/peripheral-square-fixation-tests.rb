@@ -313,7 +313,7 @@ unit_test "make" do
         fixations.add(previous_fixation)
 
         fixations_history = HistoryTreeMap.new()
-        fixations_history.put(previous_fixation._performanceTime, fixations)
+        fixations_history.put(previous_fixation._performanceTime.to_java(:int), fixations)
 
         perceiver_fixations_field.set_value(chrest_perceiver_field.value(model), fixations_history)
 

@@ -7,7 +7,7 @@ import java.io.IOException;
 import java.io.Writer;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -122,13 +122,13 @@ public class Node extends Observable {
   
   //The variables listed below do not stay consistent throughout the Node's
   //life-cycle.
-  private HistoryTreeMap _childHistory = new HistoryTreeMap();
-  private HistoryTreeMap _productionHistory = new HistoryTreeMap();
-  private HistoryTreeMap _associatedNodeHistory = new HistoryTreeMap();
-  private HistoryTreeMap _namedByHistory = new HistoryTreeMap();
-  private HistoryTreeMap _semanticLinksHistory = new HistoryTreeMap();
-  private HistoryTreeMap _imageHistory = new HistoryTreeMap();
-  private HistoryTreeMap _templateHistory = new HistoryTreeMap();
+  private HistoryTreeMap<Integer, List<Link>> _childHistory = new HistoryTreeMap();
+  private HistoryTreeMap<Integer, LinkedHashMap<Node, Double>> _productionHistory = new HistoryTreeMap();
+  private HistoryTreeMap<Integer, Node> _associatedNodeHistory = new HistoryTreeMap();
+  private HistoryTreeMap<Integer, Node> _namedByHistory = new HistoryTreeMap();
+  private HistoryTreeMap<Integer, List<Node>> _semanticLinksHistory = new HistoryTreeMap();
+  private HistoryTreeMap<Integer, ListPattern> _imageHistory = new HistoryTreeMap();
+  private HistoryTreeMap<Integer, Boolean> _templateHistory = new HistoryTreeMap();
   
   // Template slot history variables: only instantiated when needed since most 
   // Node instances will never become templates so they don't need to waste the 
@@ -192,11 +192,11 @@ public class Node extends Observable {
       this._contents = contents.clone();
       this._modality = image.getModality();
       
-      this._childHistory.put(creationTime, new ArrayList<Link>());
-      this._productionHistory.put(creationTime, new HashMap<Node, Double>());
+      this._childHistory.put(creationTime, new ArrayList());
+      this._productionHistory.put(creationTime, new LinkedHashMap());
       this._associatedNodeHistory.put(creationTime, null);
       this._namedByHistory.put(creationTime, null);
-      this._semanticLinksHistory.put(creationTime, new ArrayList<Node>());
+      this._semanticLinksHistory.put(creationTime, new ArrayList());
       this._imageHistory.put(creationTime, image);
       this._templateHistory.put(creationTime, false);
       
@@ -432,20 +432,12 @@ public class Node extends Observable {
         List<Link> testLinksToAdd = new ArrayList<>();
         testLinksToAdd.add(new Link (test, childToAdd, time, currentExperimentName));
         if(children != null) testLinksToAdd.addAll(children);
-        boolean updateChildHistorySuccessful = (boolean)this._childHistory.put(time, testLinksToAdd);
+        this._childHistory.put(time, testLinksToAdd);
 
-        if(updateChildHistorySuccessful){
-          this._model.printDebugStatement("- Addition of child to parent successful");
-          childAdded = true;
-          this.setChanged();
-          this.notifyObservers();
-        }
-        else{
-          this._model.printDebugStatement(
-            "- An attempt to re-write the child history of the parent Node has " +
-            "been detected, exiting"
-          );
-        }
+        this._model.printDebugStatement("- Addition of child to parent successful");
+        childAdded = true;
+        this.setChanged();
+        this.notifyObservers();
       }
       else{
         this._model.printDebugStatement(
@@ -551,20 +543,14 @@ public class Node extends Observable {
       !this.isRootNode() &&
       image.getModality() == this.getModality()
     ){
-      boolean updateImageHistoryResult = (boolean)this._imageHistory.put(time, image);
-      
-      if(updateImageHistoryResult){
-        this.setChanged();
-        this.notifyObservers();
-        
-        this._model.printDebugStatement(func + "Set image successful, returning true");
-        this._model.printDebugStatement(func + "RETURN");
-        
-        return true;
-      }
-      else{
-        this._model.printDebugStatement(func + "Set image unsuccessful, returning false");
-      }
+      this._imageHistory.put(time, image);
+      this.setChanged();
+      this.notifyObservers();
+
+      this._model.printDebugStatement(func + "Set image successful, returning true");
+      this._model.printDebugStatement(func + "RETURN");
+
+      return true;
     }
     else{
       this._model.printDebugStatement(func + "Checks failed, returning false");
@@ -647,9 +633,9 @@ public class Node extends Observable {
    * specified.  If this {@link #this} did not exist at the time specified, 
    * null is returned.
    */
-  public HashMap<Node, Double> getProductions(int time){
-    Entry entry = this._productionHistory.floorEntry(time);
-    return entry == null ? null : (HashMap<Node, Double>)entry.getValue();
+  public LinkedHashMap<Node, Double> getProductions(int time){
+    Entry<Integer, LinkedHashMap<Node, Double>> entry = this._productionHistory.floorEntry(time);
+    return entry == null ? null : entry.getValue();
   }
   
   /**
@@ -735,26 +721,20 @@ public class Node extends Observable {
       this._model.printDebugStatement("    + All OK");
       
       this._model.printDebugStatement("- Checking if production already exists for Node " + this.getReference());
-      HashMap<Node, Double> currentProductions = this.getProductions(time);
+      LinkedHashMap<Node, Double> currentProductions = this.getProductions(time);
       if(currentProductions != null && !currentProductions.containsKey(node)){
         this._model.printDebugStatement("  ~ Production does not already exist");
         
         this._model.printDebugStatement("- Attempting to add production");
-        HashMap<Node, Double> newProductions = new HashMap();
+        LinkedHashMap<Node, Double> newProductions = new LinkedHashMap();
         newProductions.put(node, 1.0);
         newProductions.putAll(currentProductions);
-        boolean addProductionSuccessful = (boolean)this._productionHistory.put(time, newProductions);
+        this._productionHistory.put(time, newProductions);
 
-        if(addProductionSuccessful){
-          this._model.printDebugStatement("  ~ Production added successfully");
-          this.setChanged();
-          this.notifyObservers();
-          result = ChrestStatus.LEARN_PRODUCTION_SUCCESSFUL;
-        }
-        else{
-          this._model.printDebugStatement("  ~ Production not added successfully");
-          result = ChrestStatus.LEARN_PRODUCTION_FAILED;
-        }
+        this._model.printDebugStatement("  ~ Production added successfully");
+        this.setChanged();
+        this.notifyObservers();
+        result = ChrestStatus.LEARN_PRODUCTION_SUCCESSFUL;
       }
       else{
         this._model.printDebugStatement("  ~ Production already exists, exiting");
@@ -827,7 +807,7 @@ public class Node extends Observable {
     this._model.printDebugStatement("- Time reinforcment should occur: " + time);
     
     boolean reinforceProductionSuccessful = false;
-    Entry<Integer, Object> productionsAtTime = this._productionHistory.floorEntry(time);
+    Entry<Integer, LinkedHashMap<Node, Double>> productionsAtTime = this._productionHistory.floorEntry(time);
     Theory reinforcementLearningTheory = this._model.getReinforcementLearningTheory();
     
     this._model.printDebugStatement("Checking if the following all evaluate to true:");
@@ -837,8 +817,8 @@ public class Node extends Observable {
       this._model.printDebugStatement("  ~ Visual Node has Visual modality: " + (this.getModality() == Modality.VISUAL));
       this._model.printDebugStatement("  ~ Action Node has Action modality: " + (node.getModality() == Modality.ACTION));
       this._model.printDebugStatement("  ~ Visual Node has productions at time reinforcement should occur: " + (productionsAtTime != null));
-      this._model.printDebugStatement("  ~ Visual Node is engaged in a production with the Action Node: " + (((HashMap)productionsAtTime.getValue()).containsKey(node)));
-      this._model.printDebugStatement("  ~ The reinforcement learning theory of the model associated with the Visual Node has been set" + (reinforcementLearningTheory != null));
+      this._model.printDebugStatement("  ~ Visual Node is engaged in a production with the Action Node: " + (((LinkedHashMap)productionsAtTime.getValue()).containsKey(node)));
+      this._model.printDebugStatement("  ~ The reinforcement learning theory of the model associated with the Visual Node has been set: " + (reinforcementLearningTheory != null));
     }
     
     if(
@@ -847,14 +827,14 @@ public class Node extends Observable {
       this.getModality() == Modality.VISUAL &&
       node.getModality() == Modality.ACTION &&
       productionsAtTime != null &&
-      ((HashMap)productionsAtTime.getValue()).containsKey(node) &&
+      productionsAtTime.getValue().containsKey(node) &&
       reinforcementLearningTheory != null
     ){
       this._model.printDebugStatement("- All checks evaluate to true, attempting to reinforce production");
-      HashMap<Node, Double> currentProductions = (HashMap)productionsAtTime.getValue();
+      LinkedHashMap<Node, Double> currentProductions = (LinkedHashMap)productionsAtTime.getValue();
       double reinforcedValue = currentProductions.get(node) + reinforcementLearningTheory.calculateReinforcementValue(variables);
       
-      HashMap<Node, Double> newProductions = new HashMap();
+      LinkedHashMap<Node, Double> newProductions = new LinkedHashMap();
       for(Entry<Node, Double> currentProduction : currentProductions.entrySet()){
         if(currentProduction.getKey().equals(node)){
           newProductions.put(node, reinforcedValue);
@@ -864,7 +844,8 @@ public class Node extends Observable {
         }
       }
       
-      reinforceProductionSuccessful = (boolean)this._productionHistory.put(time, newProductions);
+      this._productionHistory.put(time, newProductions);
+      reinforceProductionSuccessful = true;
     }
     
     if(reinforceProductionSuccessful){
@@ -873,7 +854,7 @@ public class Node extends Observable {
     }
     
     this._model.printDebugStatement("- Returning " + reinforceProductionSuccessful);
-    this._model.printDebugStatement("===== RETURN =====");
+    this._model.printDebugStatement("===== RETURN Node.reinforceProduction() =====");
     return reinforceProductionSuccessful;
   }
   
@@ -943,16 +924,13 @@ public class Node extends Observable {
       List<Node> semanticLinks = this.getSemanticLinks(time);
       if(semanticLinks != null && !semanticLinks.contains(node)){
         
-        List<Node> semanticLinksToAdd = new ArrayList();
+        ArrayList<Node> semanticLinksToAdd = new ArrayList();
         semanticLinksToAdd.add(node);
         semanticLinksToAdd.addAll(semanticLinks);
-        boolean updateSemanticLinksResult = (boolean)this._semanticLinksHistory.put(time, semanticLinksToAdd);
-
-        if(updateSemanticLinksResult){
-          this.setChanged();
-          this.notifyObservers();
-          return true;
-        }
+        this._semanticLinksHistory.put(time, semanticLinksToAdd);
+        this.setChanged();
+        this.notifyObservers();
+        return true;
       }
     }
     
@@ -1028,13 +1006,10 @@ public class Node extends Observable {
       !node.isRootNode() &&
       this.getAssociatedNode(time) != node
     ){
-      boolean updateAssociatedNodeResult = (boolean)this._associatedNodeHistory.put(time, node);
-      
-      if(updateAssociatedNodeResult){
-        setChanged ();
-        notifyObservers ();
-        return true;
-      }
+      this._associatedNodeHistory.put(time, node);
+      setChanged ();
+      notifyObservers ();
+      return true;
     }
     
     return false;
@@ -1052,8 +1027,8 @@ public class Node extends Observable {
    * this {@link #this} at the time specified.
    */
   public Node getNamedBy(int time){
-    Entry entry = this._namedByHistory.floorEntry(time);
-    return entry == null ? null : (Node)entry.getValue();
+    Entry<Integer, Node> mostRecentlyNamedBy = this._namedByHistory.floorEntry(time);
+    return mostRecentlyNamedBy == null ? null : mostRecentlyNamedBy.getValue();
   }
   
   /**
@@ -1078,13 +1053,10 @@ public class Node extends Observable {
       this.getModality() == Modality.VISUAL &&
       node.getModality() == Modality.VERBAL
     ){
-      boolean updateNamedByResult = (boolean)this._namedByHistory.put(time, node);
-      
-      if(updateNamedByResult){
-        setChanged ();
-        notifyObservers ();
-        return true;
-      }
+      this._namedByHistory.put(time, node);
+      setChanged ();
+      notifyObservers ();
+      return true;
     }
     
     return false;
@@ -1100,8 +1072,8 @@ public class Node extends Observable {
    * the time specified otherwise, {@link java.lang.Boolean#FALSE}.
    */
   public boolean isTemplate(int time){
-    Entry<Integer, Object> result = this._templateHistory.floorEntry(time);
-    return result == null ? false : (boolean)result.getValue();
+    Entry<Integer, Boolean> result = this._templateHistory.floorEntry(time);
+    return result == null ? false : result.getValue();
   }
   
   /** 
@@ -1178,8 +1150,8 @@ public class Node extends Observable {
 
       //Create a hashmap of occurrences of items and positions in the cumulative
       //image.
-      Map<String,Integer> itemCount = new HashMap<String, Integer> ();
-      Map<Integer,Integer> positionCount = new HashMap<Integer, Integer> ();
+      Map<String,Integer> itemCount = new LinkedHashMap<String, Integer> ();
+      Map<Integer,Integer> positionCount = new LinkedHashMap<Integer, Integer> ();
       for (ListPattern cumulativeImagePattern : cumulativeImage) {
         for (PrimitivePattern cumulativeImagePatternPrimitive : cumulativeImagePattern) {
           if (cumulativeImagePatternPrimitive instanceof ItemSquarePattern) {
@@ -1274,8 +1246,8 @@ public class Node extends Observable {
 
         //Create a hashmap of occurrences of items and positions in the cumulative
         //image.
-        Map<String,Integer> itemCount = new HashMap<String, Integer> ();
-        Map<Integer,Integer> positionCount = new HashMap<Integer, Integer> ();
+        Map<String,Integer> itemCount = new LinkedHashMap<String, Integer> ();
+        Map<Integer,Integer> positionCount = new LinkedHashMap<Integer, Integer> ();
         for (ListPattern cumulativeImagePattern : cumulativeImage) {
           for (PrimitivePattern cumulativeImagePatternPrimitive : cumulativeImagePattern) {
             if (cumulativeImagePatternPrimitive instanceof ItemSquarePattern) {
@@ -1465,11 +1437,9 @@ public class Node extends Observable {
    * {@link java.lang.Boolean#FALSE} otherwise.
    */
   boolean clearFilledSlots(int time){
-    if(
-      this.isTemplate(time) &&
-      (boolean)this._filledItemSlotsHistory.put(time, new ArrayList()) &&
-      (boolean)this._filledPositionSlotsHistory.put(time, new ArrayList())
-    ){
+    if(this.isTemplate(time)){
+      this._filledItemSlotsHistory.put(time, new ArrayList());
+      this._filledPositionSlotsHistory.put(time, new ArrayList());
       return true;
     }
     

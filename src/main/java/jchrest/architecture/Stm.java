@@ -39,8 +39,8 @@ import jchrest.lib.Modality;
 public class Stm implements Iterable<Node> {
   private final int _creationTime;
   private final Modality _modality;
-  private final HistoryTreeMap _capacityHistory = new HistoryTreeMap();
-  private final HistoryTreeMap _itemHistory = new HistoryTreeMap();
+  private final HistoryTreeMap<Integer, Integer> _capacityHistory = new HistoryTreeMap();
+  private final HistoryTreeMap<Integer, List<Node>> _itemHistory = new HistoryTreeMap();
 
   /**
    * Initialises this {@link #this} with the capacity stipulated and no contents
@@ -153,7 +153,8 @@ public class Stm implements Iterable<Node> {
       }
 
       //Update the item history of this STM
-      return (boolean)this._itemHistory.put(time, newStmContents);
+      this._itemHistory.put(time, newStmContents);
+      return true;
     }
     
     return false;
@@ -205,7 +206,8 @@ public class Stm implements Iterable<Node> {
         }
         newStmContents.add(0, replacement);
         
-        return (boolean)this._itemHistory.put(time, newStmContents);
+        this._itemHistory.put(time, newStmContents);
+        return true;
       }
     }
     
@@ -257,7 +259,8 @@ public class Stm implements Iterable<Node> {
    */
   public boolean clear (int time) {
     if(this._creationTime <= time){
-      return (boolean)this._itemHistory.put(time, new ArrayList());
+      this._itemHistory.put(time, new ArrayList());
+      return true;
     }
     return false;
   }
@@ -273,7 +276,7 @@ public class Stm implements Iterable<Node> {
    * created.
    */
   public Integer getCapacity(int time) {
-    return (time < this._creationTime) ? null : (Integer)this._capacityHistory.floorEntry(time).getValue();
+    return (time < this._creationTime) ? null : this._capacityHistory.floorEntry(time).getValue();
   }
   
   /**
@@ -282,8 +285,8 @@ public class Stm implements Iterable<Node> {
    * #this} did not exist at the time specified, null is returned.
    */
   public List<Node> getContents(int time){
-    Entry floorEntry = this._itemHistory.floorEntry(time);
-    return floorEntry == null ? null : (List<Node>)floorEntry.getValue();
+    Entry<Integer, List<Node>> floorEntry = this._itemHistory.floorEntry(time);
+    return floorEntry == null ? null : floorEntry.getValue();
   }
   
   /**

@@ -378,9 +378,9 @@ unit_test "create_clone" do
     #######################################
     
     vsfo_rec_hist = vsfo_rec_hist_field.value(original)
-    vsfo_rec_hist.put(200, true)
-    vsfo_rec_hist.put(300, false)
-    vsfo_rec_hist.put(400, true)
+    vsfo_rec_hist.put(200.to_java(:int), true)
+    vsfo_rec_hist.put(300.to_java(:int), false)
+    vsfo_rec_hist.put(400.to_java(:int), true)
   
     #################
     ##### TESTS #####
@@ -498,9 +498,9 @@ unit_test "is_recognised" do
   #######################################
 
   vsfo_rec_hist = vsfo_rec_hist_field.value(vsfo)
-  vsfo_rec_hist.put(200, true)
-  vsfo_rec_hist.put(300, false)
-  vsfo_rec_hist.put(400, true)
+  vsfo_rec_hist.put(200.to_java(:int), true)
+  vsfo_rec_hist.put(300.to_java(:int), false)
+  vsfo_rec_hist.put(400.to_java(:int), true)
   
   #################
   ##### TESTS #####
