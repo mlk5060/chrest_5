@@ -248,7 +248,7 @@ unit_test "make" do
       time += 100
       node_1_node_2_child_history = ArrayList.new()
       node_1_node_2_child_history.add(Link.new(node_2_contents, node_2, time, ""))
-      node_1._childHistory.put(time, node_1_node_2_child_history)
+      node_1._childHistory.put(time.to_java(:int), node_1_node_2_child_history)
 
       # Add node 3 as a child of node 1, this will now be the first child of 
       # node 1.  However, don't do this in scenario 9 since this scenario checks
@@ -262,7 +262,7 @@ unit_test "make" do
         node_1_node_3_child_history = ArrayList.new()
         node_1_node_3_child_history.add(Link.new(node_3_contents, node_3, time, ""))
         node_1_node_3_child_history.addAll(node_1_node_2_child_history)
-        node_1._childHistory.put(time, node_1_node_3_child_history)
+        node_1._childHistory.put(time.to_java(:int), node_1_node_3_child_history)
       end
 
       ############################
@@ -275,7 +275,7 @@ unit_test "make" do
       stm_items = ArrayList.new()
       stm_items.add(node_1)
       current_stm_items = stm_item_history_field.value(model.getStm(Modality::VISUAL))
-      current_stm_items.put(time_when_hypothesis_added_to_visual_stm, stm_items)
+      current_stm_items.put(time_when_hypothesis_added_to_visual_stm.to_java(:int), stm_items)
       
       ################################
       ##### SETUP PRIOR FIXATION #####
@@ -296,7 +296,7 @@ unit_test "make" do
         current_fixations = perceiver_fixations.value(model.getPerceiver())
         fixations = ArrayList.new()
         fixations.add(prev_fixation)
-        current_fixations.put(prev_fixation._performanceTime, fixations)
+        current_fixations.put(prev_fixation._performanceTime.to_java(:int), fixations)
       end
 
       ###########################

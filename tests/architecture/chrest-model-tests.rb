@@ -28,9 +28,6 @@ require_relative "visual-spatial-field-tests.rb"
 # Scenario 5: new information is not empty and is known. After being recognised,
 #             the new information does not match the contents of the recognised 
 #             Node.
-# Scenario 6: discrimination fails since the new test to add to the node to 
-#             discriminate from already exists as a test on the node to #
-#             discriminate.
 # 
 # Method Parameters
 # =================
@@ -55,8 +52,7 @@ require_relative "visual-spatial-field-tests.rb"
 # for each scenario repeat:
 # 
 # - The result of the method invocation.
-#   ~ For scenarios 1-5, the method should return a DISCRIMINATION_SUCCESSFUL 
-#     status, the DISCRIMINATION_FAILED status should be returned in scenario 6.
+#   ~ Should always return a DISCRIMINATION_SUCCESSFUL status.
 #     
 # - The model's cognition clock value.
 #   ~ For scenarios 1-5, this should equal the time the method is invoked plus
@@ -177,18 +173,6 @@ require_relative "visual-spatial-field-tests.rb"
 # |--{<[$]>}--(4: <[$]>)
 # |
 # |--{<[H 0 2>}--(5: <[H 0 2 $]>)
-# 
-# ~~~~~~~~~~
-# Scenario 6
-# ~~~~~~~~~~
-# 
-# BEFORE/AFTER METHOD INVOCATION
-# o
-# |--{<[T 0 1]>}--(3: <[T 0 1]>)
-# |               |
-# |               |--{<[H 0 2>}--(5: <[T 0 1][H 0 2]>)
-# |
-# |--{<[H 0 2]>}--(4: <[H 0 2]>)
 #
 process_test "discriminate" do
   discriminate_method = Chrest.java_class.declared_method(:discriminate, Node, ListPattern, Java::int)
@@ -222,7 +206,7 @@ process_test "discriminate" do
   link_test_field = Link.java_class.declared_field("_test")
   link_test_field.accessible = true
   
-  for scenario in 1..6
+  for scenario in 1..5
     for pattern_type in PrimitivePattern.subclasses
       for modality in Modality.values()
         10.times do
@@ -313,26 +297,6 @@ process_test "discriminate" do
           
           if scenario == 5 then input_list_pattern._list.add(primitive_3) end
           
-          # In scenario 6, the new information shouldn't be recognised so should
-          # be learned as a primitive however, this should fail since it already 
-          # exists as a test from the root modality.  Create this situation now.
-          if scenario == 6 
-            link_test = ListPattern.new(modality)
-            link_test._list.add(primitive_2)
-            node = Node.new(model, link_test, ListPattern.new(modality), time_function_invoked)
-            link = Link.new(link_test, node, time_function_invoked, "")
-            ltm_modality_root_node_child_links.add(link)
-            
-            node_contents = ListPattern.new(modality)
-            node_contents._list.add(primitive_1)
-            node_contents._list.add(primitive_2)
-            node = Node.new(model, node_contents, ListPattern.new(modality), time_function_invoked)
-            link = Link.new(link_test, node, time_function_invoked, "")
-            node_to_discriminate_from_child_history = ArrayList.new()
-            node_to_discriminate_from_child_history.add(link)
-            node_to_discriminate_from._childHistory.put(time_function_invoked, node_to_discriminate_from_child_history)
-          end
-          
           ######################################################
           ##### CREATE ListPattern FINISHED DELIMITER NODE #####
           ######################################################
@@ -381,7 +345,7 @@ process_test "discriminate" do
           ##### "LEARN" NODES #####
           #########################
           
-          ltm_modality_root_node._childHistory.put(time_function_invoked, ltm_modality_root_node_child_links)
+          ltm_modality_root_node._childHistory.put(time_function_invoked.to_java(:int), ltm_modality_root_node_child_links)
           
           #########################
           ##### INVOKE METHOD #####
@@ -400,20 +364,14 @@ process_test "discriminate" do
           
           # Check overall result
           assert_equal(
-            (scenario == 6 ?
-              ChrestStatus::DISCRIMINATION_FAILED :
-              ChrestStatus::DISCRIMINATION_SUCCESSFUL
-            ).to_s,
+            ChrestStatus::DISCRIMINATION_SUCCESSFUL.to_s,
             result.to_s,
             "occurred in scenario " + scenario.to_s
           )
           
           # Check cognition clock
           assert_equal(
-            (scenario != 6 ? 
-              time_function_invoked + model._discriminationTime :
-              -1
-            ),
+            time_function_invoked + model._discriminationTime,
             model._cognitionClock,
             "occurred when checking the cognition clock in scenario " + scenario.to_s
           )
@@ -471,15 +429,12 @@ process_test "discriminate" do
                 expected_child_link_tests.push(primitive_1)
                 expected_child_link_tests.push(end_primitive)
                 expected_child_link_tests.push(primitive_2)
-              when 6
-                expected_child_link_tests.push(primitive_1)
-                expected_child_link_tests.push(primitive_2)
               end
             else
                
               if node_ref == 3 
                 if scenario == 1 then expected_child_link_tests.push(end_primitive) end
-                if [4,5,6].include?(scenario) then expected_child_link_tests.push(primitive_2) end
+                if [4,5].include?(scenario) then expected_child_link_tests.push(primitive_2) end
               end
             end
             
@@ -529,9 +484,6 @@ process_test "discriminate" do
                 elsif scenario == 5
                   expected_contents._list.add(primitive_2)
                   expected_contents._finished = true
-                elsif scenario == 6
-                  expected_contents._list.add(primitive_1)
-                  expected_contents._list.add(primitive_2)
                 end
                 
               when 6
@@ -589,9 +541,6 @@ end
 #             unrecognised
 # Scenario 3: New information in ListPattern that triggers familiarisation 
 #             recognised
-# Scenario 4: Familiarisation fails when extending image since a history rewrite
-#             is attempted on the Node to familiarise's image history when an
-#             attempt is made to extend the image during familiarisation.
 # 
 # Method Parameters
 # =================
@@ -606,7 +555,7 @@ end
 # "triggers" familiarisation and the first PrimtivePattern in the remainder is
 # collected):
 #   - Scenario 1: <[]> (no new information)
-#   - Scenario 2, 3, 4: <[H 0 2]>
+#   - Scenario 2, 3: <[H 0 2]>
 #   
 # Expected Output
 # ===============
@@ -618,7 +567,6 @@ end
 #   ~ Scenario 1: FAMILIARISATION_FAILED
 #   ~ Scenario 2: DISCRIMINATION_SUCCESSFUL
 #   ~ Scenario 3: FAMILIARISATION_SUCCESSFUL
-#   ~ Scenario 4: FAMILIARISATION_FAILED
 #     
 # - The model's cognition clock value.
 #   ~ Scenario 1: should be set to its default value since familiarisation 
@@ -629,8 +577,6 @@ end
 #   ~ Scenario 3: should equal the time the method is invoked plus the time 
 #                 taken by the model to familiarise since familiarisation should
 #                 occur
-#   ~ Scenario 4: should be set to its default value since familiarisation 
-#                 should not occur
 #     
 # - The number of children for each Node in LTM.
 # - The test on each Node's child link in LTM.
@@ -696,16 +642,6 @@ end
 # |
 # |--{<[H 0 2]>}--(4: <[H 0 2]>)
 #
-# ~~~~~~~~~~
-# Scenario 4
-# ~~~~~~~~~~
-#
-# BEFORE/AFTER METHOD INVOCATION
-# o
-# |--{<[T 0 1]>}--(3: <[T 0 1]>)
-# |
-# |--{<[H 0 2]>}--(4: <[H 0 2]>)
-#
 process_test "familiarise" do
   chrest_familiarisation_method = Chrest.java_class.declared_method(:familiarise, Node, ListPattern, Java::int)
   chrest_familiarisation_method.accessible = true
@@ -738,7 +674,7 @@ process_test "familiarise" do
   link_test_field = Link.java_class.declared_field("_test")
   link_test_field.accessible = true
   
-  for scenario in 1..4
+  for scenario in 1..3
     for pattern_type in PrimitivePattern.subclasses
       for modality in Modality.values()
         10.times do
@@ -803,20 +739,6 @@ process_test "familiarise" do
             time_method_invoked
           )
           
-          # In scenario 4, set the image history so that the image is changed
-          # at a time after the method is invoked so that, when an attempt is 
-          # made to extend the node to familiarise's image, a history rewrite 
-          # occurs causing the extension and thus, familiarisation, to fail.
-          if scenario == 4
-            bogus_image_history = ListPattern.new(modality)
-            bogus_image_history.add(primitive_1)
-            bogus_image_history.add(primitive_2)
-            node_to_familiarise._imageHistory.put(
-              time_method_invoked + model._familiarisationTime * 100, 
-              bogus_image_history
-            )
-          end
-          
           # Create Link to Node
           link_1_test = ListPattern.new(modality)
           link_1_test._list.add(primitive_1)
@@ -841,7 +763,7 @@ process_test "familiarise" do
           ##### "LEARN" AUXILLARY NODE #####
           ##################################
           
-          if [3,4].include?(scenario)
+          if scenario == 3
             node_to_learn_contents = ListPattern.new(modality)
             node_to_learn_contents._list.add(primitive_2)
             node_to_learn_image = ListPattern.new(modality)
@@ -861,7 +783,7 @@ process_test "familiarise" do
           ##### "LEARN" NODES #####
           #########################
           
-          ltm_modality_root_node._childHistory.put(time_method_invoked, ltm_modality_root_node_child_links)
+          ltm_modality_root_node._childHistory.put(time_method_invoked.to_java(:int), ltm_modality_root_node_child_links)
           
           #########################
           ##### INVOKE METHOD #####
@@ -875,7 +797,7 @@ process_test "familiarise" do
           
           # Check method return value
           expected_result = (
-            [1,4].include?(scenario) ? ChrestStatus::FAMILIARISATION_FAILED :
+            scenario == 1 ? ChrestStatus::FAMILIARISATION_FAILED :
             scenario == 2 ? ChrestStatus::DISCRIMINATION_SUCCESSFUL :
             ChrestStatus::FAMILIARISATION_SUCCESSFUL
           )
@@ -936,9 +858,6 @@ process_test "familiarise" do
               when 3
                 expected_child_link_tests.push(primitive_1)
                 expected_child_link_tests.push(primitive_2)
-              when 4
-                expected_child_link_tests.push(primitive_1)
-                expected_child_link_tests.push(primitive_2)
               end
             end
             
@@ -967,11 +886,9 @@ process_test "familiarise" do
               when 3
                 expected_image._list.add(primitive_1)
                 
-                # In scenarios 3 and 4 the last image entry will be a 
-                # ListPattern containing primitives 1 and 2.  In scenario 3, 
-                # this is because familiarisation occurs, in scenario 4 its 
-                # because the last image entry is the bogus image.
-                if [3,4].include?(scenario) then expected_image._list.add(primitive_2) end
+                # In scenario 3, the last image entry will be a ListPattern 
+                # containing primitives 1 and 2 since familiarisation occurs.
+                if scenario == 3 then expected_image._list.add(primitive_2) end
               when 4
                 if scenario != 2 then expected_image._list.add(primitive_2) end
               end
@@ -1096,7 +1013,7 @@ canonical_result_test "recognise_and_learn" do
             link = Link.new(input, node, time_function_invoked, "")
             ltm_modality_root_node_history = ArrayList.new()
             ltm_modality_root_node_history.add(link)
-            ltm_modality_root_node._childHistory.put(time_function_invoked, ltm_modality_root_node_history)
+            ltm_modality_root_node._childHistory.put(time_function_invoked.to_java(:int), ltm_modality_root_node_history)
           end
 
           # In scenario 3 the model should refuse to learn so set the model's
@@ -1290,13 +1207,13 @@ process_test "associateNodes" do
     if [4,7,11,15].include?(scenario)
       if scenario == 4
         association_history = HistoryTreeMap.new()
-        association_history.put(time, node_2)
+        association_history.put(time.to_java(:int), node_2)
         node_1._namedByHistory = association_history
       else
         association_with_node_2 = ArrayList.new()
         association_with_node_2.add(node_2)
         association_history = HistoryTreeMap.new()
-        association_history.put(time, association_with_node_2)
+        association_history.put(time.to_java(:int), association_with_node_2)
         node_1._semanticLinksHistory = association_history
       end
     end
@@ -1305,7 +1222,7 @@ process_test "associateNodes" do
       association_with_node_1 = ArrayList.new()
       association_with_node_1.add(node_1)
       association_history = HistoryTreeMap.new()
-      association_history.put(time, association_with_node_1)
+      association_history.put(time.to_java(:int), association_with_node_1)
       node_2._semanticLinksHistory = association_history
     end
     
@@ -1323,7 +1240,7 @@ process_test "associateNodes" do
     ##### INVOKE FUNCTION #####
     ###########################
     
-    result = associate_nodes_method.invoke(model, node_1, node_2, time)
+    result = associate_nodes_method.invoke(model, node_1, node_2, time.to_java(:int))
     
     #################################
     ##### SET EXPECTED OUTCOMES #####
@@ -1510,7 +1427,7 @@ process_test "search_stm" do
               stm_contents.add(stm_node_4)
             end
 
-            stm_item_history_field.value(stm).put(time_method_invoked, stm_contents)
+            stm_item_history_field.value(stm).put(time_method_invoked.to_java(:int), stm_contents)
           end
 
           #########################
@@ -1765,7 +1682,7 @@ process_test "learn_production" do
           visual_stm_contents.add(visual_node_2)
 
           visual_stm = HistoryTreeMap.new()
-          visual_stm.put(time_method_invoked, visual_stm_contents)
+          visual_stm.put(time_method_invoked.to_java(:int), visual_stm_contents)
 
           stm_item_history_field.set_value(model._visualStm, visual_stm)
         end
@@ -1777,7 +1694,7 @@ process_test "learn_production" do
           action_stm_contents.add(action_node_2)
 
           action_stm = HistoryTreeMap.new()
-          action_stm.put(time_method_invoked, action_stm_contents)
+          action_stm.put(time_method_invoked.to_java(:int), action_stm_contents)
 
           stm_item_history_field.set_value(model._actionStm, action_stm)
         end
@@ -1834,13 +1751,13 @@ process_test "learn_production" do
         )
         
         expected_visual_node_1_productions = HistoryTreeMap.new()
-        expected_visual_node_1_productions.put(chrest_model_creation_time, HashMap.new())
+        expected_visual_node_1_productions.put(chrest_model_creation_time.to_java(:int), HashMap.new())
         expected_visual_node_2_productions = HistoryTreeMap.new()
-        expected_visual_node_2_productions.put(chrest_model_creation_time, HashMap.new())
+        expected_visual_node_2_productions.put(chrest_model_creation_time.to_java(:int), HashMap.new())
         expected_action_node_1_productions = HistoryTreeMap.new()
-        expected_action_node_1_productions.put(chrest_model_creation_time, HashMap.new())
+        expected_action_node_1_productions.put(chrest_model_creation_time.to_java(:int), HashMap.new())
         expected_action_node_2_productions = HistoryTreeMap.new()
-        expected_action_node_2_productions.put(chrest_model_creation_time, HashMap.new())
+        expected_action_node_2_productions.put(chrest_model_creation_time.to_java(:int), HashMap.new())
         
         # Visual node 1 and both action nodes should never be the source of a
         # production should should not have their production history altered.
@@ -1849,7 +1766,7 @@ process_test "learn_production" do
         if scenario >= 8
           visual_node_2_productions = HashMap.new()
           visual_node_2_productions.put(action_node_2, 1.0)
-          expected_visual_node_2_productions.put(expected_cognition_clock, visual_node_2_productions)
+          expected_visual_node_2_productions.put(expected_cognition_clock.to_java(:int), visual_node_2_productions)
         end
         
         expected_node_production_histories = [
@@ -2230,8 +2147,7 @@ unit_test "generate_action_using_visual_pattern_recognition" do
   
   Chrest.class_eval{
     field_accessor :_visualStm, 
-    :_timeToRetrieveItemFromStm, 
-    :_timeToCheckNodeForProductions, 
+    :_timeToRetrieveItemFromStm,
     :_attentionClock
   }
   
@@ -2304,26 +2220,24 @@ unit_test "generate_action_using_visual_pattern_recognition" do
       # Set-up productions, in scenario 2, nodes will have no productions
       if [3,4].include?(scenario)
         
-        visual_node_1_productions = HashMap.new()
+        visual_node_1_productions = LinkedHashMap.new()
         visual_node_1_productions.put(action_node_1, (scenario == 3 ? 0.0 : 1.0))
         visual_node_1_productions.put(action_node_2, 1.0)
         visual_node_1_production_history = HistoryTreeMap.new()
-        visual_node_1_production_history.put(chrest_model_creation_time, visual_node_1_productions)
+        visual_node_1_production_history.put(chrest_model_creation_time.to_java(:int), visual_node_1_productions)
         visual_node_1._productionHistory = visual_node_1_production_history
 
         if scenario == 4
-          visual_node_2_productions = HashMap.new()
+          visual_node_2_productions = LinkedHashMap.new()
           visual_node_2_productions.put(action_node_3, 1.0)
           visual_node_2_productions.put(action_node_4, 1.0)
           visual_node_2_production_history = HistoryTreeMap.new()
-          visual_node_2_production_history.put(chrest_model_creation_time, visual_node_2_productions)
+          visual_node_2_production_history.put(chrest_model_creation_time.to_java(:int), visual_node_2_productions)
           visual_node_2._productionHistory = visual_node_2_production_history
         end
       end
       
-      
-      
-      stm_item_history_field.value(model._visualStm).put(chrest_model_creation_time, visual_stm_history)
+      stm_item_history_field.value(model._visualStm).put(chrest_model_creation_time.to_java(:int), visual_stm_history)
       
       #########################
       ##### INVOKE METHOD #####
@@ -2354,8 +2268,8 @@ unit_test "generate_action_using_visual_pattern_recognition" do
       expected_attention_clock = (
         scenario == 1 ? chrest_model_creation_time - 1 :
         scenario == 2 ? time_method_invoked + (model._timeToRetrieveItemFromStm * 2) :
-        scenario == 3 ? time_method_invoked + (model._timeToRetrieveItemFromStm * 2) + model._timeToCheckNodeForProductions :
-        time_method_invoked + (model._timeToRetrieveItemFromStm * 2) + (model._timeToCheckNodeForProductions * 2)
+        scenario == 3 ? time_method_invoked + (model._timeToRetrieveItemFromStm * 2) :
+        time_method_invoked + (model._timeToRetrieveItemFromStm * 2)
       )
       
       #################
@@ -2436,24 +2350,26 @@ unit_test "get_stm_item" do
       
       ##### POPULATE STM #####
       
-      node_1 = Node.new(model, ListPattern.new(modality), ListPattern.new(modality), chrest_model_creation_time)
-      node_2 = Node.new(model, ListPattern.new(modality), ListPattern.new(modality), chrest_model_creation_time)
-      
-      stm = (
-        modality == Modality::ACTION ? model._actionStm :
-        modality == Modality::VERBAL ? model._verbalStm :
-        modality == Modality::VISUAL ? model._visualStm :
-        raise("Modality " + modality.name() + " not supported")
-      )
+      if scenario >= 3
+        node_1 = Node.new(model, ListPattern.new(modality), ListPattern.new(modality), chrest_model_creation_time)
+        node_2 = Node.new(model, ListPattern.new(modality), ListPattern.new(modality), chrest_model_creation_time)
 
-      # In scenario 3, STM should be empty.  In scenario 4, add Node 1 only so 
-      # index is too big.  In scenario 5, add Nodes 1 and 2 so that index is OK 
-      # and greater than 1
-      stm_items = ArrayList.new()
-      if scenario == 4 then stm_items.add(node_1) end
-      if scenario == 5 then stm_items.add(node_1); stm_items.add(node_2); end
-      
-      stm_item_history_field.value(stm).put(time_method_invoked, stm_items)
+        stm = (
+          modality == Modality::ACTION ? model._actionStm :
+          modality == Modality::VERBAL ? model._verbalStm :
+          modality == Modality::VISUAL ? model._visualStm :
+          raise("Modality " + modality.name() + " not supported")
+        )
+
+        # In scenario 3, STM should be empty.  In scenario 4, add Node 1 only so 
+        # index is too big.  In scenario 5, add Nodes 1 and 2 so that index is OK 
+        # and greater than 1
+        stm_items = ArrayList.new()
+        if scenario == 4 then stm_items.add(node_1) end
+        if scenario == 5 then stm_items.add(node_1); stm_items.add(node_2); end
+
+        stm_item_history_field.value(stm).put(time_method_invoked.to_java(:int), stm_items)
+      end
       
       #########################
       ##### INVOKE METHOD #####
@@ -2530,36 +2446,39 @@ unit_test "get_fixation_performed" do
 
     ##### POPULATE PERCEIVER'S FIXATIONS #####
 
-    # Fixations 1 and 3 will be performed, fixation 2 will not, this will allow
-    # the test to verify that Fixations that aren't performed are not considered
-    fixation_1 = CentralFixation.new(chrest_model_creation_time)
-    fixation_performed_field.set_value(fixation_1, true)
-    fixation_performance_time_field.set_value(fixation_1, chrest_model_creation_time)
-    
-    fixation_2 = CentralFixation.new(chrest_model_creation_time)
-    fixation_performed_field.set_value(fixation_2, false)
-    fixation_performance_time_field.set_value(fixation_2, chrest_model_creation_time)
-    
-    fixation_3 = CentralFixation.new(chrest_model_creation_time)
-    fixation_performed_field.set_value(fixation_3, true)
-    fixation_performance_time_field.set_value(fixation_3, chrest_model_creation_time)
+    if scenario >= 3
+      # Fixations 1 and 3 will be performed, fixation 2 will not, this will 
+      # allow the test to verify that Fixations that aren't performed are not 
+      # considered
+      fixation_1 = CentralFixation.new(chrest_model_creation_time)
+      fixation_performed_field.set_value(fixation_1, true)
+      fixation_performance_time_field.set_value(fixation_1, chrest_model_creation_time)
 
-    # In scenario 3, the Perceiver's Fixations should be empty.  In scenario 4, 
-    # add Fixations 1 and 2 only so index is too big (should only be 1 Fixation
-    # returned since 2 is not performed).  In scenario 5, add all Fixations so 
-    # that index is OK and greater than 1
-    perceiver_fixations = ArrayList.new()
-    if scenario == 4 
-      perceiver_fixations.add(fixation_1)
-      perceiver_fixations.add(fixation_2)
-    elsif scenario == 5 
-      perceiver_fixations.add(fixation_1) 
-      perceiver_fixations.add(fixation_2)
-      perceiver_fixations.add(fixation_3)
+      fixation_2 = CentralFixation.new(chrest_model_creation_time)
+      fixation_performed_field.set_value(fixation_2, false)
+      fixation_performance_time_field.set_value(fixation_2, chrest_model_creation_time)
+
+      fixation_3 = CentralFixation.new(chrest_model_creation_time)
+      fixation_performed_field.set_value(fixation_3, true)
+      fixation_performance_time_field.set_value(fixation_3, chrest_model_creation_time)
+
+      # In scenario 3, the Perceiver's Fixations should be empty.  In scenario 
+      # 4, add Fixations 1 and 2 only so index is too big (should only be 1 
+      # Fixation returned since 2 is not performed).  In scenario 5, add all 
+      # Fixations so that index is OK and greater than 1
+      perceiver_fixations = ArrayList.new()
+      if scenario == 4 
+        perceiver_fixations.add(fixation_1)
+        perceiver_fixations.add(fixation_2)
+      elsif scenario == 5 
+        perceiver_fixations.add(fixation_1) 
+        perceiver_fixations.add(fixation_2)
+        perceiver_fixations.add(fixation_3)
+      end
+
+      perceiver_fixation_history_field.value(chrest_perceiver_field.value(model)).put(time_method_invoked.to_java(:int), perceiver_fixations)
     end
-
-    perceiver_fixation_history_field.value(chrest_perceiver_field.value(model)).put(time_method_invoked, perceiver_fixations)
-
+      
     #########################
     ##### INVOKE METHOD #####
     #########################
@@ -2698,7 +2617,7 @@ unit_test "get_initial_fixation" do
       # Add list as value to map. Time last Fixation made should be before the
       # function is invoked.
       fixations_history = HistoryTreeMap.new()
-      fixations_history.put(time, fixations)
+      fixations_history.put(time.to_java(:int), fixations)
       
       # Set the map to be perceiver fixations
       perceiver_fixations_field.set_value(chrest_perceiver_field.value(model), fixations_history)
@@ -3254,7 +3173,7 @@ unit_test "perform_scheduled_fixations" do
       previous_fixations = ArrayList.new()
       previous_fixations.add(previous_fixation)
       fixations_attempted_history = HistoryTreeMap.new()
-      fixations_attempted_history.put(previous_fixation._performanceTime, previous_fixations)
+      fixations_attempted_history.put(previous_fixation._performanceTime.to_java(:int), previous_fixations)
       perceiver_fixations_field.set_value(chrest_perceiver_field.value(model), fixations_attempted_history)
       
       ############################
@@ -3735,11 +3654,11 @@ unit_test "tag_visual_spatial_field_objects_fixated_on_as_recognised" do
         # template to do this since the test has access to the relevant private
         # Node instance variables).
         node_1_filled_item_slots_history = HistoryTreeMap.new()
-        node_1_filled_item_slots_history.put(time_node_1_created, node_1_filled_item_slots)
+        node_1_filled_item_slots_history.put(time_node_1_created.to_java(:int), node_1_filled_item_slots)
         node_1._filledItemSlotsHistory = node_1_filled_item_slots_history
         
         node_1_filled_position_slots_history = HistoryTreeMap.new()
-        node_1_filled_position_slots_history.put(time_node_1_created, node_1_filled_position_slots)
+        node_1_filled_position_slots_history.put(time_node_1_created.to_java(:int), node_1_filled_position_slots)
         node_1._filledPositionSlotsHistory = node_1_filled_position_slots_history
         
         ##### Construct node_2
@@ -3795,11 +3714,11 @@ unit_test "tag_visual_spatial_field_objects_fixated_on_as_recognised" do
         # template to do this since the test has access to the relevant private
         # Node instance variables).
         node_2_filled_item_slots_history = HistoryTreeMap.new()
-        node_2_filled_item_slots_history.put(time_node_2_created, node_2_filled_item_slots)
+        node_2_filled_item_slots_history.put(time_node_2_created.to_java(:int), node_2_filled_item_slots)
         node_2._filledItemSlotsHistory = node_2_filled_item_slots_history
         
         node_2_filled_position_slots_history = HistoryTreeMap.new()
-        node_2_filled_position_slots_history.put(time_node_2_created, node_2_filled_position_slots)
+        node_2_filled_position_slots_history.put(time_node_2_created.to_java(:int), node_2_filled_position_slots)
         node_2._filledPositionSlotsHistory = node_2_filled_position_slots_history
         
         ##############################################
@@ -3921,7 +3840,7 @@ unit_test "tag_visual_spatial_field_objects_fixated_on_as_recognised" do
           # Add visual STM entry after Fixation performed, i.e. at time 
           # attention clock is set to.  At the time the Fixation is performed,
           # visual STM will be empty.
-          stm_item_history_field.value(model._visualStm).put(model._attentionClock, visual_stm_nodes) 
+          stm_item_history_field.value(model._visualStm).put(model._attentionClock.to_java(:int), visual_stm_nodes) 
           
         elsif scenario == 5
           visual_stm_nodes = ArrayList.new()
@@ -3930,7 +3849,7 @@ unit_test "tag_visual_spatial_field_objects_fixated_on_as_recognised" do
           
           # Add visual STM entry at time Fixation is performed.  At the time of
           # the attention clock, visual STM won't have changed.
-          stm_item_history_field.value(model._visualStm).put(fixation._performanceTime, visual_stm_nodes) 
+          stm_item_history_field.value(model._visualStm).put(fixation._performanceTime.to_java(:int), visual_stm_nodes) 
           
         elsif scenario == 6
           visual_stm_nodes = ArrayList.new()
@@ -3938,7 +3857,7 @@ unit_test "tag_visual_spatial_field_objects_fixated_on_as_recognised" do
           visual_stm_nodes.add(node_2)
           
           # Add visual STM entry at time Fixation is performed
-          stm_item_history_field.value(model._visualStm).put(fixation._performanceTime, visual_stm_nodes) 
+          stm_item_history_field.value(model._visualStm).put(fixation._performanceTime.to_java(:int), visual_stm_nodes) 
           
           visual_stm_nodes = ArrayList.new()
           visual_stm_nodes.add(visual_ltm_root_node)
@@ -3947,7 +3866,7 @@ unit_test "tag_visual_spatial_field_objects_fixated_on_as_recognised" do
           
           # Add visual STM entry after Fixation performed, i.e. at time 
           # attention clock is set to
-          stm_item_history_field.value(model._visualStm).put(model._attentionClock, visual_stm_nodes)
+          stm_item_history_field.value(model._visualStm).put(model._attentionClock.to_java(:int), visual_stm_nodes)
         end
         
         #########################
@@ -4897,7 +4816,7 @@ canonical_result_test "make_fixations_in_domains" do
   
   # Need to set the fixation field of view for reasons described above.
   Perceiver.class_eval{
-    field_accessor :_fixationFieldOfView
+    field_accessor :_fixationFieldOfView, :_fixationToLearnFrom
   }
   
   # Need to be able to check if the Perceiver's Fixation data structure is 
@@ -5295,7 +5214,7 @@ canonical_result_test "make_fixations_in_domains" do
       depth_1_node_children.add(depth_2_link)
 
       time += 1
-      depth_1_node._childHistory.put(time, depth_1_node_children)
+      depth_1_node._childHistory.put(time.to_java(:int), depth_1_node_children)
       
       # Add identifier to Chrest._recognisedVisualSpatialFieldObjectIdentifiers
       model._recognisedVisualSpatialFieldObjectIdentifiers.add(identifier)
@@ -5304,7 +5223,7 @@ canonical_result_test "make_fixations_in_domains" do
       time += 1
       stm_items = ArrayList.new()
       stm_items.add(depth_1_node)
-      stm_item_history_field.value(model._visualStm).put(time, stm_items)
+      stm_item_history_field.value(model._visualStm).put(time.to_java(:int), stm_items)
 
       ##########################
       ##### MAKE FIXATIONS #####
@@ -5533,7 +5452,7 @@ canonical_result_test "make_fixations_in_domains" do
       ########################################
       ##### PERFORM ANOTHER FIXATION SET #####
       ########################################
-      
+      time += 1
       until !model.scheduleOrMakeNextFixation(scene_to_fixate_on, false, time)
         time += 1
       end
@@ -6319,7 +6238,7 @@ process_test "construct_visual_spatial_field" do
       new_fixations = ArrayList.new()
       new_fixations.addAll(current_fixations)
       new_fixations.add(fixation)
-      fixations_field.value(perceiver).put(fixation._performanceTime, new_fixations)
+      fixations_field.value(perceiver).put(fixation._performanceTime.to_java(:int), new_fixations)
 
       time = fixation._performanceTime
       fixation_number += 1
@@ -6385,7 +6304,7 @@ process_test "construct_visual_spatial_field" do
       new_stm_items = ArrayList.new()
       new_stm_items.add(node)
       new_stm_items.addAll(current_stm_items)
-      stm_item_history_field.value(model.getStm(Modality::VISUAL)).put(time += 10, new_stm_items)
+      stm_item_history_field.value(model.getStm(Modality::VISUAL)).put((time += 10).to_java(:int), new_stm_items)
     end
     
     ##############################################
@@ -7227,7 +7146,7 @@ process_test "move_visual_spatial_field_object" do
         # an entry just after the previous one stating that the 
         # VisualSpatialFieldObject is recognised.
         rec_history = recognised_history_field.value(vsf.get(1).get(2).get(1))
-        rec_history.put(putdown_time + 1, true)
+        rec_history.put((putdown_time + 1).to_java(:int), true)
 
         # Set expected recognised status and terminus of VisualSpatialFieldObject 
         # with identifier 0
@@ -7437,7 +7356,7 @@ process_test "move_visual_spatial_field_object" do
         # an entry just after the previous one stating that the 
         # VisualSpatialFieldObject is recognised.
         rec_history = recognised_history_field.value(vsf.get(2).get(0).get(1))
-        rec_history.put(putdown_time + 1, true)
+        rec_history.put((putdown_time + 1).to_java(:int), true)
 
         # Set expected recognised status and terminus of VisualSpatialFieldObject 
         # with identifier 0
@@ -7683,7 +7602,7 @@ process_test "move_visual_spatial_field_object" do
         # an entry just after the previous one stating that the 
         # VisualSpatialFieldObject is recognised.
         rec_history = recognised_history_field.value(vsf.get(2).get(2).get(1))
-        rec_history.put(putdown_time + 1, true)
+        rec_history.put((putdown_time + 1).to_java(:int), true)
       
         # Update recognised status and terminus of VisualSpatialFieldObject with 
         # identifier "1" on (2, 2)
@@ -7934,7 +7853,7 @@ process_test "move_visual_spatial_field_object" do
         # an entry just after the previous one stating that the 
         # VisualSpatialFieldObject is recognised.
         rec_history = recognised_history_field.value(vsf.get(1).get(3).get(1))
-        rec_history.put(putdown_time + 1, true)
+        rec_history.put((putdown_time + 1).to_java(:int), true)
 
         # Update recognised status and terminus of VisualSpatialFieldObject with 
         # identifier "1" on (1, 3)

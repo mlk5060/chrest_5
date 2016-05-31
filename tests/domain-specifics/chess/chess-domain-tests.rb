@@ -2227,7 +2227,7 @@ unit_test "get_non_initial_fixation_in_set" do
       # Add Fixation to CHREST model's "_fixationsScheduled" data structure.
       fixations_scheduled = ArrayList.new()
       fixations_scheduled.add(fixation)
-      model._fixationsScheduled.put(time, fixations_scheduled)
+      model._fixationsScheduled.put(time.to_java(:int), fixations_scheduled)
       
       # Set Fixation variables so it has been "performed"
       fixation._performed = true
@@ -2242,9 +2242,9 @@ unit_test "get_non_initial_fixation_in_set" do
       # Remove/add the Fixation from/to the CHREST model's/Perceiver's Fixation 
       # data structure
       fixations_scheduled = ArrayList.new()
-      model._fixationsScheduled.put(fixation._performanceTime, fixations_scheduled)
+      model._fixationsScheduled.put(fixation._performanceTime.to_java(:int), fixations_scheduled)
       fixations_attempted.add(fixation)
-      perceiver_fixations_field.value(model.getPerceiver()).put(fixation._performanceTime, fixations_attempted)
+      perceiver_fixations_field.value(model.getPerceiver()).put(fixation._performanceTime.to_java(:int), fixations_attempted)
       
       # Advance time
       time = fixation._performanceTime + 300
@@ -2321,7 +2321,7 @@ unit_test "get_non_initial_fixation_in_set" do
       # structure.
       fixations_scheduled = ArrayList.new()
       fixations_scheduled.add(fixation)
-      model._fixationsScheduled.put(time, fixations_scheduled)
+      model._fixationsScheduled.put(time.to_java(:int), fixations_scheduled)
       
       # Set Fixation variables that would be set if the Fixation were performed
       # "properly"
@@ -2331,9 +2331,9 @@ unit_test "get_non_initial_fixation_in_set" do
       # Remove/add the last, unperformed, HypothesisDiscriminationFixation 
       # instance from/to the CHREST model's/Perceiver's Fixation data structure
       fixations_scheduled = ArrayList.new()
-      model._fixationsScheduled.put(fixation._performanceTime, fixations_scheduled)
+      model._fixationsScheduled.put(fixation._performanceTime.to_java(:int), fixations_scheduled)
       fixations_attempted.add(fixation)
-      perceiver_fixations_field.value(model.getPerceiver()).put(fixation._performanceTime, fixations_attempted)
+      perceiver_fixations_field.value(model.getPerceiver()).put(fixation._performanceTime.to_java(:int), fixations_attempted)
       
       ##########################################################################
       ##### GET FIXATION BEFORE HypothesisDiscriminationFixation PERFORMED #####
@@ -2413,7 +2413,7 @@ unit_test "get_non_initial_fixation_in_set" do
       # Add the Fixation to the CHREST model's Fixation to make data structure.
       fixations_scheduled = ArrayList.new()
       fixations_scheduled.add(fixation)
-      model._fixationsScheduled.put(time, fixations_scheduled)
+      model._fixationsScheduled.put(time.to_java(:int), fixations_scheduled)
 
       # "Perform" the fixation.  Note that the coordinates fixated on are 
       # randomly generated, this is because some Fixations returned when a 
@@ -2434,9 +2434,9 @@ unit_test "get_non_initial_fixation_in_set" do
       # Remove/add the last Fixation from/to the CHREST model's/Perceiver's 
       # Fixation data structure
       fixations_scheduled = ArrayList.new()
-      model._fixationsScheduled.put(fixation._performanceTime, fixations_scheduled)
+      model._fixationsScheduled.put(fixation._performanceTime.to_java(:int), fixations_scheduled)
       fixations_attempted.add(fixation)
-      perceiver_fixations_field.value(model.getPerceiver()).put(fixation._performanceTime, fixations_attempted)
+      perceiver_fixations_field.value(model.getPerceiver()).put(fixation._performanceTime.to_java(:int), fixations_attempted)
       
       # Advance time
       time = fixation._performanceTime + 300
