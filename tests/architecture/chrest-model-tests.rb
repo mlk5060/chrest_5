@@ -1846,117 +1846,310 @@ process_test "learn_production" do
 end
 
 ################################################################################
-# Tests the "Chrest.reinforceProduction()" function using a number of different
-# scenarios:
-#  
-# - Scenario 1
-#   ~ No action STM exists at time function invoked.
+# Tests the "Chrest.isNodeInStm()" method using all scenarios that it could 
+# possibly execute in context of.
+# 
+# Scenario Descriptions
+# =====================
+# 
+# Scenario 1: STM empty
+# Scenario 2: STM not empty, node not present
+# Scenario 3: STM not empty, node present
 #
-# - Scenario 2
-#   ~ Action STM exists at time function invoked.
-#   ~ No visual STM exists at time function invoked.
+# Each scenario is repeated 10 times and the battery of scenarios is repeated 
+# for each permutation of the following variables:
 #
-# - Scenario 3
-#   ~ Action STM exists at time function invoked.
-#   ~ Visual STM exists at time function invoked.
-#   ~ Action node specified does not have Action modality.
+# 1. Second method parameter (false, true)
+# 2. Each modality
 #
-# - Scenario 4
-#   ~ Action STM exists at time function invoked.
-#   ~ Visual STM exists at time function invoked.
-#   ~ Action node specified has Action modality.
-#   ~ Visual node specified does not have Visual modality.
+# Tests Performed
+# ===============
 #
-# - Scenario 5
-#   ~ Action STM exists at time function invoked.
-#   ~ Visual STM exists at time function invoked.
-#   ~ Action node specified has Action modality.
-#   ~ Visual node specified has Visual modality.
-#   ~ Attention is not free at time function invoked.
+# For each repeat, the method return value is checked along with the CHREST
+# model's attention clock since the function can alter this.
 #
-# - Scenario 6
-#   ~ Action STM exists at time function invoked.
-#   ~ Visual STM exists at time function invoked.
-#   ~ Action node specified has Action modality.
-#   ~ Visual node specified has Visual modality.
-#   ~ Attention is free at time function invoked.
-#   ~ Action node not present in action STM.
-#
-# - Scenario 7
-#   ~ Action STM exists at time function invoked.
-#   ~ Visual STM exists at time function invoked.
-#   ~ Action node specified has Action modality.
-#   ~ Visual node specified has Visual modality.
-#   ~ Attention is free at time function invoked.
-#   ~ Action node present in action STM.
-#   ~ Visual node not present in visual STM.
-#
-# - Scenario 8
-#   ~ Action STM exists at time function invoked.
-#   ~ Visual STM exists at time function invoked.
-#   ~ Action node specified has Action modality.
-#   ~ Visual node specified has Visual modality.
-#   ~ Attention is free at time function invoked.
-#   ~ Action node present in action STM.
-#   ~ Visual node present in visual STM.
-#   ~ Cognition isn't free at the time specified.
+unit_test "isNodeInStm" do
+  
+  # Need to make method being tested accessible since its declared as private.
+  method = Chrest.java_class.declared_method(:isNodeInStm, Node, Java::int, Java::boolean)
+  method.accessible = true
+  
+  Chrest.class_eval{
+    field_accessor :_actionStm, 
+    :_verbalStm,
+    :_visualStm, 
+    :_attentionClock,
+    :_timeToRetrieveItemFromStm,
+    :_nodeComparisonTime
+  }
+  
+  stm_item_history_field = Stm.java_class.declared_field("_itemHistory")
+  stm_item_history_field.accessible = true
+  
+  for repeat in 1..2
+    for modality in Modality.values()
+      for scenario in 1..3
+        10.times do
+          
+          ########################
+          ##### CREATE MODEL #####
+          ########################
+          
+          chrest_model_creation_time = 0
+          model = Chrest.new(chrest_model_creation_time, [true, false].sample)
+          
+          ################################
+          ##### CREATE NODES FOR STM #####
+          ################################
+          
+          node_to_search_for = Node.new(model, ListPattern.new(modality), ListPattern.new(modality), chrest_model_creation_time)
+          node_1 = Node.new(model, ListPattern.new(modality), ListPattern.new(modality), chrest_model_creation_time)
+          node_2 = Node.new(model, ListPattern.new(modality), ListPattern.new(modality), chrest_model_creation_time)
+          node_3 = Node.new(model, ListPattern.new(modality), ListPattern.new(modality), chrest_model_creation_time)
+          
+          ############################
+          ##### CREATE SCENARIOS #####
+          ############################
+          
+          stm = (
+            modality == Modality::ACTION ? model._actionStm :
+            modality == Modality::VERBAL ? model._verbalStm :
+            modality == Modality::VISUAL ? model._visualStm :
+            raise("Modality " + modality.name() + " not supported")
+          )
+          
+          stm_contents = ArrayList.new()
+          if scenario > 1
+            stm_contents.add(node_1)
+            stm_contents.add(node_2)
+          end
+          
+          if scenario == 3 
+            stm_contents.add(node_to_search_for)
+            stm_contents.add(node_3) 
+          end
+          
+          stm_item_history = HistoryTreeMap.new()
+          stm_item_history.put(chrest_model_creation_time.to_java(:int), stm_contents)
+          stm_item_history_field.set_value(stm, stm_item_history)
+          
+          #########################
+          ##### INVOKE METHOD #####
+          #########################
+          
+          time_method_invoked = chrest_model_creation_time + 5
+          consume_attention = (repeat == 1 ? false : true)
+          result = method.invoke(model, node_to_search_for, time_method_invoked, consume_attention)
+          
+          ##############################################
+          ##### SET EXPECTED TEST RESULT VARIABLES #####
+          ##############################################
+          
+          # Method should always return false unless scenario is equal to 3
+          expected_result = (scenario == 3 ? true : false)
+          
+          # The attention clock should never be altered in repeat 1 and should
+          # only be altered in repeat 2 when STM is not empty.  It should then
+          # be set to the position of the node to search for in STM multiplied
+          # by the sum of the model's "time to retrieve STM item" and "node 
+          # comparison time" variables.  This is why node_3 is added in scenario
+          # 3 after the node to search for, i.e. it should not be searched.
+          expected_attention_clock = (
+            repeat == 2 && scenario == 2 ? time_method_invoked + (2 * (model._timeToRetrieveItemFromStm + model._nodeComparisonTime)) :
+            repeat == 2 && scenario == 3 ? time_method_invoked + (3 * (model._timeToRetrieveItemFromStm + model._nodeComparisonTime)) :
+            chrest_model_creation_time - 1 
+          )
+          
+          #################
+          ##### TESTS #####
+          #################
+          
+          assert_equal(expected_result, result, "occurred when checking the method result in scenario " + scenario.to_s)
+          assert_equal(expected_attention_clock, model._attentionClock, "occurred when checking the attention clock in scenario " + scenario.to_s)
+        end
+      end
+    end
+  end
+end
+
+################################################################################
+# Tests the "Chrest.reinforceProduction()" method using a number of different
+# scenarios that are intended to represent every possible scenario that this 
+# method may encounter.
+# 
+# Scenario Descriptions
+# =====================
+# 
+# Scenario 1: 
+#   ~ Model does not exist at time function invoked
 #   
-# - Scenario 9
-#   ~ Action STM exists at time function invoked.
-#   ~ Visual STM exists at time function invoked.
-#   ~ Action node specified has Action modality.
-#   ~ Visual node specified has Visual modality.
-#   ~ Attention is free at time function invoked.
-#   ~ Action node present in action STM.
-#   ~ Visual node present in visual STM.
-#   ~ Cognition is free at the time specified.
-#   ~ Production reinforcement isn't successful (production doesn't exist)
-#
-# - Scenario 10
-#   ~ Action STM exists at time function invoked.
-#   ~ Visual STM exists at time function invoked.
-#   ~ Action node specified has Action modality.
-#   ~ Visual node specified has Visual modality.
-#   ~ Attention is free at time function invoked.
-#   ~ Action node present in action STM.
-#   ~ Visual node present in visual STM.
-#   ~ Cognition is free at the time specified.
-#   ~ Production reinforcement is successful.
-#
-# The function is expected to alter the attention and cognition clocks of the 
-# CHREST model it is invoked in context of (if certain scenarios occur) and the
-# return value of the function should differ depending on the scenario.  
-# Therefore, the attention clock and cognition clock of the CHREST model this
-# function is invoked in context of is checked after each scenario along with
-# the return value of the function itself.
+# Scenario 2: 
+#   ~ Model exists at time function is invoked
+#   ~ Attention is not free at time function invoked
+#   
+# Scenario 3:
+#   ~ Model exists at time function is invoked
+#   ~ Attention is free at time function invoked
+#   ~ Vision specified does not have visual modality
+#   
+# Scenario 4: 
+#   ~ Model exists at time function is invoked
+#   ~ Attention is free at time function invoked
+#   ~ Vision specified has visual modality
+#   ~ Action specified does not have action modality
+#   
+# Scenario 5: 
+#   ~ Model exists at time function is invoked
+#   ~ Attention is free at time function invoked
+#   ~ Vision specified has visual modality
+#   ~ Action specified has action modality
+#   ~ Visual STM is empty at time function invoked
+#   
+# Scenario 6: 
+#   ~ Model exists at time function is invoked
+#   ~ Attention is free at time function invoked
+#   ~ Vision specified has visual modality
+#   ~ Action specified has action modality
+#   ~ Visual STM is not empty at time function invoked
+#   ~ No visual STM Nodes have contents that equal/match vision passed
+#   
+# Scenario 7: 
+#   ~ Model exists at time function is invoked
+#   ~ Attention is free at time function invoked
+#   ~ Vision specified has visual modality
+#   ~ Action specified has action modality
+#   ~ Visual STM is not empty at time function invoked
+#   ~ Some visual STM Nodes, V, have contents that equal/match vision passed
+#   ~ None of V have productions
+#   
+# Scenario 8:
+#   ~ Model exists at time function is invoked
+#   ~ Attention is free at time function invoked
+#   ~ Vision specified has visual modality
+#   ~ Action specified has action modality
+#   ~ Visual STM is not empty at time function invoked
+#   ~ Some visual STM Nodes, V, have contents that equal/match vision passed
+#   ~ Some of V have productions 
+#   ~ Action STM is empty
+#   
+# Scenario 9:
+#   ~ Model exists at time function is invoked
+#   ~ Attention is free at time function invoked
+#   ~ Vision specified has visual modality
+#   ~ Action specified has action modality
+#   ~ Visual STM is not empty at time function invoked
+#   ~ Some visual STM Nodes, V, have contents that equal/match vision passed
+#   ~ Some of V have productions
+#   ~ Action STM is not empty but no action STM nodes have contents that 
+#     equal/match action passed
+#     
+# Scenario 10:
+#   ~ Model exists at time function is invoked
+#   ~ Attention is free at time function invoked
+#   ~ Vision specified has visual modality
+#   ~ Action specified has action modality
+#   ~ Visual STM is not empty at time function invoked
+#   ~ Some visual STM Nodes, V, have contents that equal/match vision passed
+#   ~ Some of V have productions
+#   ~ Action STM is not empty, some action STM nodes, A, have contents that 
+#     equal/match action passed
+#   ~ Cognition is free
+#   ~ V contains a Node whose contents equal the vision input and an A whose
+#     contents equal the action input
+#   
+# Scenario 11.
+#   ~ As 10 but cognition isn't free
+#   
+# Scenario 12.
+#   ~ As 10, cognition free but production reinforcement fails (reinforcement
+#     learning theory for model set to null)
+#   
+# Scenario 13.
+#   ~ Model exists at time function is invoked
+#   ~ Attention is free at time function invoked
+#   ~ Vision specified has visual modality
+#   ~ Action specified has action modality
+#   ~ Visual STM is not empty at time function invoked
+#   ~ Some visual STM Nodes, V, have contents that equal/match vision passed
+#   ~ Some of V have productions
+#   ~ Action STM is not empty, some action STM nodes, A, have contents that 
+#     equal/match action passed
+#   ~ Cognition is free
+#   ~ V contains a Node whose contents equal the vision input and an A whose
+#     contents match the action input (no A equals the action input)
+# 
+# Scenario 14.
+#   ~ As 13 but cognition isn't free
+#   
+# Scenario 15.
+#   ~ As 13, cognition free but production reinforcement fails (reinforcement
+#     learning theory for model set to null)
+#     
+# Scenario 16.
+#   ~ Model exists at time function is invoked
+#   ~ Attention is free at time function invoked
+#   ~ Vision specified has visual modality
+#   ~ Action specified has action modality
+#   ~ Visual STM is not empty at time function invoked
+#   ~ Some visual STM Nodes, V, have contents that equal/match vision passed
+#   ~ Some of V have productions
+#   ~ Action STM is not empty, some action STM nodes, A, have contents that 
+#     equal/match action passed
+#   ~ Cognition is free
+#   ~ V contains a Node whose contents match the vision (no V equals the action 
+#     input) and an A whose contents equal the action input.
+# 
+# Scenario 17.
+#   ~ As 16 but cognition isn't free
+#   
+# Scenario 18.
+#   ~ As 16, cognition free but production reinforcement fails (reinforcement
+#     learning theory for model set to null)
+#     
+# Scenario 19.
+#   ~ Model exists at time function is invoked
+#   ~ Attention is free at time function invoked
+#   ~ Vision specified has visual modality
+#   ~ Action specified has action modality
+#   ~ Visual STM is not empty at time function invoked
+#   ~ Some visual STM Nodes, V, have contents that equal/match vision passed
+#   ~ Some of V have productions
+#   ~ Action STM is not empty, some action STM nodes, A, have contents that 
+#     equal/match action passed
+#   ~ Cognition is free
+#   ~ V contains a Node whose contents match the vision (no V equals the action 
+#     input) and an A whose contents match the action input (no A equals the 
+#     action input)
+#     
+# Scenario 20.
+#   ~ As 19 but cognition isn't free
+#   
+# Scenario 21.
+#   ~ As 19, cognition free but production reinforcement fails (reinforcement
+#     learning theory for model set to null)
+# 
+# Variables Tested
+# ================
+# 
+# The method returns particular ChrestStatus' depending upon the scenario so 
+# this is always checked. The method also affects production values so the 
+# production history of each visual Node used in the test is checked to see if 
+# it is as expected at the conclusion of a scenario.
+# 
+# The method can also alter the attention and cognition clocks of the CHREST 
+# model it is invoked in context of (if certain scenarios occur) so these values
+# are checked too.
 #
 # Expected Outcomes
 # =================
 # 
-# - Attention clock
-#   ~ Scenarios 1-4: should not be altered from its initial value
-#   ~ Scenario 5: should be set to the time it is "manually" set to by the test
-#   ~ Scenario 6-10: should be set to the time taken to search through the 
-#                    contents of action and visual STM (time taken to retrieve a 
-#                    STM item multiplied by the number of Nodes in action and 
-#                    visual STM).
-#                    
-# - Cognition clock
-#   ~ Scenario 8: should be set to the time it is "manually" set to by the test
-#   ~ Scenarios 1-9 (excluding 8): should not be altered from its initial value
-#   ~ Scenario 10: should be set to the attention clock's value plus the time
-#                  taken to reinforce a production
-#                  
-# - Value returned by function
-#   ~ Scenarios 1-9: should return false
-#   ~ Scenario 10: should return true
+# - See code.
 process_test "reinforce_production" do
   
   #######################################################
   ##### SET-UP ACEESS TO PRIVATE INSTANCE VARIABLES #####
   #######################################################
   
-  # Chrest model field access
   Chrest.class_eval{
     field_accessor :_reinforcementLearningTheory,
     :_actionStm, 
@@ -1967,158 +2160,836 @@ process_test "reinforce_production" do
     :_reinforceProductionTime
   }
   
-  ##### Stm field access
+  chrest_creation_time_field = Chrest.java_class.declared_field("_creationTime")
+  chrest_creation_time_field.accessible = true
+  
+  ListPattern.class_eval{
+    field_accessor :_list, :_modality
+  }
+  
   stm_item_history_field = Stm.java_class.declared_field("_itemHistory")
   stm_item_history_field.accessible = true
   
-  ##### Node field access
   Node.class_eval{
     field_accessor :_productionHistory
   }
   
-  node_modality_field = Node.java_class.declared_field("_modality")
-  node_modality_field.accessible = true
-  
-  node_reference_field = Node.java_class.declared_field("_reference")
-  node_reference_field.accessible = true
+  node_contents_field = Node.java_class.declared_field("_contents")
+  node_contents_field.accessible = true
   
   #####################
   ##### TEST LOOP #####
   #####################
-  100.times do
-    for scenario in 1..10
+  
+  for scenario in 1..21
+    1.times do
       
       # Create CHREST model.
-      time = 0
-      model = Chrest.new(time, false)
-      model._reinforcementLearningTheory = ReinforcementLearning::Theory::PROFIT_SHARING_WITH_DISCOUNT_RATE
+      time_chrest_model_created = 0
+      model = Chrest.new(time_chrest_model_created, [true,false].sample)
       
       # Set the time the function is to be invoked (do this now since other 
       # times depend on this being set).
-      time_function_invoked = time + 50
+      time_function_invoked = 50
       
-      ###################################
-      ##### CREATE PRODUCTION Nodes #####
-      ###################################
+      reinforcement_calculation_variables = [1.0, 0.5, 1.0, 1.0].to_java(:Double)
       
-      # Set the time the Nodes are created to a random time between the time the
-      # CHREST model is created and the time the function is invoked - 2 since
-      # the production between the visual and action Nodes needs to be added.
-      # The time the production is created needs to be after the creation time 
-      # of the Nodes but before the time the production should be reinforced. 
-      # The subtraction of 2 from the time the function is invoked gives some 
-      # time for this.
-      time_nodes_created = rand(time...(time_function_invoked - 2))
-      action_node = Node.new(model, ListPattern.new(Modality::ACTION), ListPattern.new(Modality::ACTION), time_nodes_created)
-      visual_node = Node.new(model, ListPattern.new(Modality::VISUAL), ListPattern.new(Modality::VISUAL), time_nodes_created)
-      if scenario == 3 then node_modality_field.set_value(action_node, Modality::VISUAL) end
-      if scenario == 4 then node_modality_field.set_value(visual_node, Modality::ACTION) end
+      ###########################################
+      ##### CREATE VISUAL/ACTION PRIMITIVES #####
+      ###########################################
+      
+      # Visual input primitives
+      tile_location = ItemSquarePattern.new("T", 0, 1)
+      hole_location = ItemSquarePattern.new("H", 1, 0)
+      opponent_location = ItemSquarePattern.new("O", 0, 2)
+      
+      # Action input primitives
+      move_east = ItemSquarePattern.new("Move", 90, 1)
+      move_north = ItemSquarePattern.new("Move", 0, 1)
+      push_west = ItemSquarePattern.new("Push", 270, 1)
+      
+      #####################################
+      ##### CREATE INPUT ListPatterns #####
+      #####################################
+      
+      vision = ListPattern.new(Modality::VISUAL)
+      vision._list.add(tile_location)
+      vision._list.add(hole_location)
+      vision._list.add(opponent_location)
+      
+      action = ListPattern.new(Modality::ACTION)
+      action._list.add(move_east)
+      action._list.add(move_north)
+      action._list.add(push_west)
       
       ########################
-      ##### POPULATE STM #####
+      ##### CREATE NODES #####
       ########################
       
-      action_stm_item_history = stm_item_history_field.value(model._actionStm)
-      action_stm_items = ArrayList.new()
+      visual_node_1 = Node.new(model, ListPattern.new(Modality::VISUAL), ListPattern.new(Modality::VISUAL), time_chrest_model_created)
+      visual_node_2 = Node.new(model, ListPattern.new(Modality::VISUAL), ListPattern.new(Modality::VISUAL), time_chrest_model_created)
+      visual_node_3 = Node.new(model, ListPattern.new(Modality::VISUAL), ListPattern.new(Modality::VISUAL), time_chrest_model_created)
       
-      visual_stm_item_history = stm_item_history_field.value(model._visualStm)
-      visual_stm_items = ArrayList.new()
+      action_node_1 = Node.new(model, ListPattern.new(Modality::ACTION), ListPattern.new(Modality::ACTION), time_chrest_model_created)
+      action_node_2 = Node.new(model, ListPattern.new(Modality::ACTION), ListPattern.new(Modality::ACTION), time_chrest_model_created)
+      action_node_3 = Node.new(model, ListPattern.new(Modality::ACTION), ListPattern.new(Modality::ACTION), time_chrest_model_created)
+      action_node_4 = Node.new(model, ListPattern.new(Modality::ACTION), ListPattern.new(Modality::ACTION), time_chrest_model_created)
+      action_node_5 = Node.new(model, ListPattern.new(Modality::ACTION), ListPattern.new(Modality::ACTION), time_chrest_model_created)
+      action_node_6 = Node.new(model, ListPattern.new(Modality::ACTION), ListPattern.new(Modality::ACTION), time_chrest_model_created)
+      action_node_7 = Node.new(model, ListPattern.new(Modality::ACTION), ListPattern.new(Modality::ACTION), time_chrest_model_created)
+      action_node_8 = Node.new(model, ListPattern.new(Modality::ACTION), ListPattern.new(Modality::ACTION), time_chrest_model_created)
+      action_node_9 = Node.new(model, ListPattern.new(Modality::ACTION), ListPattern.new(Modality::ACTION), time_chrest_model_created)
       
-      # Put 2 action/visual Nodes in action/visual STM before the action/visual 
-      # Node used in the production is added so the function has to cycle when 
-      # locating the action/visual Node used in the production.
-      for i in 1..4
+      ############################
+      ##### CREATE SCENARIOS #####
+      ############################
+      
+      if scenario == 1 then chrest_creation_time_field.set_value(model, time_function_invoked + 1) end
+      if scenario == 2 then model._attentionClock = time_function_invoked + 1 end
+      if scenario == 3 then vision._modality = (Modality.values().to_a - [Modality::VISUAL]).sample end
+      if scenario == 4 then action._modality = (Modality.values().to_a - [Modality::ACTION]).sample end
+      
+      visual_stm_contents = ArrayList.new()
+      action_stm_contents = ArrayList.new()
+      
+      # If scenario == 5 then visual_stm_contents should be empty
+      if scenario == 6
+      
+        # Add visual Nodes 1 and 2 to visual STM and populate their contents so
+        # they do not equal/match the vision; can't leave them empty since this
+        # will cause a match with the vision.
+        visual_node_1_contents = node_contents_field.value(visual_node_1)
+        visual_node_1_contents._list.add(opponent_location)
+        visual_node_2_contents = node_contents_field.value(visual_node_2)
+        visual_node_2_contents._list.add(hole_location)
         
-        # First 2 Nodes should have action modality, last 2 should have visual
-        # modality.
-        node = Node.new(
-          model, 
-          ListPattern.new( ((i == 1 || i == 2) ? Modality::ACTION : Modality::VISUAL) ), 
-          ListPattern.new( ((i == 1 || i == 2) ? Modality::ACTION : Modality::VISUAL) ), 
-          time_nodes_created
-        )
-        
-        # Set the Node's reference so that it differs from the action/visual 
-        # Nodes to be used in the production. To do this, add the local "i" 
-        # variable to the visual Node's reference.  Since this was the last Node
-        # created, any subsequent references will not equal the action/visual 
-        # Node's references that are to be used in the production.
-        node_reference_field.set_value(
-          node, 
-          node_reference_field.value(visual_node) + i
-        )
-        
-        ((i == 1 || i == 2) ? action_stm_items.add(node) : visual_stm_items.add(node))
+        visual_stm_contents.add(visual_node_1)
+        visual_stm_contents.add(visual_node_2)
       end
       
-      if scenario != 6 then action_stm_items.add(action_node) end
-      if scenario != 7 then visual_stm_items.add(visual_node) end
-      
-      action_stm_item_history.put(time_nodes_created, action_stm_items)
-      visual_stm_item_history.put(time_nodes_created, visual_stm_items)
-      
-      ##### Set action/visual STM item histories so they don't exist at the time
-      ##### the function is invoked (if the scenario specifies this).
-      stm_exists_after_function_invoked = HistoryTreeMap.new()
-      stm_exists_after_function_invoked.put(time_function_invoked + 10000, ArrayList.new())
-      
-      if scenario == 1 then stm_item_history_field.set_value(model._actionStm, stm_exists_after_function_invoked) end
-      if scenario == 2 then stm_item_history_field.set_value(model._visualStm, stm_exists_after_function_invoked) end
-      
-      # Set attention clock (if necessary)
-      unavailable_attention_time = time_function_invoked + 10000
-      if scenario == 5 then model._attentionClock = unavailable_attention_time end
-      
-      # Set cognition clock (if necessary)
-      unavailable_cognition_time = time_function_invoked + 10000
-      if scenario == 8 then model._cognitionClock = unavailable_cognition_time end
-      
-      #############################
-      ##### CREATE PRODUCTION #####
-      #############################
-      
-      if scenario != 9
-        visual_node_productions = HashMap.new()
-        visual_node_productions.put(action_node, (1.0).to_java(:Double))
-        visual_node._productionHistory.put(time_nodes_created + 1, visual_node_productions)
+      if [7,8,9].include?(scenario)
+        
+        # Sometimes visual node should match vision, sometimes it should equal
+        # it. Since the test is repeated, a 50/50 random number generator is 
+        # used to determine if a third primitive is added to the visual Node's
+        # contents thus making it equal to the vision.  Otherwise, the Node's
+        # contents will match.
+        visual_node_1_contents = node_contents_field.value(visual_node_1)
+        visual_node_1_contents._list.add(tile_location)
+        visual_node_1_contents._list.add(hole_location)
+        if rand(1..2) == 1 then visual_node_1_contents._list.add(opponent_location) end
+        
+        node_contents_field.set_value(visual_node_1, visual_node_1_contents)
+        visual_stm_contents.add(visual_node_1)
+        
+        # If scenario is 8, add a production to the visual Node that will be 
+        # selected.  The production should terminate with an action Node whose 
+        # contents equal the action input so it *should* be selected if its 
+        # present in action STM, but it won't be.
+        if scenario == 8
+          action_node_1_contents = node_contents_field.value(action_node_1)
+          action_node_1_contents._list.add(move_east)
+          action_node_1_contents._list.add(move_north)
+          action_node_1_contents._list.add(push_west)
+          
+          visual_node_1_productions = LinkedHashMap.new()
+          visual_node_1_productions.put(action_node_1, 1.0)
+          visual_node_1._productionHistory.put(time_function_invoked.to_java(:int), visual_node_1_productions)
+        end
+        
+        # In scenario 9,  add a production to the visual Node that will be 
+        # selected.  The production should terminate with an action Node whose 
+        # contents do not equal or match the action input so it won't be 
+        # selected even if its present in action STM, which it will be.
+        if scenario == 9
+          action_node_1_contents = node_contents_field.value(action_node_1)
+          action_node_1_contents._list.add(push_west)
+          action_node_1_contents._list.add(move_north)
+          action_node_1_contents._list.add(move_east)
+          
+          visual_node_1_productions = LinkedHashMap.new()
+          visual_node_1_productions.put(action_node_1, 1.0)
+          visual_node_1._productionHistory.put(time_function_invoked.to_java(:int), visual_node_1_productions)
+          action_stm_contents.add(action_node_1)
+        end
       end
+      
+      # In scenarios 10-12, the second visual node added to visual STM 
+      # (visual_node_2) should be selected since it is the first visual Node
+      # encountered in visual STM that contains a production and equals the 
+      # vision input to the method.  visual_node_1's contents will match the 
+      # vision input but to a lesser extent and visual_node_3 will also equal
+      # the visual input but comes after visual_node_2 so will be disregarded.
+      # Note that this scenario shouldn't occur during normal CHREST model 
+      # operation (two Nodes with the *exact* same contents) but, for the 
+      # purposes of fully testing the method, the scenario is created.
+      # 
+      # The action Node selected should be the second production of 
+      # visual_node_2 (action_node_5) since it is the first action Node 
+      # encountered in the productions of the visual Node selected that equals 
+      # the action input to the method.  visual_node_2 will also contain two
+      # other action Nodes as productions: action_node_4 whose contents will 
+      # only match the action input so is disregarded and action_node_6 whose
+      # contents also equal the action input but, since it comes after 
+      # action_node_5, it is disregarded.  Note that this scenario shouldn't 
+      # occur during normal CHREST model operation (two Nodes with the *exact* 
+      # same contents) but, for the purposes of fully testing the method, the 
+      # scenario is created.
+      if scenario.between?(10,12)
+        
+        # Create visual nodes
+        visual_node_1_contents = node_contents_field.value(visual_node_1)
+        visual_node_1_contents._list.add(hole_location)
+        visual_node_1_contents._list.add(tile_location)
+        
+        visual_node_2_contents = node_contents_field.value(visual_node_2)
+        visual_node_2_contents._list.add(tile_location)
+        visual_node_2_contents._list.add(hole_location)
+        visual_node_2_contents._list.add(opponent_location)
+         
+        visual_node_3_contents = node_contents_field.value(visual_node_3)
+        visual_node_3_contents._list.add(tile_location)
+        visual_node_3_contents._list.add(hole_location)
+        visual_node_3_contents._list.add(opponent_location)
+        
+        # Create visual_node_1 productions
+        action_node_1_contents = node_contents_field.value(action_node_1)
+        action_node_1_contents._list.add(push_west)
+        
+        action_node_2_contents = node_contents_field.value(action_node_2)
+        action_node_2_contents._list.add(move_east)
+        action_node_2_contents._list.add(move_north)
+        action_node_2_contents._list.add(push_west)
+        
+        action_node_3_contents = node_contents_field.value(action_node_3)
+        action_node_3_contents._list.add(move_east)
+        action_node_3_contents._list.add(move_north)
+        action_node_3_contents._list.add(push_west)
+        
+        visual_node_1_productions = LinkedHashMap.new()
+        visual_node_1_productions.put(action_node_1, 1.0)
+        visual_node_1_productions.put(action_node_2, 1.0)
+        visual_node_1_productions.put(action_node_3, 1.0)
+        visual_node_1._productionHistory.put(time_function_invoked.to_java(:int), visual_node_1_productions)
+        
+        # Create visual node 2 productions
+        action_node_4_contents = node_contents_field.value(action_node_4)
+        action_node_4_contents._list.add(move_east)
+        
+        action_node_5_contents = node_contents_field.value(action_node_5)
+        action_node_5_contents._list.add(move_east)
+        action_node_5_contents._list.add(move_north)
+        action_node_5_contents._list.add(push_west)
+        
+        action_node_6_contents = node_contents_field.value(action_node_6)
+        action_node_6_contents._list.add(move_east)
+        action_node_6_contents._list.add(move_north)
+        action_node_6_contents._list.add(push_west)
+        
+        visual_node_2_productions = LinkedHashMap.new()
+        visual_node_2_productions.put(action_node_4, 1.0)
+        visual_node_2_productions.put(action_node_5, 1.0)
+        visual_node_2_productions.put(action_node_6, 1.0)
+        visual_node_2._productionHistory.put(time_function_invoked.to_java(:int), visual_node_2_productions)
+        
+        # Create visual node 3 productions
+        action_node_7_contents = node_contents_field.value(action_node_7)
+        action_node_7_contents._list.add(push_west)
+        
+        action_node_8_contents = node_contents_field.value(action_node_8)
+        action_node_8_contents._list.add(move_east)
+        action_node_8_contents._list.add(move_north)
+        action_node_8_contents._list.add(push_west)
+        
+        action_node_9_contents = node_contents_field.value(action_node_9)
+        action_node_9_contents._list.add(move_east)
+        action_node_9_contents._list.add(move_north)
+        action_node_9_contents._list.add(push_west)
+        
+        visual_node_3_productions = LinkedHashMap.new()
+        visual_node_3_productions.put(action_node_7, 1.0)
+        visual_node_3_productions.put(action_node_8, 1.0)
+        visual_node_3_productions.put(action_node_9, 1.0)
+        visual_node_3._productionHistory.put(time_function_invoked.to_java(:int), visual_node_3_productions)
+        
+        # Add all visual and action Nodes to visual/action STM.
+        visual_stm_contents.add(visual_node_1)
+        visual_stm_contents.add(visual_node_2)
+        visual_stm_contents.add(visual_node_3)
+        
+        action_stm_contents.add(action_node_1)
+        action_stm_contents.add(action_node_2)
+        action_stm_contents.add(action_node_3)
+        action_stm_contents.add(action_node_4)
+        action_stm_contents.add(action_node_5)
+        action_stm_contents.add(action_node_6)
+        action_stm_contents.add(action_node_7)
+        action_stm_contents.add(action_node_8)
+        action_stm_contents.add(action_node_9)
+      end
+      
+      # In scenarios 13-15, the second visual node added to visual STM 
+      # (visual_node_2) should be selected since it is the first visual Node
+      # encountered in visual STM that contains a production and equals the 
+      # vision input to the method.  visual_node_1's contents will match the 
+      # vision input but to a lesser extent and visual_node_3 will also equal
+      # the visual input but comes after visual_node_2 so will be disregarded.
+      # Note that this scenario shouldn't occur during normal CHREST model 
+      # operation (two Nodes with the *exact* same contents) but, for the 
+      # purposes of fully testing the method, the scenario is created.
+      #
+      # visual_node_2's productions will consist of 3 action Nodes whose 
+      # contents all match the action input.  However, the productions 
+      # action Node contents will match the action input to varying degrees: 
+      # production 1 < production 2 == production 3.  Thus, the second production 
+      # should be selected as the terminus of the production since it matches the
+      # action input the most and comes before production 3 (which also matches
+      # equally).
+      if scenario.between?(13,15)
+        
+        # Create visual nodes
+        visual_node_1_contents = node_contents_field.value(visual_node_1)
+        visual_node_1_contents._list.add(hole_location)
+        visual_node_1_contents._list.add(tile_location)
+        
+        visual_node_2_contents = node_contents_field.value(visual_node_2)
+        visual_node_2_contents._list.add(tile_location)
+        visual_node_2_contents._list.add(hole_location)
+        visual_node_2_contents._list.add(opponent_location)
+        
+        visual_node_3_contents = node_contents_field.value(visual_node_3)
+        visual_node_3_contents._list.add(tile_location)
+        visual_node_3_contents._list.add(hole_location)
+        visual_node_3_contents._list.add(opponent_location)
+        
+        # Create visual node 1's productions
+        action_node_1_contents = node_contents_field.value(action_node_1)
+        action_node_1_contents._list.add(move_east)
+        
+        action_node_2_contents = node_contents_field.value(action_node_2)
+        action_node_2_contents._list.add(move_east)
+        action_node_2_contents._list.add(move_north)
+        action_node_2_contents._list.add(push_west)
+        
+        action_node_3_contents = node_contents_field.value(action_node_3)
+        action_node_3_contents._list.add(move_east)
+        action_node_3_contents._list.add(move_north)
+        action_node_3_contents._list.add(push_west)
+        
+        visual_node_1_productions = LinkedHashMap.new()
+        visual_node_1_productions.put(action_node_1, 1.0)
+        visual_node_1_productions.put(action_node_2, 1.0)
+        visual_node_1_productions.put(action_node_3, 1.0)
+        visual_node_1._productionHistory.put(time_function_invoked.to_java(:int), visual_node_1_productions)
+        
+        # Create visual node 2's productions
+        action_node_4_contents = node_contents_field.value(action_node_4)
+        action_node_4_contents._list.add(move_east)
+          
+        action_node_5_contents = node_contents_field.value(action_node_5)
+        action_node_5_contents._list.add(move_east)
+        action_node_5_contents._list.add(move_north)
+        
+        action_node_6_contents = node_contents_field.value(action_node_6)
+        action_node_6_contents._list.add(move_east)
+        action_node_6_contents._list.add(move_north)
+        
+        visual_node_2_productions = LinkedHashMap.new()
+        visual_node_2_productions.put(action_node_4, 1.0)
+        visual_node_2_productions.put(action_node_5, 1.0)
+        visual_node_2_productions.put(action_node_6, 1.0)
+        visual_node_2._productionHistory.put(time_function_invoked.to_java(:int), visual_node_2_productions)
+        
+        # Create visual node 3's productions
+        action_node_8_contents = node_contents_field.value(action_node_8)
+        action_node_8_contents._list.add(move_east)
+        action_node_8_contents._list.add(move_north)
+        
+        action_node_9_contents = node_contents_field.value(action_node_9)
+        action_node_9_contents._list.add(move_east)
+        
+        visual_node_3_productions = LinkedHashMap.new()
+        visual_node_3_productions.put(action_node_7, 1.0)
+        visual_node_3_productions.put(action_node_8, 1.0)
+        visual_node_3_productions.put(action_node_9, 1.0)
+        visual_node_3._productionHistory.put(time_function_invoked.to_java(:int), visual_node_3_productions)
+        
+        # Add all visual and action Nodes to visual/action STM.
+        visual_stm_contents.add(visual_node_1)
+        visual_stm_contents.add(visual_node_2)
+        visual_stm_contents.add(visual_node_3)
+        
+        action_stm_contents.add(action_node_1)
+        action_stm_contents.add(action_node_2)
+        action_stm_contents.add(action_node_3)
+        action_stm_contents.add(action_node_4)
+        action_stm_contents.add(action_node_5)
+        action_stm_contents.add(action_node_6)
+        action_stm_contents.add(action_node_7)
+        action_stm_contents.add(action_node_8)
+        action_stm_contents.add(action_node_9)
+      end
+      
+      # In scenarios 16-18, the second visual node added to visual STM 
+      # (visual_node_2) should be selected since its contents match the vision 
+      # input to the method most. visual_node_1's contents will match the vision 
+      # input but less so than visual node 2's so, while visual_node_1 is 
+      # selected to be the source of the production to reinforce initially, 
+      # visual_node_2's greater content match will overwrite this. 
+      # visual_node_3's contents will match as much as visual_node_2's but since
+      # it does not match more and visual_node_2 has already been selected, it
+      # won't be selected as the source of the production.
+      #
+      # visual_node_2's productions will consist of 3 action Nodes whose 
+      # contents match, equal and equal the action input, respectively.  Thus,
+      # the second production should be selected as the terminus of the 
+      # production since it is the first production Node encountered in 
+      # visual_node_2 that equals the action input.  The first production should
+      # be skipped since its action Node's contents only match the action input
+      # and the third production's action Node should be ignored, despite its 
+      # contents also equalling the action input, since it comes after the first
+      # action Node whose contents equals the action input.
+      # 
+      if scenario.between?(16,18)
+        
+        #Construct visual Nodes.
+        visual_node_1_contents = node_contents_field.value(visual_node_1)
+        visual_node_1_contents._list.add(tile_location)
+        
+        visual_node_2_contents = node_contents_field.value(visual_node_2)
+        visual_node_2_contents._list.add(tile_location)
+        visual_node_2_contents._list.add(hole_location)
+        
+        visual_node_3_contents = node_contents_field.value(visual_node_3)
+        visual_node_3_contents._list.add(tile_location)
+        visual_node_3_contents._list.add(hole_location)
+        
+        # Construct visual Node 1's productions.
+        action_node_1_contents = node_contents_field.value(action_node_1)
+        action_node_1_contents._list.add(move_east)
+        
+        action_node_2_contents = node_contents_field.value(action_node_2)
+        action_node_2_contents._list.add(move_east)
+        action_node_2_contents._list.add(move_north)
+        
+        action_node_3_contents = node_contents_field.value(action_node_3)
+        action_node_3_contents._list.add(move_east)
+        action_node_3_contents._list.add(move_north)
+        action_node_3_contents._list.add(push_west)
+        
+        visual_node_1_productions = LinkedHashMap.new()
+        visual_node_1_productions.put(action_node_1, 1.0)
+        visual_node_1_productions.put(action_node_2, 1.0)
+        visual_node_1_productions.put(action_node_3, 1.0)
+        visual_node_1._productionHistory.put(time_function_invoked.to_java(:int), visual_node_1_productions)
+        
+        # Construct visual Node 2's productions.
+        action_node_4_contents = node_contents_field.value(action_node_4)
+        action_node_4_contents._list.add(move_east)
+        
+        action_node_5_contents = node_contents_field.value(action_node_5)
+        action_node_5_contents._list.add(move_east)
+        action_node_5_contents._list.add(move_north)
+        action_node_5_contents._list.add(push_west)
+        
+        action_node_6_contents = node_contents_field.value(action_node_6)
+        action_node_6_contents._list.add(move_east)
+        action_node_6_contents._list.add(move_north)
+        action_node_6_contents._list.add(push_west)
+        
+        visual_node_2_productions = LinkedHashMap.new()
+        visual_node_2_productions.put(action_node_4, 1.0)
+        visual_node_2_productions.put(action_node_5, 1.0)
+        visual_node_2_productions.put(action_node_6, 1.0)
+        visual_node_2._productionHistory.put(time_function_invoked.to_java(:int), visual_node_2_productions)
+        
+        # Construct visual Node 3's productions.
+        action_node_8_contents = node_contents_field.value(action_node_8)
+        action_node_8_contents._list.add(move_east)
+        action_node_8_contents._list.add(move_north)
+        
+        action_node_9_contents = node_contents_field.value(action_node_9)
+        action_node_9_contents._list.add(move_east)
+        
+        visual_node_3_productions = LinkedHashMap.new()
+        visual_node_3_productions.put(action_node_7, 1.0)
+        visual_node_3_productions.put(action_node_8, 1.0)
+        visual_node_3_productions.put(action_node_9, 1.0)
+        visual_node_3._productionHistory.put(time_function_invoked.to_java(:int), visual_node_3_productions)
+        
+        # Add all visual and action Nodes to visual/action STM.
+        visual_stm_contents.add(visual_node_1)
+        visual_stm_contents.add(visual_node_2)
+        visual_stm_contents.add(visual_node_3)
+        
+        action_stm_contents.add(action_node_1)
+        action_stm_contents.add(action_node_2)
+        action_stm_contents.add(action_node_3)
+        action_stm_contents.add(action_node_4)
+        action_stm_contents.add(action_node_5)
+        action_stm_contents.add(action_node_6)
+        action_stm_contents.add(action_node_7)
+        action_stm_contents.add(action_node_8)
+        action_stm_contents.add(action_node_9)
+      end
+      
+      # In scenarios 19-21, the second visual node added to visual STM 
+      # (visual_node_2) should be selected since its contents match the vision 
+      # input to the method most. visual_node_1's contents will match the vision 
+      # input but less so than visual node 2's so, while visual_node_1 is 
+      # selected to be the source of the production to reinforce initially, 
+      # visual_node_2's greater content match will overwrite this. 
+      # visual_node_3's contents will match as much as visual_node_2's but since
+      # it does not match more and visual_node_2 has already been selected, it
+      # won't be selected as the source of the production.
+      #
+      # visual_node_2's productions will consist of 3 action Nodes whose 
+      # contents all match the action input.  However, the productions 
+      # action Node contents will match the action input to varying degrees: 
+      # production 1 < production 2 == production 3.  Thus, the second production 
+      # should be selected as the terminus of the production since it matches the
+      # action input the most and comes before production 3 (which also matches
+      # equally).
+      # 
+      if scenario.between?(19,21)
+      
+        #Construct visual Nodes.
+        visual_node_1_contents = node_contents_field.value(visual_node_1)
+        visual_node_1_contents._list.add(tile_location)
+        
+        visual_node_2_contents = node_contents_field.value(visual_node_2)
+        visual_node_2_contents._list.add(tile_location)
+        visual_node_2_contents._list.add(hole_location)
+        
+        visual_node_3_contents = node_contents_field.value(visual_node_3)
+        visual_node_3_contents._list.add(tile_location)
+        visual_node_3_contents._list.add(hole_location)
+        
+        # Create visual node 1's productions
+        action_node_1_contents = node_contents_field.value(action_node_1)
+        action_node_1_contents._list.add(move_east)
+        
+        action_node_2_contents = node_contents_field.value(action_node_2)
+        action_node_2_contents._list.add(move_north)
+        
+        action_node_3_contents = node_contents_field.value(action_node_3)
+        action_node_3_contents._list.add(push_west)
+        
+        visual_node_1_productions = LinkedHashMap.new()
+        visual_node_1_productions.put(action_node_1, 1.0)
+        visual_node_1_productions.put(action_node_2, 1.0)
+        visual_node_1_productions.put(action_node_3, 1.0)
+        visual_node_1._productionHistory.put(time_function_invoked.to_java(:int), visual_node_1_productions)
+        
+        # Create visual node 2's productions
+        action_node_4_contents = node_contents_field.value(action_node_4)
+        action_node_4_contents._list.add(move_east)
+          
+        action_node_5_contents = node_contents_field.value(action_node_5)
+        action_node_5_contents._list.add(move_east)
+        action_node_5_contents._list.add(move_north)
+        
+        action_node_6_contents = node_contents_field.value(action_node_6)
+        action_node_6_contents._list.add(move_east)
+        action_node_6_contents._list.add(move_north)
+        
+        visual_node_2_productions = LinkedHashMap.new()
+        visual_node_2_productions.put(action_node_4, 1.0)
+        visual_node_2_productions.put(action_node_5, 1.0)
+        visual_node_2_productions.put(action_node_6, 1.0)
+        visual_node_2._productionHistory.put(time_function_invoked.to_java(:int), visual_node_2_productions)
+        
+        # Create visual node 3's productions
+        action_node_8_contents = node_contents_field.value(action_node_8)
+        action_node_8_contents._list.add(move_east)
+        action_node_8_contents._list.add(move_north)
+        
+        action_node_9_contents = node_contents_field.value(action_node_9)
+        action_node_9_contents._list.add(move_east)
+        
+        visual_node_3_productions = LinkedHashMap.new()
+        visual_node_3_productions.put(action_node_7, 1.0)
+        visual_node_3_productions.put(action_node_8, 1.0)
+        visual_node_3_productions.put(action_node_9, 1.0)
+        visual_node_3._productionHistory.put(time_function_invoked.to_java(:int), visual_node_3_productions)
+        
+        # Add all visual and action Nodes to visual/action STM.
+        visual_stm_contents.add(visual_node_1)
+        visual_stm_contents.add(visual_node_2)
+        visual_stm_contents.add(visual_node_3)
+        
+        action_stm_contents.add(action_node_1)
+        action_stm_contents.add(action_node_2)
+        action_stm_contents.add(action_node_3)
+        action_stm_contents.add(action_node_4)
+        action_stm_contents.add(action_node_5)
+        action_stm_contents.add(action_node_6)
+        action_stm_contents.add(action_node_7)
+        action_stm_contents.add(action_node_8)
+        action_stm_contents.add(action_node_9)
+      end
+      
+      stm_item_history_field.value(model._visualStm).put(time_function_invoked.to_java(:int), visual_stm_contents)
+      stm_item_history_field.value(model._actionStm).put(time_function_invoked.to_java(:int), action_stm_contents)
+      
+      if [11,14,17,20].include?(scenario) then model._cognitionClock = 1.to_java(:int).class::MAX_VALUE end
+      
+      model._reinforcementLearningTheory = ([12,15,18,21].include?(scenario) ? 
+        nil :
+        ReinforcementLearning::Theory::PROFIT_SHARING_WITH_DISCOUNT_RATE
+      )
       
       ###########################
       ##### INVOKE FUNCTION #####
       ###########################
       
-      reinforcement_calculation_variables = [1.0, 0.5, 1.0, 1.0].to_java(:Double)
-      result = model.reinforceProduction(visual_node, action_node, reinforcement_calculation_variables, time_function_invoked)
+      result = nil
+      exception_thrown = false
+      begin
+        result = model.reinforceProduction(vision, action, reinforcement_calculation_variables, time_function_invoked.to_java(:int))
+      rescue 
+        exception_thrown = true
+      end
       
       ##################################
       ##### SET EXPECTED VARIABLES #####
       ##################################
       
-      # Set the expected return value.
-      expected_result = (scenario == 10 ? true : false)
+      expected_result = (
+        scenario == 1 ? ChrestStatus::MODEL_DOES_NOT_EXIST_AT_TIME :
+        scenario == 2 ? ChrestStatus::ATTENTION_BUSY :
+        scenario == 3 ? nil :
+        scenario == 4 ? nil :
+        scenario.between?(5,9) ? ChrestStatus::NO_PRODUCTION_IDENTIFIED :
+        [10,13,16,19].include?(scenario) ? ChrestStatus::PRODUCTION_REINFORCEMENT_SUCCESSFUL :
+        [11,14,17,20].include?(scenario) ? ChrestStatus::COGNITION_BUSY :
+        ChrestStatus::PRODUCTION_REINFORCEMENT_FAILED
+      )
       
-      # Set the expected attention clock value.
-      expected_attention_clock = (time_function_invoked + (model._timeToRetrieveItemFromStm * 6))
-      if scenario.between?(1,4)
-        expected_attention_clock = -1
-      elsif scenario == 5 
-        expected_attention_clock = unavailable_attention_time
-      elsif scenario == 6 || scenario == 7
-        expected_attention_clock = (time_function_invoked + (model._timeToRetrieveItemFromStm * 5))
+      expected_exception_thrown = ([3,4].include?(scenario) ? true : false)
+      
+      expected_attention_clock = (
+        [1,3,4,5].include?(scenario) ? time_chrest_model_created - 1 :
+        scenario == 2 ? time_function_invoked + 1 :
+        scenario == 6 ? time_function_invoked + ((model._timeToRetrieveItemFromStm + model._nodeComparisonTime) * 2) :
+        [7,8,9].include?(scenario) ? time_function_invoked + ((model._timeToRetrieveItemFromStm + model._nodeComparisonTime)) :
+        time_function_invoked + ((model._timeToRetrieveItemFromStm + model._nodeComparisonTime) * 3)
+      )
+      
+      expected_cognition_clock = (
+        [10,13,16,19].include?(scenario) ? expected_attention_clock + model._reinforceProductionTime :
+        [11,14,17,20].include?(scenario) ? 1.to_java(:int).class::MAX_VALUE :
+        time_chrest_model_created - 1
+      )
+      
+      expected_visual_node_1_production_history = HistoryTreeMap.new()
+      expected_visual_node_1_production_history.put(time_chrest_model_created.to_java(:int), LinkedHashMap.new())
+      expected_visual_node_2_production_history = HistoryTreeMap.new()
+      expected_visual_node_2_production_history.put(time_chrest_model_created.to_java(:int), LinkedHashMap.new())
+      expected_visual_node_3_production_history = HistoryTreeMap.new()
+      expected_visual_node_3_production_history.put(time_chrest_model_created.to_java(:int), LinkedHashMap.new())
+      
+      if [8,9].include?(scenario)
+        productions = LinkedHashMap.new()
+        productions.put(action_node_1, 1.0)
+        expected_visual_node_1_production_history.put(time_function_invoked.to_java(:int), productions)
+      elsif scenario >= 10
+        productions = LinkedHashMap.new()
+        productions.put(action_node_1, 1.0)
+        productions.put(action_node_2, 1.0)
+        productions.put(action_node_3, 1.0)
+        expected_visual_node_1_production_history.put(time_function_invoked.to_java(:int), productions)
+        
+        productions = LinkedHashMap.new()
+        productions.put(action_node_4, 1.0)
+        productions.put(action_node_5, 1.0)
+        productions.put(action_node_6, 1.0)
+        expected_visual_node_2_production_history.put(time_function_invoked.to_java(:int), productions)
+        
+        if[10,13,16,19].include?(scenario)
+          productions = LinkedHashMap.new()
+          productions.put(action_node_4, 1.0)
+          productions.put(action_node_5, 2.0)
+          productions.put(action_node_6, 1.0)
+          expected_visual_node_2_production_history.put(expected_cognition_clock.to_java(:int), productions)
+        end
+        
+        productions = LinkedHashMap.new()
+        productions.put(action_node_7, 1.0)
+        productions.put(action_node_8, 1.0)
+        productions.put(action_node_9, 1.0)
+        expected_visual_node_3_production_history.put(time_function_invoked.to_java(:int), productions)
       end
-      
-      # Set the expected cognition clock value.
-      expected_cognition_clock = -1
-      if scenario == 8 then expected_cognition_clock = unavailable_cognition_time end
-      if scenario == 10 then expected_cognition_clock = (expected_attention_clock + model._reinforceProductionTime) end
       
       #################
       ##### TESTS #####
       #################
       
       assert_equal(expected_result, result, "occurred when checking the result of invoking the function in scenario " + scenario.to_s)
+      assert_equal(expected_exception_thrown, exception_thrown, "occurred when checking if an exception is thrown in scenario " + scenario.to_s)
       assert_equal(expected_attention_clock, model._attentionClock, "occurred when checking the attention clock in scenario " + scenario.to_s)
       assert_equal(expected_cognition_clock, model._cognitionClock, "occurred when checking the cognition clock in scenario " + scenario.to_s)
+      
+      visual_node_1_production_history_array = visual_node_1._productionHistory.entrySet().toArray()
+      expected_visual_node_1_production_history_array = expected_visual_node_1_production_history.entrySet().toArray()
+      
+      visual_node_2_production_history_array = visual_node_2._productionHistory.entrySet().toArray()
+      expected_visual_node_2_production_history_array = expected_visual_node_2_production_history.entrySet().toArray()
+      
+      visual_node_3_production_history_array = visual_node_3._productionHistory.entrySet().toArray()
+      expected_visual_node_3_production_history_array = expected_visual_node_3_production_history.entrySet().toArray()
+      
+      # Check number of production history entries
+      assert_equal(
+        expected_visual_node_1_production_history_array.size(), 
+        visual_node_1_production_history_array.size(), 
+        "occurred when checking the number of production history entries for " +
+        "visual node 1 in scenario " + scenario.to_s
+      )
+      
+      assert_equal(
+        expected_visual_node_2_production_history_array.size(), 
+        visual_node_2_production_history_array.size(), 
+        "occurred when checking the number of production history entries for " +
+        "visual node 2 in scenario " + scenario.to_s
+      )
+      
+      
+      assert_equal(
+        expected_visual_node_3_production_history_array.size(), 
+        visual_node_3_production_history_array.size(), 
+        "occurred when checking the number of production history entries for " +
+        "visual node 3 in scenario " + scenario.to_s
+      )
+      
+      # Check times of production history entries for visual node 1
+      for p in 0...visual_node_1_production_history_array.size()
+        assert_equal(
+          expected_visual_node_1_production_history_array[p].getKey(),
+          visual_node_1_production_history_array[p].getKey(),
+          "occurred when checking the times of visual node 1's productions in " +
+          "scenario " + scenario.to_s
+        )
+        
+        # Check if there are the correct number of productions at a time.
+        visual_node_1_productions_array = visual_node_1_production_history_array[p].getValue().entrySet().toArray()
+        expected_visual_node_1_productions_array = expected_visual_node_1_production_history_array[p].getValue().entrySet().toArray()
+        assert_equal(
+          expected_visual_node_1_productions_array.size(),
+          visual_node_1_productions_array.size(),
+          "occurred when checking the number of productions for visual node 1's " + 
+          "production history entry at " + visual_node_1_production_history_array[p].getKey().to_s +
+          "in scenario " + scenario.to_s
+        )
+        
+        # Check the action nodes linked to and the values of productions at a 
+        # time
+        for production in 0...visual_node_1_productions_array.size()
+          assert_equal(
+            expected_visual_node_1_productions_array[production].getKey(),
+            visual_node_1_productions_array[production].getKey(),
+            "occurred when checking the node in production " + production.to_s +
+            "for visual node 1's production history entry at " + 
+            visual_node_1_production_history_array[p].getKey().to_s + "in " +
+            "scenario " + scenario.to_s
+          )
+            
+          assert_equal(
+            expected_visual_node_1_productions_array[production].getValue(),
+            visual_node_1_productions_array[production].getValue(),
+            "occurred when checking the value in production " + production.to_s +
+            "for visual node 1's production history entry at " + 
+            visual_node_1_production_history_array[p].getKey().to_s + "in " +
+            "scenario " + scenario.to_s
+          )
+        end
+      end
+      
+      # Check times of production history entries for visual node 2
+      for p in 0...visual_node_2_production_history_array.size()
+        assert_equal(
+          expected_visual_node_2_production_history_array[p].getKey(),
+          visual_node_2_production_history_array[p].getKey(),
+          "occurred when checking the times of visual node 2's productions in " +
+          "scenario " + scenario.to_s
+        )
+        
+        # Check if there are the correct number of productions at a time.
+        visual_node_2_productions_array = visual_node_2_production_history_array[p].getValue().entrySet().toArray()
+        expected_visual_node_2_productions_array = expected_visual_node_2_production_history_array[p].getValue().entrySet().toArray()
+        assert_equal(
+          expected_visual_node_2_productions_array.size(),
+          visual_node_2_productions_array.size(),
+          "occurred when checking the number of productions for visual node 2's " + 
+          "production history entry at " + visual_node_2_production_history_array[p].getKey().to_s +
+          "in scenario " + scenario.to_s
+        )
+        
+        # Check the action nodes linked to and the values of productions at a 
+        # time
+        for production in 0...visual_node_2_productions_array.size()
+          assert_equal(
+            expected_visual_node_2_productions_array[production].getKey(),
+            visual_node_2_productions_array[production].getKey(),
+            "occurred when checking the node in production " + production.to_s +
+            "for visual node 2's production history entry at " + 
+            visual_node_2_production_history_array[p].getKey().to_s + "in " +
+            "scenario " + scenario.to_s
+          )
+            
+          assert_equal(
+            expected_visual_node_2_productions_array[production].getValue(),
+            visual_node_2_productions_array[production].getValue(),
+            "occurred when checking the value in production " + production.to_s +
+            "for visual node 2's production history entry at " + 
+            visual_node_2_production_history_array[p].getKey().to_s + "in " +
+            "scenario " + scenario.to_s
+          )
+        end
+      end
+      
+      # Check times of production history entries for visual node 3
+      for p in 0...visual_node_3_production_history_array.size()
+        assert_equal(
+          expected_visual_node_3_production_history_array[p].getKey(),
+          visual_node_3_production_history_array[p].getKey(),
+          "occurred when checking the times of visual node 3's productions in " +
+          "scenario " + scenario.to_s
+        )
+        
+        # Check if there are the correct number of productions at a time.
+        visual_node_3_productions_array = visual_node_3_production_history_array[p].getValue().entrySet().toArray()
+        expected_visual_node_3_productions_array = expected_visual_node_3_production_history_array[p].getValue().entrySet().toArray()
+        assert_equal(
+          expected_visual_node_3_productions_array.size(),
+          visual_node_3_productions_array.size(),
+          "occurred when checking the number of productions for visual node 3's " + 
+          "production history entry at " + visual_node_3_production_history_array[p].getKey().to_s +
+          "in scenario " + scenario.to_s
+        )
+        
+        # Check the action nodes linked to and the values of productions at a 
+        # time
+        for production in 0...visual_node_3_productions_array.size()
+          assert_equal(
+            expected_visual_node_3_productions_array[production].getKey(),
+            visual_node_3_productions_array[production].getKey(),
+            "occurred when checking the node in production " + production.to_s +
+            "for visual node 3's production history entry at " + 
+            visual_node_3_production_history_array[p].getKey().to_s + "in " +
+            "scenario " + scenario.to_s
+          )
+            
+          assert_equal(
+            expected_visual_node_3_productions_array[production].getValue(),
+            visual_node_3_productions_array[production].getValue(),
+            "occurred when checking the value in production " + production.to_s +
+            "for visual node 3's production history entry at " + 
+            visual_node_3_production_history_array[p].getKey().to_s + "in " +
+            "scenario " + scenario.to_s
+          )
+        end
+      end
     end
   end
 end
