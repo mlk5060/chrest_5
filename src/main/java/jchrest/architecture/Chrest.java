@@ -1692,8 +1692,19 @@ public class Chrest extends Observable {
   /****************************************************************************/
   /****************************************************************************/
   
-  //TODO: Write tests to check functions in this section and check for correct
-  //      operation.
+  /**
+   * Advances the attention clock of {@link #this} by the {@code time} 
+   * specified.
+   * 
+   * This should be used if there are attentional time costs incurred external 
+   * to the operations of {@link #this} in the domain (domain-specific problem
+   * solving, for example).
+   * 
+   * @param time 
+   */
+  public void advanceAttentionClock(int time){
+    this._attentionClock += time;
+  }
   
   /**************************/
   /**** Long-term memory ****/
@@ -4454,17 +4465,44 @@ public class Chrest extends Observable {
    * 
    * @param time
    * 
-   * @return Whether a {@link jchrest.domainSpecifics.Fixation} set is being 
-   * performed.  Note that this does not take into account when attention is
-   * free.
+   * @return A {@link jchrest.lib.ChrestStatus} as described below.  Note that
+   * the statements below are cumulative, i.e. the second statement is only 
+   * applicable if the first isn't.
+   * <ol>
+   *  <li>
+   *    {@link jchrest.lib.ChrestStatus#MODEL_DOES_NOT_EXIST_AT_TIME} if {@link 
+   *    #this} does not exist at the {@code time} specified.
+   *  </li>
+   *  <li>
+   *    {@link jchrest.lib.ChrestStatus#NO_FIXATION_SET_BEING_PERFORMED} if 
+   *    {@link #this} is/can not performing a {@link 
+   *    jchrest.domainSpecifics.Fixation} set at the {@code time} specified.
+   *  </li>
+   *  <li>
+   *    {@link jchrest.lib.ChrestStatus#NO_FIXATION_SET_BEING_PERFORMED} if 
+   *    {@link #this} is/can not performing a {@link 
+   *    jchrest.domainSpecifics.Fixation} set at the {@code time} specified.
+   *  </li>
+   *  <li>
+   *    {@link jchrest.lib.ChrestStatus#FIXATION_SET_BEING_PERFORMED} if 
+   *    {@link #this} is performing a {@link jchrest.domainSpecifics.Fixation} 
+   *    set at the {@code time} specified.
+   *  </li>
+   *  <li>
+   *    {@link jchrest.lib.ChrestStatus#FIXATION_SET_COMPLETE} if {@link #this} 
+   *    has just performed a complete {@link jchrest.domainSpecifics.Fixation} 
+   *    set at the {@code time} specified.
+   *  </li>
+   * </ol>
    */
   //TODO: Should a new Fixation immediately be scheduled when attention is free
   //      or should a Fixation be completely performed and STM allowed to update
   //      before the next Fixation is performed?  Currently, it may be the case
   //      that only the last Fixation performed will cause visual STM to be 
   //      updated.
-  public boolean scheduleOrMakeNextFixation(Scene scene, boolean constructVisualSpatialField, int time){
+  public ChrestStatus scheduleOrMakeNextFixation(Scene scene, boolean constructVisualSpatialField, int time){
     this.printDebugStatement("===== Chrest.scheduleOrMakeNextFixation() =====");
+    ChrestStatus result;
     
     this.printDebugStatement("- Checking if model exists at the time the function is requested (" + time + ")");
     if(this._creationTime <= time){
@@ -4574,6 +4612,7 @@ public class Chrest extends Observable {
           this._recognisedVisualSpatialFieldObjectIdentifiers.clear();
           fixationsScheduled.clear();
           this._fixationsAttemptedInCurrentSet = 0;
+          result = ChrestStatus.FIXATION_SET_COMPLETE;
         }
         else{
           /////////////////////////////////////
@@ -4590,21 +4629,24 @@ public class Chrest extends Observable {
           int numberPerceiverFixations = (perceiverFixations == null ? 0 : perceiverFixations.size());
           Fixation nonInitialFixation = this.getNonInitialFixation(time, fixationsScheduled.size(), numberPerceiverFixations);
           if(nonInitialFixation != null) fixationsScheduled.add(nonInitialFixation);
+          result = ChrestStatus.FIXATION_SET_BEING_PERFORMED;
         }
 
         this._fixationsScheduled.put(time, fixationsScheduled);
       }
       else {
         this.printDebugStatement("  ~ Not currently performing a Fixation set at the moment, exiting");
+        result = ChrestStatus.NO_FIXATION_SET_BEING_PERFORMED;
       }
     }
     else{
       this.printDebugStatement("   ~ Model does not exist at the time the function is requested, exiting.");
+      result = ChrestStatus.MODEL_DOES_NOT_EXIST_AT_TIME;
     }
 
-    this.printDebugStatement("- Returning boolean " + this._performingFixations);
+    this.printDebugStatement("- Returning " + result.name());
     this.printDebugStatement("===== RETURN =====");
-    return this._performingFixations;
+    return result;
   }
   
   /**

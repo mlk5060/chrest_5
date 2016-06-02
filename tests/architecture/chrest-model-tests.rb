@@ -8,6 +8,25 @@ require_relative "visual-spatial-field-tests.rb"
 ################################################################################
 
 ################################################################################
+unit_test "advance_attention_clock" do
+  Chrest.class_eval{
+    field_accessor :_attentionClock
+  }
+  
+  20.times do
+    model = Chrest.new(0, [true, false].sample)
+    
+    intial_attention_clock_value = rand(0..200)
+    model._attentionClock = intial_attention_clock_value
+    
+    advance_attention_by = rand(0..200)
+    model.advanceAttentionClock(advance_attention_by)
+    
+    assert_equal(intial_attention_clock_value + advance_attention_by, model._attentionClock)
+  end
+end
+
+################################################################################
 # Tests the "Chrest.discriminate()" method using a number of scenarios that 
 # trigger each type of discrimination in the method.
 # 
@@ -6103,7 +6122,7 @@ canonical_result_test "make_fixations_in_domains" do
       # Randomly stipulate whether a VisualSpatialField should be constructed or
       # not when the number of Fixations attempted equals the maximum permitted.
       construct_visual_spatial_field = [true,false].sample
-      until !model.scheduleOrMakeNextFixation(scene_to_fixate_on, construct_visual_spatial_field, time)
+      until model.scheduleOrMakeNextFixation(scene_to_fixate_on, construct_visual_spatial_field, time) == ChrestStatus::FIXATION_SET_COMPLETE
         time += 1
       end
       
@@ -6265,11 +6284,11 @@ canonical_result_test "make_fixations_in_domains" do
       # Invoke the method until it returns true, i.e. it has started a new 
       # Fixation set.
       time += 1
-      until model.scheduleOrMakeNextFixation(scene_to_fixate_on, false, time)
+      until model.scheduleOrMakeNextFixation(scene_to_fixate_on, false, time) == ChrestStatus::FIXATION_SET_BEING_PERFORMED
         time += 1
       end
       
-      # Check that the model now considers itself as performing a new Fixtaion
+      # Check that the model now considers itself as performing a new Fixation
       # set
       assert_true(
         model._performingFixations, 
@@ -6324,7 +6343,7 @@ canonical_result_test "make_fixations_in_domains" do
       ##### PERFORM ANOTHER FIXATION SET #####
       ########################################
       time += 1
-      until !model.scheduleOrMakeNextFixation(scene_to_fixate_on, false, time)
+      until model.scheduleOrMakeNextFixation(scene_to_fixate_on, false, time) == ChrestStatus::FIXATION_SET_COMPLETE
         time += 1
       end
     end
