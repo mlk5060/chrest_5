@@ -6490,10 +6490,29 @@ public class Chrest extends Observable {
                   //CHREST model to move a VisualSpatialFieldObject in a 
                   //VisualSpatialField.
                   this.refreshVisualSpatialFieldObjectTermini(visualSpatialField, colToMoveFrom, rowToMoveFrom, time);
+                  
+                  //Increment the time by the time taken by this model to move 
+                  //a VisualSpatialFieldObject in a VisualSpatialField.  Do 
+                  //this now since it should still take time to move a 
+                  //VisualSpatialFieldObject even if it is moved to 
+                  //VisualSpatialField coordinates not represented in the 
+                  //VisualSpatialField (the "putting-down" step of the move is 
+                  //not actually performed in this case).  Also, this ensures 
+                  //that the VisualSpatialFieldObject continually exists on the
+                  //VisualSpatialField since, if it were "picked-up" before 
+                  //incrementing the time, there will be a gap before it is 
+                  //"put-down" resulting in the VisualSpatialFieldObject not 
+                  //existing on the VisualSpatialField while it is being moved.
+                  this.printDebugStatement("\n      + Incrementing current time (" + time + ") by the " +
+                    "time taken by this CHREST model to move a " +
+                    "VisualSpatialFieldObject (" + 
+                    this._timeToMoveVisualSpatialFieldObject + ")"
+                  );
+                  time += this._timeToMoveVisualSpatialFieldObject;
+                  this.printDebugStatement("      + Time now equal to " + time);
                     
-                  //Remove the object from the visual-spatial coordinates at
-                  //this time by setting its terminus to the time the 
-                  //visual-spatial field is accessed.
+                  //Remove the object from its current visual-spatial 
+                  //coordinates at the time the move occurs.
                   objectToMove.setTerminus(time, true);
                   this.printDebugStatement("         = Terminus of VisualSpatialFieldObject to move set to " + objectToMove.getTerminus());
                     
@@ -6502,7 +6521,7 @@ public class Chrest extends Observable {
                   //VisualSpatialFieldObject being moved is not co-habiting 
                   //the square with any VisualSpatialFieldObjects that denote 
                   //physical (non-empty square) VisualSpatialFieldObjects that 
-                  //are currently alive.
+                  //are alive when the move occurs.
                   this.printDebugStatement(
                     "         = Checking if the VisualSpatialField " +
                     "coordinates should be encoded as an empty square.  " +
@@ -6555,21 +6574,6 @@ public class Chrest extends Observable {
 
                     visualSpatialField.addObjectToCoordinates(colToMoveFrom, rowToMoveFrom, emptySquare, time);
                   }
-                    
-                  //Increment the time by the time taken by this model to move 
-                  //a VisualSpatialFieldObject in a VisualSpatialField.  Do 
-                  //this now since it should still take time to move a 
-                  //VisualSpatialFieldObject even if it is moved to 
-                  //VisualSpatialField coordinates not represented in the 
-                  //VisualSpatialField (the "putting-down" step of the move is 
-                  //not actually performed in this case).
-                  this.printDebugStatement("\n      + Incrementing current time (" + time + ") by the " +
-                    "time taken by this CHREST model to move a " +
-                    "VisualSpatialFieldObject (" + 
-                    this._timeToMoveVisualSpatialFieldObject + ")"
-                  );
-                  time += this._timeToMoveVisualSpatialFieldObject;
-                  this.printDebugStatement("      + Time now equal to " + time);
                     
                   //Create a new VisualSpatialFieldObject that represents the 
                   //VisualSpatialFieldObject after the move.  It is assumed 

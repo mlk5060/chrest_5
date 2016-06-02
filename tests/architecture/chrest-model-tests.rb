@@ -7805,12 +7805,12 @@ process_test "move_visual_spatial_field_object" do
       
       # Set relevant timing parameters.
       time_move_requested = time
-      pickup_time = time_move_requested + model._timeToAccessVisualSpatialField
-      putdown_time = pickup_time + model._timeToMoveVisualSpatialFieldObject
-      expected_attention_clock = putdown_time
+      move_initiated_time = time_move_requested + model._timeToAccessVisualSpatialField
+      movement_time = move_initiated_time + model._timeToMoveVisualSpatialFieldObject
+      expected_attention_clock = movement_time
       
       # Set terminus for VisualSpatialFieldObject being moved
-      expected_visual_spatial_field_data[1][1][0][4] = pickup_time
+      expected_visual_spatial_field_data[1][1][0][4] = movement_time
       
       # New VisualSpatialFieldObject representing an empty square should be 
       # added to (1, 1) when VisualSpatialFieldObject being moved is picked up.
@@ -7818,17 +7818,16 @@ process_test "move_visual_spatial_field_object" do
         nil,
         Scene.getEmptySquareToken(),
         false,
-        pickup_time,
-        pickup_time + model._unrecognisedVisualSpatialFieldObjectLifespan
+        movement_time,
+        movement_time + model._unrecognisedVisualSpatialFieldObjectLifespan
       ])
     
       # Refresh termini of VisualSpatialField objects on coordinates around 
       # (1, 1) that fall within the fixation field of view.
-      if scenario == 13 then expected_visual_spatial_field_data[2][0][0][4] = pickup_time + model._unrecognisedVisualSpatialFieldObjectLifespan end
-      expected_visual_spatial_field_data[2][1][0][4] = pickup_time + model._unrecognisedVisualSpatialFieldObjectLifespan
-      expected_visual_spatial_field_data[0][2][0][4] = pickup_time + model._unrecognisedVisualSpatialFieldObjectLifespan
-      expected_visual_spatial_field_data[0][2][0][4] = pickup_time + model._unrecognisedVisualSpatialFieldObjectLifespan
-      expected_visual_spatial_field_data[2][2][0][4] = pickup_time + model._recognisedVisualSpatialFieldObjectLifespan
+      if scenario == 13 then expected_visual_spatial_field_data[2][0][0][4] = move_initiated_time + model._unrecognisedVisualSpatialFieldObjectLifespan end
+      expected_visual_spatial_field_data[2][1][0][4] = move_initiated_time + model._unrecognisedVisualSpatialFieldObjectLifespan
+      expected_visual_spatial_field_data[0][2][0][4] = move_initiated_time + model._unrecognisedVisualSpatialFieldObjectLifespan
+      expected_visual_spatial_field_data[2][2][0][4] = move_initiated_time + model._recognisedVisualSpatialFieldObjectLifespan
       
       # New VisualSpatialFieldObject representing the VisualSpatialFieldObject
       # being moved should be added to (0, 1).  If the VisualSpatialFieldObject 
@@ -7839,15 +7838,15 @@ process_test "move_visual_spatial_field_object" do
         "1", 
         (scenario == 13 ? Scene.getCreatorToken() : "A"), 
         false, 
-        putdown_time, 
-        (scenario == 13 ? nil : putdown_time + model._unrecognisedVisualSpatialFieldObjectLifespan)
+        movement_time, 
+        (scenario == 13 ? nil : movement_time + model._unrecognisedVisualSpatialFieldObjectLifespan)
       ]]
       
       # VisualSpatialFieldObjects in fixation field of view around (0, 1) should
       # have their termini refreshed.
-      expected_visual_spatial_field_data[1][1][1][4] = putdown_time + model._unrecognisedVisualSpatialFieldObjectLifespan
-      expected_visual_spatial_field_data[0][2][0][4] = putdown_time + model._unrecognisedVisualSpatialFieldObjectLifespan
-      expected_visual_spatial_field_data[1][2][0][4] = putdown_time + model._unrecognisedVisualSpatialFieldObjectLifespan
+      expected_visual_spatial_field_data[1][1][1][4] = movement_time + model._unrecognisedVisualSpatialFieldObjectLifespan
+      expected_visual_spatial_field_data[0][2][0][4] = movement_time + model._unrecognisedVisualSpatialFieldObjectLifespan
+      expected_visual_spatial_field_data[1][2][0][4] = movement_time + model._unrecognisedVisualSpatialFieldObjectLifespan
       
       move_visual_spatial_field_object_test(
         model,
@@ -7855,7 +7854,7 @@ process_test "move_visual_spatial_field_object" do
         time_move_requested,
         expected_visual_spatial_field_data,
         expected_attention_clock,
-        putdown_time,
+        movement_time,
         scenario
       )
     
@@ -7967,54 +7966,54 @@ process_test "move_visual_spatial_field_object" do
       
       # Set relevant timing parameters.
       time_move_requested = time
-      pickup_time = time_move_requested + model._timeToAccessVisualSpatialField
-      putdown_time = pickup_time + model._timeToMoveVisualSpatialFieldObject
-      expected_attention_clock = putdown_time
+      move_initiated_time = time_move_requested + model._timeToAccessVisualSpatialField
+      movement_time = move_initiated_time + model._timeToMoveVisualSpatialFieldObject
+      expected_attention_clock = movement_time
       
       # Set terminus for VisualSpatialFieldObject being moved on (1, 1)
-      expected_visual_spatial_field_data[1][1][0][4] = pickup_time
+      expected_visual_spatial_field_data[1][1][0][4] = movement_time
       
       # New VisualSpatialFieldObject representing an empty square should be 
-      # added to (1, 1) when VisualSpatialFieldObject being moved is picked up.
+      # added to (1, 1) when VisualSpatialFieldObject is moved.
       expected_visual_spatial_field_data[1][1].push([
         nil,
         Scene.getEmptySquareToken(),
         false,
-        pickup_time,
-        pickup_time + model._unrecognisedVisualSpatialFieldObjectLifespan
+        movement_time,
+        movement_time + model._unrecognisedVisualSpatialFieldObjectLifespan
       ])
     
       # VisualSpatialFieldObjects in fixation field of view around (1, 1) should
       # have their termini refreshed.
-      if scenario == 14 then expected_visual_spatial_field_data[2][0][0][4] = pickup_time + model._unrecognisedVisualSpatialFieldObjectLifespan end
-      expected_visual_spatial_field_data[2][1][0][4] = pickup_time + model._unrecognisedVisualSpatialFieldObjectLifespan
-      expected_visual_spatial_field_data[0][2][0][4] = pickup_time + model._unrecognisedVisualSpatialFieldObjectLifespan
-      expected_visual_spatial_field_data[1][2][0][4] = pickup_time + model._unrecognisedVisualSpatialFieldObjectLifespan
-      expected_visual_spatial_field_data[2][2][0][4] = pickup_time + model._recognisedVisualSpatialFieldObjectLifespan
+      if scenario == 14 then expected_visual_spatial_field_data[2][0][0][4] = move_initiated_time + model._unrecognisedVisualSpatialFieldObjectLifespan end
+      expected_visual_spatial_field_data[2][1][0][4] = move_initiated_time + model._unrecognisedVisualSpatialFieldObjectLifespan
+      expected_visual_spatial_field_data[0][2][0][4] = move_initiated_time + model._unrecognisedVisualSpatialFieldObjectLifespan
+      expected_visual_spatial_field_data[1][2][0][4] = move_initiated_time + model._unrecognisedVisualSpatialFieldObjectLifespan
+      expected_visual_spatial_field_data[2][2][0][4] = move_initiated_time + model._recognisedVisualSpatialFieldObjectLifespan
     
       # Set terminus for empty square on (1, 2)
-      expected_visual_spatial_field_data[1][2][0][4] = putdown_time
+      expected_visual_spatial_field_data[1][2][0][4] = movement_time
       
-      # VisualSpatialFieldObject being moved should be added to (1, 2) at put 
-      # down time.  If the VisualSpatialFieldObject being moved was previously
-      # recognised it should now be unrecognised.  If the creator is being 
-      # moved, its terminus should not be set.
+      # VisualSpatialFieldObject being moved should be added to (1, 2) at 
+      # movement time.  If the VisualSpatialFieldObject being moved was 
+      # previously recognised it should now be unrecognised.  If the creator is 
+      # being moved, its terminus should not be set.
       expected_visual_spatial_field_data[1][2].push([
         "1",
         (scenario == 14 ? Scene.getCreatorToken() : "A"),
         false,
-        putdown_time,
-        (scenario == 14 ? nil : putdown_time + model._unrecognisedVisualSpatialFieldObjectLifespan)
+        movement_time,
+        (scenario == 14 ? nil : movement_time + model._unrecognisedVisualSpatialFieldObjectLifespan)
       ])
     
       # VisualSpatialFieldObjects in fixation field of view around (1, 2) should
       # have their termini refreshed.
-      expected_visual_spatial_field_data[1][1][1][4] = putdown_time + model._unrecognisedVisualSpatialFieldObjectLifespan
-      expected_visual_spatial_field_data[2][1][0][4] = putdown_time + model._unrecognisedVisualSpatialFieldObjectLifespan
-      expected_visual_spatial_field_data[0][2][0][4] = putdown_time + model._unrecognisedVisualSpatialFieldObjectLifespan
-      expected_visual_spatial_field_data[2][2][0][4] = putdown_time + model._recognisedVisualSpatialFieldObjectLifespan
-      expected_visual_spatial_field_data[1][3][0][4] = putdown_time + model._unrecognisedVisualSpatialFieldObjectLifespan
-      expected_visual_spatial_field_data[2][3][0][4] = putdown_time + model._unrecognisedVisualSpatialFieldObjectLifespan
+      expected_visual_spatial_field_data[1][1][1][4] = movement_time + model._unrecognisedVisualSpatialFieldObjectLifespan
+      expected_visual_spatial_field_data[2][1][0][4] = movement_time + model._unrecognisedVisualSpatialFieldObjectLifespan
+      expected_visual_spatial_field_data[0][2][0][4] = movement_time + model._unrecognisedVisualSpatialFieldObjectLifespan
+      expected_visual_spatial_field_data[2][2][0][4] = movement_time + model._recognisedVisualSpatialFieldObjectLifespan
+      expected_visual_spatial_field_data[1][3][0][4] = movement_time + model._unrecognisedVisualSpatialFieldObjectLifespan
+      expected_visual_spatial_field_data[2][3][0][4] = movement_time + model._unrecognisedVisualSpatialFieldObjectLifespan
       
       move_visual_spatial_field_object_test(
         model,
@@ -8022,7 +8021,7 @@ process_test "move_visual_spatial_field_object" do
         time_move_requested,
         expected_visual_spatial_field_data,
         expected_attention_clock,
-        putdown_time,
+        movement_time,
         scenario.to_s + ".1"
       )
       
@@ -8034,12 +8033,12 @@ process_test "move_visual_spatial_field_object" do
         # Make VisualSpatialFieldObject with identifier "1" recognised again.  
         # Since the recognised history of a VisualSpatialFieldObject is a 
         # HistoryTreeMap and VisualSpatialFieldObject with identifier "1"s 
-        # recognised status is updated at the current value of "putdown_time", its
+        # recognised status is updated at the current value of "movement_time", its
         # not possible to overwrite this entry.  Best solution currently is to add
         # an entry just after the previous one stating that the 
         # VisualSpatialFieldObject is recognised.
         rec_history = recognised_history_field.value(vsf.get(1).get(2).get(1))
-        rec_history.put((putdown_time + 1).to_java(:int), true)
+        rec_history.put((movement_time + 1).to_java(:int), true)
 
         # Set expected recognised status and terminus of VisualSpatialFieldObject 
         # with identifier 0
@@ -8055,13 +8054,13 @@ process_test "move_visual_spatial_field_object" do
       move_sequence.add(move)
       
       # Set relevant timing parameters
-      time_move_requested = putdown_time + 1
-      pickup_time = time_move_requested + model._timeToAccessVisualSpatialField
-      putdown_time = pickup_time + model._timeToMoveVisualSpatialFieldObject
-      expected_attention_clock = putdown_time
+      time_move_requested = movement_time + 1
+      move_initiated_time = time_move_requested + model._timeToAccessVisualSpatialField
+      movement_time = move_initiated_time + model._timeToMoveVisualSpatialFieldObject
+      expected_attention_clock = movement_time
       
       # Set terminus for VisualSpatialFieldObject being moved on (1, 2)
-      expected_visual_spatial_field_data[1][2][1][4] = pickup_time
+      expected_visual_spatial_field_data[1][2][1][4] = movement_time
       
       # New VisualSpatialFieldObject representing an empty square should be 
       # added to (1, 2) when VisualSpatialFieldObject being moved is picked up.
@@ -8069,21 +8068,21 @@ process_test "move_visual_spatial_field_object" do
         nil,
         Scene.getEmptySquareToken(),
         false,
-        pickup_time,
-        pickup_time + model._unrecognisedVisualSpatialFieldObjectLifespan
+        movement_time,
+        movement_time + model._unrecognisedVisualSpatialFieldObjectLifespan
       ])
     
       # VisualSpatialFieldObjects in fixation field of view around (1, 2) should
       # have their termini refreshed.
-      expected_visual_spatial_field_data[1][1][1][4] = pickup_time + model._unrecognisedVisualSpatialFieldObjectLifespan
-      expected_visual_spatial_field_data[2][1][0][4] = pickup_time + model._unrecognisedVisualSpatialFieldObjectLifespan
-      expected_visual_spatial_field_data[0][2][0][4] = pickup_time + model._unrecognisedVisualSpatialFieldObjectLifespan
-      expected_visual_spatial_field_data[2][2][0][4] = pickup_time + model._recognisedVisualSpatialFieldObjectLifespan
-      expected_visual_spatial_field_data[1][3][0][4] = pickup_time + model._unrecognisedVisualSpatialFieldObjectLifespan
-      expected_visual_spatial_field_data[2][3][0][4] = pickup_time + model._unrecognisedVisualSpatialFieldObjectLifespan
+      expected_visual_spatial_field_data[1][1][1][4] = move_initiated_time + model._unrecognisedVisualSpatialFieldObjectLifespan
+      expected_visual_spatial_field_data[2][1][0][4] = move_initiated_time + model._unrecognisedVisualSpatialFieldObjectLifespan
+      expected_visual_spatial_field_data[0][2][0][4] = move_initiated_time + model._unrecognisedVisualSpatialFieldObjectLifespan
+      expected_visual_spatial_field_data[2][2][0][4] = move_initiated_time + model._recognisedVisualSpatialFieldObjectLifespan
+      expected_visual_spatial_field_data[1][3][0][4] = move_initiated_time + model._unrecognisedVisualSpatialFieldObjectLifespan
+      expected_visual_spatial_field_data[2][3][0][4] = move_initiated_time + model._unrecognisedVisualSpatialFieldObjectLifespan
     
       # Set terminus for empty square on (3, 2)
-      expected_visual_spatial_field_data[3][2][0][4] = putdown_time
+      expected_visual_spatial_field_data[3][2][0][4] = movement_time
       
       # Add VisualSpatialFieldObject being moved to (3, 2).  Again, if the 
       # creator is being moved, its terminus should not be set.
@@ -8091,18 +8090,18 @@ process_test "move_visual_spatial_field_object" do
         "1",
         (scenario == 14 ? Scene.getCreatorToken() : "A"),
         false,
-        putdown_time,
-        (scenario == 14 ? nil : putdown_time + model._unrecognisedVisualSpatialFieldObjectLifespan)
+        movement_time,
+        (scenario == 14 ? nil : movement_time + model._unrecognisedVisualSpatialFieldObjectLifespan)
       ])
     
       # VisualSpatialFieldObjects in fixation field of view around (3, 2) should
       # have their termini refreshed.
-      expected_visual_spatial_field_data[2][1][0][4] = putdown_time + model._unrecognisedVisualSpatialFieldObjectLifespan
-      expected_visual_spatial_field_data[3][1][0][4] = putdown_time + model._unrecognisedVisualSpatialFieldObjectLifespan
-      expected_visual_spatial_field_data[2][2][0][4] = putdown_time + model._recognisedVisualSpatialFieldObjectLifespan
-      expected_visual_spatial_field_data[4][2][0][4] = putdown_time + model._unrecognisedVisualSpatialFieldObjectLifespan
-      expected_visual_spatial_field_data[2][3][0][4] = putdown_time + model._unrecognisedVisualSpatialFieldObjectLifespan
-      expected_visual_spatial_field_data[3][3][0][4] = putdown_time + model._unrecognisedVisualSpatialFieldObjectLifespan
+      expected_visual_spatial_field_data[2][1][0][4] = movement_time + model._unrecognisedVisualSpatialFieldObjectLifespan
+      expected_visual_spatial_field_data[3][1][0][4] = movement_time + model._unrecognisedVisualSpatialFieldObjectLifespan
+      expected_visual_spatial_field_data[2][2][0][4] = movement_time + model._recognisedVisualSpatialFieldObjectLifespan
+      expected_visual_spatial_field_data[4][2][0][4] = movement_time + model._unrecognisedVisualSpatialFieldObjectLifespan
+      expected_visual_spatial_field_data[2][3][0][4] = movement_time + model._unrecognisedVisualSpatialFieldObjectLifespan
+      expected_visual_spatial_field_data[3][3][0][4] = movement_time + model._unrecognisedVisualSpatialFieldObjectLifespan
       
       move_visual_spatial_field_object_test(
         model,
@@ -8110,7 +8109,7 @@ process_test "move_visual_spatial_field_object" do
         time_move_requested,
         expected_visual_spatial_field_data,
         expected_attention_clock,
-        putdown_time,
+        movement_time,
         scenario.to_s + ".2"
       )
       
@@ -8185,47 +8184,47 @@ process_test "move_visual_spatial_field_object" do
       
       # Set relevant timing parameters.
       time_move_requested = time
-      pickup_time = time_move_requested + model._timeToAccessVisualSpatialField
-      putdown_time = pickup_time + model._timeToMoveVisualSpatialFieldObject
-      expected_attention_clock = putdown_time
+      move_initiated_time = time_move_requested + model._timeToAccessVisualSpatialField
+      movement_time = move_initiated_time + model._timeToMoveVisualSpatialFieldObject
+      expected_attention_clock = movement_time
       
       # Set terminus for VisualSpatialFieldObject with identifier "1" on (1, 1)
-      expected_visual_spatial_field_data[1][1][0][4] = pickup_time
+      expected_visual_spatial_field_data[1][1][0][4] = movement_time
       
       # New VisualSpatialFieldObject representing an empty square should be 
       # added to (1, 1) when VisualSpatialFieldObject with identifier "1" is 
-      # picked up.
+      # moved.
       expected_visual_spatial_field_data[1][1].push([
         nil,
         Scene.getEmptySquareToken(),
         false,
-        pickup_time,
-        pickup_time + model._unrecognisedVisualSpatialFieldObjectLifespan
+        movement_time,
+        movement_time + model._unrecognisedVisualSpatialFieldObjectLifespan
       ])
     
       # Termini of VisualSpatialFieldObjects on coordinates around (1, 1) within
       # fixation field of view should be refreshed.
-      expected_visual_spatial_field_data[2][1][0][4] = pickup_time + model._unrecognisedVisualSpatialFieldObjectLifespan 
-      expected_visual_spatial_field_data[0][2][0][4] = pickup_time + model._unrecognisedVisualSpatialFieldObjectLifespan 
-      expected_visual_spatial_field_data[1][2][0][4] = pickup_time + model._unrecognisedVisualSpatialFieldObjectLifespan 
-      expected_visual_spatial_field_data[2][2][0][4] = pickup_time + model._recognisedVisualSpatialFieldObjectLifespan 
+      expected_visual_spatial_field_data[2][1][0][4] = move_initiated_time + model._unrecognisedVisualSpatialFieldObjectLifespan 
+      expected_visual_spatial_field_data[0][2][0][4] = move_initiated_time + model._unrecognisedVisualSpatialFieldObjectLifespan 
+      expected_visual_spatial_field_data[1][2][0][4] = move_initiated_time + model._unrecognisedVisualSpatialFieldObjectLifespan 
+      expected_visual_spatial_field_data[2][2][0][4] = move_initiated_time + model._recognisedVisualSpatialFieldObjectLifespan 
       
       # VisualSpatialFieldObject with identifier "1" should be added to (2, 0) 
-      # at first putdown time.  Should no longer be recognised.
+      # at movement time.  Should no longer be recognised.
       expected_visual_spatial_field_data[2][0].push([
         "1",
         "A",
         false,
-        putdown_time,
-        putdown_time + model._unrecognisedVisualSpatialFieldObjectLifespan 
+        movement_time,
+        movement_time + model._unrecognisedVisualSpatialFieldObjectLifespan 
       ])
     
       # VisualSpatialFieldObject representing the creator should not be modified
       # in any way.  Just refresh the termini of VisualSpatialFieldObjects 
       # around (2, 0) within fixation field of view.
-      expected_visual_spatial_field_data[1][1][1][4] = putdown_time + model._unrecognisedVisualSpatialFieldObjectLifespan
-      expected_visual_spatial_field_data[2][1][0][4] = putdown_time + model._unrecognisedVisualSpatialFieldObjectLifespan
-      expected_visual_spatial_field_data[3][1][0][4] = putdown_time + model._unrecognisedVisualSpatialFieldObjectLifespan
+      expected_visual_spatial_field_data[1][1][1][4] = movement_time + model._unrecognisedVisualSpatialFieldObjectLifespan
+      expected_visual_spatial_field_data[2][1][0][4] = movement_time + model._unrecognisedVisualSpatialFieldObjectLifespan
+      expected_visual_spatial_field_data[3][1][0][4] = movement_time + model._unrecognisedVisualSpatialFieldObjectLifespan
     
       move_visual_spatial_field_object_test(
         model,
@@ -8233,7 +8232,7 @@ process_test "move_visual_spatial_field_object" do
         time_move_requested,
         expected_visual_spatial_field_data,
         expected_attention_clock,
-        putdown_time,
+        movement_time,
         scenario.to_s + ".1"
       )
       
@@ -8245,12 +8244,12 @@ process_test "move_visual_spatial_field_object" do
         # Make VisualSpatialFieldObject with identifier "1" recognised again.  
         # Since the recognised history of a VisualSpatialFieldObject is a 
         # HistoryTreeMap and VisualSpatialFieldObject with identifier "1"s 
-        # recognised status is updated at the current value of "putdown_time", its
+        # recognised status is updated at the current value of "movement_time", its
         # not possible to overwrite this entry.  Best solution currently is to add
         # an entry just after the previous one stating that the 
         # VisualSpatialFieldObject is recognised.
         rec_history = recognised_history_field.value(vsf.get(2).get(0).get(1))
-        rec_history.put((putdown_time + 1).to_java(:int), true)
+        rec_history.put((movement_time + 1).to_java(:int), true)
 
         # Set expected recognised status and terminus of VisualSpatialFieldObject 
         # with identifier 0
@@ -8266,42 +8265,42 @@ process_test "move_visual_spatial_field_object" do
       move_sequence.add(move)
       
       # Set relevant time parameters.
-      time_move_requested = putdown_time + 1
-      pickup_time = time_move_requested + model._timeToAccessVisualSpatialField
-      putdown_time = pickup_time + model._timeToMoveVisualSpatialFieldObject
-      expected_attention_clock = putdown_time
+      time_move_requested = movement_time + 1
+      move_initiated_time = time_move_requested + model._timeToAccessVisualSpatialField
+      movement_time = move_initiated_time + model._timeToMoveVisualSpatialFieldObject
+      expected_attention_clock = movement_time
       
       # Set terminus for VisualSpatialObject with identifier "1" on (2, 0)
-      expected_visual_spatial_field_data[2][0][1][4] = pickup_time
+      expected_visual_spatial_field_data[2][0][1][4] = movement_time
       
       # VisualSpatialFieldObject representing the creator should not be modified
       # in any way.  Just refresh the termini of VisualSpatialFieldObjects 
       # around (2, 0) within fixation field of view.
-      expected_visual_spatial_field_data[1][1][1][4] = pickup_time + model._unrecognisedVisualSpatialFieldObjectLifespan
-      expected_visual_spatial_field_data[2][1][0][4] = pickup_time + model._unrecognisedVisualSpatialFieldObjectLifespan
-      expected_visual_spatial_field_data[3][1][0][4] = pickup_time + model._unrecognisedVisualSpatialFieldObjectLifespan
+      expected_visual_spatial_field_data[1][1][1][4] = move_initiated_time + model._unrecognisedVisualSpatialFieldObjectLifespan
+      expected_visual_spatial_field_data[2][1][0][4] = move_initiated_time + model._unrecognisedVisualSpatialFieldObjectLifespan
+      expected_visual_spatial_field_data[3][1][0][4] = move_initiated_time + model._unrecognisedVisualSpatialFieldObjectLifespan
       
       # Set terminus for VisualSpatialFieldObject representing an empty square 
       # on (3, 2)
-      expected_visual_spatial_field_data[3][2][0][4] = putdown_time
+      expected_visual_spatial_field_data[3][2][0][4] = movement_time
       
       # Add VisualSpatialFieldObject with identifier "1" to (3, 2)
       expected_visual_spatial_field_data[3][2].push([
         "1",
         "A",
         false,
-        putdown_time,
-        putdown_time + model._unrecognisedVisualSpatialFieldObjectLifespan
+        movement_time,
+        movement_time + model._unrecognisedVisualSpatialFieldObjectLifespan
       ])
     
       # Termini of VisualSpatialFieldObjects on coordinates around (3, 2) within
       # fixation field of view should be refreshed.
-      expected_visual_spatial_field_data[2][1][0][4] = putdown_time + model._unrecognisedVisualSpatialFieldObjectLifespan 
-      expected_visual_spatial_field_data[3][1][0][4] = putdown_time + model._unrecognisedVisualSpatialFieldObjectLifespan 
-      expected_visual_spatial_field_data[2][2][0][4] = putdown_time + model._recognisedVisualSpatialFieldObjectLifespan 
-      expected_visual_spatial_field_data[4][2][0][4] = putdown_time + model._unrecognisedVisualSpatialFieldObjectLifespan
-      expected_visual_spatial_field_data[2][3][0][4] = putdown_time + model._unrecognisedVisualSpatialFieldObjectLifespan
-      expected_visual_spatial_field_data[3][3][0][4] = putdown_time + model._unrecognisedVisualSpatialFieldObjectLifespan
+      expected_visual_spatial_field_data[2][1][0][4] = movement_time + model._unrecognisedVisualSpatialFieldObjectLifespan 
+      expected_visual_spatial_field_data[3][1][0][4] = movement_time + model._unrecognisedVisualSpatialFieldObjectLifespan 
+      expected_visual_spatial_field_data[2][2][0][4] = movement_time + model._recognisedVisualSpatialFieldObjectLifespan 
+      expected_visual_spatial_field_data[4][2][0][4] = movement_time + model._unrecognisedVisualSpatialFieldObjectLifespan
+      expected_visual_spatial_field_data[2][3][0][4] = movement_time + model._unrecognisedVisualSpatialFieldObjectLifespan
+      expected_visual_spatial_field_data[3][3][0][4] = movement_time + model._unrecognisedVisualSpatialFieldObjectLifespan
     
       move_visual_spatial_field_object_test(
         model,
@@ -8309,7 +8308,7 @@ process_test "move_visual_spatial_field_object" do
         time_move_requested,
         expected_visual_spatial_field_data,
         expected_attention_clock,
-        putdown_time,
+        movement_time,
         scenario.to_s + ".2"
       )
       
@@ -8420,30 +8419,30 @@ process_test "move_visual_spatial_field_object" do
       
       # Set relevant time parameters
       time_move_requested = time
-      pickup_time = time_move_requested + model._timeToAccessVisualSpatialField
-      putdown_time = pickup_time + model._timeToMoveVisualSpatialFieldObject
-      expected_attention_clock = putdown_time
+      move_initiated_time = time_move_requested + model._timeToAccessVisualSpatialField
+      movement_time = move_initiated_time + model._timeToMoveVisualSpatialFieldObject
+      expected_attention_clock = movement_time
       
       # Set terminus for VisualSpatialFieldObject being moved on (1, 1)
-      expected_visual_spatial_field_data[1][1][0][4] = pickup_time
+      expected_visual_spatial_field_data[1][1][0][4] = movement_time
       
       # New VisualSpatialFieldObject representing an empty square should be 
-      # added to (1, 1) when VisualSpatialFieldObject being moved is picked up.
+      # added to (1, 1) when VisualSpatialFieldObject being moved is moved.
       expected_visual_spatial_field_data[1][1].push([
         nil,
         Scene.getEmptySquareToken(),
         false,
-        pickup_time,
-        pickup_time + model._unrecognisedVisualSpatialFieldObjectLifespan
+        movement_time,
+        movement_time + model._unrecognisedVisualSpatialFieldObjectLifespan
       ])
     
       # Refresh termini of VisualSpatialFieldObjects around (1, 1) that fall 
       # within fixation field of view.
-      if scenario == 15 then expected_visual_spatial_field_data[2][0][0][4] = pickup_time + model._unrecognisedVisualSpatialFieldObjectLifespan end
-      expected_visual_spatial_field_data[2][1][0][4] = pickup_time + model._unrecognisedVisualSpatialFieldObjectLifespan
-      expected_visual_spatial_field_data[0][2][0][4] = pickup_time + model._unrecognisedVisualSpatialFieldObjectLifespan
-      expected_visual_spatial_field_data[1][2][0][4] = pickup_time + model._unrecognisedVisualSpatialFieldObjectLifespan
-      expected_visual_spatial_field_data[2][2][0][4] = pickup_time + model._recognisedVisualSpatialFieldObjectLifespan
+      if scenario == 15 then expected_visual_spatial_field_data[2][0][0][4] = move_initiated_time + model._unrecognisedVisualSpatialFieldObjectLifespan end
+      expected_visual_spatial_field_data[2][1][0][4] = move_initiated_time + model._unrecognisedVisualSpatialFieldObjectLifespan
+      expected_visual_spatial_field_data[0][2][0][4] = move_initiated_time + model._unrecognisedVisualSpatialFieldObjectLifespan
+      expected_visual_spatial_field_data[1][2][0][4] = move_initiated_time + model._unrecognisedVisualSpatialFieldObjectLifespan
+      expected_visual_spatial_field_data[2][2][0][4] = move_initiated_time + model._recognisedVisualSpatialFieldObjectLifespan
       
       # VisualSpatialFieldObject being moved should be added to (2, 2)  at first 
       # put down time.  If the VisualSpatialFieldObject being moved was 
@@ -8453,26 +8452,26 @@ process_test "move_visual_spatial_field_object" do
         "1",
         (scenario == 15 ? Scene.getCreatorToken() : "A"),
         false,
-        putdown_time,
-        (scenario == 15 ? nil : putdown_time + model._unrecognisedVisualSpatialFieldObjectLifespan)
+        movement_time,
+        (scenario == 15 ? nil : movement_time + model._unrecognisedVisualSpatialFieldObjectLifespan)
       ])
     
       # Update terminus for VisualSpatialFieldObject with identifier "2" on 
       # (2, 2) since the coordinates have had attention focused on them and the 
       # VisualSpatialFieldObject is alive when the VisualSpatialFieldObject 
       # being moved is put down.
-      expected_visual_spatial_field_data[2][2][0][4] = putdown_time + model._recognisedVisualSpatialFieldObjectLifespan
+      expected_visual_spatial_field_data[2][2][0][4] = movement_time + model._recognisedVisualSpatialFieldObjectLifespan
       
       # Refresh termini of VisualSpatialFieldObjects around (2, 2) that fall 
       # within fixation field of view.
-      expected_visual_spatial_field_data[1][1][1][4] = putdown_time + model._unrecognisedVisualSpatialFieldObjectLifespan
-      expected_visual_spatial_field_data[2][1][0][4] = putdown_time + model._unrecognisedVisualSpatialFieldObjectLifespan
-      expected_visual_spatial_field_data[3][1][0][4] = putdown_time + model._unrecognisedVisualSpatialFieldObjectLifespan
-      expected_visual_spatial_field_data[1][2][0][4] = putdown_time + model._unrecognisedVisualSpatialFieldObjectLifespan
-      expected_visual_spatial_field_data[3][2][0][4] = putdown_time + model._unrecognisedVisualSpatialFieldObjectLifespan
-      expected_visual_spatial_field_data[1][3][0][4] = putdown_time + model._unrecognisedVisualSpatialFieldObjectLifespan
-      expected_visual_spatial_field_data[2][3][0][4] = putdown_time + model._unrecognisedVisualSpatialFieldObjectLifespan
-      expected_visual_spatial_field_data[3][3][0][4] = putdown_time + model._unrecognisedVisualSpatialFieldObjectLifespan
+      expected_visual_spatial_field_data[1][1][1][4] = movement_time + model._unrecognisedVisualSpatialFieldObjectLifespan
+      expected_visual_spatial_field_data[2][1][0][4] = movement_time + model._unrecognisedVisualSpatialFieldObjectLifespan
+      expected_visual_spatial_field_data[3][1][0][4] = movement_time + model._unrecognisedVisualSpatialFieldObjectLifespan
+      expected_visual_spatial_field_data[1][2][0][4] = movement_time + model._unrecognisedVisualSpatialFieldObjectLifespan
+      expected_visual_spatial_field_data[3][2][0][4] = movement_time + model._unrecognisedVisualSpatialFieldObjectLifespan
+      expected_visual_spatial_field_data[1][3][0][4] = movement_time + model._unrecognisedVisualSpatialFieldObjectLifespan
+      expected_visual_spatial_field_data[2][3][0][4] = movement_time + model._unrecognisedVisualSpatialFieldObjectLifespan
+      expected_visual_spatial_field_data[3][3][0][4] = movement_time + model._unrecognisedVisualSpatialFieldObjectLifespan
       
       move_visual_spatial_field_object_test(
         model,
@@ -8480,7 +8479,7 @@ process_test "move_visual_spatial_field_object" do
         time_move_requested,
         expected_visual_spatial_field_data,
         expected_attention_clock,
-        putdown_time,
+        movement_time,
         scenario.to_s + ".1"
       )
       
@@ -8492,17 +8491,17 @@ process_test "move_visual_spatial_field_object" do
         # Make VisualSpatialFieldObject with identifier "1" recognised again.  
         # Since the recognised history of a VisualSpatialFieldObject is a 
         # HistoryTreeMap and VisualSpatialFieldObject with identifier "1"s 
-        # recognised status is updated at the current value of "putdown_time", its
+        # recognised status is updated at the current value of "movement_time", its
         # not possible to overwrite this entry.  Best solution currently is to add
         # an entry just after the previous one stating that the 
         # VisualSpatialFieldObject is recognised.
         rec_history = recognised_history_field.value(vsf.get(2).get(2).get(1))
-        rec_history.put((putdown_time + 1).to_java(:int), true)
+        rec_history.put((movement_time + 1).to_java(:int), true)
       
         # Update recognised status and terminus of VisualSpatialFieldObject with 
         # identifier "1" on (2, 2)
         expected_visual_spatial_field_data[2][2][1][2] = true
-        expected_visual_spatial_field_data[2][2][1][4] = putdown_time + model._recognisedVisualSpatialFieldObjectLifespan
+        expected_visual_spatial_field_data[2][2][1][4] = movement_time + model._recognisedVisualSpatialFieldObjectLifespan
       end
       
       # Construct move
@@ -8513,32 +8512,32 @@ process_test "move_visual_spatial_field_object" do
       move_sequence.add(move)
       
       # Set relevant timing parameters
-      time_move_requested = putdown_time + 1
-      pickup_time = time_move_requested + model._timeToAccessVisualSpatialField
-      putdown_time = pickup_time + model._timeToMoveVisualSpatialFieldObject
-      expected_attention_clock = putdown_time
+      time_move_requested = movement_time + 1
+      move_initiated_time = time_move_requested + model._timeToAccessVisualSpatialField
+      movement_time = move_initiated_time + model._timeToMoveVisualSpatialFieldObject
+      expected_attention_clock = movement_time
       
       # Set terminus for VisualSpatialFieldObject being moved on (2, 2)
-      expected_visual_spatial_field_data[2][2][1][4] = pickup_time
+      expected_visual_spatial_field_data[2][2][1][4] = movement_time
       
       # Refresh terminus for VisualSpatialFieldObject with identifier "2" on 
       # (2, 2)
-      expected_visual_spatial_field_data[2][2][0][4] = pickup_time + model._recognisedVisualSpatialFieldObjectLifespan
+      expected_visual_spatial_field_data[2][2][0][4] = move_initiated_time + model._recognisedVisualSpatialFieldObjectLifespan
       
       # Refresh termini of VisualSpatialFieldObjects around (2, 2) that fall 
       # within fixation field of view.
-      expected_visual_spatial_field_data[1][1][1][4] = pickup_time + model._unrecognisedVisualSpatialFieldObjectLifespan
-      expected_visual_spatial_field_data[2][1][0][4] = pickup_time + model._unrecognisedVisualSpatialFieldObjectLifespan
-      expected_visual_spatial_field_data[3][1][0][4] = pickup_time + model._unrecognisedVisualSpatialFieldObjectLifespan
-      expected_visual_spatial_field_data[1][2][0][4] = pickup_time + model._unrecognisedVisualSpatialFieldObjectLifespan
-      expected_visual_spatial_field_data[3][2][0][4] = pickup_time + model._unrecognisedVisualSpatialFieldObjectLifespan
-      expected_visual_spatial_field_data[1][3][0][4] = pickup_time + model._unrecognisedVisualSpatialFieldObjectLifespan
-      expected_visual_spatial_field_data[2][3][0][4] = pickup_time + model._unrecognisedVisualSpatialFieldObjectLifespan
-      expected_visual_spatial_field_data[3][3][0][4] = pickup_time + model._unrecognisedVisualSpatialFieldObjectLifespan
+      expected_visual_spatial_field_data[1][1][1][4] = move_initiated_time + model._unrecognisedVisualSpatialFieldObjectLifespan
+      expected_visual_spatial_field_data[2][1][0][4] = move_initiated_time + model._unrecognisedVisualSpatialFieldObjectLifespan
+      expected_visual_spatial_field_data[3][1][0][4] = move_initiated_time + model._unrecognisedVisualSpatialFieldObjectLifespan
+      expected_visual_spatial_field_data[1][2][0][4] = move_initiated_time + model._unrecognisedVisualSpatialFieldObjectLifespan
+      expected_visual_spatial_field_data[3][2][0][4] = move_initiated_time + model._unrecognisedVisualSpatialFieldObjectLifespan
+      expected_visual_spatial_field_data[1][3][0][4] = move_initiated_time + model._unrecognisedVisualSpatialFieldObjectLifespan
+      expected_visual_spatial_field_data[2][3][0][4] = move_initiated_time + model._unrecognisedVisualSpatialFieldObjectLifespan
+      expected_visual_spatial_field_data[3][3][0][4] = move_initiated_time + model._unrecognisedVisualSpatialFieldObjectLifespan
       
       # Set terminus for VisualSpatialFieldObject representing an empty square 
       # on (3, 2)
-      expected_visual_spatial_field_data[3][2][0][4] = putdown_time
+      expected_visual_spatial_field_data[3][2][0][4] = movement_time
       
       # Add VisualSpatialFieldObject being moved to (3, 2).  If the creator is
       # being moved, its terminus should not be set.
@@ -8546,18 +8545,18 @@ process_test "move_visual_spatial_field_object" do
         "1",
         (scenario == 15 ? Scene.getCreatorToken() : "A"),
         false,
-        putdown_time,
-        (scenario == 15 ? nil : putdown_time + model._unrecognisedVisualSpatialFieldObjectLifespan)
+        movement_time,
+        (scenario == 15 ? nil : movement_time + model._unrecognisedVisualSpatialFieldObjectLifespan)
       ])
     
       # Refresh termini of VisualSpatialFieldObjects around (3, 2) that fall 
       # within fixation field of view.
-      expected_visual_spatial_field_data[2][1][0][4] = putdown_time + model._unrecognisedVisualSpatialFieldObjectLifespan
-      expected_visual_spatial_field_data[3][1][0][4] = putdown_time + model._unrecognisedVisualSpatialFieldObjectLifespan
-      expected_visual_spatial_field_data[2][2][0][4] = putdown_time + model._recognisedVisualSpatialFieldObjectLifespan
-      expected_visual_spatial_field_data[4][2][0][4] = putdown_time + model._unrecognisedVisualSpatialFieldObjectLifespan
-      expected_visual_spatial_field_data[2][3][0][4] = putdown_time + model._unrecognisedVisualSpatialFieldObjectLifespan
-      expected_visual_spatial_field_data[3][3][0][4] = putdown_time + model._unrecognisedVisualSpatialFieldObjectLifespan
+      expected_visual_spatial_field_data[2][1][0][4] = movement_time + model._unrecognisedVisualSpatialFieldObjectLifespan
+      expected_visual_spatial_field_data[3][1][0][4] = movement_time + model._unrecognisedVisualSpatialFieldObjectLifespan
+      expected_visual_spatial_field_data[2][2][0][4] = movement_time + model._recognisedVisualSpatialFieldObjectLifespan
+      expected_visual_spatial_field_data[4][2][0][4] = movement_time + model._unrecognisedVisualSpatialFieldObjectLifespan
+      expected_visual_spatial_field_data[2][3][0][4] = movement_time + model._unrecognisedVisualSpatialFieldObjectLifespan
+      expected_visual_spatial_field_data[3][3][0][4] = movement_time + model._unrecognisedVisualSpatialFieldObjectLifespan
       
       move_visual_spatial_field_object_test(
         model,
@@ -8565,7 +8564,7 @@ process_test "move_visual_spatial_field_object" do
         time_move_requested,
         expected_visual_spatial_field_data,
         expected_attention_clock,
-        putdown_time,
+        movement_time,
         scenario.to_s + ".2"
       )
     
@@ -8676,30 +8675,30 @@ process_test "move_visual_spatial_field_object" do
       
       # Set relevant time parameters
       time_move_requested = time
-      pickup_time = time_move_requested + model._timeToAccessVisualSpatialField
-      putdown_time = pickup_time + model._timeToMoveVisualSpatialFieldObject
-      expected_attention_clock = putdown_time
+      move_initiated_time = time_move_requested + model._timeToAccessVisualSpatialField
+      movement_time = move_initiated_time + model._timeToMoveVisualSpatialFieldObject
+      expected_attention_clock = movement_time
       
       # Set terminus for VisualSpatialFieldObject being moved on (1, 1)
-      expected_visual_spatial_field_data[1][1][0][4] = pickup_time
+      expected_visual_spatial_field_data[1][1][0][4] = movement_time
       
       # New VisualSpatialFieldObject representing an empty square should be 
-      # added to (1, 1) when VisualSpatialFieldObject being moved is picked up.
+      # added to (1, 1) when VisualSpatialFieldObject being moved is moved.
       expected_visual_spatial_field_data[1][1].push([
         nil,
         Scene.getEmptySquareToken(),
         false,
-        pickup_time,
-        pickup_time + model._unrecognisedVisualSpatialFieldObjectLifespan
+        movement_time,
+        movement_time + model._unrecognisedVisualSpatialFieldObjectLifespan
       ])
     
       # Refresh termini of VisualSpatialFieldObjects on coordinates around 
       # (1, 1) that fall within the fixation field of view.
-      if scenario == 16 then expected_visual_spatial_field_data[2][0][0][4] = pickup_time + model._unrecognisedVisualSpatialFieldObjectLifespan end
-      expected_visual_spatial_field_data[2][1][0][4] = pickup_time + model._unrecognisedVisualSpatialFieldObjectLifespan
-      expected_visual_spatial_field_data[0][2][0][4] = pickup_time + model._unrecognisedVisualSpatialFieldObjectLifespan
-      expected_visual_spatial_field_data[1][2][0][4] = pickup_time + model._unrecognisedVisualSpatialFieldObjectLifespan
-      expected_visual_spatial_field_data[2][2][0][4] = pickup_time + model._recognisedVisualSpatialFieldObjectLifespan
+      if scenario == 16 then expected_visual_spatial_field_data[2][0][0][4] = move_initiated_time + model._unrecognisedVisualSpatialFieldObjectLifespan end
+      expected_visual_spatial_field_data[2][1][0][4] = move_initiated_time + model._unrecognisedVisualSpatialFieldObjectLifespan
+      expected_visual_spatial_field_data[0][2][0][4] = move_initiated_time + model._unrecognisedVisualSpatialFieldObjectLifespan
+      expected_visual_spatial_field_data[1][2][0][4] = move_initiated_time + model._unrecognisedVisualSpatialFieldObjectLifespan
+      expected_visual_spatial_field_data[2][2][0][4] = move_initiated_time + model._recognisedVisualSpatialFieldObjectLifespan
       
       # VisualSpatialFieldObject being moved should be added to (1, 3) at first 
       # put down time.  If the VisualSpatialFieldObject being moved was 
@@ -8709,23 +8708,23 @@ process_test "move_visual_spatial_field_object" do
         "1",
         (scenario == 16 ? Scene.getCreatorToken() : "A"),
         false,
-        putdown_time,
-        (scenario == 16 ? nil : putdown_time + model._unrecognisedVisualSpatialFieldObjectLifespan)
+        movement_time,
+        (scenario == 16 ? nil : movement_time + model._unrecognisedVisualSpatialFieldObjectLifespan)
       ])
     
       # Update terminus for VisualSpatialFieldObject with identifier "3" on 
       # (1, 3) since the coordinates have had attention focused on them and the 
       # VisualSpatialFieldObject is alive when the VisualSpatialFieldObject 
       # being moved is put down.
-      expected_visual_spatial_field_data[1][3][0][4] = putdown_time + model._unrecognisedVisualSpatialFieldObjectLifespan
+      expected_visual_spatial_field_data[1][3][0][4] = movement_time + model._unrecognisedVisualSpatialFieldObjectLifespan
       
       # Refresh termini of VisualSpatialFieldObjects on coordinates around 
       # (1, 3) that fall within the fixation field of view.
-      expected_visual_spatial_field_data[0][2][0][4] = putdown_time + model._unrecognisedVisualSpatialFieldObjectLifespan
-      expected_visual_spatial_field_data[1][2][0][4] = putdown_time + model._unrecognisedVisualSpatialFieldObjectLifespan
-      expected_visual_spatial_field_data[2][2][0][4] = putdown_time + model._recognisedVisualSpatialFieldObjectLifespan
-      expected_visual_spatial_field_data[2][3][0][4] = putdown_time + model._unrecognisedVisualSpatialFieldObjectLifespan
-      expected_visual_spatial_field_data[2][4][0][4] = putdown_time + model._unrecognisedVisualSpatialFieldObjectLifespan
+      expected_visual_spatial_field_data[0][2][0][4] = movement_time + model._unrecognisedVisualSpatialFieldObjectLifespan
+      expected_visual_spatial_field_data[1][2][0][4] = movement_time + model._unrecognisedVisualSpatialFieldObjectLifespan
+      expected_visual_spatial_field_data[2][2][0][4] = movement_time + model._recognisedVisualSpatialFieldObjectLifespan
+      expected_visual_spatial_field_data[2][3][0][4] = movement_time + model._unrecognisedVisualSpatialFieldObjectLifespan
+      expected_visual_spatial_field_data[2][4][0][4] = movement_time + model._unrecognisedVisualSpatialFieldObjectLifespan
       
       move_visual_spatial_field_object_test(
         model,
@@ -8733,7 +8732,7 @@ process_test "move_visual_spatial_field_object" do
         time_move_requested,
         expected_visual_spatial_field_data,
         expected_attention_clock,
-        putdown_time,
+        movement_time,
         scenario.to_s + ".1"
       )
       
@@ -8745,17 +8744,17 @@ process_test "move_visual_spatial_field_object" do
         # Make VisualSpatialFieldObject with identifier "1" recognised again.  
         # Since the recognised history of a VisualSpatialFieldObject is a 
         # HistoryTreeMap and VisualSpatialFieldObject with identifier "1"s 
-        # recognised status is updated at the current value of "putdown_time", its
+        # recognised status is updated at the current value of "movement_time", its
         # not possible to overwrite this entry.  Best solution currently is to add
         # an entry just after the previous one stating that the 
         # VisualSpatialFieldObject is recognised.
         rec_history = recognised_history_field.value(vsf.get(1).get(3).get(1))
-        rec_history.put((putdown_time + 1).to_java(:int), true)
+        rec_history.put((movement_time + 1).to_java(:int), true)
 
         # Update recognised status and terminus of VisualSpatialFieldObject with 
         # identifier "1" on (1, 3)
         expected_visual_spatial_field_data[1][3][1][2] = true
-        expected_visual_spatial_field_data[1][3][1][4] = putdown_time + model._recognisedVisualSpatialFieldObjectLifespan
+        expected_visual_spatial_field_data[1][3][1][4] = movement_time + model._recognisedVisualSpatialFieldObjectLifespan
       end
       
       # Construct move
@@ -8766,29 +8765,29 @@ process_test "move_visual_spatial_field_object" do
       move_sequence.add(move)
       
       # Set relevant timing parameters
-      time_move_requested = putdown_time + 1
-      pickup_time = time_move_requested + model._timeToAccessVisualSpatialField
-      putdown_time = pickup_time + model._timeToMoveVisualSpatialFieldObject
-      expected_attention_clock = putdown_time
+      time_move_requested = movement_time + 1
+      move_initiated_time = time_move_requested + model._timeToAccessVisualSpatialField
+      movement_time = move_initiated_time + model._timeToMoveVisualSpatialFieldObject
+      expected_attention_clock = movement_time
       
       # Set terminus for VisualSpatialFieldObject being moved on (1, 3)
-      expected_visual_spatial_field_data[1][3][1][4] = pickup_time
+      expected_visual_spatial_field_data[1][3][1][4] = movement_time
       
       # Refresh terminus for VisualSpatialFieldObject with identifier "3" on 
       # (1, 3)
-      expected_visual_spatial_field_data[1][3][0][4] = pickup_time + model._unrecognisedVisualSpatialFieldObjectLifespan
+      expected_visual_spatial_field_data[1][3][0][4] = move_initiated_time + model._unrecognisedVisualSpatialFieldObjectLifespan
       
       # Refresh termini of VisualSpatialFieldObjects on coordinates around 
       # (1, 3) that fall within the fixation field of view.
-      expected_visual_spatial_field_data[0][2][0][4] = pickup_time + model._unrecognisedVisualSpatialFieldObjectLifespan
-      expected_visual_spatial_field_data[1][2][0][4] = pickup_time + model._unrecognisedVisualSpatialFieldObjectLifespan
-      expected_visual_spatial_field_data[2][2][0][4] = pickup_time + model._recognisedVisualSpatialFieldObjectLifespan
-      expected_visual_spatial_field_data[2][3][0][4] = pickup_time + model._unrecognisedVisualSpatialFieldObjectLifespan
-      expected_visual_spatial_field_data[2][4][0][4] = pickup_time + model._unrecognisedVisualSpatialFieldObjectLifespan
+      expected_visual_spatial_field_data[0][2][0][4] = move_initiated_time + model._unrecognisedVisualSpatialFieldObjectLifespan
+      expected_visual_spatial_field_data[1][2][0][4] = move_initiated_time + model._unrecognisedVisualSpatialFieldObjectLifespan
+      expected_visual_spatial_field_data[2][2][0][4] = move_initiated_time + model._recognisedVisualSpatialFieldObjectLifespan
+      expected_visual_spatial_field_data[2][3][0][4] = move_initiated_time + model._unrecognisedVisualSpatialFieldObjectLifespan
+      expected_visual_spatial_field_data[2][4][0][4] = move_initiated_time + model._unrecognisedVisualSpatialFieldObjectLifespan
       
       # Set terminus for VisualSpatialFieldObject that represents an empty 
       # square object on (3, 2)
-      expected_visual_spatial_field_data[3][2][0][4] = putdown_time
+      expected_visual_spatial_field_data[3][2][0][4] = movement_time
       
       # Add VisualSpatialFieldObject being moved to (3, 2).  If the creator is
       # being moved, its terminus should not be set.
@@ -8796,18 +8795,18 @@ process_test "move_visual_spatial_field_object" do
         "1",
         (scenario == 16 ? Scene.getCreatorToken() : "A"),
         false,
-        putdown_time,
-        (scenario == 16 ? nil : putdown_time + model._unrecognisedVisualSpatialFieldObjectLifespan)
+        movement_time,
+        (scenario == 16 ? nil : movement_time + model._unrecognisedVisualSpatialFieldObjectLifespan)
       ])
     
       # Refresh termini of VisualSpatialFieldObjects on coordinates around 
       # (3, 2) that fall within the fixation field of view.
-      expected_visual_spatial_field_data[2][1][0][4] = putdown_time + model._unrecognisedVisualSpatialFieldObjectLifespan
-      expected_visual_spatial_field_data[3][1][0][4] = putdown_time + model._unrecognisedVisualSpatialFieldObjectLifespan
-      expected_visual_spatial_field_data[2][2][0][4] = putdown_time + model._recognisedVisualSpatialFieldObjectLifespan
-      expected_visual_spatial_field_data[4][2][0][4] = putdown_time + model._unrecognisedVisualSpatialFieldObjectLifespan
-      expected_visual_spatial_field_data[2][3][0][4] = putdown_time + model._unrecognisedVisualSpatialFieldObjectLifespan
-      expected_visual_spatial_field_data[3][3][0][4] = putdown_time + model._unrecognisedVisualSpatialFieldObjectLifespan
+      expected_visual_spatial_field_data[2][1][0][4] = movement_time + model._unrecognisedVisualSpatialFieldObjectLifespan
+      expected_visual_spatial_field_data[3][1][0][4] = movement_time + model._unrecognisedVisualSpatialFieldObjectLifespan
+      expected_visual_spatial_field_data[2][2][0][4] = movement_time + model._recognisedVisualSpatialFieldObjectLifespan
+      expected_visual_spatial_field_data[4][2][0][4] = movement_time + model._unrecognisedVisualSpatialFieldObjectLifespan
+      expected_visual_spatial_field_data[2][3][0][4] = movement_time + model._unrecognisedVisualSpatialFieldObjectLifespan
+      expected_visual_spatial_field_data[3][3][0][4] = movement_time + model._unrecognisedVisualSpatialFieldObjectLifespan
       
       move_visual_spatial_field_object_test(
         model,
@@ -8815,7 +8814,7 @@ process_test "move_visual_spatial_field_object" do
         time_move_requested,
         expected_visual_spatial_field_data,
         expected_attention_clock,
-        putdown_time,
+        movement_time,
         scenario.to_s + ".2"
       )
       
@@ -8893,11 +8892,11 @@ process_test "move_visual_spatial_field_object" do
       
       # Set relevant time parameters
       time_move_requested = time
-      pickup_time = time_move_requested + model._timeToAccessVisualSpatialField
-      putdown_time = pickup_time + model._timeToMoveVisualSpatialFieldObject
+      move_initiated_time = time_move_requested + model._timeToAccessVisualSpatialField
+      movement_time = move_initiated_time + model._timeToMoveVisualSpatialFieldObject
       
       # Set terminus for VisualSpatialFieldObject being moved on (1, 1)
-      expected_visual_spatial_field_data[1][1][0][4] = pickup_time
+      expected_visual_spatial_field_data[1][1][0][4] = movement_time
       
       # New VisualSpatialFieldObject representing an empty square should be 
       # added to (1, 1) when VisualSpatialFieldObject being moved is picked up.
@@ -8905,31 +8904,31 @@ process_test "move_visual_spatial_field_object" do
         nil,
         Scene.getEmptySquareToken(),
         false,
-        pickup_time,
-        pickup_time + model._unrecognisedVisualSpatialFieldObjectLifespan
+        movement_time,
+        movement_time + model._unrecognisedVisualSpatialFieldObjectLifespan
       ])
     
       # Refresh termini of VisualSpatialFieldObjects on coordinates around 
       # (1, 1) that fall within the fixation field of view.
-      if scenario == 17 then expected_visual_spatial_field_data[2][0][0][4] = pickup_time + model._unrecognisedVisualSpatialFieldObjectLifespan end
-      expected_visual_spatial_field_data[2][1][0][4] = pickup_time + model._unrecognisedVisualSpatialFieldObjectLifespan
-      expected_visual_spatial_field_data[0][2][0][4] = pickup_time + model._unrecognisedVisualSpatialFieldObjectLifespan
-      expected_visual_spatial_field_data[1][2][0][4] = pickup_time + model._unrecognisedVisualSpatialFieldObjectLifespan
-      expected_visual_spatial_field_data[2][2][0][4] = pickup_time + model._recognisedVisualSpatialFieldObjectLifespan
+      if scenario == 17 then expected_visual_spatial_field_data[2][0][0][4] = move_initiated_time + model._unrecognisedVisualSpatialFieldObjectLifespan end
+      expected_visual_spatial_field_data[2][1][0][4] = move_initiated_time + model._unrecognisedVisualSpatialFieldObjectLifespan
+      expected_visual_spatial_field_data[0][2][0][4] = move_initiated_time + model._unrecognisedVisualSpatialFieldObjectLifespan
+      expected_visual_spatial_field_data[1][2][0][4] = move_initiated_time + model._unrecognisedVisualSpatialFieldObjectLifespan
+      expected_visual_spatial_field_data[2][2][0][4] = move_initiated_time + model._recognisedVisualSpatialFieldObjectLifespan
       
       # Nothing should happen now since the coordinates moved to are outside of
-      # the coordinates represented by the VisualSpatialField.
+      # the coordinates represented by the VisualSpatialField.  
     
       #########################################################
       ### VisualSpatialFieldObject WITH IDENTIFIER "2" MOVE ###
       #########################################################
       
-      pickup_time = putdown_time
-      putdown_time = pickup_time + model._timeToMoveVisualSpatialFieldObject
-      expected_attention_clock = putdown_time
+      move_initiated_time = movement_time
+      movement_time = move_initiated_time + model._timeToMoveVisualSpatialFieldObject
+      expected_attention_clock = movement_time
       
       # Set terminus for VisualSpatialFieldObject being moved on (2, 2)
-      expected_visual_spatial_field_data[2][2][0][4] = pickup_time
+      expected_visual_spatial_field_data[2][2][0][4] = movement_time
       
       # VisualSpatialFieldObject representing empty square should be placed on
       # (2, 2) when VisualSpatialFieldObject being moved is picked up.
@@ -8937,20 +8936,20 @@ process_test "move_visual_spatial_field_object" do
         nil,
         Scene.getEmptySquareToken,
         false,
-        pickup_time,
-        pickup_time + model._unrecognisedVisualSpatialFieldObjectLifespan
+        movement_time,
+        movement_time + model._unrecognisedVisualSpatialFieldObjectLifespan
       ])
       
       # Refresh termini of VisualSpatialFieldObjects on coordinates around 
       # (2, 2) that fall within the fixation field of view.
-      expected_visual_spatial_field_data[1][1][1][4] = pickup_time + model._unrecognisedVisualSpatialFieldObjectLifespan
-      expected_visual_spatial_field_data[2][1][0][4] = pickup_time + model._unrecognisedVisualSpatialFieldObjectLifespan
-      expected_visual_spatial_field_data[3][1][0][4] = pickup_time + model._unrecognisedVisualSpatialFieldObjectLifespan
-      expected_visual_spatial_field_data[1][2][0][4] = pickup_time + model._unrecognisedVisualSpatialFieldObjectLifespan
-      expected_visual_spatial_field_data[3][2][0][4] = pickup_time + model._unrecognisedVisualSpatialFieldObjectLifespan
-      expected_visual_spatial_field_data[1][3][0][4] = pickup_time + model._unrecognisedVisualSpatialFieldObjectLifespan
-      expected_visual_spatial_field_data[2][3][0][4] = pickup_time + model._unrecognisedVisualSpatialFieldObjectLifespan
-      expected_visual_spatial_field_data[3][3][0][4] = pickup_time + model._unrecognisedVisualSpatialFieldObjectLifespan
+      expected_visual_spatial_field_data[1][1][1][4] = move_initiated_time + model._unrecognisedVisualSpatialFieldObjectLifespan
+      expected_visual_spatial_field_data[2][1][0][4] = move_initiated_time + model._unrecognisedVisualSpatialFieldObjectLifespan
+      expected_visual_spatial_field_data[3][1][0][4] = move_initiated_time + model._unrecognisedVisualSpatialFieldObjectLifespan
+      expected_visual_spatial_field_data[1][2][0][4] = move_initiated_time + model._unrecognisedVisualSpatialFieldObjectLifespan
+      expected_visual_spatial_field_data[3][2][0][4] = move_initiated_time + model._unrecognisedVisualSpatialFieldObjectLifespan
+      expected_visual_spatial_field_data[1][3][0][4] = move_initiated_time + model._unrecognisedVisualSpatialFieldObjectLifespan
+      expected_visual_spatial_field_data[2][3][0][4] = move_initiated_time + model._unrecognisedVisualSpatialFieldObjectLifespan
+      expected_visual_spatial_field_data[3][3][0][4] = move_initiated_time + model._unrecognisedVisualSpatialFieldObjectLifespan
       
       # Add the VisualSpatialFieldObject being moved to (3, 2).  It will now be
       # unrecognised.
@@ -8958,22 +8957,22 @@ process_test "move_visual_spatial_field_object" do
         "2",
         "B",
         false,
-        putdown_time,
-        putdown_time + model._unrecognisedVisualSpatialFieldObjectLifespan
+        movement_time,
+        movement_time + model._unrecognisedVisualSpatialFieldObjectLifespan
       ])
     
       # Terminus of VisualSpatialFieldObject representing an empty square on
       # (3, 2) will be set.
-      expected_visual_spatial_field_data[3][2][0][4] = putdown_time
+      expected_visual_spatial_field_data[3][2][0][4] = movement_time
       
       # Refresh termini of VisualSpatialFieldObjects on coordinates around 
       # (3, 2) that fall within the fixation field of view.
-      expected_visual_spatial_field_data[2][1][0][4] = putdown_time + model._unrecognisedVisualSpatialFieldObjectLifespan
-      expected_visual_spatial_field_data[3][1][0][4] = putdown_time + model._unrecognisedVisualSpatialFieldObjectLifespan
-      expected_visual_spatial_field_data[2][2][1][4] = putdown_time + model._unrecognisedVisualSpatialFieldObjectLifespan
-      expected_visual_spatial_field_data[4][2][0][4] = putdown_time + model._unrecognisedVisualSpatialFieldObjectLifespan
-      expected_visual_spatial_field_data[2][3][0][4] = putdown_time + model._unrecognisedVisualSpatialFieldObjectLifespan
-      expected_visual_spatial_field_data[3][3][0][4] = putdown_time + model._unrecognisedVisualSpatialFieldObjectLifespan
+      expected_visual_spatial_field_data[2][1][0][4] = movement_time + model._unrecognisedVisualSpatialFieldObjectLifespan
+      expected_visual_spatial_field_data[3][1][0][4] = movement_time + model._unrecognisedVisualSpatialFieldObjectLifespan
+      expected_visual_spatial_field_data[2][2][1][4] = movement_time + model._unrecognisedVisualSpatialFieldObjectLifespan
+      expected_visual_spatial_field_data[4][2][0][4] = movement_time + model._unrecognisedVisualSpatialFieldObjectLifespan
+      expected_visual_spatial_field_data[2][3][0][4] = movement_time + model._unrecognisedVisualSpatialFieldObjectLifespan
+      expected_visual_spatial_field_data[3][3][0][4] = movement_time + model._unrecognisedVisualSpatialFieldObjectLifespan
       
       move_visual_spatial_field_object_test(
         model,
@@ -8981,7 +8980,7 @@ process_test "move_visual_spatial_field_object" do
         time_move_requested,
         expected_visual_spatial_field_data,
         expected_attention_clock,
-        putdown_time,
+        movement_time,
         scenario.to_s + ".1"
       )
     
