@@ -5529,10 +5529,10 @@ public class Chrest extends Observable {
       fixation = fixationsPerformed.get(fixationsPerformed.size() - index);
       
       this.printDebugStatement(
-        "- Attention clock is set to " + this._attentionClock + ", i.e the " +
-        "time specified (" + time + ") plus the product of the time taken to " +
-        "retrieve a Fixation (" + this._timeToRetrieveItemFromStm + ") " +
-        "multiplied by the index specified (" + index + ")"
+        "- Attention clock is set to the time specified (" + time + ") plus " +
+        "the product of the time taken to retrieve a Fixation (" + 
+        this._timeToRetrieveFixationFromPerceiver + ") multiplied by the " +
+        "fixation index specified (" + index + "), i.e. " + this._attentionClock
       );
     }
     else{
