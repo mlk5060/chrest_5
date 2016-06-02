@@ -7813,13 +7813,15 @@ process_test "move_visual_spatial_field_object" do
       
       # New VisualSpatialFieldObject representing the VisualSpatialFieldObject
       # being moved should be added to (0, 1).  If the VisualSpatialFieldObject 
-      # being moved was previously recognised it should now be unrecognised.
+      # being moved was previously recognised it should now be unrecognised.  In
+      # scenario 13, since the creator is being moved, its terminus should not 
+      # be set.
       expected_visual_spatial_field_data[0][1] = [[
         "1", 
         (scenario == 13 ? Scene.getCreatorToken() : "A"), 
         false, 
         putdown_time, 
-        putdown_time + model._unrecognisedVisualSpatialFieldObjectLifespan
+        (scenario == 13 ? nil : putdown_time + model._unrecognisedVisualSpatialFieldObjectLifespan)
       ]]
       
       # VisualSpatialFieldObjects in fixation field of view around (0, 1) should
@@ -7976,13 +7978,14 @@ process_test "move_visual_spatial_field_object" do
       
       # VisualSpatialFieldObject being moved should be added to (1, 2) at put 
       # down time.  If the VisualSpatialFieldObject being moved was previously
-      # recognised it should now be unrecognised.
+      # recognised it should now be unrecognised.  If the creator is being 
+      # moved, its terminus should not be set.
       expected_visual_spatial_field_data[1][2].push([
         "1",
         (scenario == 14 ? Scene.getCreatorToken() : "A"),
         false,
         putdown_time,
-        putdown_time + model._unrecognisedVisualSpatialFieldObjectLifespan
+        (scenario == 14 ? nil : putdown_time + model._unrecognisedVisualSpatialFieldObjectLifespan)
       ])
     
       # VisualSpatialFieldObjects in fixation field of view around (1, 2) should
@@ -8063,13 +8066,14 @@ process_test "move_visual_spatial_field_object" do
       # Set terminus for empty square on (3, 2)
       expected_visual_spatial_field_data[3][2][0][4] = putdown_time
       
-      # Add VisualSpatialFieldObject being moved to (3, 2)
+      # Add VisualSpatialFieldObject being moved to (3, 2).  Again, if the 
+      # creator is being moved, its terminus should not be set.
       expected_visual_spatial_field_data[3][2].push([
         "1",
         (scenario == 14 ? Scene.getCreatorToken() : "A"),
         false,
         putdown_time,
-        putdown_time + model._unrecognisedVisualSpatialFieldObjectLifespan
+        (scenario == 14 ? nil : putdown_time + model._unrecognisedVisualSpatialFieldObjectLifespan)
       ])
     
       # VisualSpatialFieldObjects in fixation field of view around (3, 2) should
@@ -8424,13 +8428,14 @@ process_test "move_visual_spatial_field_object" do
       
       # VisualSpatialFieldObject being moved should be added to (2, 2)  at first 
       # put down time.  If the VisualSpatialFieldObject being moved was 
-      # previously recognised it will now be unrecognised.
+      # previously recognised it will now be unrecognised.  If the creator is
+      # being moved, its terminus should not be set.
       expected_visual_spatial_field_data[2][2].push([
         "1",
         (scenario == 15 ? Scene.getCreatorToken() : "A"),
         false,
         putdown_time,
-        putdown_time + model._unrecognisedVisualSpatialFieldObjectLifespan
+        (scenario == 15 ? nil : putdown_time + model._unrecognisedVisualSpatialFieldObjectLifespan)
       ])
     
       # Update terminus for VisualSpatialFieldObject with identifier "2" on 
@@ -8516,13 +8521,14 @@ process_test "move_visual_spatial_field_object" do
       # on (3, 2)
       expected_visual_spatial_field_data[3][2][0][4] = putdown_time
       
-      # Add VisualSpatialFieldObject being moved to (3, 2)
+      # Add VisualSpatialFieldObject being moved to (3, 2).  If the creator is
+      # being moved, its terminus should not be set.
       expected_visual_spatial_field_data[3][2].push([
         "1",
         (scenario == 15 ? Scene.getCreatorToken() : "A"),
         false,
         putdown_time,
-        putdown_time + model._unrecognisedVisualSpatialFieldObjectLifespan
+        (scenario == 15 ? nil : putdown_time + model._unrecognisedVisualSpatialFieldObjectLifespan)
       ])
     
       # Refresh termini of VisualSpatialFieldObjects around (3, 2) that fall 
@@ -8678,13 +8684,14 @@ process_test "move_visual_spatial_field_object" do
       
       # VisualSpatialFieldObject being moved should be added to (1, 3) at first 
       # put down time.  If the VisualSpatialFieldObject being moved was 
-      # previously recognised, it should now be unrecognised.
+      # previously recognised, it should now be unrecognised.  If the creator is
+      # being moved, its terminus should not be set.
       expected_visual_spatial_field_data[1][3].push([
         "1",
         (scenario == 16 ? Scene.getCreatorToken() : "A"),
         false,
         putdown_time,
-        putdown_time + model._unrecognisedVisualSpatialFieldObjectLifespan
+        (scenario == 16 ? nil : putdown_time + model._unrecognisedVisualSpatialFieldObjectLifespan)
       ])
     
       # Update terminus for VisualSpatialFieldObject with identifier "3" on 
@@ -8764,13 +8771,14 @@ process_test "move_visual_spatial_field_object" do
       # square object on (3, 2)
       expected_visual_spatial_field_data[3][2][0][4] = putdown_time
       
-      # Add VisualSpatialFieldObject being moved to (3, 2)
+      # Add VisualSpatialFieldObject being moved to (3, 2).  If the creator is
+      # being moved, its terminus should not be set.
       expected_visual_spatial_field_data[3][2].push([
         "1",
         (scenario == 16 ? Scene.getCreatorToken() : "A"),
         false,
         putdown_time,
-        putdown_time + model._unrecognisedVisualSpatialFieldObjectLifespan
+        (scenario == 16 ? nil : putdown_time + model._unrecognisedVisualSpatialFieldObjectLifespan)
       ])
     
       # Refresh termini of VisualSpatialFieldObjects on coordinates around 

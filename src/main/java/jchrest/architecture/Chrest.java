@@ -6531,15 +6531,16 @@ public class Chrest extends Observable {
                     
                   //Create a new VisualSpatialFieldObject that represents the 
                   //VisualSpatialFieldObject after the move.  It is assumed 
-                  //that the VisualSpatialFieldObject is unrecognised.
+                  //that the VisualSpatialFieldObject is unrecognised.  If this
+                  //is not the creator, its terminus should be set automatically
                   objectToMove = new VisualSpatialFieldObject(
                     objectToMove.getIdentifier(),
                     objectToMove.getObjectType(),
                     this,
                     visualSpatialField,
                     time,
-                    false,
-                    true
+                    false, 
+                    !objectToMove.getObjectType().equals(Scene.CREATOR_TOKEN)
                   );
                     
                   this.printDebugStatement(
