@@ -840,7 +840,7 @@ public class ChessDomain extends DomainSpecifics {
    */
   @Override
   public Fixation getInitialFixationInSet(int time){
-    return new CentralFixation(time, this._associatedModel.getTimeTakenToDecideUponCentralFixation());
+    return new CentralFixation(time, this._associatedModel.getTimeTakenToDecideUponCentralFixations());
   }
   
   /**
@@ -989,11 +989,11 @@ public class ChessDomain extends DomainSpecifics {
               fixation = new GlobalStrategyFixation(this._associatedModel, time, this._timeTakenToDecideOnGlobalStrategyFixations);
             }
             else{
-              fixation = new PeripheralItemFixation(this._associatedModel, this._fixationPeripheryMaxAttempts, time, this._associatedModel.getTimeTakenToDecideUponPeripheralItemFixation());
+              fixation = new PeripheralItemFixation(this._associatedModel, this._fixationPeripheryMaxAttempts, time, this._associatedModel.getTimeTakenToDecideUponPeripheralItemFixations());
             }
           }
           else{
-            fixation = new PeripheralSquareFixation(this._associatedModel, time, this._associatedModel.getTimeTakenToDecideUponPeripheralSquareFixation());
+            fixation = new PeripheralSquareFixation(this._associatedModel, time, this._associatedModel.getTimeTakenToDecideUponPeripheralSquareFixations());
           }
         }
         

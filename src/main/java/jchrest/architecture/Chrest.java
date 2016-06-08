@@ -84,10 +84,10 @@ public class Chrest extends Observable {
   
   private int _ltmLinkTraversalTime = 10; //From "Perception and Memory in Chess" by deGroot and Gobet
   private int _saccadeTime = 30;
-  private int _timeTakenToDecideUponAheadOfAgentFixation = 150;
-  private int _timeTakenToDecideUponCentralFixation = 150;
-  private int _timeTakenToDecideUponPeripheralItemFixation = 150;
-  private int _timeTakenToDecideUponPeripheralSquareFixation = 150;
+  private int _timeTakenToDecideUponAheadOfAgentFixations = 150;
+  private int _timeTakenToDecideUponCentralFixations = 150;
+  private int _timeTakenToDecideUponPeripheralItemFixations = 150;
+  private int _timeTakenToDecideUponPeripheralSquareFixations = 150;
   private int _timeToUpdateStm = 50; //From "Perception and Memory in Chess" by deGroot and Gobet
   private int _timeToRetrieveFixationFromPerceiver = 30;
   private int _timeToRetrieveItemFromStm = 10;
@@ -514,20 +514,20 @@ public class Chrest extends Observable {
     return _rho;
   }
   
-  public int getTimeTakenToDecideUponAheadOfAgentFixation(){
-    return this._timeTakenToDecideUponAheadOfAgentFixation;
+  public int getTimeTakenToDecideUponAheadOfAgentFixations(){
+    return this._timeTakenToDecideUponAheadOfAgentFixations;
   }
   
-  public int getTimeTakenToDecideUponCentralFixation(){
-    return this._timeTakenToDecideUponCentralFixation;
+  public int getTimeTakenToDecideUponCentralFixations(){
+    return this._timeTakenToDecideUponCentralFixations;
   }
   
-  public int getTimeTakenToDecideUponPeripheralItemFixation(){
-    return this._timeTakenToDecideUponPeripheralItemFixation;
+  public int getTimeTakenToDecideUponPeripheralItemFixations(){
+    return this._timeTakenToDecideUponPeripheralItemFixations;
   }
   
-  public int getTimeTakenToDecideUponPeripheralSquareFixation(){
-    return this._timeTakenToDecideUponPeripheralSquareFixation;
+  public int getTimeTakenToDecideUponPeripheralSquareFixations(){
+    return this._timeTakenToDecideUponPeripheralSquareFixations;
   }
   
   public Integer getTimeToAccessVisualSpatialField(){
@@ -677,14 +677,14 @@ public class Chrest extends Observable {
    * 
    * @param time Should be >= 0
    */
-  public void setTimeTakenToDecideUponAheadOfAgentFixation(int time){
+  public void setTimeTakenToDecideUponAheadOfAgentFixations(int time){
     if(time < 0){
       throw new IllegalArgumentException(
-        "The time specified to decide on an ahead of agent fixation is < 0 (" + time + ")."
+        "The time specified to decide on ahead of agent fixations is < 0 (" + time + ")."
       );
     }
     else{
-      this._timeTakenToDecideUponAheadOfAgentFixation = time;
+      this._timeTakenToDecideUponAheadOfAgentFixations = time;
     }
   }
   
@@ -695,14 +695,14 @@ public class Chrest extends Observable {
    * 
    * @param time Should be >= 0
    */
-  public void setTimeTakenToDecideUponCentralFixation(int time){
+  public void setTimeTakenToDecideUponCentralFixations(int time){
     if(time < 0){
       throw new IllegalArgumentException(
-        "The time specified to decide on a central fixation is < 0 (" + time + ")."
+        "The time specified to decide on central fixations is < 0 (" + time + ")."
       );
     }
     else{
-      this._timeTakenToDecideUponCentralFixation = time;
+      this._timeTakenToDecideUponCentralFixations = time;
     }
   }
   
@@ -713,14 +713,14 @@ public class Chrest extends Observable {
    * 
    * @param time Should be >= 0
    */
-  public void setTimeTakenToDecideUponPeripheralItemFixation(int time){
+  public void setTimeTakenToDecideUponPeripheralItemFixations(int time){
     if(time < 0){
       throw new IllegalArgumentException(
-        "The time specified to decide on a peripheral item fixation is < 0 (" + time + ")."
+        "The time specified to decide on peripheral item fixations is < 0 (" + time + ")."
       );
     }
     else{
-      this._timeTakenToDecideUponPeripheralItemFixation = time;
+      this._timeTakenToDecideUponPeripheralItemFixations = time;
     }
   }
   
@@ -731,14 +731,14 @@ public class Chrest extends Observable {
    * 
    * @param time Should be >= 0
    */
-  public void setTimeTakenToDecideUponPeripheralSquareFixation(int time){
+  public void setTimeTakenToDecideUponPeripheralSquareFixations(int time){
     if(time < 0){
       throw new IllegalArgumentException(
-        "The time specified to decide on a peripheral square fixation is < 0 (" + time + ")."
+        "The time specified to decide on peripheral square fixations is < 0 (" + time + ")."
       );
     }
     else{
-      this._timeTakenToDecideUponPeripheralSquareFixation = time;
+      this._timeTakenToDecideUponPeripheralSquareFixations = time;
     }
   }
   

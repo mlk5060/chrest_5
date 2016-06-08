@@ -184,7 +184,7 @@ public class TileworldDomain extends DomainSpecifics{
 
   @Override
   public Fixation getInitialFixationInSet(int time) {
-    return new AheadOfAgentFixation(time, this._associatedModel.getTimeTakenToDecideUponAheadOfAgentFixation());
+    return new AheadOfAgentFixation(time, this._associatedModel.getTimeTakenToDecideUponAheadOfAgentFixations());
   }
 
   /**
@@ -320,10 +320,10 @@ public class TileworldDomain extends DomainSpecifics{
             fixation = new MovementFixation(this._associatedModel, time, this._timeTakenToDecideUponMovementFixations);
           }
           else if(r >= 0.5 && r < 0.75){
-            fixation = new PeripheralItemFixation(this._associatedModel, this._peripheralItemFixationMaxAttempts, time, this._associatedModel.getTimeTakenToDecideUponPeripheralItemFixation());
+            fixation = new PeripheralItemFixation(this._associatedModel, this._peripheralItemFixationMaxAttempts, time, this._associatedModel.getTimeTakenToDecideUponPeripheralItemFixations());
           }
           else{
-            fixation = new PeripheralSquareFixation(this._associatedModel, time, this._associatedModel.getTimeTakenToDecideUponPeripheralSquareFixation());
+            fixation = new PeripheralSquareFixation(this._associatedModel, time, this._associatedModel.getTimeTakenToDecideUponPeripheralSquareFixations());
           }
         }
         

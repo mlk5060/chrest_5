@@ -118,10 +118,10 @@ public class GenericDomain extends DomainSpecifics {
   @Override
   public Fixation getInitialFixationInSet(int time) {
     if(this._associatedModel.isLearningObjectLocationsRelativeToAgent()){
-      return new AheadOfAgentFixation(time, this._associatedModel.getTimeTakenToDecideUponAheadOfAgentFixation());
+      return new AheadOfAgentFixation(time, this._associatedModel.getTimeTakenToDecideUponAheadOfAgentFixations());
     }
     else{
-      return new CentralFixation(time, this._associatedModel.getTimeTakenToDecideUponCentralFixation());
+      return new CentralFixation(time, this._associatedModel.getTimeTakenToDecideUponCentralFixations());
     }
   }
 
@@ -229,10 +229,10 @@ public class GenericDomain extends DomainSpecifics {
         double r = Math.random();
 
         if(r < 0.5){
-          fixation = new PeripheralItemFixation(this._associatedModel, this._peripheralItemFixationMaxAttempts, time, this._associatedModel.getTimeTakenToDecideUponPeripheralItemFixation());
+          fixation = new PeripheralItemFixation(this._associatedModel, this._peripheralItemFixationMaxAttempts, time, this._associatedModel.getTimeTakenToDecideUponPeripheralItemFixations());
         }
         else{
-          fixation = new PeripheralSquareFixation(this._associatedModel, time, this._associatedModel.getTimeTakenToDecideUponPeripheralSquareFixation());
+          fixation = new PeripheralSquareFixation(this._associatedModel, time, this._associatedModel.getTimeTakenToDecideUponPeripheralSquareFixations());
         }
       }
     }

@@ -181,7 +181,7 @@ unit_test "add_fixation" do
   Chrest.class_eval{
     field_accessor :_recognisedVisualSpatialFieldObjectLifespan, 
       :_unrecognisedVisualSpatialFieldObjectLifespan,
-      :_timeTakenToDecideUponCentralFixation
+      :_timeTakenToDecideUponCentralFixations
   }
   
   vsf_field = VisualSpatialField.java_class.declared_field("_visualSpatialField")
@@ -277,7 +277,7 @@ unit_test "add_fixation" do
       ##### CONSTRUCT FIXATION #####
       ##############################
 
-      fixation = CentralFixation.new(time, model._timeTakenToDecideUponCentralFixation)
+      fixation = CentralFixation.new(time, model._timeTakenToDecideUponCentralFixations)
       fixation._performanceTime = (time + 10).to_java(:int)
       fixation._performed = true
       fixation._scene = scene
