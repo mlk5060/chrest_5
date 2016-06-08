@@ -31,8 +31,8 @@ public class TileworldDomain extends DomainSpecifics{
   private final int _initialFixationThreshold;
   private final int _peripheralItemFixationMaxAttempts;
   
-  private int _timeTakenToDecideOnMovementFixations;
-  private int _timeTakenToDecideOnSalientObjectFixations;
+  private int _timeTakenToDecideUponMovementFixations;
+  private int _timeTakenToDecideUponSalientObjectFixations;
   
   /**
    * 
@@ -55,14 +55,17 @@ public class TileworldDomain extends DomainSpecifics{
    * when {@link #this#getNonInitialFixationInSet(int)} (see parameters for 
    * {@link jchrest.domainSpecifics.fixations.PeripheralItemFixation#PeripheralItemFixation(
    * jchrest.architecture.Chrest, int, int)}
+   * 
+   * @param timeTakenToDecideUponMovementFixations
+   * @param timeTakenToDecideUponSalientObjectFixations
    */
   public TileworldDomain(
     Chrest model, 
     Integer maxFixationsInSet, 
     Integer initialFixationThreshold, 
     Integer peripheralItemFixationMaxAttempts,
-    int timeTakenToDecideOnMovementFixations,
-    int timeTakenToDecideOnSalientObjectFixations
+    Integer timeTakenToDecideUponMovementFixations,
+    Integer timeTakenToDecideUponSalientObjectFixations
   ) {
     super(model, maxFixationsInSet);
     
@@ -111,18 +114,18 @@ public class TileworldDomain extends DomainSpecifics{
     }
     
     //Set time taken to decide upon movement/salient object fixations
-    if(timeTakenToDecideOnMovementFixations < 0 || timeTakenToDecideOnSalientObjectFixations < 0){
+    if(timeTakenToDecideUponMovementFixations < 0 || timeTakenToDecideUponSalientObjectFixations < 0){
       throw new IllegalArgumentException(
         "One or both of the times taken to decide on movement or salient " +
         "object fixations is < 0 (time specified to decide on movement fixations: " +
-        timeTakenToDecideOnMovementFixations + ", time specified to decide on " +
-        "salient object fixations: " + timeTakenToDecideOnSalientObjectFixations +
+        timeTakenToDecideUponMovementFixations + ", time specified to decide on " +
+        "salient object fixations: " + timeTakenToDecideUponSalientObjectFixations +
         ")."
       );
     }
     else{
-      this._timeTakenToDecideOnMovementFixations = timeTakenToDecideOnMovementFixations;
-      this._timeTakenToDecideOnSalientObjectFixations = timeTakenToDecideOnSalientObjectFixations;
+      this._timeTakenToDecideUponMovementFixations = timeTakenToDecideUponMovementFixations;
+      this._timeTakenToDecideUponSalientObjectFixations = timeTakenToDecideUponSalientObjectFixations;
     }
   }
 
@@ -247,7 +250,7 @@ public class TileworldDomain extends DomainSpecifics{
     int numberFixationsAttempted = (fixationsAttempted == null ? 0 : fixationsAttempted.size());
     
     if((numberFixationsToMake + numberFixationsAttempted) < this._initialFixationThreshold){
-      return new SalientObjectFixation(time, this._timeTakenToDecideOnSalientObjectFixations);
+      return new SalientObjectFixation(time, this._timeTakenToDecideUponSalientObjectFixations);
     }
     else{
       
@@ -311,10 +314,10 @@ public class TileworldDomain extends DomainSpecifics{
           double r = Math.random();
           
           if(r < 0.25){
-            fixation = new SalientObjectFixation(time, this._timeTakenToDecideOnSalientObjectFixations);
+            fixation = new SalientObjectFixation(time, this._timeTakenToDecideUponSalientObjectFixations);
           }
           else if(r >= 0.25 && r < 0.5) {
-            fixation = new MovementFixation(this._associatedModel, time, this._timeTakenToDecideOnMovementFixations);
+            fixation = new MovementFixation(this._associatedModel, time, this._timeTakenToDecideUponMovementFixations);
           }
           else if(r >= 0.5 && r < 0.75){
             fixation = new PeripheralItemFixation(this._associatedModel, this._peripheralItemFixationMaxAttempts, time, this._associatedModel.getTimeTakenToDecideUponPeripheralItemFixation());
@@ -373,26 +376,26 @@ public class TileworldDomain extends DomainSpecifics{
     return true;
   }
   
-  public int getTimeTakenToDecideOnMovementFixation(){
-    return this._timeTakenToDecideOnMovementFixations;
+  public int getTimeTakenToDecideUponMovementFixations(){
+    return this._timeTakenToDecideUponMovementFixations;
   }
   
-  public void setTimeTakenToDecideOnMovementFixation(int time){
+  public void setTimeTakenToDecideUponMovementFixations(int time){
     if(time < 0){
       throw new IllegalArgumentException(
         "The time specified to decide on a movement fixation is < 0 (" + time + ")."
       );
     }
     else{
-      this._timeTakenToDecideOnMovementFixations = time;
+      this._timeTakenToDecideUponMovementFixations = time;
     }
   }
   
-  public int getTimeTakenToDecideOnSalientObjectFixation(){
-    return this._timeTakenToDecideOnSalientObjectFixations;
+  public int getTimeTakenToDecideUponSalientObjectFixations(){
+    return this._timeTakenToDecideUponSalientObjectFixations;
   }
   
-  public void setTimeTakenToDecideOnSalientObjectFixation(int time){
+  public void setTimeTakenToDecideUponSalientObjectFixations(int time){
     if(time < 0){
       throw new IllegalArgumentException(
         "The time specified to decide on a salient object fixation is < 0 (" + 
@@ -400,7 +403,7 @@ public class TileworldDomain extends DomainSpecifics{
       );
     }
     else{
-      this._timeTakenToDecideOnSalientObjectFixations = time;
+      this._timeTakenToDecideUponSalientObjectFixations = time;
     }
   }
 }

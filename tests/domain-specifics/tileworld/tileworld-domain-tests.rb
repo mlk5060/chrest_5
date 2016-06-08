@@ -94,7 +94,7 @@ unit_test "constructor" do
   tileworld_domain_peripheral_item_fixation_max_attempts_field.accessible = true
   
   TileworldDomain.class_eval{
-    field_accessor :_timeTakenToDecideOnMovementFixations, :_timeTakenToDecideOnSalientObjectFixations
+    field_accessor :_timeTakenToDecideUponMovementFixations, :_timeTakenToDecideUponSalientObjectFixations
   }
   #########################
   ##### SCENARIO LOOP #####
@@ -174,14 +174,14 @@ unit_test "constructor" do
         )
         
         assert_equal(
-          tileworld_domain._timeTakenToDecideOnMovementFixations,
+          tileworld_domain._timeTakenToDecideUponMovementFixations,
           time_taken_to_decide_on_movement_fixation,
           "occurred when checking the time taken to decide on a movement " +
           "fixation in scenario " + scenario.to_s
         )
         
         assert_equal(
-          tileworld_domain._timeTakenToDecideOnSalientObjectFixations,
+          tileworld_domain._timeTakenToDecideUponSalientObjectFixations,
           time_taken_to_decide_on_salient_object_fixation,
           "occurred when checking the time taken to decide on a salient " +
           "object fixation in scenario " + scenario.to_s
