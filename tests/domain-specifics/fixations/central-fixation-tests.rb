@@ -1,6 +1,6 @@
 unit_test "constructor" do
   time = 80
-  fixation = CentralFixation.new(time)
+  fixation = CentralFixation.new(time, 0)
   assert_equal(
     time,
     fixation.getTimeDecidedUpon(),
@@ -15,7 +15,7 @@ unit_test "make" do
   }
   
   time = 0
-  fixation = CentralFixation.new(time)
+  fixation = CentralFixation.new(time, 0)
   fixation.setPerformanceTime(fixation.getTimeDecidedUpon() + 100)
   
   ################################

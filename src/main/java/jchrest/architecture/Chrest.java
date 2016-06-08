@@ -83,6 +83,11 @@ public class Chrest extends Observable {
   private int _attentionClock;
   
   private int _ltmLinkTraversalTime = 10; //From "Perception and Memory in Chess" by deGroot and Gobet
+  private int _saccadeTime = 30;
+  private int _timeTakenToDecideUponAheadOfAgentFixation = 150;
+  private int _timeTakenToDecideUponCentralFixation = 150;
+  private int _timeTakenToDecideUponPeripheralItemFixation = 150;
+  private int _timeTakenToDecideUponPeripheralSquareFixation = 150;
   private int _timeToUpdateStm = 50; //From "Perception and Memory in Chess" by deGroot and Gobet
   private int _timeToRetrieveFixationFromPerceiver = 30;
   private int _timeToRetrieveItemFromStm = 10;
@@ -108,8 +113,6 @@ public class Chrest extends Observable {
   
   // Perceiver parameters
   private int _perceiverClock;
-  
-  private int _saccadeTime = 30;
   
   /********************************/
   /**** Architecture variables ****/
@@ -511,6 +514,22 @@ public class Chrest extends Observable {
     return _rho;
   }
   
+  public int getTimeTakenToDecideUponAheadOfAgentFixation(){
+    return this._timeTakenToDecideUponAheadOfAgentFixation;
+  }
+  
+  public int getTimeTakenToDecideUponCentralFixation(){
+    return this._timeTakenToDecideUponCentralFixation;
+  }
+  
+  public int getTimeTakenToDecideUponPeripheralItemFixation(){
+    return this._timeTakenToDecideUponPeripheralItemFixation;
+  }
+  
+  public int getTimeTakenToDecideUponPeripheralSquareFixation(){
+    return this._timeTakenToDecideUponPeripheralSquareFixation;
+  }
+  
   public Integer getTimeToAccessVisualSpatialField(){
     return this._timeToAccessVisualSpatialField;
   }
@@ -649,6 +668,78 @@ public class Chrest extends Observable {
   
   public void setRecognisedVisualSpatialFieldObjectLifespan(int lifespan){
     this._recognisedVisualSpatialFieldObjectLifespan = lifespan;
+  }
+  
+  /**
+   * Set to 150ms by default: the value for the "Time to select a starting 
+   * square row" entry in table 8.2 found in "Perception and Memory in Chess" by 
+   * de Groot and Gobet.
+   * 
+   * @param time Should be >= 0
+   */
+  public void setTimeTakenToDecideUponAheadOfAgentFixation(int time){
+    if(time < 0){
+      throw new IllegalArgumentException(
+        "The time specified to decide on an ahead of agent fixation is < 0 (" + time + ")."
+      );
+    }
+    else{
+      this._timeTakenToDecideUponAheadOfAgentFixation = time;
+    }
+  }
+  
+  /**
+   * Set to 150ms by default: the value for the "Time to select a starting 
+   * square row" entry in table 8.2 found in "Perception and Memory in Chess" by 
+   * de Groot and Gobet.
+   * 
+   * @param time Should be >= 0
+   */
+  public void setTimeTakenToDecideUponCentralFixation(int time){
+    if(time < 0){
+      throw new IllegalArgumentException(
+        "The time specified to decide on a central fixation is < 0 (" + time + ")."
+      );
+    }
+    else{
+      this._timeTakenToDecideUponCentralFixation = time;
+    }
+  }
+  
+  /**
+   * Set to 150ms by default: the value for the "Time to choose a square within 
+   * the visual field" entry in table 8.2 found in "Perception and Memory in 
+   * Chess" by de Groot and Gobet.
+   * 
+   * @param time Should be >= 0
+   */
+  public void setTimeTakenToDecideUponPeripheralItemFixation(int time){
+    if(time < 0){
+      throw new IllegalArgumentException(
+        "The time specified to decide on a peripheral item fixation is < 0 (" + time + ")."
+      );
+    }
+    else{
+      this._timeTakenToDecideUponPeripheralItemFixation = time;
+    }
+  }
+  
+  /**
+   * Set to 150ms by default: the value for the "Time to choose a square within 
+   * the visual field" entry in table 8.2 found in "Perception and Memory in 
+   * Chess" by de Groot and Gobet.
+   * 
+   * @param time Should be >= 0
+   */
+  public void setTimeTakenToDecideUponPeripheralSquareFixation(int time){
+    if(time < 0){
+      throw new IllegalArgumentException(
+        "The time specified to decide on a peripheral square fixation is < 0 (" + time + ")."
+      );
+    }
+    else{
+      this._timeTakenToDecideUponPeripheralSquareFixation = time;
+    }
   }
   
   public void setTimeToEncodeRecognisedSceneObjectAsVisualSpatialFieldObject(int time){

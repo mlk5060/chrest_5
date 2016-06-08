@@ -1,6 +1,6 @@
 ################################################################################
-# Tests the TileworldDomain constructor using 7 scenarios that focus on various
-# constructor parameter settings:
+# Tests the TileworldDomain constructor using a number of scenarios that focus 
+# on various constructor parameter settings:
 #
 # - Scenario 1
 #   ~ Chrest model specified as a parameter is not learning object locations
@@ -37,21 +37,43 @@
 #     maximum number of fixations specified.
 #   ~ Maximum attempts to use a peripheral item fixation specified as a 
 #     parameter is equal to 0
-#
-#- Scenario 7
+#     
+# - Scenario 7
 #   ~ Chrest model specified as a parameter is learning object locations 
 #     relative to the agent equipped with it. 
 #   ~ Initial fixation threshold specified as a parameter is less than the
 #     maximum number of fixations specified.
 #   ~ Maximum attempts to use a peripheral item fixation specified as a 
-#     parameter is greater than 0
+#     parameter is greater than 0 
+#   ~ Time taken to decide upon movement fixations is less than 0
+#   
+# - Scenario 8
+#   ~ Chrest model specified as a parameter is learning object locations 
+#     relative to the agent equipped with it. 
+#   ~ Initial fixation threshold specified as a parameter is less than the
+#     maximum number of fixations specified.
+#   ~ Maximum attempts to use a peripheral item fixation specified as a 
+#     parameter is greater than 0 
+#   ~ Time taken to decide upon movement fixations is greater than/equal to 0
+#   ~ Time taken to decide upon salient object fixations is less than 0
+#
+#- Scenario 9
+#   ~ Chrest model specified as a parameter is learning object locations 
+#     relative to the agent equipped with it. 
+#   ~ Initial fixation threshold specified as a parameter is less than the
+#     maximum number of fixations specified.
+#   ~ Maximum attempts to use a peripheral item fixation specified as a 
+#     parameter is greater than 0 
+#   ~ Time taken to decide upon movement fixations is greater than/equal to 0
+#   ~ Time taken to decide upon salient object fixations is greater than/equal 
+#     to 0
 #
 # Expected Output
 # ===============
 #
-# In all scenarios except scenario 7, an exception should be thrown by the
+# In all scenarios except scenario 9, an exception should be thrown by the
 # constructor due to invalid constructor parameters being provided.  In scenario
-# 7 the relevant instance variables of the TileworldDomain instance constructed
+# 9 the relevant instance variables of the TileworldDomain instance constructed
 # should be set as specified.
 unit_test "constructor" do
 
@@ -71,10 +93,13 @@ unit_test "constructor" do
   tileworld_domain_peripheral_item_fixation_max_attempts_field = TileworldDomain.java_class.declared_field("_peripheralItemFixationMaxAttempts")
   tileworld_domain_peripheral_item_fixation_max_attempts_field.accessible = true
   
+  TileworldDomain.class_eval{
+    field_accessor :_timeTakenToDecideOnMovementFixations, :_timeTakenToDecideOnSalientObjectFixations
+  }
   #########################
   ##### SCENARIO LOOP #####
   #########################
-  for scenario in 1..7
+  for scenario in 1..9
     50.times do
      
       #########################################################
@@ -85,6 +110,8 @@ unit_test "constructor" do
       max_fixations_in_set = 10
       initial_fixation_threshold = (scenario == 2 ? -1 : scenario == 3 ? 0 : scenario == 4 ? max_fixations_in_set + 1 : 3)
       max_peripheral_item_fixation_attempts =  (scenario == 5 ? -1 : scenario == 6 ?  0 : 3)
+      time_taken_to_decide_on_movement_fixation = (scenario == 7 ? -1 : [0, 1].sample)
+      time_taken_to_decide_on_salient_object_fixation = (scenario == 8 ? -1 : [0, 1].sample)
       
       ##############################
       ##### INVOKE CONSTRUCTOR #####
@@ -93,7 +120,14 @@ unit_test "constructor" do
       exception_thrown = false
       tileworld_domain = nil
       begin
-        tileworld_domain = TileworldDomain.new(model, max_fixations_in_set, initial_fixation_threshold, max_peripheral_item_fixation_attempts)
+        tileworld_domain = TileworldDomain.new(
+          model, 
+          max_fixations_in_set, 
+          initial_fixation_threshold, 
+          max_peripheral_item_fixation_attempts,
+          time_taken_to_decide_on_movement_fixation,
+          time_taken_to_decide_on_salient_object_fixation
+        )
       rescue
         exception_thrown = true
       end
@@ -103,7 +137,7 @@ unit_test "constructor" do
       #################
       
       # Test if exception was thrown as expected.
-      expected_exception_thrown = (scenario == 7 ? false : true)
+      expected_exception_thrown = (scenario == 9 ? false : true)
       assert_equal(
         expected_exception_thrown,
         exception_thrown,
@@ -137,6 +171,20 @@ unit_test "constructor" do
           max_peripheral_item_fixation_attempts,
           "occurred when checking the maximum number of peripheral item " +
           "fixation attempts set in a set in scenario " + scenario.to_s
+        )
+        
+        assert_equal(
+          tileworld_domain._timeTakenToDecideOnMovementFixations,
+          time_taken_to_decide_on_movement_fixation,
+          "occurred when checking the time taken to decide on a movement " +
+          "fixation in scenario " + scenario.to_s
+        )
+        
+        assert_equal(
+          tileworld_domain._timeTakenToDecideOnSalientObjectFixations,
+          time_taken_to_decide_on_salient_object_fixation,
+          "occurred when checking the time taken to decide on a salient " +
+          "object fixation in scenario " + scenario.to_s
         )
       end
     end
@@ -182,7 +230,7 @@ unit_test "normalise" do
       ##### INVOKE "normalise" #####
       ##############################
       
-      normalised_list_pattern = TileworldDomain.new(Chrest.new(0, true), 10, 3, 3).normalise(list_pattern)
+      normalised_list_pattern = TileworldDomain.new(Chrest.new(0, true), 10, 3, 3, 0, 0).normalise(list_pattern)
       
       #################
       ##### TESTS #####
@@ -230,8 +278,8 @@ end
 unit_test "get_initial_fixation_in_set" do
   50.times do
     assert_equal(
-      AheadOfAgentFixation.new(150).java_class,
-      TileworldDomain.new(Chrest.new(0, true), 10, 3, 3).getInitialFixationInSet(0).java_class
+      AheadOfAgentFixation.new(150, 0).java_class,
+      TileworldDomain.new(Chrest.new(0, true), 10, 3, 3, 0, 0).getInitialFixationInSet(0).java_class
     )
   end
 end
@@ -297,7 +345,7 @@ unit_test "get_non_initial_fixation_in_set" do
     #########################
 
     intial_fixation_threshold = 3
-    tileworld_domain = TileworldDomain.new(model, intial_fixation_threshold, 3, 8)
+    tileworld_domain = TileworldDomain.new(model, intial_fixation_threshold, 3, 8, 0, 0)
 
     ########################
     ##### SCENE SET-UP #####

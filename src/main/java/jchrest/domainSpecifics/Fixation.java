@@ -42,12 +42,14 @@ public abstract class Fixation {
   protected SceneObject _objectSeen = null;
   
   /**
-   * @param timeDecidedUpon The time (in milliseconds) that it will be in the
-   * domain when the {@link jchrest.lib.Square} to perform {@link #this} on is 
-   * selected.
+   * @param timeThatDecidingUponThisStarts The time (in milliseconds) that it 
+   * will be in the domain when {@link #this} starts to be decided upon.
+   * @param timeTakenToDecideUponThis The time (in milliseconds) that it takes 
+   * to decide upon the {@link jchrest.lib.Square} that {@link #this} will 
+   * fixate on after starting deliberation on it.
    */
-  public Fixation(int timeDecidedUpon){
-    this._timeDecidedUpon = timeDecidedUpon;
+  public Fixation(int timeThatDecidingUponThisStarts, int timeTakenToDecideUponThis){
+    this._timeDecidedUpon = timeThatDecidingUponThisStarts + timeTakenToDecideUponThis;
   }
   
   /**

@@ -13,7 +13,7 @@ unit_test "constructor" do
   model = Chrest.new(time += 50, false)
   
   time + 50
-  fixation = SalientManFixation.new(model, time)
+  fixation = SalientManFixation.new(model, time, 150)
   
   #################
   ##### TESTS #####
@@ -123,7 +123,7 @@ unit_test "make" do
 
       # Construct SalientManFixation
       time + 50
-      fixation = SalientManFixation.new(model, time)
+      fixation = SalientManFixation.new(model, time, 150)
 
       fixation_performance_time = fixation.getTimeDecidedUpon + 100
       fixation.setPerformanceTime(fixation_performance_time)

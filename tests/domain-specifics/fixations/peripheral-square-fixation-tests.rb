@@ -14,7 +14,8 @@ unit_test "constructor" do
   # Construct instance.
   time = 0
   model = Chrest.new(time, false)
-  fixation = PeripheralSquareFixation.new(model, time += 100)
+  fixation = PeripheralSquareFixation.new(model, time, 100)
+  time += 100
   
   #Perform tests
   assert_equal(
@@ -280,8 +281,8 @@ unit_test "make" do
         
         previous_fixation = (
           model_learning_object_locations_relative_to_self ? 
-            AheadOfAgentFixation.new(time_previous_fixation_decided_upon) :
-            CentralFixation.new(time_previous_fixation_decided_upon)
+            AheadOfAgentFixation.new(time_previous_fixation_decided_upon, 0) :
+            CentralFixation.new(time_previous_fixation_decided_upon, 0)
         )
         
         previous_fixation._performanceTime = (time += 50)
@@ -323,7 +324,8 @@ unit_test "make" do
 
         # Construct the PeripheralSquareFixation that will be tested and set its
         # performance time.
-        fixation_to_make = PeripheralSquareFixation.new(model, time += 50)
+        fixation_to_make = PeripheralSquareFixation.new(model, time, 50)
+        time = fixation_to_make._timeDecidedUpon
         fixation_to_make._performanceTime = (time += 100)
 
         # Set time to invoke PeripheralSquareFixation.make() now that the 

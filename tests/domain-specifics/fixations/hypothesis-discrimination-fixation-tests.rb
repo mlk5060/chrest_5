@@ -285,7 +285,7 @@ unit_test "make" do
       # which fixated on the same Square as that which will be proposed by the 
       # HypothesisDiscriminationFixation.
       if scenario == 12
-        prev_fixation = CentralFixation.new(model_creation_time)
+        prev_fixation = CentralFixation.new(model_creation_time, 0)
         prev_fixation._performanceTime = (model_creation_time + 1)
         prev_fixation._performed = true
         prev_fixation._scene = scene 

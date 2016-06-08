@@ -54,11 +54,14 @@ public class PeripheralItemFixation extends Fixation{
    * jchrest.domainSpecifics.Scene} previously fixated on contains any non-blind
    * and non-empty {@link jchrest.domainSpecifics.SceneObject SceneObjects} in 
    * its periphery.
-   * @param timeDecidedUpon The time {@link #this} is scheduled to be decided
-   * upon in context of the external domain, in milliseconds.
+   * @param timeThatDecidingUponThisStarts The time (in milliseconds) that it 
+   * will be in the domain when {@link #this} starts to be decided upon.
+   * @param timeTakenToDecideUponThis The time (in milliseconds) that it takes 
+   * to decide upon the {@link jchrest.lib.Square} that {@link #this} will 
+   * fixate on after starting deliberation on it.
    */
-  public PeripheralItemFixation(Chrest model, int maxAttempts, int timeDecidedUpon){
-    super(timeDecidedUpon);
+  public PeripheralItemFixation(Chrest model, int maxAttempts, int timeThatDecidingUponThisStarts, int timeTakenToDecideUponThis){
+    super(timeThatDecidingUponThisStarts, timeTakenToDecideUponThis);
     this._model = model;
     
     if(maxAttempts < 1){

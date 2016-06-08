@@ -3340,15 +3340,15 @@ unit_test "get_fixation_performed" do
       # Fixations 1 and 3 will be performed, fixation 2 will not, this will 
       # allow the test to verify that Fixations that aren't performed are not 
       # considered
-      fixation_1 = CentralFixation.new(chrest_model_creation_time)
+      fixation_1 = CentralFixation.new(chrest_model_creation_time, 0)
       fixation_performed_field.set_value(fixation_1, true)
       fixation_performance_time_field.set_value(fixation_1, chrest_model_creation_time)
 
-      fixation_2 = CentralFixation.new(chrest_model_creation_time)
+      fixation_2 = CentralFixation.new(chrest_model_creation_time, 0)
       fixation_performed_field.set_value(fixation_2, false)
       fixation_performance_time_field.set_value(fixation_2, chrest_model_creation_time)
 
-      fixation_3 = CentralFixation.new(chrest_model_creation_time)
+      fixation_3 = CentralFixation.new(chrest_model_creation_time, 0)
       fixation_performed_field.set_value(fixation_3, true)
       fixation_performance_time_field.set_value(fixation_3, chrest_model_creation_time)
 
@@ -3501,7 +3501,7 @@ unit_test "get_initial_fixation" do
       # Create new Fixations and add to a list
       fixations = ArrayList.new()
       4.times do
-        fixations.add(PeripheralItemFixation.new(model, 3, time))
+        fixations.add(PeripheralItemFixation.new(model, 3, time, 0))
       end
       
       # Add list as value to map. Time last Fixation made should be before the
@@ -3986,7 +3986,7 @@ unit_test "perform_scheduled_fixations" do
       ###############################################
       
       time_fixation_1_decided_upon = time + 50
-      fixation_1 = CentralFixation.new(time_fixation_1_decided_upon)
+      fixation_1 = CentralFixation.new(time_fixation_1_decided_upon, 0)
       if scenario == 1
         fixation_1._performanceTime = nil
       elsif scenario == 2  
@@ -4051,7 +4051,7 @@ unit_test "perform_scheduled_fixations" do
       ############################################################
       
       # Construct previous Fixation
-      previous_fixation = CentralFixation.new(time + 10)
+      previous_fixation = CentralFixation.new(time, 10)
       previous_fixation._performanceTime = rand((previous_fixation._timeDecidedUpon + 1)...time_fixation_1_decided_upon)
       previous_fixation._performed = true
       previous_fixation._scene = previous_fixation_scene
@@ -4101,7 +4101,7 @@ unit_test "perform_scheduled_fixations" do
       time_fixation_2_decided_upon = nil
       if scenario > 8
         time_fixation_2_decided_upon = time_fixation_1_decided_upon + 10
-        fixation_2 = PeripheralSquareFixation.new(model, time_fixation_2_decided_upon)
+        fixation_2 = PeripheralSquareFixation.new(model, time_fixation_2_decided_upon, 0)
         fixation_2._performanceTime = time_method_invoked
         fixations_scheduled.add(fixation_2)
         
@@ -4202,7 +4202,7 @@ unit_test "perform_scheduled_fixations" do
       # Perceiver's attempted Fixations data structure at the time the 
       # method is invoked.
       if scenario > 3
-        expected_fixation = CentralFixation.new(0)
+        expected_fixation = CentralFixation.new(0, 0)
         fixation_reference_field.set_value(expected_fixation, fixation_reference_field.value(fixation_1))
         expected_fixation._timeDecidedUpon = time_fixation_1_decided_upon
         expected_fixation._performanceTime = time_method_invoked
@@ -4687,7 +4687,7 @@ unit_test "tag_visual_spatial_field_objects_fixated_on_as_recognised" do
         ##############################
         
         time_fixation_decided_upon = time_node_2_created + 5
-        fixation = CentralFixation.new(time_fixation_decided_upon)
+        fixation = CentralFixation.new(time_fixation_decided_upon, 0)
         fixation._performed = (scenario == 1 ? false : true) 
         fixation._performanceTime = time_fixation_decided_upon + 20
         fixation._scene = Scene.new(
@@ -5143,7 +5143,7 @@ unit_test "tag_unrecognised_visual_spatial_field_objects_after_fixation_set_comp
       ##############################
       
       time_fixation_decided_upon = vsfo_creation_time + 10
-      fixation = PeripheralSquareFixation.new(model, time_fixation_decided_upon)
+      fixation = PeripheralSquareFixation.new(model, time_fixation_decided_upon, 0)
       fixation._scene = Scene.new("", vsf_width, vsf_height, vsf_min_col, vsf_min_row, (scenario == 2 ? nil : visual_spatial_field))
       
       ##########################################################################
@@ -5487,7 +5487,7 @@ unit_test "schedule_fixations_for_performance" do
       ################################
       
       time_fixation_1_decided_upon = time_model_created + 10
-      fixation_1 = CentralFixation.new(time_fixation_1_decided_upon)
+      fixation_1 = CentralFixation.new(time_fixation_1_decided_upon, 0)
       
       if scenario == 1 then fixation_1._performanceTime = time_fixation_1_decided_upon + 20 end
       
@@ -5497,7 +5497,7 @@ unit_test "schedule_fixations_for_performance" do
       
       fixation_2 = nil
       if scenario == 6
-        fixation_2 = CentralFixation.new(time_fixation_1_decided_upon)
+        fixation_2 = CentralFixation.new(time_fixation_1_decided_upon, 0)
       end
       
       ############################################################
@@ -5612,7 +5612,7 @@ end
 # 
 # For each domain, the test is run until all Fixations that can be generated in
 # the domain have been performed and a VisualSpatialField has been constructed.
-# Following this, the test will be run a further 500 times using the current 
+# Following this, the test will be run a further 200 times using the current 
 # domain until moving on to test the next domain and repeating this whole 
 # process.  Doing this ensures a wide range of scenarios that the method should
 # be able to handle gracefully since there are a number of properties that are
@@ -5834,7 +5834,7 @@ canonical_result_test "make_fixations_in_domains" do
     #####################
     
     counter = -1
-    counter_limit = 500
+    counter_limit = 200
     until counter > counter_limit do
       
       # Since this test can take a *long* time to complete, display the progress
@@ -5926,9 +5926,9 @@ canonical_result_test "make_fixations_in_domains" do
         when GenericDomain.java_class
           GenericDomain.new(model, max_fixations_in_set, peripheral_item_fixation_max_attempts)
         when ChessDomain.java_class
-          ChessDomain.new(model, initial_fixation_threshold, peripheral_item_fixation_max_attempts, max_fixations_in_set)
+          ChessDomain.new(model, initial_fixation_threshold, peripheral_item_fixation_max_attempts, max_fixations_in_set, 150, 150)
         when TileworldDomain.java_class
-          TileworldDomain.new(model, max_fixations_in_set, initial_fixation_threshold, peripheral_item_fixation_max_attempts)
+          TileworldDomain.new(model, max_fixations_in_set, initial_fixation_threshold, peripheral_item_fixation_max_attempts, 50, 50)
         end
       )
 
@@ -7107,7 +7107,7 @@ process_test "construct_visual_spatial_field" do
     }
     
     for fixation_number in 1..9
-      fixation = CentralFixation.new(time) #Sets Fixation's _timeDecidedUpon
+      fixation = CentralFixation.new(time, 0) #Sets Fixation's _timeDecidedUpon
       
       if fixation_number == 1 then fixation._scene, fixation._colFixatedOn, fixation._rowFixatedOn = scene_7, 0, 0 end
       if fixation_number == 2 then fixation._scene, fixation._colFixatedOn, fixation._rowFixatedOn = scene_5, 2, 2 end

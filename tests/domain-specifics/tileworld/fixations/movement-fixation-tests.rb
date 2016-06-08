@@ -5,7 +5,7 @@ unit_test "constructor" do
   time = 0
   model = Chrest.new(time, true)
   time_decided_upon = (time += 100)
-  fixation = MovementFixation.new(model, time_decided_upon)
+  fixation = MovementFixation.new(model, time_decided_upon, 0)
   
   assert_equal(model, fixation._associatedModel)
   assert_equal(time_decided_upon, fixation._timeDecidedUpon)
@@ -408,7 +408,7 @@ unit_test "make" do
       ##### CONSTRUCT MovementFixation #####
       ######################################
 
-      fixation = MovementFixation.new(model, time)
+      fixation = MovementFixation.new(model, time, 0)
       fixation._performanceTime = fixation._timeDecidedUpon + model._saccadeTime
 
       #########################################################

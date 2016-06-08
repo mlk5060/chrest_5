@@ -178,8 +178,10 @@ end
 #   the Fixation.
 unit_test "add_fixation" do
   
-  Chrest.java_class{
-    field_accessor :_recognisedVisualSpatialFieldObjectLifespan, :_unrecognisedVisualSpatialFieldObjectLifespan
+  Chrest.class_eval{
+    field_accessor :_recognisedVisualSpatialFieldObjectLifespan, 
+      :_unrecognisedVisualSpatialFieldObjectLifespan,
+      :_timeTakenToDecideUponCentralFixation
   }
   
   vsf_field = VisualSpatialField.java_class.declared_field("_visualSpatialField")
@@ -275,7 +277,7 @@ unit_test "add_fixation" do
       ##### CONSTRUCT FIXATION #####
       ##############################
 
-      fixation = CentralFixation.new(time)
+      fixation = CentralFixation.new(time, model._timeTakenToDecideUponCentralFixation)
       fixation._performanceTime = (time + 10).to_java(:int)
       fixation._performed = true
       fixation._scene = scene
@@ -714,11 +716,11 @@ unit_test "clear_fixations" do
     fixations_field.accessible = true
     perceiver_fixations = fixations_field.value(perceiver)
 
-    # Create an ArrayList of 10 Fixations and set put this in the Perceiver's 
+    # Create an ArrayList of 10 Fixations and put this in the Perceiver's 
     # Fixation data structure and set the "_fixationToLearnFrom" instance variable
     # to 10.
     fixations = ArrayList.new()
-    10.times do fixations.add(CentralFixation.new(time += 10)) end
+    10.times do fixations.add(CentralFixation.new(time, 10)) end
     perceiver_fixations.put(time.to_java(:int), fixations)
     perceiver._fixationToLearnFrom = 10
 
@@ -787,8 +789,9 @@ unit_test "get_fixations" do
 
       new_fixations = ArrayList.new()
       new_fixations.addAll(current_fixations)
-      new_fixations.add(CentralFixation.new(time += time_increment))
-
+      new_fixations.add(CentralFixation.new(time, time_increment))
+      time += time_increment
+      
       fixations_field.value(perceiver).put(time.to_java(:int), new_fixations)
     end
 
@@ -808,15 +811,15 @@ unit_test "get_fixations" do
           assert_equal(
             nil, 
             fixations, 
-            "occurred when getting Fixations from the Perceiever at a time " + 
-            "before the Perceiever was created"
+            "occurred when getting Fixations from the Perceiver at a time " + 
+            "before the Perceiver was created"
           )
         else 
           assert_equal(
             ms/time_increment,
             fixations.size(),
             "occurred when getting Fixations from the Perceiever at a time " + 
-            "when/after the Perceiever was created (" + ms.to_s + "ms)"
+            "when/after the Perceiver was created (" + ms.to_s + "ms)"
           )
         end
 
@@ -861,7 +864,8 @@ unit_test "get_fixations_performed" do
       new_fixations = ArrayList.new()
       new_fixations.addAll(current_fixations)
       
-      fixation_to_add = CentralFixation.new(time += time_increment)
+      fixation_to_add = CentralFixation.new(time, time_increment)
+      time += time_increment
       if fixation % 2 == 0 then fixation_to_add._performed = true end
       new_fixations.add(fixation_to_add)
 
@@ -931,7 +935,8 @@ unit_test "get_most_recent_fixation_performed" do
       new_fixations = ArrayList.new()
       new_fixations.addAll(current_fixations)
       
-      fixation_to_add = CentralFixation.new(time += time_increment)
+      fixation_to_add = CentralFixation.new(time, time_increment)
+      time += time_increment
       if fixation % 2 == 0 
         fixation_to_add._performed = true
         fixations_performed_references.push(fixation_to_add.getReference())
@@ -1220,7 +1225,8 @@ unit_test "learn_from_new_fixatons" do
 
       # Add 10 Fixations to the first set.
       for fixation in 1..10
-        f = CentralFixation.new(time += 10)
+        f = CentralFixation.new(time, 10)
+        time += 10
         f._performanceTime = (f.getTimeDecidedUpon + 50)
 
         f._performed = 
@@ -1297,7 +1303,8 @@ unit_test "learn_from_new_fixatons" do
 
       # Add 10 Fixations to the second set.
       for fixation in 1..10
-        f = CentralFixation.new(time += 10)
+        f = CentralFixation.new(time, 10)
+        time += 10
         f._performanceTime = (f.getTimeDecidedUpon + 50)
 
         f._performed = 

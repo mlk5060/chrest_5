@@ -39,10 +39,14 @@ public class SalientManFixation extends Fixation{
   * 
   * @param model The {@link jchrest.architecture.Chrest} model constructing 
   * {@link #this}.
-  * @param time The current time in the domain (in milliseconds).
+  * @param timeThatDecidingUponThisStarts The time (in milliseconds) that it 
+   * will be in the domain when {@link #this} starts to be decided upon.
+   * @param timeTakenToDecideUponThis The time (in milliseconds) that it takes 
+   * to decide upon the {@link jchrest.lib.Square} that {@link #this} will 
+   * fixate on after starting deliberation on it. 
   */
-  public SalientManFixation(Chrest model, int time){
-    super(time + 150);
+  public SalientManFixation(Chrest model, int timeThatDecidingUponThisStarts, int timeTakenToDecideUponThis){
+    super(timeThatDecidingUponThisStarts, timeTakenToDecideUponThis);
     this._model = model;
   }
 
