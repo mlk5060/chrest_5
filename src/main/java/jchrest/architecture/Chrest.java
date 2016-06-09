@@ -24,6 +24,7 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Observable;
 import java.util.Random;
+import java.util.Set;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.TreeMap;
@@ -6789,7 +6790,28 @@ public class Chrest extends Observable {
           "Attention clock will remain unchanged."
         );
         
-        this._visualSpatialFields.replace(this._visualSpatialFields.lastEntry().getKey(), visualSpatialFieldBeforeMovesApplied);
+        int visualSpatialFieldEntryCounter = 0;
+        HistoryTreeMap<Integer, VisualSpatialField> visualSpatialFieldsReplacement = new HistoryTreeMap();
+        Set<Entry<Integer, VisualSpatialField>> visualSpatialFields = this._visualSpatialFields.entrySet();
+        for(Entry<Integer, VisualSpatialField> visualSpatialFieldEntry : visualSpatialFields){
+          visualSpatialFieldsReplacement.put(
+            visualSpatialFieldEntry.getKey(), 
+            visualSpatialFieldEntryCounter == visualSpatialFields.size() - 1 ? 
+              visualSpatialFieldBeforeMovesApplied :
+              visualSpatialFieldEntry.getValue()
+            );
+          visualSpatialFieldEntryCounter++;
+        }
+        
+        try {
+          Field chrestVisualSpatialFieldsField = Chrest.class.getDeclaredField("_visualSpatialFields");
+          chrestVisualSpatialFieldsField.setAccessible(true);
+          chrestVisualSpatialFieldsField.set(this, visualSpatialFieldsReplacement);
+          chrestVisualSpatialFieldsField.setAccessible(false);
+        } catch (NoSuchFieldException | SecurityException | IllegalArgumentException | IllegalAccessException ex) {
+          Logger.getLogger(Chrest.class.getName()).log(Level.SEVERE, null, ex);
+        }
+        
         throw e;
       }
     }
