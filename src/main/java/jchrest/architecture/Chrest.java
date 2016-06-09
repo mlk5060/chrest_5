@@ -6475,6 +6475,9 @@ public class Chrest extends Observable {
       
       this.printDebugStatement("- Attention is free");
       
+      Integer timeMostRecentVisualSpatialFieldCreated = mostRecentVisualSpatialFieldEntryWhenFunctionInvoked.getKey();
+      VisualSpatialField visualSpatialField = mostRecentVisualSpatialFieldEntryWhenFunctionInvoked.getValue();
+      
       //Clone the current VisualSpatialField so that if any moves are illegal, 
       //all moves performed up until the illegal move can be reversed.
       this.printDebugStatement(
@@ -6483,9 +6486,8 @@ public class Chrest extends Observable {
         "visual-spatial field state will be reverted."
       );
       
-      Integer timeMostRecentVisualSpatialFieldCreated = mostRecentVisualSpatialFieldEntryWhenFunctionInvoked.getKey();
-      VisualSpatialField visualSpatialField = mostRecentVisualSpatialFieldEntryWhenFunctionInvoked.getValue();
-      
+      //Create a VisualSpatialField representing the current VisualSpatialField
+      //before any moves are applied.
       VisualSpatialField visualSpatialFieldBeforeMovesApplied = new VisualSpatialField(
         visualSpatialField.getName(),
         visualSpatialField.getWidth(),
@@ -6497,30 +6499,51 @@ public class Chrest extends Observable {
         timeMostRecentVisualSpatialFieldCreated
       );
       
-      for(int col = 0; col < visualSpatialField.getWidth(); col++){
-        for(int row = 0; row < visualSpatialField.getHeight(); row++){
-          this.printDebugStatement("   ~ Cloning contents of visual-spatial field coordinates (" + col + ", " + row + ")");
-          List<VisualSpatialFieldObject> coordinateContents = visualSpatialField.getCoordinateContents(col, row);
-          for(int object = 0; object < coordinateContents.size(); object++){
-            
-            this.printDebugStatement(
-              "      + Checking if VisualSpatialFieldObject " + object + " is " +
-              "the creator if so, its already been cloned when the cloned " +
-              "VisualSpatialField was created"
-            );
-            VisualSpatialFieldObject original = coordinateContents.get(object);
-            this.printDebugStatement("      + VisualSpatialFieldObject details:" + original.toString());
-            
-            if(!original.getObjectType().equals(Scene.getCreatorToken())){
+      try {
+        
+        //Have to use reflection to get the visual-spatial field clone's field
+        //otherwise the duplicate VisualSpatialFieldObject check is triggered 
+        //mistakenly in some scenarios.  Using reflection, cloned 
+        //VisualSpatialFieldObjects can be added to the cloned 
+        //VisualSpatialField without any issues.
+        Field vsfField = VisualSpatialField.class.getDeclaredField("_visualSpatialField");
+        vsfField.setAccessible(true);
+        
+        //Get the visual-spatial field proper for the VisualSpatialField just
+        //created, this is what the cloned VisualSpatialFieldObjects will be 
+        //added to.
+        ArrayList<ArrayList<ArrayList<VisualSpatialFieldObject>>> 
+          visualSpatialFieldBeforeMovesAppliedVsf = 
+          (ArrayList<ArrayList<ArrayList<VisualSpatialFieldObject>>>)
+            vsfField.get(visualSpatialFieldBeforeMovesApplied);
+
+        for(int col = 0; col < visualSpatialField.getWidth(); col++){
+          for(int row = 0; row < visualSpatialField.getHeight(); row++){
+            this.printDebugStatement("   ~ Cloning contents of visual-spatial field coordinates (" + col + ", " + row + ")");
+            List<VisualSpatialFieldObject> coordinateContents = visualSpatialField.getCoordinateContents(col, row);
+            for(int object = 0; object < coordinateContents.size(); object++){
+
               this.printDebugStatement(
-                "      + VisualSpatialFieldObject isn't the creator so it will " +
-                "be cloned and added to the cloned VisualSpatialField"
+                "      + Checking if VisualSpatialFieldObject " + object + " is " +
+                "the creator if so, its already been cloned when the cloned " +
+                "VisualSpatialField was created"
               );
-              VisualSpatialFieldObject clone = original.createClone();
-              visualSpatialFieldBeforeMovesApplied.addObjectToCoordinates(col, row, clone, time);
+              VisualSpatialFieldObject original = coordinateContents.get(object);
+              this.printDebugStatement("      + VisualSpatialFieldObject details:" + original.toString());
+
+              if(!original.getObjectType().equals(Scene.getCreatorToken())){
+                this.printDebugStatement(
+                  "      + VisualSpatialFieldObject isn't the creator so it will " +
+                  "be cloned and added to the cloned VisualSpatialField"
+                );
+                VisualSpatialFieldObject clone = original.createClone();
+                visualSpatialFieldBeforeMovesAppliedVsf.get(col).get(row).add(clone);
+              }
             }
           }
         }
+      } catch (NoSuchFieldException | SecurityException | IllegalArgumentException | IllegalAccessException ex) {
+        Logger.getLogger(Chrest.class.getName()).log(Level.SEVERE, null, ex);
       }
       
       //Track the time taken so far to process the object moves.  Used to 
