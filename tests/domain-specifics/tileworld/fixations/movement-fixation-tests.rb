@@ -99,7 +99,8 @@ end
 #   ~ SceneObject on coordinates previously fixated on contains a moveable 
 #     SceneObject.
 #     + Should only be able to move to 1 Square, other squares occupied by 
-#       blind Squares (tests that blind Squares are not proposed as Fixations).
+#       blind Squares (tests that blind Squares and squares containing the 
+#       creator are not proposed as Fixations).
 #       
 # - Scenario n + 1
 #   ~ Fixation made at time when Fixation is to be performed
@@ -428,7 +429,7 @@ unit_test "make" do
       ###############################
 
       expected_result = nil
-      if [9,14,19].include?(scenario)
+      if [19].include?(scenario)
         expected_result = [Square.new(1,0)]
       elsif [10,15,20].include?(scenario)
         expected_result = [Square.new(1,2), Square.new(2,1)]

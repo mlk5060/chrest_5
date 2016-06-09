@@ -167,16 +167,20 @@ public class MovementFixation extends Fixation{
           }
           this._associatedModel.printDebugStatement("- Potential Fixations represented in Scene:\n" + potentialFixations);
 
-          //Remove any potential fixations on coordinates that are blind.
+          //Remove any potential fixations on coordinates that are blind or the
+          //creator.
           Iterator<Square> potentialFixationsIterator = potentialFixations.iterator();
           while(potentialFixationsIterator.hasNext()){
             Square potentialFixation = potentialFixationsIterator.next();
             String objectType = scene.getSquareContents(potentialFixation.getColumn(), potentialFixation.getRow()).getObjectType();
-            if(objectType.equals(Scene.getBlindSquareToken())){
+            if(objectType.equals(Scene.getBlindSquareToken()) || objectType.equals(Scene.CREATOR_TOKEN)){
               potentialFixationsIterator.remove();
             }
           }
-          this._associatedModel.printDebugStatement("- Potential Fixations after removing blind squares:\n" + potentialFixations);
+          this._associatedModel.printDebugStatement(
+            "- Potential Fixations after removing fixations on blind squares " +
+            "and squares containing the creator:\n" + potentialFixations
+          );
 
           //Check if there any potential fixations, if there are, select one at
           //random with equal probability.
