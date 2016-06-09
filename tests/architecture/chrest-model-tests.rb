@@ -7439,6 +7439,11 @@ end
 # - An unrecognised VisualSpatialFieldObject that represents a non-empty square
 # - The creator of the VisualSpatialField
 # 
+# In all the scenarios listed above, an attentional time cost is incurred for
+# accessing the visual-spatial field, in the scenario immediately following 
+# these, two moves are performed, the first incurs an attentional time cost for
+# accessing the visual-spatial field, the second doesn't.
+# 
 # In the final 3 scenarios, the test also checks that exceptions are thrown and
 # handled correctly.
 # 
@@ -7497,7 +7502,7 @@ end
 #       0      1      2       3      4     COORDINATES
 #
 # =======================
-# === Scenarios 13-20 ===
+# === Scenarios 13-21 ===
 # =======================
 #
 # - VisualSpatialFieldObject with identifier "1" will be the creator and will
@@ -7520,7 +7525,7 @@ process_test "move_visual_spatial_field_object" do
   recognised_history_field = VisualSpatialFieldObject.java_class.declared_field("_recognisedHistory")
   recognised_history_field.accessible = true
   
-  for scenario in 1..20
+  for scenario in 1..21
     
     time = 0
     
@@ -7852,6 +7857,7 @@ process_test "move_visual_spatial_field_object" do
         model,
         move_sequence,
         time_move_requested,
+        true,
         expected_visual_spatial_field_data,
         expected_attention_clock,
         movement_time,
@@ -8019,6 +8025,7 @@ process_test "move_visual_spatial_field_object" do
         model,
         move_sequence,
         time_move_requested,
+        true,
         expected_visual_spatial_field_data,
         expected_attention_clock,
         movement_time,
@@ -8107,6 +8114,7 @@ process_test "move_visual_spatial_field_object" do
         model,
         move_sequence,
         time_move_requested,
+        true,
         expected_visual_spatial_field_data,
         expected_attention_clock,
         movement_time,
@@ -8230,6 +8238,7 @@ process_test "move_visual_spatial_field_object" do
         model,
         move_sequence,
         time_move_requested,
+        true,
         expected_visual_spatial_field_data,
         expected_attention_clock,
         movement_time,
@@ -8306,6 +8315,7 @@ process_test "move_visual_spatial_field_object" do
         model,
         move_sequence,
         time_move_requested,
+        true,
         expected_visual_spatial_field_data,
         expected_attention_clock,
         movement_time,
@@ -8477,6 +8487,7 @@ process_test "move_visual_spatial_field_object" do
         model,
         move_sequence,
         time_move_requested,
+        true,
         expected_visual_spatial_field_data,
         expected_attention_clock,
         movement_time,
@@ -8562,6 +8573,7 @@ process_test "move_visual_spatial_field_object" do
         model,
         move_sequence,
         time_move_requested,
+        true,
         expected_visual_spatial_field_data,
         expected_attention_clock,
         movement_time,
@@ -8730,6 +8742,7 @@ process_test "move_visual_spatial_field_object" do
         model,
         move_sequence,
         time_move_requested,
+        true,
         expected_visual_spatial_field_data,
         expected_attention_clock,
         movement_time,
@@ -8812,6 +8825,7 @@ process_test "move_visual_spatial_field_object" do
         model,
         move_sequence,
         time_move_requested,
+        true,
         expected_visual_spatial_field_data,
         expected_attention_clock,
         movement_time,
@@ -8978,12 +8992,157 @@ process_test "move_visual_spatial_field_object" do
         model,
         move_sequence,
         time_move_requested,
+        true,
+        expected_visual_spatial_field_data,
+        expected_attention_clock,
+        movement_time,
+        scenario.to_s
+      )
+      
+    ############################################################################
+    # Tests that the time cost associated with accessing the visual-spatial 
+    # field is not incurred if specified.  Two moves are performed with the 
+    # creator from (1, 1) to (1, 2) and back again.  For the first move, the 
+    # time cost associated with accessing the visual-spatial field is incurred
+    # but is not for the second.  
+    elsif scenario == 18
+      
+      ####################################################
+      ##### CONSTRUCT AND PERFORM FIRST PART OF MOVE #####
+      ####################################################
+      
+      object_with_id_1_moves = ArrayList.new
+      object_with_id_1_moves.add(ItemSquarePattern.new("1", 1, 1))
+      object_with_id_1_moves.add(ItemSquarePattern.new("1", 1, 2))
+      
+      move_sequence = ArrayList.new
+      move_sequence.add(object_with_id_1_moves)
+      
+      # Set relevant time parameters
+      time_move_requested = time
+      move_initiated_time = time_move_requested + model._timeToAccessVisualSpatialField
+      movement_time = move_initiated_time + model._timeToMoveVisualSpatialFieldObject
+      expected_attention_clock = movement_time
+      
+      # Set terminus for VisualSpatialFieldObject being moved on (1, 1)
+      expected_visual_spatial_field_data[1][1][0][4] = movement_time
+      
+      # New VisualSpatialFieldObject representing an empty square should be 
+      # added to (1, 1) when VisualSpatialFieldObject being moved is picked up.
+      expected_visual_spatial_field_data[1][1].push([
+        nil,
+        Scene.getEmptySquareToken(),
+        false,
+        movement_time,
+        movement_time + model._unrecognisedVisualSpatialFieldObjectLifespan
+      ])
+    
+      # Refresh termini of VisualSpatialFieldObjects on coordinates around 
+      # (1, 1) that fall within the fixation field of view.
+      expected_visual_spatial_field_data[2][0][0][4] = move_initiated_time + model._unrecognisedVisualSpatialFieldObjectLifespan
+      expected_visual_spatial_field_data[2][1][0][4] = move_initiated_time + model._unrecognisedVisualSpatialFieldObjectLifespan
+      expected_visual_spatial_field_data[0][2][0][4] = move_initiated_time + model._unrecognisedVisualSpatialFieldObjectLifespan
+      expected_visual_spatial_field_data[1][2][0][4] = move_initiated_time + model._unrecognisedVisualSpatialFieldObjectLifespan
+      expected_visual_spatial_field_data[2][2][0][4] = move_initiated_time + model._recognisedVisualSpatialFieldObjectLifespan
+      
+      # VisualSpatialFieldObject being moved should be added to (1, 2) at 
+      # movement time.
+      expected_visual_spatial_field_data[1][2][0][4] = movement_time
+      
+      expected_visual_spatial_field_data[1][2].push([
+        "1",
+        Scene.getCreatorToken(),
+        false,
+        movement_time,
+        nil
+      ])
+      
+      # Refresh termini of VisualSpatialFieldObjects on coordinates around 
+      # (1, 2) that fall within the fixation field of view.
+      expected_visual_spatial_field_data[2][1][0][4] = movement_time + model._unrecognisedVisualSpatialFieldObjectLifespan
+      expected_visual_spatial_field_data[0][2][0][4] = movement_time + model._unrecognisedVisualSpatialFieldObjectLifespan
+      expected_visual_spatial_field_data[2][2][0][4] = movement_time + model._recognisedVisualSpatialFieldObjectLifespan
+      expected_visual_spatial_field_data[1][3][0][4] = movement_time + model._unrecognisedVisualSpatialFieldObjectLifespan
+      expected_visual_spatial_field_data[2][3][0][4] = movement_time + model._unrecognisedVisualSpatialFieldObjectLifespan
+      
+      move_visual_spatial_field_object_test(
+        model,
+        move_sequence,
+        time_move_requested,
+        true,
         expected_visual_spatial_field_data,
         expected_attention_clock,
         movement_time,
         scenario.to_s + ".1"
       )
     
+      #################################################
+      ### CONSTRUCT AND PERFORM SECOND PART OF MOVE ###
+      #################################################
+      
+      object_with_id_2_moves = ArrayList.new
+      object_with_id_2_moves.add(ItemSquarePattern.new("1", 1, 2))
+      object_with_id_2_moves.add(ItemSquarePattern.new("1", 1, 1))
+      
+      move_sequence = ArrayList.new
+      move_sequence.add(object_with_id_2_moves)
+      
+      time_move_requested = movement_time
+      move_initiated_time = time_move_requested
+      movement_time = move_initiated_time + model._timeToMoveVisualSpatialFieldObject
+      expected_attention_clock = movement_time
+      
+      # Set terminus for VisualSpatialFieldObject being moved on (1, 2)
+      expected_visual_spatial_field_data[1][2][1][4] = movement_time
+      
+      # New VisualSpatialFieldObject representing an empty square should be 
+      # added to (1, 2) when VisualSpatialFieldObject being moved is picked up.
+      expected_visual_spatial_field_data[1][2].push([
+        nil,
+        Scene.getEmptySquareToken(),
+        false,
+        movement_time,
+        movement_time + model._unrecognisedVisualSpatialFieldObjectLifespan
+      ])
+
+      # Refresh termini of VisualSpatialFieldObjects on coordinates around 
+      # (1, 2) that fall within the fixation field of view.
+      expected_visual_spatial_field_data[2][1][0][4] = move_initiated_time + model._unrecognisedVisualSpatialFieldObjectLifespan
+      expected_visual_spatial_field_data[0][2][0][4] = move_initiated_time + model._unrecognisedVisualSpatialFieldObjectLifespan
+      expected_visual_spatial_field_data[2][2][0][4] = move_initiated_time + model._recognisedVisualSpatialFieldObjectLifespan
+      expected_visual_spatial_field_data[1][3][0][4] = move_initiated_time + model._unrecognisedVisualSpatialFieldObjectLifespan
+      expected_visual_spatial_field_data[2][3][0][4] = move_initiated_time + model._unrecognisedVisualSpatialFieldObjectLifespan
+      
+      # VisualSpatialFieldObject being moved should be added to (1, 1) at 
+      # movement time.
+      expected_visual_spatial_field_data[1][1][1][4] = movement_time
+      
+      expected_visual_spatial_field_data[1][1].push([
+        "1",
+        Scene.getCreatorToken(),
+        false,
+        movement_time,
+        nil
+      ])
+      
+      # Refresh termini of VisualSpatialFieldObjects on coordinates around 
+      # (1, 1) that fall within the fixation field of view.
+      expected_visual_spatial_field_data[2][0][0][4] = movement_time + model._unrecognisedVisualSpatialFieldObjectLifespan
+      expected_visual_spatial_field_data[2][1][0][4] = movement_time + model._unrecognisedVisualSpatialFieldObjectLifespan
+      expected_visual_spatial_field_data[0][2][0][4] = movement_time + model._unrecognisedVisualSpatialFieldObjectLifespan
+      expected_visual_spatial_field_data[2][2][0][4] = movement_time + model._recognisedVisualSpatialFieldObjectLifespan
+      
+      move_visual_spatial_field_object_test(
+        model,
+        move_sequence,
+        time_move_requested,
+        false,
+        expected_visual_spatial_field_data,
+        expected_attention_clock,
+        movement_time,
+        scenario.to_s + ".2"
+      )
+      
     ############################################################################
     # Checks that an exception is thrown and the VisualSpatialField is reset 
     # correctly if a VisualSpatialFieldObject move sequence contains moves for 
@@ -8993,7 +9152,7 @@ process_test "move_visual_spatial_field_object" do
     # movement for the first VisualSpatialFieldObject will allow the test to
     # check that the VisualSpatialField is reverted to its state before any
     # moves were applied correctly.
-    elsif scenario == 18
+    elsif scenario == 19
       
       # Construct move
       object_with_id_1_moves = ArrayList.new
@@ -9043,7 +9202,7 @@ process_test "move_visual_spatial_field_object" do
     # for the first VisualSpatialFieldObject will allow the test to check that 
     # the VisualSpatialField is reverted to its state before any moves were 
     # applied correctly.
-    elsif scenario == 19
+    elsif scenario == 20
       
       # Construct move
       object_with_id_1_moves = ArrayList.new
@@ -9094,7 +9253,7 @@ process_test "move_visual_spatial_field_object" do
     # movement for the first VisualSpatialFieldObject will allow the test to
     # check that the VisualSpatialField is reverted to its state before any
     # moves were applied correctly.
-    elsif scenario == 20
+    elsif scenario == 21
       
       # Construct move
       object_with_id_1_moves = ArrayList.new
@@ -9147,12 +9306,21 @@ end
 ################################################################################
 ################################################################################
 
-def move_visual_spatial_field_object_test(model, move_sequence, time_move_should_be_performed, expected_visual_spatial_field_data, expected_attention_clock, time_to_check_visual_spatial_field_at, scenario)
+def move_visual_spatial_field_object_test(
+    model, 
+    move_sequence, 
+    time_move_should_be_performed, 
+    incur_access_time_cost, 
+    expected_visual_spatial_field_data, 
+    expected_attention_clock, 
+    time_to_check_visual_spatial_field_at, 
+    scenario
+  )
   
   chrest_visual_spatial_fields_history = Chrest.java_class.declared_field("_visualSpatialFields")
   chrest_visual_spatial_fields_history.accessible = true
   
-  model.moveObjectsInVisualSpatialField(move_sequence, time_move_should_be_performed)
+  model.moveObjectsInVisualSpatialField(move_sequence, time_move_should_be_performed, incur_access_time_cost)
       
   check_visual_spatial_field_against_expected(
     chrest_visual_spatial_fields_history.value(model).floorEntry(time_to_check_visual_spatial_field_at.to_java(:int)).getValue(),

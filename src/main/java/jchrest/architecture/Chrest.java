@@ -6433,6 +6433,15 @@ public class Chrest extends Observable {
    * @param time The current time (in milliseconds) in the domain when object
    * movement is requested.
    * 
+   * @param incurAccessTimeCost Set to {@link java.lang.Boolean#TRUE} to incur
+   * an attentional time cost equal to {@link 
+   * #this#getTimeToAccessVisualSpatialField()} when processing the {@code 
+   * moveSequence} specified, set to {@link java.lang.Boolean#FALSE} otherwise. 
+   * This is useful for situations where the {@code moveSequence} specified is 
+   * part of a larger sequence but each move must be processed individually and 
+   * the validity of the resulting visual-spatial field state checked before
+   * processing the next {@code moveSequence}.
+   * 
    * @throws jchrest.lib.VisualSpatialFieldException If {@code moveSequences} 
    * cause any of the following statements to evaluate to {@link 
    * java.lang.Boolean#TRUE}:
@@ -6455,7 +6464,7 @@ public class Chrest extends Observable {
    *  </li>
    * </ol>
    */
-  public void moveObjectsInVisualSpatialField(ArrayList<ArrayList<ItemSquarePattern>> moveSequences, int time) throws VisualSpatialFieldException {
+  public void moveObjectsInVisualSpatialField(ArrayList<ArrayList<ItemSquarePattern>> moveSequences, int time, boolean incurAccessTimeCost) throws VisualSpatialFieldException {
     
     this.printDebugStatement("===== Chrest.moveObjects() =====");
     Entry<Integer, VisualSpatialField> mostRecentVisualSpatialFieldEntryWhenFunctionInvoked = this.getVisualSpatialFields().floorEntry(time);
@@ -6517,7 +6526,7 @@ public class Chrest extends Observable {
       //Track the time taken so far to process the object moves.  Used to 
       //assign terminus values for VisualSpatialFieldObjects moved and to update 
       //the attention clock.
-      time += this._timeToAccessVisualSpatialField;   
+      if(incurAccessTimeCost) time += this._timeToAccessVisualSpatialField;   
       this.printDebugStatement("- Time moves begin: " + time);
       
       //Process each object move sequence.
