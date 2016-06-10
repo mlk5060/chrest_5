@@ -7818,7 +7818,7 @@ process_test "move_visual_spatial_field_object" do
       expected_visual_spatial_field_data[1][1][0][4] = movement_time
       
       # New VisualSpatialFieldObject representing an empty square should be 
-      # added to (1, 1) when VisualSpatialFieldObject being moved is picked up.
+      # added to (1, 1).
       expected_visual_spatial_field_data[1][1].push([
         nil,
         Scene.getEmptySquareToken(),
@@ -7843,7 +7843,7 @@ process_test "move_visual_spatial_field_object" do
         "1", 
         (scenario == 13 ? Scene.getCreatorToken() : "A"), 
         false, 
-        movement_time, 
+        expected_visual_spatial_field_data[1][1][0][3], 
         (scenario == 13 ? nil : movement_time + model._unrecognisedVisualSpatialFieldObjectLifespan)
       ]]
       
@@ -8008,7 +8008,7 @@ process_test "move_visual_spatial_field_object" do
         "1",
         (scenario == 14 ? Scene.getCreatorToken() : "A"),
         false,
-        movement_time,
+        expected_visual_spatial_field_data[1][1][0][3],
         (scenario == 14 ? nil : movement_time + model._unrecognisedVisualSpatialFieldObjectLifespan)
       ])
     
@@ -8097,7 +8097,7 @@ process_test "move_visual_spatial_field_object" do
         "1",
         (scenario == 14 ? Scene.getCreatorToken() : "A"),
         false,
-        movement_time,
+        expected_visual_spatial_field_data[1][2][1][3],
         (scenario == 14 ? nil : movement_time + model._unrecognisedVisualSpatialFieldObjectLifespan)
       ])
     
@@ -8223,7 +8223,7 @@ process_test "move_visual_spatial_field_object" do
         "1",
         "A",
         false,
-        movement_time,
+        expected_visual_spatial_field_data[1][1][0][3],
         movement_time + model._unrecognisedVisualSpatialFieldObjectLifespan 
       ])
     
@@ -8298,7 +8298,7 @@ process_test "move_visual_spatial_field_object" do
         "1",
         "A",
         false,
-        movement_time,
+        expected_visual_spatial_field_data[2][0][1][3],
         movement_time + model._unrecognisedVisualSpatialFieldObjectLifespan
       ])
     
@@ -8454,15 +8454,15 @@ process_test "move_visual_spatial_field_object" do
       expected_visual_spatial_field_data[1][2][0][4] = move_initiated_time + model._unrecognisedVisualSpatialFieldObjectLifespan
       expected_visual_spatial_field_data[2][2][0][4] = move_initiated_time + model._recognisedVisualSpatialFieldObjectLifespan
       
-      # VisualSpatialFieldObject being moved should be added to (2, 2)  at first 
-      # put down time.  If the VisualSpatialFieldObject being moved was 
-      # previously recognised it will now be unrecognised.  If the creator is
-      # being moved, its terminus should not be set.
+      # VisualSpatialFieldObject being moved should be added to (2, 2).  If the 
+      # VisualSpatialFieldObject being moved was previously recognised it will 
+      # now be unrecognised.  If the creator is being moved, its terminus should 
+      # not be set.
       expected_visual_spatial_field_data[2][2].push([
         "1",
         (scenario == 15 ? Scene.getCreatorToken() : "A"),
         false,
-        movement_time,
+        expected_visual_spatial_field_data[1][1][0][3],
         (scenario == 15 ? nil : movement_time + model._unrecognisedVisualSpatialFieldObjectLifespan)
       ])
     
@@ -8556,7 +8556,7 @@ process_test "move_visual_spatial_field_object" do
         "1",
         (scenario == 15 ? Scene.getCreatorToken() : "A"),
         false,
-        movement_time,
+        expected_visual_spatial_field_data[2][2][1][3],
         (scenario == 15 ? nil : movement_time + model._unrecognisedVisualSpatialFieldObjectLifespan)
       ])
     
@@ -8720,7 +8720,7 @@ process_test "move_visual_spatial_field_object" do
         "1",
         (scenario == 16 ? Scene.getCreatorToken() : "A"),
         false,
-        movement_time,
+        expected_visual_spatial_field_data[1][1][0][3],
         (scenario == 16 ? nil : movement_time + model._unrecognisedVisualSpatialFieldObjectLifespan)
       ])
     
@@ -8808,7 +8808,7 @@ process_test "move_visual_spatial_field_object" do
         "1",
         (scenario == 16 ? Scene.getCreatorToken() : "A"),
         false,
-        movement_time,
+        expected_visual_spatial_field_data[1][3][1][3],
         (scenario == 16 ? nil : movement_time + model._unrecognisedVisualSpatialFieldObjectLifespan)
       ])
     
@@ -8971,7 +8971,7 @@ process_test "move_visual_spatial_field_object" do
         "2",
         "B",
         false,
-        movement_time,
+        expected_visual_spatial_field_data[2][2][0][3],
         movement_time + model._unrecognisedVisualSpatialFieldObjectLifespan
       ])
     
@@ -9045,15 +9045,14 @@ process_test "move_visual_spatial_field_object" do
       expected_visual_spatial_field_data[1][2][0][4] = move_initiated_time + model._unrecognisedVisualSpatialFieldObjectLifespan
       expected_visual_spatial_field_data[2][2][0][4] = move_initiated_time + model._recognisedVisualSpatialFieldObjectLifespan
       
-      # VisualSpatialFieldObject being moved should be added to (1, 2) at 
-      # movement time.
+      # VisualSpatialFieldObject being moved should be added to (1, 2)
       expected_visual_spatial_field_data[1][2][0][4] = movement_time
       
       expected_visual_spatial_field_data[1][2].push([
         "1",
         Scene.getCreatorToken(),
         false,
-        movement_time,
+        expected_visual_spatial_field_data[1][1][0][3],
         nil
       ])
       
@@ -9113,15 +9112,14 @@ process_test "move_visual_spatial_field_object" do
       expected_visual_spatial_field_data[1][3][0][4] = move_initiated_time + model._unrecognisedVisualSpatialFieldObjectLifespan
       expected_visual_spatial_field_data[2][3][0][4] = move_initiated_time + model._unrecognisedVisualSpatialFieldObjectLifespan
       
-      # VisualSpatialFieldObject being moved should be added to (1, 1) at 
-      # movement time.
+      # VisualSpatialFieldObject being moved should be added to (1, 1).
       expected_visual_spatial_field_data[1][1][1][4] = movement_time
       
       expected_visual_spatial_field_data[1][1].push([
         "1",
         Scene.getCreatorToken(),
         false,
-        movement_time,
+        expected_visual_spatial_field_data[1][2][1][3],
         nil
       ])
       

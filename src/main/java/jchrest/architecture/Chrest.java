@@ -6636,7 +6636,15 @@ public class Chrest extends Observable {
                   this.printDebugStatement("      + Time now equal to " + time);
                     
                   //Remove the object from its current visual-spatial 
-                  //coordinates at the time the move occurs.
+                  //coordinates at the time the move occurs.  Create a clone of
+                  //it before its terminus is set that will be the 
+                  //VisualSpatialFieldObject after the move (before the terminus
+                  //is set, the recognised status of the VisualSpatialFieldObject
+                  //can be set, see next sentence). It is assumed that the 
+                  //VisualSpatialFieldObject will be unrecognised after the move.
+                  VisualSpatialFieldObject objectAfterMove = objectToMove.createClone();
+                  objectAfterMove.setUnrecognised(time, !(objectToMove.getObjectType().equals(Scene.CREATOR_TOKEN)));
+                  
                   objectToMove.setTerminus(time, true);
                   this.printDebugStatement("         = Terminus of VisualSpatialFieldObject to move set to " + objectToMove.getTerminus());
                     
@@ -6698,26 +6706,6 @@ public class Chrest extends Observable {
 
                     visualSpatialField.addObjectToCoordinates(colToMoveFrom, rowToMoveFrom, emptySquare, time);
                   }
-                    
-                  //Create a new VisualSpatialFieldObject that represents the 
-                  //VisualSpatialFieldObject after the move.  It is assumed 
-                  //that the VisualSpatialFieldObject is unrecognised.  If this
-                  //is not the creator, its terminus should be set automatically
-                  objectToMove = new VisualSpatialFieldObject(
-                    objectToMove.getIdentifier(),
-                    objectToMove.getObjectType(),
-                    this,
-                    visualSpatialField,
-                    time,
-                    false, 
-                    !objectToMove.getObjectType().equals(Scene.CREATOR_TOKEN)
-                  );
-                    
-                  this.printDebugStatement(
-                    "      + Created the VisualSpatialFieldObject to be " + 
-                    "added to the VisualSpatialField coordinates to move " +
-                    "the VisualSpatialFieldObject to:" + objectToMove.toString()
-                  );
                 
                   this.printDebugStatement("   ~ VisualSpatialFieldObject 'picked-up' successfully");
                   
@@ -6738,7 +6726,7 @@ public class Chrest extends Observable {
                     
                     //Now, "move" the object to be moved to its destination 
                     //coordinates.
-                    visualSpatialField.addObjectToCoordinates(colToMoveTo, rowToMoveTo, objectToMove, time);
+                    visualSpatialField.addObjectToCoordinates(colToMoveTo, rowToMoveTo, objectAfterMove, time);
                     if(this.debug()){
                       this.printDebugStatement("   ~ Added VisualSpatialFieldObject to VisualSpatialFieldCoordinates to move to.  Coordinate content:");
                       for(VisualSpatialFieldObject objectOnSquareToMoveTo : visualSpatialField.getCoordinateContents(colToMoveTo, rowToMoveTo, time, false)){
