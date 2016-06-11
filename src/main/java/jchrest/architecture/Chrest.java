@@ -6430,8 +6430,8 @@ public class Chrest extends Observable {
    *  {[1 sourceX sourceY], [1 desitinationX destinationY]}
    * }
    * 
-   * @param time The current time (in milliseconds) in the domain when object
-   * movement is requested.
+   * @param time The current time (in milliseconds) in the domain when {@link 
+   * jchrest.lib.VisualSpatialFieldObject};movement is requested.
    * 
    * @param incurAccessTimeCost Set to {@link java.lang.Boolean#TRUE} to incur
    * an attentional time cost equal to {@link 
@@ -6512,33 +6512,45 @@ public class Chrest extends Observable {
         //Get the visual-spatial field proper for the VisualSpatialField just
         //created, this is what the cloned VisualSpatialFieldObjects will be 
         //added to.
-        ArrayList<ArrayList<ArrayList<VisualSpatialFieldObject>>> 
+        ArrayList<ArrayList<TreeMap<Integer, ArrayList<VisualSpatialFieldObject>>>>
           visualSpatialFieldBeforeMovesAppliedVsf = 
-          (ArrayList<ArrayList<ArrayList<VisualSpatialFieldObject>>>)
-            vsfField.get(visualSpatialFieldBeforeMovesApplied);
+        (ArrayList<ArrayList<TreeMap<Integer, ArrayList<VisualSpatialFieldObject>>>>)
+          vsfField.get(visualSpatialFieldBeforeMovesApplied);
+        
+        //Get the current visual-spatial field's field.
+        ArrayList<ArrayList<TreeMap<Integer, ArrayList<VisualSpatialFieldObject>>>>
+          currentVisualSpatialFieldVsf = 
+        (ArrayList<ArrayList<TreeMap<Integer, ArrayList<VisualSpatialFieldObject>>>>)
+          vsfField.get(visualSpatialField);
 
         for(int col = 0; col < visualSpatialField.getWidth(); col++){
           for(int row = 0; row < visualSpatialField.getHeight(); row++){
             this.printDebugStatement("   ~ Cloning contents of visual-spatial field coordinates (" + col + ", " + row + ")");
-            List<VisualSpatialFieldObject> coordinateContents = visualSpatialField.getCoordinateContents(col, row);
-            for(int object = 0; object < coordinateContents.size(); object++){
+            
+            for(Entry<Integer, ArrayList<VisualSpatialFieldObject>> contentHistoryEntry : currentVisualSpatialFieldVsf.get(col).get(row).entrySet()){
+            
+              ArrayList<VisualSpatialFieldObject> coordinateContents = contentHistoryEntry.getValue();
+              ArrayList<VisualSpatialFieldObject> clonedCoordinateContents = new ArrayList();
+              for(int object = 0; object < coordinateContents.size(); object++){
 
-              this.printDebugStatement(
-                "      + Checking if VisualSpatialFieldObject " + object + " is " +
-                "the creator if so, its already been cloned when the cloned " +
-                "VisualSpatialField was created"
-              );
-              VisualSpatialFieldObject original = coordinateContents.get(object);
-              this.printDebugStatement("      + VisualSpatialFieldObject details:" + original.toString());
-
-              if(!original.getObjectType().equals(Scene.getCreatorToken())){
                 this.printDebugStatement(
-                  "      + VisualSpatialFieldObject isn't the creator so it will " +
-                  "be cloned and added to the cloned VisualSpatialField"
+                  "      + Checking if VisualSpatialFieldObject " + object + " is " +
+                  "the creator if so, its already been cloned when the cloned " +
+                  "VisualSpatialField was created"
                 );
-                VisualSpatialFieldObject clone = original.createClone();
-                visualSpatialFieldBeforeMovesAppliedVsf.get(col).get(row).add(clone);
+                VisualSpatialFieldObject original = coordinateContents.get(object);
+                this.printDebugStatement("      + VisualSpatialFieldObject details:" + original.toString());
+
+                if(!original.getObjectType().equals(Scene.getCreatorToken())){
+                  this.printDebugStatement(
+                    "      + VisualSpatialFieldObject isn't the creator so it will " +
+                    "be cloned and added to the cloned VisualSpatialField"
+                  );
+                  clonedCoordinateContents.add(original.createClone());
+                }
               }
+              
+              visualSpatialFieldBeforeMovesAppliedVsf.get(col).get(row).put(contentHistoryEntry.getKey(), clonedCoordinateContents);
             }
           }
         }
@@ -6636,12 +6648,13 @@ public class Chrest extends Observable {
                   this.printDebugStatement("      + Time now equal to " + time);
                     
                   //Remove the object from its current visual-spatial 
-                  //coordinates at the time the move occurs.  Create a clone of
-                  //it before its terminus is set that will be the 
+                  //coordinates at the time the move occurs - 1.  Create a 
+                  //clone of it before its terminus is set that will be the 
                   //VisualSpatialFieldObject after the move (before the terminus
-                  //is set, the recognised status of the VisualSpatialFieldObject
-                  //can be set, see next sentence). It is assumed that the 
-                  //VisualSpatialFieldObject will be unrecognised after the move.
+                  //is set, the recognised status of the 
+                  //VisualSpatialFieldObject can be set, see next sentence). It 
+                  //is assumed that the VisualSpatialFieldObject will be 
+                  //unrecognised after the move.
                   VisualSpatialFieldObject objectAfterMove = objectToMove.createClone();
                   objectAfterMove.setUnrecognised(time, !(objectToMove.getObjectType().equals(Scene.CREATOR_TOKEN)));
                   
@@ -6721,7 +6734,7 @@ public class Chrest extends Observable {
                     
                     //Process the termini of objects on the square to be moved
                     //to.
-                    this.printDebugStatement("   ~ Updating termini of VisualSpatialFieldObjects on VisualSpatialFieldcoordinates to move to");
+                    this.printDebugStatement("   ~ Updating termini of VisualSpatialFieldObjects on VisualSpatialField coordinates to move to");
                     this.refreshVisualSpatialFieldObjectTermini(visualSpatialField, colToMoveTo, rowToMoveTo, time);
                     
                     //Now, "move" the object to be moved to its destination 

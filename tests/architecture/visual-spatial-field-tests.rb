@@ -256,7 +256,13 @@ unit_test "add_object_to_coordinates" do
         true
       )
       existing_object._terminus = time + 10000
-      visual_spatial_field_field.value(visual_spatial_field).get(1).get(0).add(existing_object)
+      
+      coordinate_contents_history = visual_spatial_field_field.value(visual_spatial_field).get(1).get(0)
+      current_coordinate_contents = coordinate_contents_history.lastEntry().getValue
+      new_coordinate_contents = ArrayList.new()
+      new_coordinate_contents.addAll(current_coordinate_contents)
+      new_coordinate_contents.add(existing_object)
+      coordinate_contents_history.put(existing_object._timeCreated.to_java(:int), new_coordinate_contents)
     end
     
     # Add the agent equipped with CHREST to the 
@@ -310,7 +316,7 @@ unit_test "add_object_to_coordinates" do
     # Before setting the time to add, special considerations need to be made for
     # the existing object if its the agent equipped with CHREST
     if [9, 10, 16, 17, 23, 24].include?(scenario)
-      creator = visual_spatial_field_field.value(visual_spatial_field).get(1).get(0).get(0)
+      creator = visual_spatial_field_field.value(visual_spatial_field).get(1).get(0).lastEntry().getValue().get(0)
       if [10, 17, 24].include?(scenario) then creator._terminus = time + 9000 end
       existing_object = creator
     end
@@ -574,8 +580,8 @@ unit_test "get_as_scene" do
     empty_square_1._terminus = time + 20
     empty_square_2._terminus = time + 200
     
-    vsf.get(1).get(0).add(empty_square_1)
-    vsf.get(1).get(0).add(empty_square_2)
+    vsf.get(1).get(0).lastEntry().getValue().add(empty_square_1)
+    vsf.get(1).get(0).lastEntry().getValue().add(empty_square_2)
 
     # Add non-empty squares
     non_empty_square_1 = VisualSpatialFieldObject.new("non_emp_1", "A", model, visual_spatial_field, time + 10, false, false)
@@ -587,10 +593,10 @@ unit_test "get_as_scene" do
     non_empty_square_3._terminus = time + 20
     non_empty_square_4._terminus = time + 200
     
-    vsf.get(2).get(0).add(non_empty_square_1)
-    vsf.get(2).get(0).add(non_empty_square_2)
-    vsf.get(2).get(0).add(non_empty_square_3)
-    vsf.get(2).get(0).add(non_empty_square_4)
+    vsf.get(2).get(0).lastEntry().getValue().add(non_empty_square_1)
+    vsf.get(2).get(0).lastEntry().getValue().add(non_empty_square_2)
+    vsf.get(2).get(0).lastEntry().getValue().add(non_empty_square_3)
+    vsf.get(2).get(0).lastEntry().getValue().add(non_empty_square_4)
 
     #######################################################
     ##### SET-UP UNKNOWN PROBABILITIES DATA STRUCTURE #####
@@ -792,8 +798,8 @@ unit_test "get_coordinate_contents" do
       empty_square_1._terminus = time + 100
       empty_square_2._terminus = time + 200
       
-      vsf.get(0).get(0).add(empty_square_1)
-      vsf.get(0).get(0).add(empty_square_2)
+      vsf.get(0).get(0).lastEntry().getValue().add(empty_square_1)
+      vsf.get(0).get(0).lastEntry().getValue().add(empty_square_2)
     elsif scenario == 4
       obj_1 = VisualSpatialFieldObject.new("obj_1", "A", model, visual_spatial_field, time, false, false)
       obj_2 = VisualSpatialFieldObject.new("obj_2", "B", model, visual_spatial_field, time, false, false)
@@ -804,10 +810,10 @@ unit_test "get_coordinate_contents" do
       obj_3._terminus = time + 100
       obj_4._terminus = time + 200
       
-      vsf.get(0).get(0).add(obj_1)
-      vsf.get(0).get(0).add(obj_2)
-      vsf.get(0).get(0).add(obj_3)
-      vsf.get(0).get(0).add(obj_4)
+      vsf.get(0).get(0).lastEntry().getValue().add(obj_1)
+      vsf.get(0).get(0).lastEntry().getValue().add(obj_2)
+      vsf.get(0).get(0).lastEntry().getValue().add(obj_3)
+      vsf.get(0).get(0).lastEntry().getValue().add(obj_4)
     end
     
     ##############################################
@@ -935,17 +941,17 @@ unit_test "get_creator_details" do
       # be earlier than the creation time of the second VisualSpatialFieldObject
       # representing the agent equipped with CHREST.
       vsf = visual_spatial_field_field.value(visual_spatial_field)
-      vsf.get(0).get(0).get(0)._terminus = (time + 100)
+      vsf.get(0).get(0).lastEntry().getValue().get(0)._terminus = (time + 100)
       
       # Adding second VisualSpatialFieldObject representing the agent equipped 
       # with CHREST to VisualSpatialField in a different location to the first
       # (1, 1) instead of (0, 0).
-      vsf.get(1).get(1).add(VisualSpatialFieldObject.new(
+      vsf.get(1).get(1).lastEntry().getValue().add(VisualSpatialFieldObject.new(
         "00", 
         Scene.getCreatorToken(), 
         model, 
         visual_spatial_field, 
-        vsf.get(0).get(0).get(0)._terminus + 10, 
+        vsf.get(0).get(0).lastEntry().getValue().get(0)._terminus + 10, 
         false, 
         false
       ))
@@ -954,7 +960,7 @@ unit_test "get_creator_details" do
     # Invoke function
     creator_details = visual_spatial_field.getCreatorDetails(
       (scenario == 3 ? 
-        vsf.get(1).get(1).get(0)._timeCreated :
+        vsf.get(1).get(1).lastEntry().getValue().get(0)._timeCreated :
         time + 10
       )
     )
@@ -1121,18 +1127,20 @@ def check_visual_spatial_field_against_expected(visual_spatial_field, expected_v
   for col in 0...width_field.value(visual_spatial_field)
     for row in 0...height_field.value(visual_spatial_field)
 
+      coordinate_contents = vsf.get(col).get(row).floorEntry(time_to_check_at.to_java(:int)).getValue()
+      
       assert_equal(
         expected_visual_spatial_field_data[col][row].size(),
-        vsf.get(col).get(row).size(),
+        coordinate_contents.size(),
         "occurred when checking the number of VisualSpatialFieldObjects on " +
         "col " + col.to_s + ", row " + row.to_s + " " + error_msg_postpend
       )
       
 #      puts "===== Col " + col.to_s + ", row " + row.to_s + " ====="
 
-      for object in 0...vsf.get(col).get(row).size()
+      for object in 0...coordinate_contents.size()
 #        puts "+++ Object " + object.to_s + " +++"
-        vsf_object = vsf.get(col).get(row).get(object)
+        vsf_object = coordinate_contents.get(object)
 #        puts vsf_object.toString()
         
 

@@ -2,12 +2,14 @@ package jchrest.architecture;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Random;
 import java.util.TreeMap;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import jchrest.domainSpecifics.Scene;
 import jchrest.domainSpecifics.SceneObject;
+import jchrest.lib.HistoryTreeMap;
 import jchrest.lib.VisualSpatialFieldObject;
 import jchrest.lib.Square;
 import jchrest.lib.VisualSpatialFieldException;
@@ -43,7 +45,7 @@ import jchrest.lib.VisualSpatialFieldException;
 //       object encoding to become unreliable and subject to error).
 public class VisualSpatialField {
   
-  private final ArrayList<ArrayList<ArrayList<VisualSpatialFieldObject>>> _visualSpatialField = new ArrayList<>();
+  private final ArrayList<ArrayList<TreeMap<Integer, ArrayList<VisualSpatialFieldObject>>>> _visualSpatialField = new ArrayList<>();
   private final int _creationTime;
   private final String _name;
   private final int _width;
@@ -119,7 +121,10 @@ public class VisualSpatialField {
     for(int col = 0; col < width; col++){
       this._visualSpatialField.add(new ArrayList());
       for(int row = 0; row < height; row++){
-        this._visualSpatialField.get(col).add(new ArrayList());
+        ArrayList<VisualSpatialFieldObject> coordinateContents = new ArrayList();
+        TreeMap<Integer, ArrayList<VisualSpatialFieldObject>> coordinateContentsHistory = new TreeMap();
+        coordinateContentsHistory.put(time, coordinateContents);
+        this._visualSpatialField.get(col).add(coordinateContentsHistory);
       }
     }
     
@@ -245,7 +250,7 @@ public class VisualSpatialField {
 
         for(int colToCheck = 0; colToCheck < this._width; colToCheck++){
           for(int rowToCheck = 0; rowToCheck < this._height; rowToCheck++){
-            for(VisualSpatialFieldObject vsfo : this._visualSpatialField.get(colToCheck).get(rowToCheck)){
+            for(VisualSpatialFieldObject vsfo : this._visualSpatialField.get(colToCheck).get(rowToCheck).floorEntry(time).getValue()){
               if(vsfo.isAlive(time)){
 
                 //Check if the creator is being added when another creator is 
@@ -283,7 +288,8 @@ public class VisualSpatialField {
         //Overwrite empty squares or non-empty squares if the 
         //VisualSpatialFieldObject being added is a non-empty square or an empty
         //square, respectively.
-        for(VisualSpatialFieldObject vsfo : this._visualSpatialField.get(col).get(row)){
+        ArrayList<VisualSpatialFieldObject> currentCoordinateContents = this._visualSpatialField.get(col).get(row).floorEntry(time).getValue();
+        for(VisualSpatialFieldObject vsfo : currentCoordinateContents){
           if(
             (vsfo.getObjectType().equals(Scene.getEmptySquareToken()) && vsfo.isAlive(time)) ||
             (object.getObjectType().equals(Scene.getEmptySquareToken()) && vsfo.isAlive(time))
@@ -292,7 +298,11 @@ public class VisualSpatialField {
           }
         }
         
-        return this._visualSpatialField.get(col).get(row).add(object);
+        ArrayList<VisualSpatialFieldObject> newCoordinateContents = new ArrayList();
+        newCoordinateContents.addAll(currentCoordinateContents);
+        newCoordinateContents.add(object);
+        this._visualSpatialField.get(col).get(row).put(time, newCoordinateContents);
+        return true;
       }
       else{
         throw new IllegalArgumentException(
@@ -460,7 +470,7 @@ public class VisualSpatialField {
     
     if(col >= 0 && col < this.getWidth() && row >= 0 && row < this.getHeight()){
       coordinateContents = new ArrayList<>();
-      ArrayList<VisualSpatialFieldObject> contents = this._visualSpatialField.get(col).get(row);
+      ArrayList<VisualSpatialFieldObject> contents = this._visualSpatialField.get(col).get(row).floorEntry(time).getValue();
       for(VisualSpatialFieldObject object : contents){
         if(object.isAlive(time)){
           coordinateContents.add(object);
@@ -500,9 +510,8 @@ public class VisualSpatialField {
     
     if(col >= 0 && col < this.getWidth() && row >= 0 && row < this.getHeight()){
       coordinateContents = new ArrayList<>();
-      ArrayList<VisualSpatialFieldObject> contents = this._visualSpatialField.get(col).get(row);
-      for(VisualSpatialFieldObject object : contents){
-        coordinateContents.add(object);
+      for(Map.Entry<Integer, ArrayList<VisualSpatialFieldObject>> coordinateContentsEntry : this._visualSpatialField.get(col).get(row).entrySet()){
+        coordinateContents.addAll(coordinateContentsEntry.getValue());
       }
     }
     
@@ -528,7 +537,7 @@ public class VisualSpatialField {
     List<Object> creatorDetails = null;
     for(int col = 0; col < this.getWidth(); col++){
       for(int row = 0; row < this.getHeight(); row++){
-        List<VisualSpatialFieldObject> coordinateContents = this._visualSpatialField.get(col).get(row);
+        List<VisualSpatialFieldObject> coordinateContents = this._visualSpatialField.get(col).get(row).floorEntry(time).getValue();
         for(VisualSpatialFieldObject visualSpatialFieldObject : coordinateContents){
           if(
             visualSpatialFieldObject.getObjectType().equals(Scene.getCreatorToken()) &&

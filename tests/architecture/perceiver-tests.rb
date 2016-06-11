@@ -256,10 +256,10 @@ unit_test "add_fixation" do
         
         #Populate VisualSpatialField with remaining VisualSpatialFieldObjects.
         vsf = vsf_field.value(visual_spatial_field)
-        vsf.get(2).get(3).add(VisualSpatialFieldObject.new("1", "P", model, visual_spatial_field, time, true, true))
-        vsf.get(4).get(3).add(VisualSpatialFieldObject.new("2", "K", model, visual_spatial_field, time, false, true))
-        vsf.get(0).get(2).add(VisualSpatialFieldObject.new("3", "G", model, visual_spatial_field, time, true, true))
-        vsf.get(3).get(1).add(VisualSpatialFieldObject.new("4", "H", model, visual_spatial_field, time, false, true))
+        vsf.get(2).get(3).lastEntry().getValue().add(VisualSpatialFieldObject.new("1", "P", model, visual_spatial_field, time, true, true))
+        vsf.get(4).get(3).lastEntry().getValue().add(VisualSpatialFieldObject.new("2", "K", model, visual_spatial_field, time, false, true))
+        vsf.get(0).get(2).lastEntry().getValue().add(VisualSpatialFieldObject.new("3", "G", model, visual_spatial_field, time, true, true))
+        vsf.get(3).get(1).lastEntry().getValue().add(VisualSpatialFieldObject.new("4", "H", model, visual_spatial_field, time, false, true))
       end
 
       # Minimum domain column and row coordinates should not be zero-indexed so

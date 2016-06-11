@@ -4679,7 +4679,7 @@ unit_test "tag_visual_spatial_field_objects_fixated_on_as_recognised" do
           )
           
           # Add the VisualSpatialFieldObject to the coordinates
-          vsf_field.value(visual_spatial_field).get(col).get(row).add(vsfo)
+          vsf_field.value(visual_spatial_field).get(col).get(row).lastEntry().getValue().add(vsfo)
         end
         
         ##############################
@@ -4707,7 +4707,7 @@ unit_test "tag_visual_spatial_field_objects_fixated_on_as_recognised" do
         # for VisualSpatialFieldObjects that shouldn't be alive when recognition
         # occurs can be set.  Only VisualSpatialFieldObject with identifier "1"
         # should not be alive.
-        vsf_field.value(visual_spatial_field).get(1).get(1).get(0)._terminus = fixation._performanceTime - 1 
+        vsf_field.value(visual_spatial_field).get(1).get(1).lastEntry().getValue().get(0)._terminus = fixation._performanceTime - 1 
         
         ###############################
         ##### SET ATTENTION CLOCK #####
@@ -4848,7 +4848,7 @@ unit_test "tag_visual_spatial_field_objects_fixated_on_as_recognised" do
           if location != nil
             col = location[0]
             row = location[1]
-            vsfo = vsf_field.value(visual_spatial_field).get(col).get(row).get(0)
+            vsfo = vsf_field.value(visual_spatial_field).get(col).get(row).lastEntry().getValue().get(0)
             vsfo_recognised_history = vsfo_recognised_field.value(vsfo)
 
             assert_false(
@@ -4866,7 +4866,7 @@ unit_test "tag_visual_spatial_field_objects_fixated_on_as_recognised" do
           if location != nil
             col = location[0]
             row = location[1]
-            vsfo = vsf_field.value(visual_spatial_field).get(col).get(row).get(0)
+            vsfo = vsf_field.value(visual_spatial_field).get(col).get(row).lastEntry().getValue().get(0)
             vsfo_recognised_history = vsfo_recognised_field.value(vsfo)
 
             assert_true(
@@ -5135,7 +5135,7 @@ unit_test "tag_unrecognised_visual_spatial_field_objects_after_fixation_set_comp
         )
 
         # Add the VisualSpatialFieldObject to the coordinates
-        vsf_field.value(visual_spatial_field).get(col).get(row).add(vsfo)
+        vsf_field.value(visual_spatial_field).get(col).get(row).lastEntry().getValue().add(vsfo)
       end
 
       ##############################
@@ -5172,8 +5172,8 @@ unit_test "tag_unrecognised_visual_spatial_field_objects_after_fixation_set_comp
       # Now that the latest time has been set, the terminus for particular
       # VisualSpatialFieldObjects can be set so that they aren't alive when 
       # processed by the method.
-      vsf_field.value(visual_spatial_field).get(0).get(0).get(0)._terminus = latest_time - 1 
-      vsf_field.value(visual_spatial_field).get(2).get(2).get(0)._terminus = latest_time - 1
+      vsf_field.value(visual_spatial_field).get(0).get(0).lastEntry().getValue().get(0)._terminus = latest_time - 1 
+      vsf_field.value(visual_spatial_field).get(2).get(2).lastEntry().getValue().get(0)._terminus = latest_time - 1
       
       ##################################################################
       ##### SET RECOGNISED VisualSpatialFieldObject DATA STRUCTURE #####
@@ -5279,7 +5279,7 @@ unit_test "tag_unrecognised_visual_spatial_field_objects_after_fixation_set_comp
         if location != nil
           col = location[0]
           row = location[1]
-          vsfo = vsf_field.value(visual_spatial_field).get(col).get(row).get(0)
+          vsfo = vsf_field.value(visual_spatial_field).get(col).get(row).lastEntry().getValue().get(0)
           vsfo_recognised_history = vsf_recognised_history_field.value(vsfo)
 
           assert_false(
@@ -5295,7 +5295,7 @@ unit_test "tag_unrecognised_visual_spatial_field_objects_after_fixation_set_comp
         if location != nil
           col = location[0]
           row = location[1]
-          vsfo = vsf_field.value(visual_spatial_field).get(col).get(row).get(0)
+          vsfo = vsf_field.value(visual_spatial_field).get(col).get(row).lastEntry().getValue().get(0)
           vsfo_recognised_history = vsf_recognised_history_field.value(vsfo)
 
           assert_true(
@@ -7386,16 +7386,18 @@ process_test "construct_visual_spatial_field" do
     for col in 0...width_field.value(vsf)
       for row in 0...height_field.value(vsf)
         
+        coordinate_contents = vsf_field_value.get(col).get(row).lastEntry().getValue()
+        
         assert_equal(
           expected_visual_spatial_field_data[col][row].size(),
-          vsf_field_value.get(col).get(row).size(),
+          coordinate_contents.size(),
           "occurred when checking the number of VisualSpatialFieldObjects on " +
           "col " + col.to_s + ", row " + row.to_s + " in context of test " +
           "scenario " + scenario.to_s
         )
         
-        for object in 0...vsf_field_value.get(col).get(row).size()
-          vsf_object = vsf_field_value.get(col).get(row).get(object)
+        for object in 0...coordinate_contents.size()
+          vsf_object = coordinate_contents.get(object)
 
           error_msg_postpend = "VisualSpatialFieldObject " +
             (object + 1).to_s + " on col " + col.to_s + ", row " + row.to_s +
@@ -7642,9 +7644,9 @@ process_test "move_visual_spatial_field_object" do
     visual_spatial_field_field.accessible = true
     vsf = visual_spatial_field_field.value(visual_spatial_field) #This is the "actual" visual-spatial field.
     
-    if visual_spatial_field_object_a != nil then vsf.get(1).get(1).add(visual_spatial_field_object_a) end
-    vsf.get(2).get(2).add(visual_spatial_field_object_b)
-    vsf.get(1).get(3).add(visual_spatial_field_object_c)
+    if visual_spatial_field_object_a != nil then vsf.get(1).get(1).lastEntry().getValue().add(visual_spatial_field_object_a) end
+    vsf.get(2).get(2).lastEntry().getValue().add(visual_spatial_field_object_b)
+    vsf.get(1).get(3).lastEntry().getValue().add(visual_spatial_field_object_c)
     
     # Add empty squares, in scenarios 11-14, coordinates (2, 2) will be empty
     # rather than occupied by the creator
@@ -7671,7 +7673,7 @@ process_test "move_visual_spatial_field_object" do
       if i == 9 then coordinates_to_add_empty_square_to = [2, 4] end
       if i == 10 then coordinates_to_add_empty_square_to = [2, 0] end
       
-      vsf.get(coordinates_to_add_empty_square_to[0]).get(coordinates_to_add_empty_square_to[1]).add(empty_visual_spatial_field_object)
+      vsf.get(coordinates_to_add_empty_square_to[0]).get(coordinates_to_add_empty_square_to[1]).lastEntry().getValue().add(empty_visual_spatial_field_object)
     end
     
     ####################################################################
@@ -8044,7 +8046,7 @@ process_test "move_visual_spatial_field_object" do
         # not possible to overwrite this entry.  Best solution currently is to add
         # an entry just after the previous one stating that the 
         # VisualSpatialFieldObject is recognised.
-        rec_history = recognised_history_field.value(vsf.get(1).get(2).get(1))
+        rec_history = recognised_history_field.value(vsf.get(1).get(2).lastEntry().getValue().get(1))
         rec_history.put((movement_time + 1).to_java(:int), true)
 
         # Set expected recognised status and terminus of VisualSpatialFieldObject 
@@ -8257,7 +8259,7 @@ process_test "move_visual_spatial_field_object" do
         # not possible to overwrite this entry.  Best solution currently is to add
         # an entry just after the previous one stating that the 
         # VisualSpatialFieldObject is recognised.
-        rec_history = recognised_history_field.value(vsf.get(2).get(0).get(1))
+        rec_history = recognised_history_field.value(vsf.get(2).get(0).lastEntry().getValue().get(1))
         rec_history.put((movement_time + 1).to_java(:int), true)
 
         # Set expected recognised status and terminus of VisualSpatialFieldObject 
@@ -8506,7 +8508,7 @@ process_test "move_visual_spatial_field_object" do
         # not possible to overwrite this entry.  Best solution currently is to add
         # an entry just after the previous one stating that the 
         # VisualSpatialFieldObject is recognised.
-        rec_history = recognised_history_field.value(vsf.get(2).get(2).get(1))
+        rec_history = recognised_history_field.value(vsf.get(2).get(2).lastEntry().getValue().get(1))
         rec_history.put((movement_time + 1).to_java(:int), true)
       
         # Update recognised status and terminus of VisualSpatialFieldObject with 
@@ -8761,7 +8763,7 @@ process_test "move_visual_spatial_field_object" do
         # not possible to overwrite this entry.  Best solution currently is to add
         # an entry just after the previous one stating that the 
         # VisualSpatialFieldObject is recognised.
-        rec_history = recognised_history_field.value(vsf.get(1).get(3).get(1))
+        rec_history = recognised_history_field.value(vsf.get(1).get(3).lastEntry().getValue().get(1))
         rec_history.put((movement_time + 1).to_java(:int), true)
 
         # Update recognised status and terminus of VisualSpatialFieldObject with 
@@ -9305,15 +9307,15 @@ end
 ################################################################################
 
 def move_visual_spatial_field_object_test(
-    model, 
-    move_sequence, 
-    time_move_should_be_performed, 
-    incur_access_time_cost, 
-    expected_visual_spatial_field_data, 
-    expected_attention_clock, 
-    time_to_check_visual_spatial_field_at, 
-    scenario
-  )
+  model, 
+  move_sequence, 
+  time_move_should_be_performed, 
+  incur_access_time_cost, 
+  expected_visual_spatial_field_data, 
+  expected_attention_clock, 
+  time_to_check_visual_spatial_field_at, 
+  scenario
+)
   
   chrest_visual_spatial_fields_history = Chrest.java_class.declared_field("_visualSpatialFields")
   chrest_visual_spatial_fields_history.accessible = true
