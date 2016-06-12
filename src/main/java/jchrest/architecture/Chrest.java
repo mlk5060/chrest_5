@@ -475,11 +475,15 @@ public class Chrest extends Observable {
     return this._ltmLinkTraversalTime;
   }
   
-  protected int getMinItemOrPositionOccurrencesToBeSlotValue(){
+  public int getMaximumSemanticLinkSearchDistance(){
+    return this._maximumSemanticLinkSearchDistance;
+  }
+  
+  public int getMinItemOrPositionOccurrencesToBeSlotValue(){
     return this._minItemOrPositionOccurrencesInNodeImagesToBeSlotValue;
   }
   
-  protected int getMinNodeDepthInNetworkToBeTemplate(){
+  public int getMinNodeDepthInNetworkToBeTemplate(){
     return this._minNodeDepthInNetworkToBeTemplate;
   }
   
@@ -652,7 +656,7 @@ public class Chrest extends Observable {
   }
   
   /**
-   * Default is 2.
+   * Default is 1.
    * 
    * @param maximumSemanticLinkSearchDistance The number of semantic links that
    * can be followed from a {@link jchrest.architecture.Node} reached after 
