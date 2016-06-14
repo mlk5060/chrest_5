@@ -28,8 +28,30 @@ unit_test "get_ltm_modality_size" do
     time += 1
   end
   
-  assert_equal(50, model.getLtmModalitySize(Modality::ACTION, 51))
-  assert_equal(50, model.getLtmModalitySize(Modality::VERBAL, 0))
+  number_action_nodes = 0
+  number_verbal_nodes = 0
+  number_visual_nodes = 0
+  
+  for time in 1..50
+    number_action_nodes += 1
+    assert_equal(number_action_nodes, model.getLtmModalitySize(Modality::ACTION, time), "when checking the number of action nodes at time " + time.to_s)
+    assert_equal(0, model.getLtmModalitySize(Modality::VERBAL, time), "when checking the number of verbal nodes at time " + time.to_s)
+    assert_equal(0, model.getLtmModalitySize(Modality::VISUAL, time), "when checking the number of visual nodes at time " + time.to_s)
+  end
+  
+  for time in 51..100 
+    number_verbal_nodes += 1
+    assert_equal(number_action_nodes, model.getLtmModalitySize(Modality::ACTION, time), "when checking the number of action nodes at time " + time.to_s)
+    assert_equal(number_verbal_nodes, model.getLtmModalitySize(Modality::VERBAL, time), "when checking the number of verbal nodes at time " + time.to_s)
+    assert_equal(0, model.getLtmModalitySize(Modality::VISUAL, time), "when checking the number of visual nodes at time " + time.to_s)
+  end
+  
+  for time in 101..150
+    number_visual_nodes += 1
+    assert_equal(number_action_nodes, model.getLtmModalitySize(Modality::ACTION, time), "when checking the number of action nodes at time " + time.to_s)
+    assert_equal(number_verbal_nodes, model.getLtmModalitySize(Modality::VERBAL, time), "when checking the number of verbal nodes at time " + time.to_s)
+    assert_equal(number_visual_nodes, model.getLtmModalitySize(Modality::VISUAL, time), "when checking the number of visual nodes at time " + time.to_s)
+  end
 end
 
 ################################################################################
