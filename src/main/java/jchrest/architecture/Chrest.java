@@ -4557,6 +4557,8 @@ public class Chrest extends Observable {
    * @param scene The {@link jchrest.domainSpecifics.Scene} that will be used
    * to schedule or make a new {@link jchrest.domainSpecifics.Fixation}.
    * 
+   * @param clearVisualStmIfNewFixationSetStarts
+   * 
    * @param constructVisualSpatialField
    * 
    * @param time
@@ -4596,7 +4598,7 @@ public class Chrest extends Observable {
   //      before the next Fixation is performed?  Currently, it may be the case
   //      that only the last Fixation performed will cause visual STM to be 
   //      updated.
-  public ChrestStatus scheduleOrMakeNextFixation(Scene scene, boolean constructVisualSpatialField, int time){
+  public ChrestStatus scheduleOrMakeNextFixation(Scene scene, boolean clearVisualStmIfNewFixationSetStarts, boolean constructVisualSpatialField, int time){
     this.printDebugStatement("===== Chrest.scheduleOrMakeNextFixation() =====");
     ChrestStatus result;
     
@@ -4616,7 +4618,14 @@ public class Chrest extends Observable {
       ///// ADD INITIAL FIXATION /////  
       this.printDebugStatement("- Checking if an initial Fixation should be scheduled");
       Fixation initialFixation = this.getInitialFixation(time);
-      if(initialFixation != null) fixationsScheduled.add(initialFixation);
+      if(initialFixation != null){
+        fixationsScheduled.add(initialFixation);
+        
+        if(clearVisualStmIfNewFixationSetStarts){
+          this.printDebugStatement("- Visual STM should be cleared at the current time (" + time + ") since a new Fixation set has started");
+          this._visualStm.clear(time);
+        }
+      }
       
       //Only continue if performing a Fixation set.  If a Fixation set has 
       //completed but a new one hasn't started, this conditional won't pass 

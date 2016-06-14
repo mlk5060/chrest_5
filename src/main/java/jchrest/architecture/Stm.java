@@ -259,7 +259,13 @@ public class Stm implements Iterable<Node> {
    */
   public boolean clear (int time) {
     if(this._creationTime <= time){
-      this._itemHistory.put(time, new ArrayList());
+      if(this._itemHistory.containsKey(time)){
+        this._itemHistory.get(time).clear();
+      }
+      else{
+        this._itemHistory.put(time, new ArrayList());
+      }
+      
       return true;
     }
     return false;

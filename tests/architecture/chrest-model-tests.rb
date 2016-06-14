@@ -5667,8 +5667,9 @@ end
 # problems).
 # 
 # A set of Fixations is then performed with a random assignment of the parameter 
-# stipulating whether aVisualSpatialField should be created upon completion of 
+# stipulating whether a VisualSpatialField should be created upon completion of 
 # the Fixation set being performed (as mentioned in the previous paragraph).  
+# When this first Fixation set is initialised, visual STM should not be cleared. 
 # Various checks are then performed:
 # 
 # - The CHREST model should no longer consider itself as performing a Fixation 
@@ -5681,12 +5682,16 @@ end
 # - The _fixationsAttemptedInSet variable has been reset to 0.
 # - The correct Fixations have been generated in the correct order.
 # - VisualSpatialField construction occurred/did not occur as expected.
+# - Visual STM should not be cleared at the time of invocation. 
 #
-# The method is then invoked until a new Fixation set is started and the 
-# following checks are then performed:
+# The method is then invoked until a new Fixation set is started.  At this 
+# point, the "clear visual STM when new Fixation Set started" function parameter 
+# is set to true.  The following checks are then performed:
 #
 # - The CHREST model now considers itself as performing a new Fixation set.
 # - The correct initial Fixation according to the domain has been scheduled.
+# - The visual STM associated with the CHREST model is cleared at the time the
+#   new Fixation set starts.
 # - The Fixation data structure of the Perceiver associated with the CHREST 
 #   model has been cleared.
 # - The Fixation to learn from according to the Perceiver has been reset to 0.
@@ -5859,7 +5864,7 @@ canonical_result_test "make_fixations_in_domains" do
     #####################
     
     counter = -1
-    counter_limit = 200
+    counter_limit = 500
     until counter > counter_limit do
       
       # Since this test can take a *long* time to complete, display the progress
@@ -6147,7 +6152,8 @@ canonical_result_test "make_fixations_in_domains" do
       # Randomly stipulate whether a VisualSpatialField should be constructed or
       # not when the number of Fixations attempted equals the maximum permitted.
       construct_visual_spatial_field = [true,false].sample
-      until model.scheduleOrMakeNextFixation(scene_to_fixate_on, construct_visual_spatial_field, time) == ChrestStatus::FIXATION_SET_COMPLETE
+      time_first_fixation_set_started = time
+      until model.scheduleOrMakeNextFixation(scene_to_fixate_on, false, construct_visual_spatial_field, time) == ChrestStatus::FIXATION_SET_COMPLETE
         time += 1
       end
       
@@ -6283,6 +6289,13 @@ canonical_result_test "make_fixations_in_domains" do
           "set has completed" + err_msg_append
         )
       end
+      
+      # Check that visual STM was not cleared when the fixation set began.
+      assert_false(
+        stm_item_history_field.value(model._visualStm).get(time_first_fixation_set_started.to_java(:int)).isEmpty(),
+        "occurred when checking if visual STM is not empty when the first " +
+        "fixation set is started"
+      )
     
       ##############################################
       ##### MODIFY TEST LOOP CONTROL VARIABLES #####
@@ -6306,10 +6319,10 @@ canonical_result_test "make_fixations_in_domains" do
       ##### CHECK THAT THE METHOD WILL LOOP AFTER COMPLETION #####
       ############################################################
       
-      # Invoke the method until it returns true, i.e. it has started a new 
-      # Fixation set.
+      # Invoke the method until it starts a new Fixation set and stipulate that
+      # visual STM should be cleared.
       time += 1
-      until model.scheduleOrMakeNextFixation(scene_to_fixate_on, false, time) == ChrestStatus::FIXATION_SET_BEING_PERFORMED
+      until model.scheduleOrMakeNextFixation(scene_to_fixate_on, true, false, time) == ChrestStatus::FIXATION_SET_BEING_PERFORMED
         time += 1
       end
       
@@ -6348,6 +6361,19 @@ canonical_result_test "make_fixations_in_domains" do
         err_msg_append
       )
       
+      # Check that visual STM has been cleared at the current time
+      assert_false(
+        stm_item_history_field.value(model._visualStm).floorEntry((time - 1).to_java(:int)).getValue().isEmpty(),
+        "occurred when checking if the visual STM associated with the CHREST " +
+        "model is not empty before the second Fixation set starts"
+      )
+      
+      assert_true(
+        stm_item_history_field.value(model._visualStm).get(time.to_java(:int)).isEmpty(),
+        "occurred when checking if the visual STM associated with the CHREST " +
+        "model is empty when the second Fixation set starts"
+      )
+      
       # Check that Perceiver's Fixations data structure has been cleared.
       assert_true(
         perceiver_fixations_field.value(chrest_perceiver_field.value(model)).get(time.to_java(:int)).isEmpty(),
@@ -6368,7 +6394,7 @@ canonical_result_test "make_fixations_in_domains" do
       ##### PERFORM ANOTHER FIXATION SET #####
       ########################################
       time += 1
-      until model.scheduleOrMakeNextFixation(scene_to_fixate_on, false, time) == ChrestStatus::FIXATION_SET_COMPLETE
+      until model.scheduleOrMakeNextFixation(scene_to_fixate_on, false, false, time) == ChrestStatus::FIXATION_SET_COMPLETE
         time += 1
       end
     end
