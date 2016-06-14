@@ -8,6 +8,31 @@ require_relative "visual-spatial-field-tests.rb"
 ################################################################################
 
 ################################################################################
+unit_test "get_ltm_modality_size" do
+  
+  node_creation_time_field = Node.java_class.declared_field("_creationTime")
+  node_creation_time_field.accessible = true
+  
+  time = 0
+  model = Chrest.new(time, [true, false].sample)
+  
+  time += 1
+  for modality in Modality.values()
+
+    until time % 50 == 0
+      node = Node.new(model, ListPattern.new(modality), ListPattern.new(modality), time)
+      time += 1
+    end 
+    
+    node = Node.new(model, ListPattern.new(modality), ListPattern.new(modality), time)
+    time += 1
+  end
+  
+  assert_equal(50, model.getLtmModalitySize(Modality::ACTION, 51))
+  assert_equal(50, model.getLtmModalitySize(Modality::VERBAL, 0))
+end
+
+################################################################################
 unit_test "advance_attention_clock" do
   Chrest.class_eval{
     field_accessor :_attentionClock
