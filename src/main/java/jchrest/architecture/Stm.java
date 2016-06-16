@@ -7,6 +7,7 @@ import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map.Entry;
+import java.util.TreeMap;
 import jchrest.lib.HistoryTreeMap;
 import jchrest.lib.Modality;
 
@@ -40,7 +41,10 @@ public class Stm implements Iterable<Node> {
   private final int _creationTime;
   private final Modality _modality;
   private final HistoryTreeMap<Integer, Integer> _capacityHistory = new HistoryTreeMap();
-  private final HistoryTreeMap<Integer, List<Node>> _itemHistory = new HistoryTreeMap();
+  
+  //Used to be a jchrest.lib.HistoryTreeMap however, this structure needs to be
+  //cleared so a java.util.TreeMap must be used instead.
+  private TreeMap<Integer, List<Node>> _itemHistory = new TreeMap();
 
   /**
    * Initialises this {@link #this} with the capacity stipulated and no contents
@@ -88,6 +92,10 @@ public class Stm implements Iterable<Node> {
    *    The {@link jchrest.architecture.Node} specified is of the same modality 
    *    as {@link #this}
    *  </li>
+   *  <li>
+   *    There are no items in {@link #this} at or after the {@code time} 
+   *    specified (a history re-write is not being attempted).
+   *  </li>
    * </ul>
    * 
    * The reference to the most informative {@link jchrest.architecture.Node} is 
@@ -97,7 +105,7 @@ public class Stm implements Iterable<Node> {
    * 
    * @param nodeToAdd 
    * @param time The time that the {@link jchrest.architecture.Node} specified
-   * should be added to this {@link this}'s contents.
+   * should be added to the contents of {@link this}.
    */
   boolean add(Node nodeToAdd, int time){
     
@@ -106,6 +114,24 @@ public class Stm implements Iterable<Node> {
       nodeToAdd.getCreationTime() <= time &&
       this._modality == nodeToAdd.getModality()
     ){
+      
+      //Check for history re-write before continuing.
+      if(this._itemHistory.ceilingKey(time) != null){
+        String stmItemHistory = "";
+        for(Entry<Integer, List<Node>> stmItemEntry : this._itemHistory.entrySet()){
+          stmItemHistory += "- Time: " + stmItemEntry.getKey() + "\n";
+          for(Node stmNodeAtTime : stmItemEntry.getValue()){
+            stmItemHistory += "  ~ Node ref: " + stmNodeAtTime.getReference() + 
+              ", contents: " + stmNodeAtTime.getContents().toString() + "\n";
+          }
+        }
+
+        throw new IllegalArgumentException(
+          "STM addition requested at time " + time + " but there is either an " +
+          "entry at this time or after this time.  STM item history:\n" + stmItemHistory
+        );
+      }
+      
       ArrayList<Node> newStmContents = new ArrayList();
       
       //Assume that the new node is the hypothesis before trying to find a more
@@ -241,30 +267,25 @@ public class Stm implements Iterable<Node> {
   }
   
   /**
-   * Clears {@link #this} at the time specified.
+   * Inserts an empty {@link java.util.ArrayList} at the {@code time} specified
+   * and removes any entries past the {@code time} specified.
    * 
    * @param time
    * 
    * @return {@link java.lang.Boolean#TRUE} if {@link #this} was successfully
-   * cleared, {@link java.lang.Boolean#FALSE} if not, i.e. if any of the 
-   * following are true:
-   * <ul>
-   *  <li>
-   *    {@link #this} does not exist at the time specified.
-   *  </li>
-   *  <li>
-   *    Clearing the contents of {@link #this} would rewrite its item history.
-   *  </li>
-   * </ul>
+   * cleared, {@link java.lang.Boolean#FALSE} if {@link #this} does not exist at 
+   * the time specified.
    */
   public boolean clear (int time) {
     if(this._creationTime <= time){
-      if(this._itemHistory.containsKey(time)){
-        this._itemHistory.get(time).clear();
+      
+      TreeMap<Integer, List<Node>> clearedItemHistory = new TreeMap();
+      for(Entry<Integer, List<Node>> entryAtOrBeforeTime : this._itemHistory.headMap(time).entrySet()){
+        clearedItemHistory.put(entryAtOrBeforeTime.getKey(), entryAtOrBeforeTime.getValue());
       }
-      else{
-        this._itemHistory.put(time, new ArrayList());
-      }
+      
+      clearedItemHistory.put(time, new ArrayList());
+      this._itemHistory = clearedItemHistory;
       
       return true;
     }
