@@ -16,6 +16,7 @@ import jchrest.domainSpecifics.fixations.PeripheralItemFixation;
 import jchrest.domainSpecifics.fixations.PeripheralSquareFixation;
 import jchrest.domainSpecifics.tileworld.fixations.MovementFixation;
 import jchrest.domainSpecifics.tileworld.fixations.SalientObjectFixation;
+import jchrest.lib.Modality;
 
 /**
  * Used for Tileworld modelling.
@@ -131,12 +132,17 @@ public class TileworldDomain extends DomainSpecifics{
 
   /** 
    * @param pattern
+   * 
    * @return A {@link jchrest.lib.ListPattern} stripped of {@link 
-   * jchrest.lib.ItemSquarePattern ItemSquarePatterns} that are duplicated 
-   * in {@code pattern} or where {@link jchrest.lib.ItemSquarePattern#getItem()} 
-   * returns {@link jchrest.domainSpecifics.Scene#getBlindSquareToken()}, {@link 
+   * jchrest.lib.ItemSquarePattern ItemSquarePatterns} where {@link 
+   * jchrest.lib.ItemSquarePattern#getItem()} returns {@link 
+   * jchrest.domainSpecifics.Scene#getBlindSquareToken()}, {@link 
    * jchrest.domainSpecifics.Scene#getEmptySquareToken()} or {@link 
    * jchrest.domainSpecifics.Scene#getCreatorToken()}.
+   * <br/>
+   * If the {@code pattern} has {@link jchrest.lib.Modality#VISUAL}, any 
+   * duplicate {@link jchrest.lib.ItemSquarePattern ItemSquarePatterns} are 
+   * removed.
    */
   @Override
   public ListPattern normalise(ListPattern pattern) {
@@ -148,10 +154,19 @@ public class TileworldDomain extends DomainSpecifics{
       if(
         !item.equals(Scene.getBlindSquareToken()) &&
         !item.equals(Scene.getEmptySquareToken()) &&
-        !item.equalsIgnoreCase(Scene.getCreatorToken()) &&
-        !result.contains(prim)
+        !item.equalsIgnoreCase(Scene.getCreatorToken())
       ){
         result.add(itemDetails);
+      }
+    }
+    
+    if(pattern.getModality() == Modality.VISUAL){
+      ListPattern resultWithoutDuplicates = new ListPattern(result.getModality());
+      for(PrimitivePattern prim : result){
+        ItemSquarePattern isp = (ItemSquarePattern)prim;
+        if(!resultWithoutDuplicates.contains(isp)){
+          resultWithoutDuplicates.add(isp);
+        }
       }
     }
     
