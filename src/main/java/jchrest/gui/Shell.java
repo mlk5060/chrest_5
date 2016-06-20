@@ -60,8 +60,13 @@ public class Shell extends JFrame implements Observer {
   private JSpinner _executionHistoryTimeTo;
   private JTable _executionHistoryTable;
   
-  public Shell () {
+  public Shell(){
+    this(new Chrest(0, false));
+  }
+  
+  public Shell (Chrest model) {
     super ("jCHREST");
+    this._model = model;
 
     setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
     createMenuBar (0);
