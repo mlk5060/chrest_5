@@ -168,6 +168,8 @@ public class TileworldDomain extends DomainSpecifics{
           resultWithoutDuplicates.add(isp);
         }
       }
+      
+      result = resultWithoutDuplicates;
     }
     
     if(pattern.isFinished()){

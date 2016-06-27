@@ -199,74 +199,83 @@ unit_test "normalise" do
   
   for scenario in 1..2
     50.times do
+      for modality in Modality.values()
+        
+        ##############################################
+        ##### CONSTRUCT ListPattern TO NORMALISE #####
+        ##############################################
       
-      ##############################################
-      ##### CONSTRUCT ListPattern TO NORMALISE #####
-      ##############################################
+        list_pattern = ListPattern.new(modality)
+        list_pattern._list.add(ItemSquarePattern.new(Scene.getBlindSquareToken(), 0, 0))
+        list_pattern._list.add(ItemSquarePattern.new(Scene.getEmptySquareToken(), 1, 1))
+        list_pattern._list.add(ItemSquarePattern.new(Scene.getCreatorToken(), 2, 2))
+        list_pattern._list.add(ItemSquarePattern.new(TileworldDomain::HOLE_SCENE_OBJECT_TYPE_TOKEN, 3, 3))
+        list_pattern._list.add(ItemSquarePattern.new(TileworldDomain::HOLE_SCENE_OBJECT_TYPE_TOKEN, 3, 3))
+        list_pattern._list.add(ItemSquarePattern.new(TileworldDomain::TILE_SCENE_OBJECT_TYPE_TOKEN, 4, 4))
+        list_pattern._list.add(ItemSquarePattern.new(TileworldDomain::TILE_SCENE_OBJECT_TYPE_TOKEN, 4, 4))
+        list_pattern._list.add(ItemSquarePattern.new(TileworldDomain::OPPONENT_SCENE_OBJECT_TYPE_TOKEN, 5, 5))
+        list_pattern._list.add(ItemSquarePattern.new(TileworldDomain::OPPONENT_SCENE_OBJECT_TYPE_TOKEN, 5, 5))
+        list_pattern._finished = (scenario == 1 ? true : false)
       
-      list_pattern = ListPattern.new(Modality::VISUAL)
-      list_pattern._list.add(ItemSquarePattern.new(Scene.getBlindSquareToken(), 0, 0))
-      list_pattern._list.add(ItemSquarePattern.new(Scene.getEmptySquareToken(), 1, 1))
-      list_pattern._list.add(ItemSquarePattern.new(Scene.getCreatorToken(), 2, 2))
-      list_pattern._list.add(ItemSquarePattern.new(TileworldDomain::HOLE_SCENE_OBJECT_TYPE_TOKEN, 3, 3))
-      list_pattern._list.add(ItemSquarePattern.new(TileworldDomain::HOLE_SCENE_OBJECT_TYPE_TOKEN, 3, 3))
-      list_pattern._list.add(ItemSquarePattern.new(TileworldDomain::TILE_SCENE_OBJECT_TYPE_TOKEN, 4, 4))
-      list_pattern._list.add(ItemSquarePattern.new(TileworldDomain::TILE_SCENE_OBJECT_TYPE_TOKEN, 4, 4))
-      list_pattern._list.add(ItemSquarePattern.new(TileworldDomain::OPPONENT_SCENE_OBJECT_TYPE_TOKEN, 5, 5))
-      list_pattern._list.add(ItemSquarePattern.new(TileworldDomain::OPPONENT_SCENE_OBJECT_TYPE_TOKEN, 5, 5))
-      list_pattern._finished = (scenario == 1 ? true : false)
-      
-      ##############################################################
-      ##### CONSTRUCT EXPECTED ListPattern AFTER NORMALISATION #####
-      ##############################################################
-      
-      expected_normalised_list_pattern = ListPattern.new(Modality::VISUAL)
-      expected_normalised_list_pattern._list.add(ItemSquarePattern.new(TileworldDomain::HOLE_SCENE_OBJECT_TYPE_TOKEN, 3, 3))
-      expected_normalised_list_pattern._list.add(ItemSquarePattern.new(TileworldDomain::TILE_SCENE_OBJECT_TYPE_TOKEN, 4, 4))
-      expected_normalised_list_pattern._list.add(ItemSquarePattern.new(TileworldDomain::OPPONENT_SCENE_OBJECT_TYPE_TOKEN, 5, 5))
-      expected_normalised_list_pattern._finished = (scenario == 1 ? true : false)
-      
-      ##############################
-      ##### INVOKE "normalise" #####
-      ##############################
-      
-      normalised_list_pattern = TileworldDomain.new(Chrest.new(0, true), 10, 3, 3, 0, 0).normalise(list_pattern)
-      
-      #################
-      ##### TESTS #####
-      #################
-      
-      # Check number of patterns in ListPattern and the actual contents
-      assert_equal(
-        expected_normalised_list_pattern._list.size(), 
-        normalised_list_pattern._list.size(), 
-        "occurred when checking the size of the normalised ListPattern in " +
-        "scenario " + scenario.to_s
-      )
-      
-      for p in 0...normalised_list_pattern._list.size()
+        ##############################################################
+        ##### CONSTRUCT EXPECTED ListPattern AFTER NORMALISATION #####
+        ##############################################################
+
+        expected_normalised_list_pattern = ListPattern.new(modality)
+        expected_normalised_list_pattern._list.add(ItemSquarePattern.new(TileworldDomain::HOLE_SCENE_OBJECT_TYPE_TOKEN, 3, 3))
+        if(modality != Modality::VISUAL)
+          expected_normalised_list_pattern._list.add(ItemSquarePattern.new(TileworldDomain::HOLE_SCENE_OBJECT_TYPE_TOKEN, 3, 3))
+          expected_normalised_list_pattern._list.add(ItemSquarePattern.new(TileworldDomain::TILE_SCENE_OBJECT_TYPE_TOKEN, 4, 4))
+        end
+        expected_normalised_list_pattern._list.add(ItemSquarePattern.new(TileworldDomain::TILE_SCENE_OBJECT_TYPE_TOKEN, 4, 4))
+        expected_normalised_list_pattern._list.add(ItemSquarePattern.new(TileworldDomain::OPPONENT_SCENE_OBJECT_TYPE_TOKEN, 5, 5))
+        if(modality != Modality::VISUAL)
+          expected_normalised_list_pattern._list.add(ItemSquarePattern.new(TileworldDomain::OPPONENT_SCENE_OBJECT_TYPE_TOKEN, 5, 5))
+        end
+        expected_normalised_list_pattern._finished = (scenario == 1 ? true : false)
+
+        ##############################
+        ##### INVOKE "normalise" #####
+        ##############################
+
+        normalised_list_pattern = TileworldDomain.new(Chrest.new(0, true), 10, 3, 3, 0, 0).normalise(list_pattern)
+
+        #################
+        ##### TESTS #####
+        #################
+
+        # Check number of patterns in ListPattern and the actual contents
         assert_equal(
-          expected_normalised_list_pattern._list.get(p), 
-          normalised_list_pattern._list.get(p),
-          "occurred when checking pattern " + p.to_s + " in the normalised " +
+          expected_normalised_list_pattern._list.size(), 
+          normalised_list_pattern._list.size(), 
+          "occurred when checking the size of the normalised ListPattern in " +
+          "scenario " + scenario.to_s
+        )
+
+        for p in 0...normalised_list_pattern._list.size()
+          assert_equal(
+            expected_normalised_list_pattern._list.get(p), 
+            normalised_list_pattern._list.get(p),
+            "occurred when checking pattern " + p.to_s + " in the normalised " +
+            "ListPattern in scenario " + scenario.to_s
+          )
+        end
+
+        # Check modality and finished properties
+        assert_equal(
+          expected_normalised_list_pattern._modality, 
+          normalised_list_pattern._modality,
+          "occurred when checking the modality of the normalised ListPattern " +
+          "in scenario " + scenario.to_s
+        )
+
+        assert_equal(
+          expected_normalised_list_pattern._finished, 
+          normalised_list_pattern._finished,
+          "occurred when checking the 'finished' property of the normalised " +
           "ListPattern in scenario " + scenario.to_s
         )
       end
-      
-      # Check modality and finished properties
-      assert_equal(
-        expected_normalised_list_pattern._modality, 
-        normalised_list_pattern._modality,
-        "occurred when checking the modality of the normalised ListPattern " +
-        "in scenario " + scenario.to_s
-      )
-      
-      assert_equal(
-        expected_normalised_list_pattern._finished, 
-        normalised_list_pattern._finished,
-        "occurred when checking the 'finished' property of the normalised " +
-        "ListPattern in scenario " + scenario.to_s
-      )
     end
   end
 end
