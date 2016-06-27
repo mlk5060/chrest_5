@@ -2,6 +2,7 @@ package jchrest.lib;
 
 import jchrest.architecture.VisualSpatialField;
 import java.util.Map.Entry;
+import java.util.TreeMap;
 import jchrest.architecture.Chrest;
 import jchrest.domainSpecifics.Scene;
 import jchrest.domainSpecifics.SceneObject;
@@ -28,7 +29,7 @@ public class VisualSpatialFieldObject extends SceneObject{
   
   //Maintains a history of the object's "recognised state" so that its 
   //recognised status at any time can be determined.
-  private final HistoryTreeMap<Integer, Boolean> _recognisedHistory = new HistoryTreeMap<>();
+  private final TreeMap<Integer, Boolean> _recognisedHistory = new TreeMap<>();
   
   private Integer _terminus;
   private int _timeCreated;
