@@ -1018,20 +1018,58 @@ unit_test "get_domain_specific_col_and_row" do
   visual_spatial_field = VisualSpatialField.new("", 2, 2, 4, 6, Chrest.new(0, false), nil, 0)
   
   for scenario in 1..3
+    
+    #############################
+    ### SET INPUT COORDINATES ###
+    #############################
+    
     coordinate = 0
     if scenario == 2 then coordinate = 1 end
     if scenario == 3 then coordinate = 2 end
     
-    col = visual_spatial_field.getDomainSpecificColFromVisualSpatialFieldCol(coordinate)
-    row = visual_spatial_field.getDomainSpecificRowFromVisualSpatialFieldRow(coordinate)
+    ######################
+    ### INVOKE METHODS ###
+    ######################
     
-    expected_col = 4
-    expected_row = 6
+    exception_thrown_for_col = false
+    begin
+      col = visual_spatial_field.getDomainSpecificColFromVisualSpatialFieldCol(coordinate)
+    rescue
+      exception_thrown_for_col = true
+    end
+    
+    exception_thrown_for_row = false
+    begin
+      row = visual_spatial_field.getDomainSpecificRowFromVisualSpatialFieldRow(coordinate)
+    rescue
+      exception_thrown_for_row = true
+    end
+    
+    ##############################
+    ### SET EXPECTED VARIABLES ###
+    ##############################
+    
+    expected_exception_thrown_for_col = (scenario == 3)
+    expected_exception_thrown_for_row = (scenario == 3)
+    
+    expected_col = expected_row = nil
+    if scenario == 2 then expected_col, expected_row = 4, 6 end
     if scenario == 2 then expected_col, expected_row = 5, 7 end
-    if scenario == 3 then expected_col, expected_row = nil, nil end
     
-    assert_equal(expected_col, col)
-    assert_equal(expected_row, row)
+    #############
+    ### TESTS ###
+    #############
+    
+    assert_equal(expected_exception_thrown_for_col, exception_thrown_for_col, "occurred when checking if an exception was thrown for the col in scenario " + scenario.to_s)
+    assert_equal(expected_exception_thrown_for_row, exception_thrown_for_row, "occurred when checking if an exception was thrown for the row in scenario " + scenario.to_s)
+    
+    if expected_col != nil 
+      assert_equal(expected_col, col, "occurred when checking col in scenario " + scenario.to_s)
+    end
+    
+    if expected_row != nil
+      assert_equal(expected_row, row, "occurred when checking row in scenario " + scenario.to_s)
+    end
   end
 end
 
@@ -1069,20 +1107,60 @@ unit_test "get_visual_spatial_field_col_and_row" do
   visual_spatial_field = VisualSpatialField.new("", 2, 2, 4, 6, Chrest.new(0, false), nil, 0)
   
   for scenario in 1..3
+    
+    #############################
+    ### SET INPUT COORDINATES ###
+    #############################
+    
     domain_col = 4
     domain_row = 6
     if scenario == 2 then domain_col, domain_row = 5, 7 end
     if scenario == 3 then domain_col, domain_row = 6, 8 end
     
-    col = visual_spatial_field.getVisualSpatialFieldColFromDomainSpecificCol(domain_col)
-    row = visual_spatial_field.getVisualSpatialFieldRowFromDomainSpecificRow(domain_row)
+    ######################
+    ### INVOKE METHODS ###
+    ######################
     
-    expected_col = expected_row = 0
+    exception_thrown_for_col = false
+    begin
+      col = visual_spatial_field.getVisualSpatialFieldColFromDomainSpecificCol(domain_col)
+    rescue
+      exception_thrown_for_col = true
+    end
+    
+    exception_thrown_for_row = false
+    begin
+      row = visual_spatial_field.getVisualSpatialFieldRowFromDomainSpecificRow(domain_row)
+    rescue
+      exception_thrown_for_row = true
+    end
+    
+    ##############################
+    ### SET EXPECTED VARIABLES ###
+    ##############################
+    
+    expected_exception_thrown_for_col = (scenario == 3)
+    expected_exception_thrown_for_row = (scenario == 3)
+    
+    expected_col = expected_row = nil
+    if scenario == 1 then expected_col = expected_row = 0 end
     if scenario == 2 then expected_col = expected_row = 1 end
-    if scenario == 3 then expected_col = expected_row = nil end
     
-    assert_equal(expected_col, col)
-    assert_equal(expected_row, row)
+    #############
+    ### TESTS ###
+    #############
+    
+    assert_equal(expected_exception_thrown_for_col, exception_thrown_for_col, "occurred when checking if an exception was thrown for the col in scenario " + scenario.to_s)
+    assert_equal(expected_exception_thrown_for_row, exception_thrown_for_row, "occurred when checking if an exception was thrown for the row in scenario " + scenario.to_s)
+    
+    if expected_col != nil 
+      assert_equal(expected_col, col, "occurred when checking col in scenario " + scenario.to_s)
+    end
+    
+    if expected_row != nil
+      assert_equal(expected_row, row, "occurred when checking row in scenario " + scenario.to_s)
+    end
+    
   end
 end
 

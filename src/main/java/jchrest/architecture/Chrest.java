@@ -5391,46 +5391,48 @@ public class Chrest extends Observable {
               row = locationOfCreatorRow + row;
             }
 
-            col = visualSpatialFieldRepresented.getVisualSpatialFieldColFromDomainSpecificCol(col);
-            row = visualSpatialFieldRepresented.getVisualSpatialFieldRowFromDomainSpecificRow(row);
-            this.printDebugStatement("  ~ VisualSpatialFieldCoordinates referenced: (" + col + ", " + row + ")");
+            if(visualSpatialFieldRepresented.areDomainSpecificCoordinatesRepresented(col, row)){
+              col = visualSpatialFieldRepresented.getVisualSpatialFieldColFromDomainSpecificCol(col);
+              row = visualSpatialFieldRepresented.getVisualSpatialFieldRowFromDomainSpecificRow(row);
+              this.printDebugStatement("  ~ VisualSpatialFieldCoordinates referenced: (" + col + ", " + row + ")");
 
-            //Cycle through all VisualSpatialFieldObjects on the 
-            //coordinates and check if they are alive and of the same type
-            //as that defined by the ItemSquarePattern in the 
-            //content/image ListPattern.  If so, tag them as recognised.
-            //
-            //NOTE: there may be more than one VisualSpatialFieldObject 
-            //that is alive and has the same type on the coordinates.  All
-            //such VisualSpatialFieldObjects will be tagged as recognised.
-            this.printDebugStatement(
-              "  ~ Checking if the type of any VisualSpatialFieldObjects on " +
-              "these coordinates match the item referenced (" + 
-              objectRec.getItem() + ") and if they do, are they also 'alive' " +
-              "on the VisualSpatialField"
-            );
-            List<VisualSpatialFieldObject> coordinateContents = visualSpatialFieldRepresented.getCoordinateContents(col, row);
-            for(VisualSpatialFieldObject objectOnVisualSpatialFieldCoordinates : coordinateContents){
+              //Cycle through all VisualSpatialFieldObjects on the 
+              //coordinates and check if they are alive and of the same type
+              //as that defined by the ItemSquarePattern in the 
+              //content/image ListPattern.  If so, tag them as recognised.
+              //
+              //NOTE: there may be more than one VisualSpatialFieldObject 
+              //that is alive and has the same type on the coordinates.  All
+              //such VisualSpatialFieldObjects will be tagged as recognised.
+              this.printDebugStatement(
+                "  ~ Checking if the type of any VisualSpatialFieldObjects on " +
+                "these coordinates match the item referenced (" + 
+                objectRec.getItem() + ") and if they do, are they also 'alive' " +
+                "on the VisualSpatialField"
+              );
+              List<VisualSpatialFieldObject> coordinateContents = visualSpatialFieldRepresented.getCoordinateContents(col, row);
+              for(VisualSpatialFieldObject objectOnVisualSpatialFieldCoordinates : coordinateContents){
 
-              this.printDebugStatement(objectOnVisualSpatialFieldCoordinates.toString());
-              if(
-                objectOnVisualSpatialFieldCoordinates.isAlive(this._attentionClock) && 
-                objectOnVisualSpatialFieldCoordinates.getObjectType().equals(objectRec.getItem())
-              ){
-                this.printDebugStatement(
-                  "    + VisualSpatialFieldObject's type matches and it is alive, " +
-                  "setting its recognised status to true at time it is " + 
-                  "recognised (" + this._attentionClock + ")"
-                );
-                objectOnVisualSpatialFieldCoordinates.setRecognised(this._attentionClock, true);
-                this._recognisedVisualSpatialFieldObjectIdentifiers.add(objectOnVisualSpatialFieldCoordinates.getIdentifier());
-              }
-              else{
-                this.printDebugStatement(
-                  "    + VisualSpatialFieldObject's type does not match or it " +
-                  "is not alive. Processing next VisualSpatialFieldObject on " +
-                  "the coordinates"
-                );
+                this.printDebugStatement(objectOnVisualSpatialFieldCoordinates.toString());
+                if(
+                  objectOnVisualSpatialFieldCoordinates.isAlive(this._attentionClock) && 
+                  objectOnVisualSpatialFieldCoordinates.getObjectType().equals(objectRec.getItem())
+                ){
+                  this.printDebugStatement(
+                    "    + VisualSpatialFieldObject's type matches and it is alive, " +
+                    "setting its recognised status to true at time it is " + 
+                    "recognised (" + this._attentionClock + ")"
+                  );
+                  objectOnVisualSpatialFieldCoordinates.setRecognised(this._attentionClock, true);
+                  this._recognisedVisualSpatialFieldObjectIdentifiers.add(objectOnVisualSpatialFieldCoordinates.getIdentifier());
+                }
+                else{
+                  this.printDebugStatement(
+                    "    + VisualSpatialFieldObject's type does not match or it " +
+                    "is not alive. Processing next VisualSpatialFieldObject on " +
+                    "the coordinates"
+                  );
+                }
               }
             }
           }
@@ -6315,7 +6317,13 @@ public class Chrest extends Observable {
             Integer visualSpatialFieldRow = null;
             for(int col = 0; col < sceneThatRecognisedSceneObjectWasFixatedOnInContextOf.getWidth(); col++){
               for(int row = 0; row < sceneThatRecognisedSceneObjectWasFixatedOnInContextOf.getHeight(); row++){
-                if(sceneThatRecognisedSceneObjectWasFixatedOnInContextOf.getSquareContents(col, row).getIdentifier().equals(recognisedSceneObject.getIdentifier())){
+                if(
+                  sceneThatRecognisedSceneObjectWasFixatedOnInContextOf.getSquareContents(col, row).getIdentifier().equals(recognisedSceneObject.getIdentifier()) &&
+                  visualSpatialField.areDomainSpecificCoordinatesRepresented(
+                    sceneThatRecognisedSceneObjectWasFixatedOnInContextOf.getDomainSpecificColFromSceneSpecificCol(col), 
+                    sceneThatRecognisedSceneObjectWasFixatedOnInContextOf.getDomainSpecificRowFromSceneSpecificRow(row)
+                  )
+                ){
 
                   visualSpatialFieldCol = visualSpatialField.getVisualSpatialFieldColFromDomainSpecificCol(
                     sceneThatRecognisedSceneObjectWasFixatedOnInContextOf.getDomainSpecificColFromSceneSpecificCol(col)
@@ -6349,9 +6357,12 @@ public class Chrest extends Observable {
           
           this.printDebugStatement("\n- Refreshing VisualSpatialFieldObjects on recognised coordinates (if there are any)");
           for(Square domainSpecificCoordinatesRecognised : domainSpecificCoordinatesRecognisedInStmNodes.get(node)){
-            Integer visualSpatialFieldCol = visualSpatialField.getVisualSpatialFieldColFromDomainSpecificCol(domainSpecificCoordinatesRecognised.getColumn()); 
-            Integer visualSpatialFieldRow = visualSpatialField.getVisualSpatialFieldRowFromDomainSpecificRow(domainSpecificCoordinatesRecognised.getRow());
-            if(visualSpatialFieldCol != null && visualSpatialFieldRow != null){
+            int domainSpecificCol = domainSpecificCoordinatesRecognised.getColumn();
+            int domainSpecificRow = domainSpecificCoordinatesRecognised.getRow();
+            
+            if(visualSpatialField.areDomainSpecificCoordinatesRepresented(domainSpecificCol, domainSpecificRow)){
+              int visualSpatialFieldCol = visualSpatialField.getVisualSpatialFieldColFromDomainSpecificCol(domainSpecificCol); 
+              int visualSpatialFieldRow = visualSpatialField.getVisualSpatialFieldRowFromDomainSpecificRow(domainSpecificRow);
               this.refreshVisualSpatialFieldObjectTermini(
                 visualSpatialField, 
                 visualSpatialFieldCol,
@@ -6425,7 +6436,13 @@ public class Chrest extends Observable {
               Integer visualSpatialFieldRow = null;
               for(int col = 0; col < sceneThatUnrecognisedSceneObjectWasFixatedOnInContextOf.getWidth(); col++){
                 for(int row = 0; row < sceneThatUnrecognisedSceneObjectWasFixatedOnInContextOf.getHeight(); row++){
-                  if(sceneThatUnrecognisedSceneObjectWasFixatedOnInContextOf.getSquareContents(col, row).getIdentifier().equals(unrecognisedSceneObject.getIdentifier())){
+                  if(
+                    sceneThatUnrecognisedSceneObjectWasFixatedOnInContextOf.getSquareContents(col, row).getIdentifier().equals(unrecognisedSceneObject.getIdentifier()) &&
+                    visualSpatialField.areDomainSpecificCoordinatesRepresented(
+                      sceneThatUnrecognisedSceneObjectWasFixatedOnInContextOf.getDomainSpecificColFromSceneSpecificCol(col),
+                      sceneThatUnrecognisedSceneObjectWasFixatedOnInContextOf.getDomainSpecificRowFromSceneSpecificRow(row)
+                    )
+                  ){
 
                     visualSpatialFieldCol = visualSpatialField.getVisualSpatialFieldColFromDomainSpecificCol(
                       sceneThatUnrecognisedSceneObjectWasFixatedOnInContextOf.getDomainSpecificColFromSceneSpecificCol(col)
@@ -7155,24 +7172,26 @@ public class Chrest extends Observable {
       int domainSpecificCol = visualSpatialFieldAsScene.getDomainSpecificColFromSceneSpecificCol(visualSpatialFieldObject.getColumn());
       int domainSpecificRow = visualSpatialFieldAsScene.getDomainSpecificRowFromSceneSpecificRow(visualSpatialFieldObject.getRow());
 
-      Integer visualSpatialCol = visualSpatialField.getVisualSpatialFieldColFromDomainSpecificCol(domainSpecificCol);
-      Integer visualSpatialRow = visualSpatialField.getVisualSpatialFieldRowFromDomainSpecificRow(domainSpecificRow);
-      
-      this.printDebugStatement("   ~ Processing VisualSpatialObjects on coordinates (" + visualSpatialCol + ", " + visualSpatialRow + ")");
-      List<VisualSpatialFieldObject> objectsOnCoordinates = visualSpatialField.getCoordinateContents(
-        visualSpatialCol,
-        visualSpatialRow,
-        time, 
-        false
-      );
-      
-      for(VisualSpatialFieldObject objectOnCoordinates : objectsOnCoordinates){
-        this.printDebugStatement("   ~ Processing VisualSpatialFieldObject:\n" + objectOnCoordinates.toString());
-        this.printDebugStatement("\n   ~ Checking if this VisualSpatialFieldObject is alive and doesn't have a null terminus");
-        if(objectOnCoordinates.isAlive(time) && objectOnCoordinates.getTerminus() != null){
-          this.printDebugStatement("   ~ VisualSpatialFieldObject is alive and doesn't have a null terminus. Refreshing terminus at time " + time + ".");
-          objectOnCoordinates.setTerminus(time, false);
-          this.printDebugStatement("   ~ Terminus = " + objectOnCoordinates.getTerminus());
+      if(visualSpatialField.areDomainSpecificCoordinatesRepresented(domainSpecificCol, domainSpecificRow)){
+        int visualSpatialCol = visualSpatialField.getVisualSpatialFieldColFromDomainSpecificCol(domainSpecificCol);
+        int visualSpatialRow = visualSpatialField.getVisualSpatialFieldRowFromDomainSpecificRow(domainSpecificRow);
+
+        this.printDebugStatement("   ~ Processing VisualSpatialObjects on coordinates (" + visualSpatialCol + ", " + visualSpatialRow + ")");
+        List<VisualSpatialFieldObject> objectsOnCoordinates = visualSpatialField.getCoordinateContents(
+          visualSpatialCol,
+          visualSpatialRow,
+          time, 
+          false
+        );
+
+        for(VisualSpatialFieldObject objectOnCoordinates : objectsOnCoordinates){
+          this.printDebugStatement("   ~ Processing VisualSpatialFieldObject:\n" + objectOnCoordinates.toString());
+          this.printDebugStatement("\n   ~ Checking if this VisualSpatialFieldObject is alive and doesn't have a null terminus");
+          if(objectOnCoordinates.isAlive(time) && objectOnCoordinates.getTerminus() != null){
+            this.printDebugStatement("   ~ VisualSpatialFieldObject is alive and doesn't have a null terminus. Refreshing terminus at time " + time + ".");
+            objectOnCoordinates.setTerminus(time, false);
+            this.printDebugStatement("   ~ Terminus = " + objectOnCoordinates.getTerminus());
+          }
         }
       }
     }

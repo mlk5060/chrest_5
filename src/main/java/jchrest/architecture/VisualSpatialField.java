@@ -558,12 +558,34 @@ public class VisualSpatialField {
   /**
    * 
    * @param col
+   * @param row
+   * @return 
+   */
+  public final boolean areDomainSpecificCoordinatesRepresented(int col, int row){
+    return col >= this._minDomainSpecificCol && 
+      col < (this._minDomainSpecificCol + this._width) &&
+      row >= this._minDomainSpecificRow && 
+      row < (this._minDomainSpecificRow + this._height)
+    ;
+  }
+  
+  /**
+   * 
+   * @param col
    * @return The domain-specific column coordinate represented by the 
    * visual-spatial field coordinate specified ({@code col}) or {@code null} if 
    * {@code col} is not represented by {@link #this}.
    */
-  public final Integer getDomainSpecificColFromVisualSpatialFieldCol(int col){
-    return col >= 0 && col < this._width ? this._minDomainSpecificCol + col : null;
+  public final int getDomainSpecificColFromVisualSpatialFieldCol(int col){
+    if(col >= 0 && col < this._width){
+      return this._minDomainSpecificCol + col;
+    }
+    else{
+      throw new IllegalArgumentException(
+        "The column specified (" + col + ") is either < 0 or is greater than " +
+        "the maximum width of the visual-spatial field (" + this._width + ")"
+      );
+    }
   }
   
   /**
@@ -573,8 +595,16 @@ public class VisualSpatialField {
    * visual-spatial field coordinate specified ({@code row}) or {@code null} if 
    * {@code row} is not represented by {@link #this}.
    */
-  public final Integer getDomainSpecificRowFromVisualSpatialFieldRow(int row){
-    return row >= 0 && row < this._height ? this._minDomainSpecificRow + row : null;
+  public final int getDomainSpecificRowFromVisualSpatialFieldRow(int row){
+    if(row >= 0 && row < this._height){
+      return this._minDomainSpecificRow + row;
+    }
+    else{
+      throw new IllegalArgumentException(
+        "The row specified (" + row + ") is either < 0 or is greater than " +
+        "the maximum height of the visual-spatial field (" + this._height + ")"
+      );
+    }
   }
   
   /**
@@ -584,10 +614,18 @@ public class VisualSpatialField {
    * domain-specific coordinate specified ({@code col}) or {@code null} if 
    * {@code col} is not represented by {@link #this}.
    */
-  public final Integer getVisualSpatialFieldColFromDomainSpecificCol(int col){
-    return col >= this._minDomainSpecificCol && col <= ((this._minDomainSpecificCol + this._width) - 1) ? 
-      col - this._minDomainSpecificCol :
-      null;
+  public final int getVisualSpatialFieldColFromDomainSpecificCol(int col){
+    if(col >= this._minDomainSpecificCol && col < (this._minDomainSpecificCol + this._width)){ 
+      return col - this._minDomainSpecificCol;
+    }
+    else{
+      throw new IllegalArgumentException(
+        "The column specified (" + col + ") is either < the minimum domain-specific " +
+        "column represented in the visual-spatial field (" + this._minDomainSpecificCol +
+        ") or is greater than the maximum domain-specific col represented in the " +
+        "visual-spatial field (" + (this._minDomainSpecificCol + this._width + ")")
+      );
+    }
   }
   
   /**
@@ -597,9 +635,17 @@ public class VisualSpatialField {
    * domain-specific coordinate specified ({@code row}) or {@code null} if 
    * {@code row} is not represented by {@link #this}.
    */
-  public final Integer getVisualSpatialFieldRowFromDomainSpecificRow(int row){
-    return row >= this._minDomainSpecificRow && row <= ((this._minDomainSpecificRow + this._height) - 1) ? 
-      row - this._minDomainSpecificRow :
-      null;
+  public final int getVisualSpatialFieldRowFromDomainSpecificRow(int row){
+    if(row >= this._minDomainSpecificRow && row < (this._minDomainSpecificRow + this._height)){
+      return row - this._minDomainSpecificRow;
+    }
+    else{
+      throw new IllegalArgumentException(
+        "The row specified (" + row + ") is either < the minimum domain-specific " +
+        "row represented in the visual-spatial field (" + this._minDomainSpecificRow +
+        ") or is greater than the maximum domain-specific row represented in the " +
+        "visual-spatial field (" + (this._minDomainSpecificRow + this._height) + ")"
+      );
+    }
   }
 }
