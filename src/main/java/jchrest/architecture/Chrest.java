@@ -941,6 +941,22 @@ public class Chrest extends Observable {
     return null;
   }
   
+  void decrementLtmModalityNodeCount(Modality modality, int time){
+    try {
+      String modalityString = modality.toString();
+      modalityString = modalityString.substring(0, 1).toUpperCase() + modalityString.substring(1).toLowerCase();
+      
+      TreeMap modalityNodeCountVariable = (TreeMap)Chrest.class.getDeclaredField("_totalNumber" + modalityString + "LtmNodes").get(this);
+      Entry<Integer, Object> entry = modalityNodeCountVariable.floorEntry(time);
+      if(entry != null){
+        Integer currentCount = (Integer)entry.getValue();
+        modalityNodeCountVariable.put(time, currentCount - 1);
+      }
+    } catch (NoSuchFieldException | SecurityException | IllegalArgumentException | IllegalAccessException ex) {
+      Logger.getLogger(Chrest.class.getName()).log(Level.SEVERE, null, ex);
+    }
+  }
+  
   void incrementLtmModalityNodeCount(Modality modality, int time){
     try {
       String modalityString = modality.toString();
@@ -2989,6 +3005,18 @@ public class Chrest extends Observable {
     this.printDebugStatement("===== Chrest.discriminate() =====");
     boolean discriminationSuccessful;
     
+    //In some cases, a Node may be constructed during discrimination but not 
+    //actually added to LTM (this was demonstrated by the LTM size graphs 
+    //incrementing wildly in the Netlogo Tileworld model; unsure of the cause).  
+    //Consequently, if discrimination is unsuccessful and 
+    //this._nextLtmNodeReference and the total number of LTM Nodes in the 
+    //pattern's modality has been incremented (happens in 
+    //jchrest.architecture.Node constructor), these values must be returned to 
+    //their state before discrimination occurred. To do this, set their current
+    //values to two variables.
+    int nextLtmNodeReferenceBeforeDiscrimination = this._nextLtmNodeReference;
+    int ltmModalitySizeBeforeDiscrimination = this.getLtmModalitySize(pattern.getModality(), time);
+    
     //////////////////////////////////////////////
     ///// GET NEW INFORMATION IN ListPattern /////
     //////////////////////////////////////////////
@@ -3121,8 +3149,19 @@ public class Chrest extends Observable {
       "will not be altered") + "."
     );
     
+    ////////////////////////////////////////
+    ///// HANDLE DISCRIMINATION RESULT /////
+    ////////////////////////////////////////
+    
     if(discriminationSuccessful){
       this._cognitionClock = time;
+    }
+    else if(
+      nextLtmNodeReferenceBeforeDiscrimination == this._nextLtmNodeReference - 1 &&
+      ltmModalitySizeBeforeDiscrimination == this.getLtmModalitySize(pattern.getModality(), time) - 1
+    ){
+      this._nextLtmNodeReference--;
+      this.decrementLtmModalityNodeCount(pattern.getModality(), time);
     }
     
     ChrestStatus discriminationResult = (discriminationSuccessful ? ChrestStatus.DISCRIMINATION_SUCCESSFUL : ChrestStatus.DISCRIMINATION_FAILED);
