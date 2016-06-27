@@ -1543,8 +1543,8 @@ end
 # 
 # Scenario 1: Model does not exist at time method invoked
 # Scenario 2: Model's attention not free at time method invoked
-# Scenario 3: Visual Node specified doesn't have Visual modality
-# Scenario 4: Action Node specified doesn't have Action modality
+# Scenario 3: Vision specified doesn't have Visual modality
+# Scenario 4: Action specified doesn't have Action modality
 # Scenario 5: No matching nodes in visual STM
 # Scenario 6: No matching nodes in action STM
 # Scenario 7: Production not added successfully (checks that cognition clock setting ignored)
@@ -1553,16 +1553,65 @@ end
 # setting performed) but the Node selected from STM differs (checks the Node
 # selection functionality)
 # 
-# Scenario 8: Visual STM consists of two Nodes: one whose contents equals the
-#             visual input and another whose contents matches the visual input.
-# Scenario 9: Visual STM consists of two Nodes: one whose contents matches the
-#             visual input and another whose contents matches the visual input
-#             more than the first.
-# Scenario 10: Action STM consists of two Nodes: one whose contents equals the
-#              action input and another whose contents matches the action input.
-# Scenario 11: Action STM consists of two Nodes: one whose contents matches the
-#              action input and another whose contents matches the action input
-#              more than the first.
+# Scenario 8: Visual STM contains
+#             - A Node whose contents matches 50% of the vision input
+#             Action STM contains
+#             - A Node whose contents matches 50% of the action input
+#             
+# Scenario 9: Visual STM contains
+#             - A Node whose contents matches 50% of the vision input
+#             - A Node whose contents matches 75% of the vision input
+#             Action STM contains
+#             - A Node whose contents matches 50% of the action input
+#             - A Node whose contents matches 75% of the action input
+#             
+# Scenario 10: Visual STM contains
+#             - A Node whose contents matches 50% of the vision input
+#             - A Node whose contents matches 75% of the vision input
+#             - A Node whose contents equals the vision input
+#             Action STM contains
+#             - A Node whose contents matches 50% of the action input
+#             - A Node whose contents matches 75% of the action input
+#             - A Node whose contents equals the action input
+#             
+# Scenario 11: Visual STM contains
+#             - A Node whose contents matches 50% of the vision input
+#             - A Node whose contents matches 75% of the vision input
+#             - A Node whose contents equals the vision input
+#             - A Node whose image matches 50% of the vision input
+#             Action STM contains
+#             - A Node whose contents matches 50% of the action input
+#             - A Node whose contents matches 75% of the action input
+#             - A Node whose contents equals the action input
+#             - A Node whose image matches 50% of the action input
+#             
+# Scenario 12: Visual STM contains
+#             - A Node whose contents matches 50% of the vision input
+#             - A Node whose contents matches 75% of the vision input
+#             - A Node whose contents equals the vision input
+#             - A Node whose image matches 50% of the vision input
+#             - A Node whose image matches 75% of the vision input
+#             Action STM contains
+#             - A Node whose contents matches 50% of the action input
+#             - A Node whose contents matches 75% of the action input
+#             - A Node whose contents equals the action input
+#             - A Node whose image matches 50% of the action input
+#             - A Node whose image matches 75% of the action input
+#             
+# Scenario 13: Visual STM contains
+#             - A Node whose contents matches 50% of the vision input
+#             - A Node whose contents matches 75% of the vision input
+#             - A Node whose contents equals the vision input
+#             - A Node whose image matches 50% of the vision input
+#             - A Node whose image matches 75% of the vision input
+#             - A Node whose image equals the vision input
+#             Action STM contains
+#             - A Node whose contents matches 50% of the action input
+#             - A Node whose contents matches 75% of the action input
+#             - A Node whose contents equals the action input
+#             - A Node whose image matches 50% of the action input
+#             - A Node whose image matches 75% of the action input
+#             - A Node whose image equals the action input
 #              
 # Tests Performed
 # ===============
@@ -1627,7 +1676,7 @@ process_test "learn_production" do
   ##### SCENARIO LOOP #####
   #########################
   
-  for scenario in 1..11
+  for scenario in 1..13
     for primitive_pattern in PrimitivePattern.subclasses
       10.times do
       
@@ -1668,6 +1717,13 @@ process_test "learn_production" do
           raise("PrimitivePattern " + primitive_pattern.java_class.to_s + " not supported")
         )
         
+        visual_primitive_4 = (
+          primitive_pattern == ItemSquarePattern ? ItemSquarePattern.new("R", 0, 4) :
+          primitive_pattern == NumberPattern ? NumberPattern.create(45) :
+          primitive_pattern == StringPattern ? StringPattern.create("gak") :
+          raise("PrimitivePattern " + primitive_pattern.java_class.to_s + " not supported")
+        )
+        
         # Construct action primitives
         action_primitive_1 = (
           primitive_pattern == ItemSquarePattern ? ItemSquarePattern.new("PT", 0, 1) :
@@ -1689,6 +1745,13 @@ process_test "learn_production" do
           primitive_pattern == StringPattern ? StringPattern.create("zab") :
           raise("PrimitivePattern " + primitive_pattern.java_class.to_s + " not supported")
         )
+        
+        action_primitive_4 = (
+          primitive_pattern == ItemSquarePattern ? ItemSquarePattern.new("MV", 180, 1) :
+          primitive_pattern == NumberPattern ? NumberPattern.create(3) :
+          primitive_pattern == StringPattern ? StringPattern.create("lat") :
+          raise("PrimitivePattern " + primitive_pattern.java_class.to_s + " not supported")
+        )
 
         ########################################
         ##### CONSTRUCT INPUT ListPatterns #####
@@ -1698,39 +1761,84 @@ process_test "learn_production" do
         visual_list_pattern.add(visual_primitive_1)
         visual_list_pattern.add(visual_primitive_2)
         visual_list_pattern.add(visual_primitive_3)
+        visual_list_pattern.add(visual_primitive_4)
          
         action_list_pattern = ListPattern.new(Modality::ACTION)
         action_list_pattern.add(action_primitive_1)
         action_list_pattern.add(action_primitive_2)
         action_list_pattern.add(action_primitive_3)
+        action_list_pattern.add(action_primitive_4)
+        
+        #######################################################
+        ##### CONSTRUCT NODE CONTENTS/IMAGE LIST PATTERNS #####
+        #######################################################
+        
+        # Construct the visual ListPatterns.
+        half_visual_match = ListPattern.new(Modality::VISUAL)
+        half_visual_match._list.add(visual_primitive_1)
+        half_visual_match._list.add(visual_primitive_2)
+        
+        three_quarter_visual_match = ListPattern.new(Modality::VISUAL)
+        three_quarter_visual_match._list.add(visual_primitive_1)
+        three_quarter_visual_match._list.add(visual_primitive_2)
+        three_quarter_visual_match._list.add(visual_primitive_3)
+        
+        full_visual_match = ListPattern.new(Modality::VISUAL)
+        full_visual_match._list.add(visual_primitive_1)
+        full_visual_match._list.add(visual_primitive_2)
+        full_visual_match._list.add(visual_primitive_3)
+        full_visual_match._list.add(visual_primitive_4)
+        
+        # Construct the action ListPatterns.
+        half_action_match = ListPattern.new(Modality::ACTION)
+        half_action_match._list.add(action_primitive_1)
+        half_action_match._list.add(action_primitive_2)
+        
+        three_quarter_action_match = ListPattern.new(Modality::ACTION)
+        three_quarter_action_match._list.add(action_primitive_1)
+        three_quarter_action_match._list.add(action_primitive_2)
+        three_quarter_action_match._list.add(action_primitive_3)
+        
+        full_action_match = ListPattern.new(Modality::ACTION)
+        full_action_match._list.add(action_primitive_1)
+        full_action_match._list.add(action_primitive_2)
+        full_action_match._list.add(action_primitive_3)
+        full_action_match._list.add(action_primitive_4)
         
         ###########################
         ##### CONSTRUCT NODES #####
         ###########################
         
-        # Construct the visual Nodes (2 should always be the production source).
-        visual_node_1_contents = ListPattern.new(Modality::VISUAL)
-        visual_node_1_contents._list.add(visual_primitive_1)
+        # Construct visual nodes
+        visual_node_1 = Node.new(model, half_visual_match, ListPattern.new(Modality::VISUAL), chrest_model_creation_time)
+        visual_node_2 = Node.new(model, three_quarter_visual_match, ListPattern.new(Modality::VISUAL), chrest_model_creation_time)
+        visual_node_3 = Node.new(model, full_visual_match, ListPattern.new(Modality::VISUAL), chrest_model_creation_time) 
+        visual_node_4 = Node.new(model, full_visual_match, half_visual_match, chrest_model_creation_time)
+        visual_node_5 = Node.new(model, full_visual_match, three_quarter_visual_match, chrest_model_creation_time)
+        visual_node_6 = Node.new(model, full_visual_match, full_visual_match, chrest_model_creation_time)
         
-        visual_node_2_contents = ListPattern.new(Modality::VISUAL)
-        visual_node_2_contents._list.add(visual_primitive_1)
-        visual_node_2_contents._list.add(visual_primitive_2)
+        # Construct action nodes
+        action_node_1 = Node.new(model, half_action_match, ListPattern.new(Modality::ACTION), chrest_model_creation_time)
+        action_node_2 = Node.new(model, three_quarter_action_match, ListPattern.new(Modality::ACTION), chrest_model_creation_time)
+        action_node_3 = Node.new(model, full_action_match, ListPattern.new(Modality::ACTION), chrest_model_creation_time) 
+        action_node_4 = Node.new(model, full_action_match, half_action_match, chrest_model_creation_time)
+        action_node_5 = Node.new(model, full_action_match, three_quarter_action_match, chrest_model_creation_time)
+        action_node_6 = Node.new(model, full_action_match, full_action_match, chrest_model_creation_time)
         
-        visual_node_1 = Node.new(model, visual_node_1_contents, ListPattern.new(Modality::VISUAL), chrest_model_creation_time)
-        visual_node_2 = Node.new(model, visual_node_2_contents, ListPattern.new(Modality::VISUAL), chrest_model_creation_time)
-        
-        # Construct the action Nodes (2 should always be the production source).
-        action_node_1_contents = ListPattern.new(Modality::ACTION)
-        action_node_1_contents._list.add(action_primitive_1)
-        
-        action_node_2_contents = ListPattern.new(Modality::ACTION)
-        action_node_2_contents._list.add(action_primitive_1)
-        action_node_2_contents._list.add(action_primitive_2)
-        
-        action_node_1 = Node.new(model, action_node_1_contents, ListPattern.new(Modality::ACTION), chrest_model_creation_time)
-        action_node_2 = Node.new(model, action_node_2_contents, ListPattern.new(Modality::ACTION), chrest_model_creation_time)
-        
-        nodes = [visual_node_1, visual_node_2, action_node_1, action_node_2]
+        nodes = [
+          visual_node_1, 
+          visual_node_2,
+          visual_node_3, 
+          visual_node_4,
+          visual_node_5, 
+          visual_node_6, 
+          action_node_1, 
+          action_node_2,
+          action_node_3, 
+          action_node_4,
+          action_node_5, 
+          action_node_6
+        ]
 
         #############################
         ##### CREATE SCENARIOS  #####
@@ -1744,8 +1852,14 @@ process_test "learn_production" do
         # Populate visual STM
         if scenario != 5
           visual_stm_contents = ArrayList.new()
+          
           visual_stm_contents.add(visual_node_1)
-          visual_stm_contents.add(visual_node_2)
+          
+          if scenario >= 9 then visual_stm_contents.add(visual_node_2) end
+          if scenario >= 10 then visual_stm_contents.add(visual_node_3) end
+          if scenario >= 11 then visual_stm_contents.add(visual_node_4) end
+          if scenario >= 12 then visual_stm_contents.add(visual_node_5) end
+          if scenario >= 13 then visual_stm_contents.add(visual_node_6) end
 
           visual_stm = HistoryTreeMap.new()
           visual_stm.put(time_method_invoked.to_java(:int), visual_stm_contents)
@@ -1757,7 +1871,12 @@ process_test "learn_production" do
         if scenario != 6
           action_stm_contents = ArrayList.new()
           action_stm_contents.add(action_node_1)
-          action_stm_contents.add(action_node_2)
+          
+          if scenario >= 9 then action_stm_contents.add(action_node_2) end
+          if scenario >= 10 then action_stm_contents.add(action_node_3) end
+          if scenario >= 11 then action_stm_contents.add(action_node_4) end
+          if scenario >= 12 then action_stm_contents.add(action_node_5) end
+          if scenario >= 13 then action_stm_contents.add(action_node_6) end
 
           action_stm = HistoryTreeMap.new()
           action_stm.put(time_method_invoked.to_java(:int), action_stm_contents)
@@ -1765,10 +1884,7 @@ process_test "learn_production" do
           stm_item_history_field.set_value(model._actionStm, action_stm)
         end
         
-        if scenario == 7 then node_root_node_field.set_value(visual_node_2, true) end
-        if scenario == 8 then visual_node_2_contents._list.add(visual_primitive_3) end
-        if scenario == 9 then action_node_2_contents._list.add(action_primitive_3) end
-        # Nothing should be altered in scenarios 10 & 11.
+        if scenario == 7 then node_root_node_field.set_value(visual_node_1, true) end
 
         #########################
         ##### INVOKE METHOD #####
@@ -1794,7 +1910,8 @@ process_test "learn_production" do
           scenario == 5 ? ChrestStatus::VISION_NOT_IN_STM :
           scenario == 6 ? ChrestStatus::ACTION_NOT_IN_STM :
           scenario == 7 ? ChrestStatus::LEARN_PRODUCTION_FAILED :
-          ChrestStatus::LEARN_PRODUCTION_SUCCESSFUL
+          scenario.between?(7, 12) ? ChrestStatus::OVERGENERALISED_PRODUCTION_LEARNED :
+          ChrestStatus::EXACT_PRODUCTION_LEARNED
         )
       
         expected_exception_thrown = ([3,4].include?(scenario) ? true : false)
@@ -1806,40 +1923,78 @@ process_test "learn_production" do
         # created 1ms after the method is invoked) and in all other scenarios up
         # to 7, it is set to -1ms since the associated model is created at 0ms.
         # 
-        # In scenarios 8-11, the cognition clock should be set to the time the 
-        # method is invoked plus the time taken to search and compare 2 Nodes in 
-        # Visual and Action STM each, plus the time taken by the model to add a 
-        # production.
+        # From scenario 8 onwards, the cognition clock should be set to the time 
+        # the method is invoked plus the time taken to search and compare 2 
+        # Nodes in Visual and Action STM each, plus the time taken by the model 
+        # to add a production.
         expected_cognition_clock = (
           scenario == 1 ? time_method_invoked : 
           scenario <= 7 ? -1 :
-          time_method_invoked + (((model._timeToRetrieveItemFromStm + model._nodeComparisonTime) * 2) * 2) + model._addProductionTime
+          time_method_invoked + (
+            ((model._timeToRetrieveItemFromStm + model._nodeComparisonTime) * ((scenario - 8) + 1)) * 2) + model._addProductionTime
         )
         
         expected_visual_node_1_productions = HistoryTreeMap.new()
         expected_visual_node_1_productions.put(chrest_model_creation_time.to_java(:int), HashMap.new())
         expected_visual_node_2_productions = HistoryTreeMap.new()
         expected_visual_node_2_productions.put(chrest_model_creation_time.to_java(:int), HashMap.new())
+        expected_visual_node_3_productions = HistoryTreeMap.new()
+        expected_visual_node_3_productions.put(chrest_model_creation_time.to_java(:int), HashMap.new())
+        expected_visual_node_4_productions = HistoryTreeMap.new()
+        expected_visual_node_4_productions.put(chrest_model_creation_time.to_java(:int), HashMap.new())
+        expected_visual_node_5_productions = HistoryTreeMap.new()
+        expected_visual_node_5_productions.put(chrest_model_creation_time.to_java(:int), HashMap.new())
+        expected_visual_node_6_productions = HistoryTreeMap.new()
+        expected_visual_node_6_productions.put(chrest_model_creation_time.to_java(:int), HashMap.new())
+        
         expected_action_node_1_productions = HistoryTreeMap.new()
         expected_action_node_1_productions.put(chrest_model_creation_time.to_java(:int), HashMap.new())
         expected_action_node_2_productions = HistoryTreeMap.new()
         expected_action_node_2_productions.put(chrest_model_creation_time.to_java(:int), HashMap.new())
+        expected_action_node_3_productions = HistoryTreeMap.new()
+        expected_action_node_3_productions.put(chrest_model_creation_time.to_java(:int), HashMap.new())
+        expected_action_node_4_productions = HistoryTreeMap.new()
+        expected_action_node_4_productions.put(chrest_model_creation_time.to_java(:int), HashMap.new())
+        expected_action_node_5_productions = HistoryTreeMap.new()
+        expected_action_node_5_productions.put(chrest_model_creation_time.to_java(:int), HashMap.new())
+        expected_action_node_6_productions = HistoryTreeMap.new()
+        expected_action_node_6_productions.put(chrest_model_creation_time.to_java(:int), HashMap.new())
         
-        # Visual node 1 and both action nodes should never be the source of a
-        # production should should not have their production history altered.
-        # However, visual node 2 should have a production added in scenarios 
-        # 8-11 whose terminus is the second action node.
-        if scenario >= 8
-          visual_node_2_productions = HashMap.new()
-          visual_node_2_productions.put(action_node_2, 1.0)
-          expected_visual_node_2_productions.put(expected_cognition_clock.to_java(:int), visual_node_2_productions)
+        expected_production = HashMap.new()
+        case scenario
+        when 8
+          expected_production.put(action_node_1, 1.0)
+          expected_visual_node_1_productions.put(expected_cognition_clock.to_java(:int), expected_production)
+        when 9
+          expected_production.put(action_node_2, 1.0)
+          expected_visual_node_2_productions.put(expected_cognition_clock.to_java(:int), expected_production)
+        when 10
+          expected_production.put(action_node_3, 1.0)
+          expected_visual_node_3_productions.put(expected_cognition_clock.to_java(:int), expected_production)
+        when 11
+          expected_production.put(action_node_4, 1.0)
+          expected_visual_node_4_productions.put(expected_cognition_clock.to_java(:int), expected_production)
+        when 12
+          expected_production.put(action_node_5, 1.0)
+          expected_visual_node_5_productions.put(expected_cognition_clock.to_java(:int), expected_production)
+        when 13
+          expected_production.put(action_node_6, 1.0)
+          expected_visual_node_6_productions.put(expected_cognition_clock.to_java(:int), expected_production)
         end
         
         expected_node_production_histories = [
           expected_visual_node_1_productions,
           expected_visual_node_2_productions,
+          expected_visual_node_3_productions,
+          expected_visual_node_4_productions,
+          expected_visual_node_5_productions,
+          expected_visual_node_6_productions,
           expected_action_node_1_productions,
-          expected_action_node_2_productions
+          expected_action_node_2_productions,
+          expected_action_node_3_productions,
+          expected_action_node_4_productions,
+          expected_action_node_5_productions,
+          expected_action_node_6_productions
         ]
 
         #################
@@ -2077,7 +2232,7 @@ end
 #   ~ Vision specified has visual modality
 #   ~ Action specified has action modality
 #   ~ Visual STM is not empty at time function invoked
-#   ~ No visual STM Nodes have contents that equal/match vision passed
+#   ~ No visual STM Nodes have images that equal/match vision passed
 #   
 # Scenario 7: 
 #   ~ Model exists at time function is invoked
@@ -2085,7 +2240,7 @@ end
 #   ~ Vision specified has visual modality
 #   ~ Action specified has action modality
 #   ~ Visual STM is not empty at time function invoked
-#   ~ Some visual STM Nodes, V, have contents that equal/match vision passed
+#   ~ Some visual STM Nodes, V, have images that equal/match vision passed
 #   ~ None of V have productions
 #   
 # Scenario 8:
@@ -2094,7 +2249,7 @@ end
 #   ~ Vision specified has visual modality
 #   ~ Action specified has action modality
 #   ~ Visual STM is not empty at time function invoked
-#   ~ Some visual STM Nodes, V, have contents that equal/match vision passed
+#   ~ Some visual STM Nodes, V, have images that equal/match vision passed
 #   ~ Some of V have productions 
 #   ~ Action STM is empty
 #   
@@ -2104,9 +2259,9 @@ end
 #   ~ Vision specified has visual modality
 #   ~ Action specified has action modality
 #   ~ Visual STM is not empty at time function invoked
-#   ~ Some visual STM Nodes, V, have contents that equal/match vision passed
+#   ~ Some visual STM Nodes, V, have images that equal/match vision passed
 #   ~ Some of V have productions
-#   ~ Action STM is not empty but no action STM nodes have contents that 
+#   ~ Action STM is not empty but no action STM nodes have images that 
 #     equal/match action passed
 #     
 # Scenario 10:
@@ -2115,13 +2270,13 @@ end
 #   ~ Vision specified has visual modality
 #   ~ Action specified has action modality
 #   ~ Visual STM is not empty at time function invoked
-#   ~ Some visual STM Nodes, V, have contents that equal/match vision passed
+#   ~ Some visual STM Nodes, V, have images that equal/match vision passed
 #   ~ Some of V have productions
-#   ~ Action STM is not empty, some action STM nodes, A, have contents that 
+#   ~ Action STM is not empty, some action STM nodes, A, have images that 
 #     equal/match action passed
 #   ~ Cognition is free
-#   ~ V contains a Node whose contents equal the vision input and an A whose
-#     contents equal the action input
+#   ~ V contains a Node whose image equals the vision input and an A whose
+#     image equals the action input
 #   
 # Scenario 11.
 #   ~ As 10 but cognition isn't free
@@ -2136,13 +2291,13 @@ end
 #   ~ Vision specified has visual modality
 #   ~ Action specified has action modality
 #   ~ Visual STM is not empty at time function invoked
-#   ~ Some visual STM Nodes, V, have contents that equal/match vision passed
+#   ~ Some visual STM Nodes, V, have images that equal/match vision passed
 #   ~ Some of V have productions
-#   ~ Action STM is not empty, some action STM nodes, A, have contents that 
+#   ~ Action STM is not empty, some action STM nodes, A, have images that 
 #     equal/match action passed
 #   ~ Cognition is free
-#   ~ V contains a Node whose contents equal the vision input and an A whose
-#     contents match the action input (no A equals the action input)
+#   ~ V contains a Node whose image equals the vision input and an A whose
+#     image matches the action input (no A equals the action input)
 # 
 # Scenario 14.
 #   ~ As 13 but cognition isn't free
@@ -2157,13 +2312,13 @@ end
 #   ~ Vision specified has visual modality
 #   ~ Action specified has action modality
 #   ~ Visual STM is not empty at time function invoked
-#   ~ Some visual STM Nodes, V, have contents that equal/match vision passed
+#   ~ Some visual STM Nodes, V, have images that equal/match vision passed
 #   ~ Some of V have productions
-#   ~ Action STM is not empty, some action STM nodes, A, have contents that 
+#   ~ Action STM is not empty, some action STM nodes, A, have images that 
 #     equal/match action passed
 #   ~ Cognition is free
-#   ~ V contains a Node whose contents match the vision (no V equals the action 
-#     input) and an A whose contents equal the action input.
+#   ~ V contains a Node whose image matches the vision (no V equals the action 
+#     input) and an A whose image equals the action input.
 # 
 # Scenario 17.
 #   ~ As 16 but cognition isn't free
@@ -2178,13 +2333,13 @@ end
 #   ~ Vision specified has visual modality
 #   ~ Action specified has action modality
 #   ~ Visual STM is not empty at time function invoked
-#   ~ Some visual STM Nodes, V, have contents that equal/match vision passed
+#   ~ Some visual STM Nodes, V, have images that equal/match vision passed
 #   ~ Some of V have productions
-#   ~ Action STM is not empty, some action STM nodes, A, have contents that 
+#   ~ Action STM is not empty, some action STM nodes, A, have images that 
 #     equal/match action passed
 #   ~ Cognition is free
-#   ~ V contains a Node whose contents match the vision (no V equals the action 
-#     input) and an A whose contents match the action input (no A equals the 
+#   ~ V contains a Node whose image matches the vision (no V equals the action 
+#     input) and an A whose image matches the action input (no A equals the 
 #     action input)
 #     
 # Scenario 20.
@@ -2237,7 +2392,7 @@ process_test "reinforce_production" do
   stm_item_history_field.accessible = true
   
   Node.class_eval{
-    field_accessor :_productionHistory
+    field_accessor :_imageHistory, :_productionHistory
   }
   
   node_contents_field = Node.java_class.declared_field("_contents")
@@ -2321,13 +2476,20 @@ process_test "reinforce_production" do
       # If scenario == 5 then visual_stm_contents should be empty
       if scenario == 6
       
-        # Add visual Nodes 1 and 2 to visual STM and populate their contents so
-        # they do not equal/match the vision; can't leave them empty since this
-        # will cause a match with the vision.
+        # Add visual Nodes 1 and 2 to visual STM and populate their contents and
+        # images so they do not equal/match the vision; can't leave them empty 
+        # since this will cause a match with the vision.
         visual_node_1_contents = node_contents_field.value(visual_node_1)
         visual_node_1_contents._list.add(opponent_location)
+        visual_node_1_image_history = HistoryTreeMap.new()
+        visual_node_1_image_history.put(time_chrest_model_created.to_java(:int), visual_node_1_contents)
+        visual_node_1._imageHistory = visual_node_1_image_history
+        
         visual_node_2_contents = node_contents_field.value(visual_node_2)
         visual_node_2_contents._list.add(hole_location)
+        visual_node_2_image_history = HistoryTreeMap.new()
+        visual_node_2_image_history.put(time_chrest_model_created.to_java(:int), visual_node_2_contents)
+        visual_node_2._imageHistory = visual_node_2_image_history
         
         visual_stm_contents.add(visual_node_1)
         visual_stm_contents.add(visual_node_2)
@@ -2338,25 +2500,32 @@ process_test "reinforce_production" do
         # Sometimes visual node should match vision, sometimes it should equal
         # it. Since the test is repeated, a 50/50 random number generator is 
         # used to determine if a third primitive is added to the visual Node's
-        # contents thus making it equal to the vision.  Otherwise, the Node's
+        # image thus making it equal to the vision.  Otherwise, the Node's
         # contents will match.
         visual_node_1_contents = node_contents_field.value(visual_node_1)
         visual_node_1_contents._list.add(tile_location)
         visual_node_1_contents._list.add(hole_location)
         if rand(1..2) == 1 then visual_node_1_contents._list.add(opponent_location) end
-        
         node_contents_field.set_value(visual_node_1, visual_node_1_contents)
+        
+        visual_node_1_image_history = HistoryTreeMap.new()
+        visual_node_1_image_history.put(time_chrest_model_created.to_java(:int), visual_node_1_contents)
+        visual_node_1._imageHistory = visual_node_1_image_history
+        
         visual_stm_contents.add(visual_node_1)
         
         # If scenario is 8, add a production to the visual Node that will be 
         # selected.  The production should terminate with an action Node whose 
-        # contents equal the action input so it *should* be selected if its 
+        # image equals the action input so it *should* be selected if its 
         # present in action STM, but it won't be.
         if scenario == 8
           action_node_1_contents = node_contents_field.value(action_node_1)
           action_node_1_contents._list.add(move_east)
           action_node_1_contents._list.add(move_north)
           action_node_1_contents._list.add(push_west)
+          action_node_1_image_history = HistoryTreeMap.new()
+          action_node_1_image_history.put(time_chrest_model_created.to_java(:int), action_node_1_contents)
+          action_node_1._imageHistory = action_node_1_image_history
           
           visual_node_1_productions = LinkedHashMap.new()
           visual_node_1_productions.put(action_node_1, 1.0)
@@ -2365,13 +2534,16 @@ process_test "reinforce_production" do
         
         # In scenario 9,  add a production to the visual Node that will be 
         # selected.  The production should terminate with an action Node whose 
-        # contents do not equal or match the action input so it won't be 
+        # image does not equal or match the action input so it won't be 
         # selected even if its present in action STM, which it will be.
         if scenario == 9
           action_node_1_contents = node_contents_field.value(action_node_1)
           action_node_1_contents._list.add(push_west)
           action_node_1_contents._list.add(move_north)
           action_node_1_contents._list.add(move_east)
+          action_node_1_image_history = HistoryTreeMap.new()
+          action_node_1_image_history.put(time_chrest_model_created.to_java(:int), action_node_1_contents)
+          action_node_1._imageHistory = action_node_1_image_history
           
           visual_node_1_productions = LinkedHashMap.new()
           visual_node_1_productions.put(action_node_1, 1.0)
@@ -2383,23 +2555,23 @@ process_test "reinforce_production" do
       # In scenarios 10-12, the second visual node added to visual STM 
       # (visual_node_2) should be selected since it is the first visual Node
       # encountered in visual STM that contains a production and equals the 
-      # vision input to the method.  visual_node_1's contents will match the 
+      # vision input to the method.  visual_node_1's image will match the 
       # vision input but to a lesser extent and visual_node_3 will also equal
       # the visual input but comes after visual_node_2 so will be disregarded.
       # Note that this scenario shouldn't occur during normal CHREST model 
-      # operation (two Nodes with the *exact* same contents) but, for the 
+      # operation (two Nodes with the *exact* same image) but, for the 
       # purposes of fully testing the method, the scenario is created.
       # 
       # The action Node selected should be the second production of 
       # visual_node_2 (action_node_5) since it is the first action Node 
       # encountered in the productions of the visual Node selected that equals 
       # the action input to the method.  visual_node_2 will also contain two
-      # other action Nodes as productions: action_node_4 whose contents will 
+      # other action Nodes as productions: action_node_4 whose image will 
       # only match the action input so is disregarded and action_node_6 whose
-      # contents also equal the action input but, since it comes after 
+      # image also equals the action input but, since it comes after 
       # action_node_5, it is disregarded.  Note that this scenario shouldn't 
       # occur during normal CHREST model operation (two Nodes with the *exact* 
-      # same contents) but, for the purposes of fully testing the method, the 
+      # same image) but, for the purposes of fully testing the method, the 
       # scenario is created.
       if scenario.between?(10,12)
         
@@ -2407,30 +2579,48 @@ process_test "reinforce_production" do
         visual_node_1_contents = node_contents_field.value(visual_node_1)
         visual_node_1_contents._list.add(hole_location)
         visual_node_1_contents._list.add(tile_location)
+        visual_node_1_image_history = HistoryTreeMap.new()
+        visual_node_1_image_history.put(time_chrest_model_created.to_java(:int), visual_node_1_contents)
+        visual_node_1._imageHistory = visual_node_1_image_history
         
         visual_node_2_contents = node_contents_field.value(visual_node_2)
         visual_node_2_contents._list.add(tile_location)
         visual_node_2_contents._list.add(hole_location)
         visual_node_2_contents._list.add(opponent_location)
+        visual_node_2_image_history = HistoryTreeMap.new()
+        visual_node_2_image_history.put(time_chrest_model_created.to_java(:int), visual_node_2_contents)
+        visual_node_2._imageHistory = visual_node_2_image_history
          
         visual_node_3_contents = node_contents_field.value(visual_node_3)
         visual_node_3_contents._list.add(tile_location)
         visual_node_3_contents._list.add(hole_location)
         visual_node_3_contents._list.add(opponent_location)
+        visual_node_3_image_history = HistoryTreeMap.new()
+        visual_node_3_image_history.put(time_chrest_model_created.to_java(:int), visual_node_3_contents)
+        visual_node_3._imageHistory = visual_node_3_image_history
         
         # Create visual_node_1 productions
         action_node_1_contents = node_contents_field.value(action_node_1)
         action_node_1_contents._list.add(push_west)
+        action_node_1_image_history = HistoryTreeMap.new()
+        action_node_1_image_history.put(time_chrest_model_created.to_java(:int), action_node_1_contents)
+        action_node_1._imageHistory = action_node_1_image_history
         
         action_node_2_contents = node_contents_field.value(action_node_2)
         action_node_2_contents._list.add(move_east)
         action_node_2_contents._list.add(move_north)
         action_node_2_contents._list.add(push_west)
+        action_node_2_image_history = HistoryTreeMap.new()
+        action_node_2_image_history.put(time_chrest_model_created.to_java(:int), action_node_2_contents)
+        action_node_2._imageHistory = action_node_2_image_history
         
         action_node_3_contents = node_contents_field.value(action_node_3)
         action_node_3_contents._list.add(move_east)
         action_node_3_contents._list.add(move_north)
         action_node_3_contents._list.add(push_west)
+        action_node_3_image_history = HistoryTreeMap.new()
+        action_node_3_image_history.put(time_chrest_model_created.to_java(:int), action_node_3_contents)
+        action_node_3._imageHistory = action_node_3_image_history
         
         visual_node_1_productions = LinkedHashMap.new()
         visual_node_1_productions.put(action_node_1, 1.0)
@@ -2441,16 +2631,25 @@ process_test "reinforce_production" do
         # Create visual node 2 productions
         action_node_4_contents = node_contents_field.value(action_node_4)
         action_node_4_contents._list.add(move_east)
+        action_node_4_image_history = HistoryTreeMap.new()
+        action_node_4_image_history.put(time_chrest_model_created.to_java(:int), action_node_4_contents)
+        action_node_4._imageHistory = action_node_4_image_history
         
         action_node_5_contents = node_contents_field.value(action_node_5)
         action_node_5_contents._list.add(move_east)
         action_node_5_contents._list.add(move_north)
         action_node_5_contents._list.add(push_west)
+        action_node_5_image_history = HistoryTreeMap.new()
+        action_node_5_image_history.put(time_chrest_model_created.to_java(:int), action_node_5_contents)
+        action_node_5._imageHistory = action_node_5_image_history
         
         action_node_6_contents = node_contents_field.value(action_node_6)
         action_node_6_contents._list.add(move_east)
         action_node_6_contents._list.add(move_north)
         action_node_6_contents._list.add(push_west)
+        action_node_6_image_history = HistoryTreeMap.new()
+        action_node_6_image_history.put(time_chrest_model_created.to_java(:int), action_node_6_contents)
+        action_node_6._imageHistory = action_node_6_image_history
         
         visual_node_2_productions = LinkedHashMap.new()
         visual_node_2_productions.put(action_node_4, 1.0)
@@ -2461,16 +2660,25 @@ process_test "reinforce_production" do
         # Create visual node 3 productions
         action_node_7_contents = node_contents_field.value(action_node_7)
         action_node_7_contents._list.add(push_west)
+        action_node_7_image_history = HistoryTreeMap.new()
+        action_node_7_image_history.put(time_chrest_model_created.to_java(:int), action_node_7_contents)
+        action_node_7._imageHistory = action_node_7_image_history
         
         action_node_8_contents = node_contents_field.value(action_node_8)
         action_node_8_contents._list.add(move_east)
         action_node_8_contents._list.add(move_north)
         action_node_8_contents._list.add(push_west)
+        action_node_8_image_history = HistoryTreeMap.new()
+        action_node_8_image_history.put(time_chrest_model_created.to_java(:int), action_node_8_contents)
+        action_node_8._imageHistory = action_node_8_image_history
         
         action_node_9_contents = node_contents_field.value(action_node_9)
         action_node_9_contents._list.add(move_east)
         action_node_9_contents._list.add(move_north)
         action_node_9_contents._list.add(push_west)
+        action_node_9_image_history = HistoryTreeMap.new()
+        action_node_9_image_history.put(time_chrest_model_created.to_java(:int), action_node_9_contents)
+        action_node_9._imageHistory = action_node_9_image_history
         
         visual_node_3_productions = LinkedHashMap.new()
         visual_node_3_productions.put(action_node_7, 1.0)
@@ -2497,7 +2705,7 @@ process_test "reinforce_production" do
       # In scenarios 13-15, the second visual node added to visual STM 
       # (visual_node_2) should be selected since it is the first visual Node
       # encountered in visual STM that contains a production and equals the 
-      # vision input to the method.  visual_node_1's contents will match the 
+      # vision input to the method.  visual_node_1's image will match the 
       # vision input but to a lesser extent and visual_node_3 will also equal
       # the visual input but comes after visual_node_2 so will be disregarded.
       # Note that this scenario shouldn't occur during normal CHREST model 
@@ -2505,8 +2713,8 @@ process_test "reinforce_production" do
       # purposes of fully testing the method, the scenario is created.
       #
       # visual_node_2's productions will consist of 3 action Nodes whose 
-      # contents all match the action input.  However, the productions 
-      # action Node contents will match the action input to varying degrees: 
+      # images all match the action input.  However, the productions 
+      # action Node image will match the action input to varying degrees: 
       # production 1 < production 2 == production 3.  Thus, the second production 
       # should be selected as the terminus of the production since it matches the
       # action input the most and comes before production 3 (which also matches
@@ -2517,30 +2725,48 @@ process_test "reinforce_production" do
         visual_node_1_contents = node_contents_field.value(visual_node_1)
         visual_node_1_contents._list.add(hole_location)
         visual_node_1_contents._list.add(tile_location)
+        visual_node_1_image_history = HistoryTreeMap.new()
+        visual_node_1_image_history.put(time_chrest_model_created.to_java(:int), visual_node_1_contents)
+        visual_node_1._imageHistory = visual_node_1_image_history
         
         visual_node_2_contents = node_contents_field.value(visual_node_2)
         visual_node_2_contents._list.add(tile_location)
         visual_node_2_contents._list.add(hole_location)
         visual_node_2_contents._list.add(opponent_location)
+        visual_node_2_image_history = HistoryTreeMap.new()
+        visual_node_2_image_history.put(time_chrest_model_created.to_java(:int), visual_node_2_contents)
+        visual_node_2._imageHistory = visual_node_2_image_history
         
         visual_node_3_contents = node_contents_field.value(visual_node_3)
         visual_node_3_contents._list.add(tile_location)
         visual_node_3_contents._list.add(hole_location)
         visual_node_3_contents._list.add(opponent_location)
+        visual_node_3_image_history = HistoryTreeMap.new()
+        visual_node_3_image_history.put(time_chrest_model_created.to_java(:int), visual_node_3_contents)
+        visual_node_3._imageHistory = visual_node_3_image_history
         
         # Create visual node 1's productions
         action_node_1_contents = node_contents_field.value(action_node_1)
         action_node_1_contents._list.add(move_east)
+        action_node_1_image_history = HistoryTreeMap.new()
+        action_node_1_image_history.put(time_chrest_model_created.to_java(:int), action_node_1_contents)
+        action_node_1._imageHistory = action_node_1_image_history
         
         action_node_2_contents = node_contents_field.value(action_node_2)
         action_node_2_contents._list.add(move_east)
         action_node_2_contents._list.add(move_north)
         action_node_2_contents._list.add(push_west)
+        action_node_2_image_history = HistoryTreeMap.new()
+        action_node_2_image_history.put(time_chrest_model_created.to_java(:int), action_node_2_contents)
+        action_node_2._imageHistory = action_node_2_image_history
         
         action_node_3_contents = node_contents_field.value(action_node_3)
         action_node_3_contents._list.add(move_east)
         action_node_3_contents._list.add(move_north)
         action_node_3_contents._list.add(push_west)
+        action_node_3_image_history = HistoryTreeMap.new()
+        action_node_3_image_history.put(time_chrest_model_created.to_java(:int), action_node_3_contents)
+        action_node_3._imageHistory = action_node_3_image_history
         
         visual_node_1_productions = LinkedHashMap.new()
         visual_node_1_productions.put(action_node_1, 1.0)
@@ -2551,14 +2777,23 @@ process_test "reinforce_production" do
         # Create visual node 2's productions
         action_node_4_contents = node_contents_field.value(action_node_4)
         action_node_4_contents._list.add(move_east)
+        action_node_4_image_history = HistoryTreeMap.new()
+        action_node_4_image_history.put(time_chrest_model_created.to_java(:int), action_node_4_contents)
+        action_node_4._imageHistory = action_node_4_image_history
           
         action_node_5_contents = node_contents_field.value(action_node_5)
         action_node_5_contents._list.add(move_east)
         action_node_5_contents._list.add(move_north)
+        action_node_5_image_history = HistoryTreeMap.new()
+        action_node_5_image_history.put(time_chrest_model_created.to_java(:int), action_node_5_contents)
+        action_node_5._imageHistory = action_node_5_image_history
         
         action_node_6_contents = node_contents_field.value(action_node_6)
         action_node_6_contents._list.add(move_east)
         action_node_6_contents._list.add(move_north)
+        action_node_6_image_history = HistoryTreeMap.new()
+        action_node_6_image_history.put(time_chrest_model_created.to_java(:int), action_node_6_contents)
+        action_node_6._imageHistory = action_node_6_image_history
         
         visual_node_2_productions = LinkedHashMap.new()
         visual_node_2_productions.put(action_node_4, 1.0)
@@ -2570,9 +2805,15 @@ process_test "reinforce_production" do
         action_node_8_contents = node_contents_field.value(action_node_8)
         action_node_8_contents._list.add(move_east)
         action_node_8_contents._list.add(move_north)
+        action_node_8_image_history = HistoryTreeMap.new()
+        action_node_8_image_history.put(time_chrest_model_created.to_java(:int), action_node_8_contents)
+        action_node_8._imageHistory = action_node_8_image_history
         
         action_node_9_contents = node_contents_field.value(action_node_9)
         action_node_9_contents._list.add(move_east)
+        action_node_9_image_history = HistoryTreeMap.new()
+        action_node_9_image_history.put(time_chrest_model_created.to_java(:int), action_node_9_contents)
+        action_node_9._imageHistory = action_node_9_image_history
         
         visual_node_3_productions = LinkedHashMap.new()
         visual_node_3_productions.put(action_node_7, 1.0)
@@ -2597,51 +2838,69 @@ process_test "reinforce_production" do
       end
       
       # In scenarios 16-18, the second visual node added to visual STM 
-      # (visual_node_2) should be selected since its contents match the vision 
-      # input to the method most. visual_node_1's contents will match the vision 
+      # (visual_node_2) should be selected since its image matches the vision 
+      # input to the method most. visual_node_1's image will match the vision 
       # input but less so than visual node 2's so, while visual_node_1 is 
       # selected to be the source of the production to reinforce initially, 
-      # visual_node_2's greater content match will overwrite this. 
-      # visual_node_3's contents will match as much as visual_node_2's but since
+      # visual_node_2's greater image match will overwrite this. 
+      # visual_node_3's image will match as much as visual_node_2's but since
       # it does not match more and visual_node_2 has already been selected, it
       # won't be selected as the source of the production.
       #
       # visual_node_2's productions will consist of 3 action Nodes whose 
-      # contents match, equal and equal the action input, respectively.  Thus,
+      # images match, equal and equal the action input, respectively.  Thus,
       # the second production should be selected as the terminus of the 
       # production since it is the first production Node encountered in 
       # visual_node_2 that equals the action input.  The first production should
-      # be skipped since its action Node's contents only match the action input
+      # be skipped since its action Node's image only matches the action input
       # and the third production's action Node should be ignored, despite its 
-      # contents also equalling the action input, since it comes after the first
-      # action Node whose contents equals the action input.
+      # image also equalling the action input, since it comes after the first
+      # action Node whose image equals the action input.
       # 
       if scenario.between?(16,18)
         
         #Construct visual Nodes.
         visual_node_1_contents = node_contents_field.value(visual_node_1)
         visual_node_1_contents._list.add(tile_location)
+        visual_node_1_image_history = HistoryTreeMap.new()
+        visual_node_1_image_history.put(time_chrest_model_created.to_java(:int), visual_node_1_contents)
+        visual_node_1._imageHistory = visual_node_1_image_history
         
         visual_node_2_contents = node_contents_field.value(visual_node_2)
         visual_node_2_contents._list.add(tile_location)
         visual_node_2_contents._list.add(hole_location)
+        visual_node_2_image_history = HistoryTreeMap.new()
+        visual_node_2_image_history.put(time_chrest_model_created.to_java(:int), visual_node_2_contents)
+        visual_node_2._imageHistory = visual_node_2_image_history
         
         visual_node_3_contents = node_contents_field.value(visual_node_3)
         visual_node_3_contents._list.add(tile_location)
         visual_node_3_contents._list.add(hole_location)
+        visual_node_3_image_history = HistoryTreeMap.new()
+        visual_node_3_image_history.put(time_chrest_model_created.to_java(:int), visual_node_3_contents)
+        visual_node_3._imageHistory = visual_node_3_image_history
         
         # Construct visual Node 1's productions.
         action_node_1_contents = node_contents_field.value(action_node_1)
         action_node_1_contents._list.add(move_east)
+        action_node_1_image_history = HistoryTreeMap.new()
+        action_node_1_image_history.put(time_chrest_model_created.to_java(:int), action_node_1_contents)
+        action_node_1._imageHistory = action_node_1_image_history
         
         action_node_2_contents = node_contents_field.value(action_node_2)
         action_node_2_contents._list.add(move_east)
         action_node_2_contents._list.add(move_north)
+        action_node_2_image_history = HistoryTreeMap.new()
+        action_node_2_image_history.put(time_chrest_model_created.to_java(:int), action_node_2_contents)
+        action_node_2._imageHistory = action_node_2_image_history
         
         action_node_3_contents = node_contents_field.value(action_node_3)
         action_node_3_contents._list.add(move_east)
         action_node_3_contents._list.add(move_north)
         action_node_3_contents._list.add(push_west)
+        action_node_3_image_history = HistoryTreeMap.new()
+        action_node_3_image_history.put(time_chrest_model_created.to_java(:int), action_node_3_contents)
+        action_node_3._imageHistory = action_node_3_image_history
         
         visual_node_1_productions = LinkedHashMap.new()
         visual_node_1_productions.put(action_node_1, 1.0)
@@ -2652,16 +2911,25 @@ process_test "reinforce_production" do
         # Construct visual Node 2's productions.
         action_node_4_contents = node_contents_field.value(action_node_4)
         action_node_4_contents._list.add(move_east)
+        action_node_4_image_history = HistoryTreeMap.new()
+        action_node_4_image_history.put(time_chrest_model_created.to_java(:int), action_node_4_contents)
+        action_node_4._imageHistory = action_node_4_image_history
         
         action_node_5_contents = node_contents_field.value(action_node_5)
         action_node_5_contents._list.add(move_east)
         action_node_5_contents._list.add(move_north)
         action_node_5_contents._list.add(push_west)
+        action_node_5_image_history = HistoryTreeMap.new()
+        action_node_5_image_history.put(time_chrest_model_created.to_java(:int), action_node_5_contents)
+        action_node_5._imageHistory = action_node_5_image_history
         
         action_node_6_contents = node_contents_field.value(action_node_6)
         action_node_6_contents._list.add(move_east)
         action_node_6_contents._list.add(move_north)
         action_node_6_contents._list.add(push_west)
+        action_node_6_image_history = HistoryTreeMap.new()
+        action_node_6_image_history.put(time_chrest_model_created.to_java(:int), action_node_6_contents)
+        action_node_6._imageHistory = action_node_6_image_history
         
         visual_node_2_productions = LinkedHashMap.new()
         visual_node_2_productions.put(action_node_4, 1.0)
@@ -2673,9 +2941,15 @@ process_test "reinforce_production" do
         action_node_8_contents = node_contents_field.value(action_node_8)
         action_node_8_contents._list.add(move_east)
         action_node_8_contents._list.add(move_north)
+        action_node_8_image_history = HistoryTreeMap.new()
+        action_node_8_image_history.put(time_chrest_model_created.to_java(:int), action_node_8_contents)
+        action_node_8._imageHistory = action_node_8_image_history
         
         action_node_9_contents = node_contents_field.value(action_node_9)
         action_node_9_contents._list.add(move_east)
+        action_node_9_image_history = HistoryTreeMap.new()
+        action_node_9_image_history.put(time_chrest_model_created.to_java(:int), action_node_9_contents)
+        action_node_9._imageHistory = action_node_9_image_history
         
         visual_node_3_productions = LinkedHashMap.new()
         visual_node_3_productions.put(action_node_7, 1.0)
@@ -2700,18 +2974,18 @@ process_test "reinforce_production" do
       end
       
       # In scenarios 19-21, the second visual node added to visual STM 
-      # (visual_node_2) should be selected since its contents match the vision 
-      # input to the method most. visual_node_1's contents will match the vision 
+      # (visual_node_2) should be selected since its image matches the vision 
+      # input to the method most. visual_node_1's image will match the vision 
       # input but less so than visual node 2's so, while visual_node_1 is 
       # selected to be the source of the production to reinforce initially, 
-      # visual_node_2's greater content match will overwrite this. 
-      # visual_node_3's contents will match as much as visual_node_2's but since
+      # visual_node_2's greater image match will overwrite this. 
+      # visual_node_3's image will match as much as visual_node_2's but since
       # it does not match more and visual_node_2 has already been selected, it
       # won't be selected as the source of the production.
       #
       # visual_node_2's productions will consist of 3 action Nodes whose 
-      # contents all match the action input.  However, the productions 
-      # action Node contents will match the action input to varying degrees: 
+      # images all match the action input.  However, the productions 
+      # action Node images will match the action input to varying degrees: 
       # production 1 < production 2 == production 3.  Thus, the second production 
       # should be selected as the terminus of the production since it matches the
       # action input the most and comes before production 3 (which also matches
@@ -2722,24 +2996,42 @@ process_test "reinforce_production" do
         #Construct visual Nodes.
         visual_node_1_contents = node_contents_field.value(visual_node_1)
         visual_node_1_contents._list.add(tile_location)
+        visual_node_1_image_history = HistoryTreeMap.new()
+        visual_node_1_image_history.put(time_chrest_model_created.to_java(:int), visual_node_1_contents)
+        visual_node_1._imageHistory = visual_node_1_image_history
         
         visual_node_2_contents = node_contents_field.value(visual_node_2)
         visual_node_2_contents._list.add(tile_location)
         visual_node_2_contents._list.add(hole_location)
+        visual_node_2_image_history = HistoryTreeMap.new()
+        visual_node_2_image_history.put(time_chrest_model_created.to_java(:int), visual_node_2_contents)
+        visual_node_2._imageHistory = visual_node_2_image_history
         
         visual_node_3_contents = node_contents_field.value(visual_node_3)
         visual_node_3_contents._list.add(tile_location)
         visual_node_3_contents._list.add(hole_location)
+        visual_node_3_image_history = HistoryTreeMap.new()
+        visual_node_3_image_history.put(time_chrest_model_created.to_java(:int), visual_node_3_contents)
+        visual_node_3._imageHistory = visual_node_3_image_history
         
         # Create visual node 1's productions
         action_node_1_contents = node_contents_field.value(action_node_1)
         action_node_1_contents._list.add(move_east)
+        action_node_1_image_history = HistoryTreeMap.new()
+        action_node_1_image_history.put(time_chrest_model_created.to_java(:int), action_node_1_contents)
+        action_node_1._imageHistory = action_node_1_image_history
         
         action_node_2_contents = node_contents_field.value(action_node_2)
         action_node_2_contents._list.add(move_north)
+        action_node_2_image_history = HistoryTreeMap.new()
+        action_node_2_image_history.put(time_chrest_model_created.to_java(:int), action_node_2_contents)
+        action_node_2._imageHistory = action_node_2_image_history
         
         action_node_3_contents = node_contents_field.value(action_node_3)
         action_node_3_contents._list.add(push_west)
+        action_node_3_image_history = HistoryTreeMap.new()
+        action_node_3_image_history.put(time_chrest_model_created.to_java(:int), action_node_3_contents)
+        action_node_3._imageHistory = action_node_3_image_history
         
         visual_node_1_productions = LinkedHashMap.new()
         visual_node_1_productions.put(action_node_1, 1.0)
@@ -2750,14 +3042,23 @@ process_test "reinforce_production" do
         # Create visual node 2's productions
         action_node_4_contents = node_contents_field.value(action_node_4)
         action_node_4_contents._list.add(move_east)
+        action_node_4_image_history = HistoryTreeMap.new()
+        action_node_4_image_history.put(time_chrest_model_created.to_java(:int), action_node_4_contents)
+        action_node_4._imageHistory = action_node_4_image_history
           
         action_node_5_contents = node_contents_field.value(action_node_5)
         action_node_5_contents._list.add(move_east)
         action_node_5_contents._list.add(move_north)
+        action_node_5_image_history = HistoryTreeMap.new()
+        action_node_5_image_history.put(time_chrest_model_created.to_java(:int), action_node_5_contents)
+        action_node_5._imageHistory = action_node_5_image_history
         
         action_node_6_contents = node_contents_field.value(action_node_6)
         action_node_6_contents._list.add(move_east)
         action_node_6_contents._list.add(move_north)
+        action_node_6_image_history = HistoryTreeMap.new()
+        action_node_6_image_history.put(time_chrest_model_created.to_java(:int), action_node_6_contents)
+        action_node_6._imageHistory = action_node_6_image_history
         
         visual_node_2_productions = LinkedHashMap.new()
         visual_node_2_productions.put(action_node_4, 1.0)
@@ -2769,9 +3070,15 @@ process_test "reinforce_production" do
         action_node_8_contents = node_contents_field.value(action_node_8)
         action_node_8_contents._list.add(move_east)
         action_node_8_contents._list.add(move_north)
+        action_node_8_image_history = HistoryTreeMap.new()
+        action_node_8_image_history.put(time_chrest_model_created.to_java(:int), action_node_8_contents)
+        action_node_8._imageHistory = action_node_8_image_history
         
         action_node_9_contents = node_contents_field.value(action_node_9)
         action_node_9_contents._list.add(move_east)
+        action_node_9_image_history = HistoryTreeMap.new()
+        action_node_9_image_history.put(time_chrest_model_created.to_java(:int), action_node_9_contents)
+        action_node_9._imageHistory = action_node_9_image_history
         
         visual_node_3_productions = LinkedHashMap.new()
         visual_node_3_productions.put(action_node_7, 1.0)
@@ -2808,7 +3115,7 @@ process_test "reinforce_production" do
       ###########################
       ##### INVOKE FUNCTION #####
       ###########################
-      
+
       result = nil
       exception_thrown = false
       begin
@@ -2827,7 +3134,10 @@ process_test "reinforce_production" do
         scenario == 3 ? nil :
         scenario == 4 ? nil :
         scenario.between?(5,9) ? ChrestStatus::NO_PRODUCTION_IDENTIFIED :
-        [10,13,16,19].include?(scenario) ? ChrestStatus::PRODUCTION_REINFORCEMENT_SUCCESSFUL :
+        scenario == 10 ? ChrestStatus::EXACT_PRODUCTION_MATCH_REINFORCED :
+        scenario == 13 ? ChrestStatus::HIGH_PRODUCTION_MATCH_REINFORCED :
+        scenario == 16 ? ChrestStatus::MODERATE_PRODUCTION_MATCH_REINFORCED :
+        scenario == 19 ? ChrestStatus::LOW_PRODUCTION_MATCH_REINFORCED :
         [11,14,17,20].include?(scenario) ? ChrestStatus::COGNITION_BUSY :
         ChrestStatus::PRODUCTION_REINFORCEMENT_FAILED
       )

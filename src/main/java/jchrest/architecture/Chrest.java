@@ -2376,7 +2376,7 @@ public class Chrest extends Observable {
    * jchrest.architecture.Chrest#searchStm(jchrest.lib.ListPattern, int)}, the
    * {@link jchrest.architecture.Node Nodes} selected for use in the production
    * to be learned may not return {@link java.lang.Boolean#TRUE} when {@link 
-   * jchrest.architecture.Node#getContents()} is compared to the {@code vision} 
+   * jchrest.architecture.Node#getImage(int)} is compared to the {@code vision} 
    * or {@code action} using {@link 
    * jchrest.lib.ListPattern#equals(java.lang.Object)}.  Thus, 
    * "over-generalisation" can occur in such scenarios.  For example, in 
@@ -2444,7 +2444,15 @@ public class Chrest extends Observable {
    *  <li>
    *    See return values for {@link 
    *    jchrest.architecture.Node#addProduction(jchrest.architecture.Node, 
-   *    java.lang.Double, int)}.
+   *    java.lang.Double, int)}.  If {@link 
+   *    jchrest.lib.ChrestStatus#LEARN_PRODUCTION_SUCCESSFUL} is returned, 
+   *    {@link jchrest.lib.ChrestStatus#EXACT_PRODUCTION_LEARNED} is returned if
+   *    invoking {@link jchrest.architecture.Node#getImage(int)} on the {@link 
+   *    jchrest.architecture.Node Nodes} selected for the production returns
+   *    {@link java.lang.Boolean#TRUE} when compared to both the {@code vision} 
+   *    and {@code action} specified.  Otherwise, {@link 
+   *    jchrest.lib.ChrestStatus#OVERGENERALISED_PRODUCTION_LEARNED} is 
+   *    returned.
    *  </li>
    * </ol>
    */
@@ -2553,9 +2561,7 @@ public class Chrest extends Observable {
       ////////////////////////////////////////////////////
       
       //Set up a data structure that will specify the visual/action Node to be
-      //used in the production and whether the vision/action input to this 
-      //method needs to be learned (learning required if none of the images of
-      //the visual/action Nodes that match equal the vision/action input).  
+      //used in the production.  
       Node[] nodesToBeUsed = new Node[2];
       
       for(int i = 0; i < matchingVisualAndActionNodes.size(); i++){
@@ -2575,15 +2581,17 @@ public class Chrest extends Observable {
           this.printDebugStatement("  ~ Processing Node " + node.getReference());
         
           ListPattern nodeContents = node.getContents();
+          ListPattern nodeImage = node.getImage(time);
           this.printDebugStatement("    + Contents: " + nodeContents);
+          this.printDebugStatement("    + Image: " + nodeImage);
           
-          /////////////////////////////////////////
-          ///// CHECK IF CONTENTS EQUAL INPUT /////
-          /////////////////////////////////////////
+          ///////////////////////////////////////
+          ///// CHECK IF IMAGE EQUALS INPUT /////
+          ///////////////////////////////////////
           
-          if(nodeContents.equals(input)){
+          if(nodeImage.equals(input)){
             this.printDebugStatement(
-              "      = Contents equals " + inputType + ", setting this Node to " +
+              "      = Image equals " + inputType + ", setting this Node to " +
               "be the " + modality + " Node to use in the production and ending " +
               "search for " + modality + " Node to use in production"
             );
@@ -2591,15 +2599,29 @@ public class Chrest extends Observable {
             break;
           }
           
+          ////////////////////////////////////////
+          ///// CHECK IF IMAGE MATCHES INPUT /////
+          ////////////////////////////////////////
+          
+          else if(
+            nodesToBeUsed[i] == null || 
+            (
+              nodeImage.matches(input) && 
+              nodesToBeUsed[i].getImage(time).size() < nodeImage.size()
+            )
+          ){
+            this.printDebugStatement(
+              "      = Image matches " + inputType + ", setting this Node to " +
+              "be the " + modality + " Node to use in the production, for the " +
+              "moment"
+            );
+            nodesToBeUsed[i] = node;
+          }
+          
           /////////////////////////////////////////
           ///// CHECK IF CONTENTS MATCH INPUT /////
           /////////////////////////////////////////
           
-          //Node must match (only matches nodes are returned in list being 
-          //iterated through) so, if the visual Node recognised hasn't been set 
-          //yet or, if one has but this Node's contents are bigger than the 
-          //visual Node currently recognised, set this Node to be the visual 
-          //Node recognised.
           else if(
             nodesToBeUsed[i] == null || 
             nodesToBeUsed[i].getContents().size() < nodeContents.size()
@@ -2655,6 +2677,15 @@ public class Chrest extends Observable {
             "the time the production was added (" + time + ")"
           );
           this._cognitionClock = time;
+          
+          if(visualNode.getImage(time).equals(vision) && actionNode.getImage(time).equals(action)){
+            this.printDebugStatement("    + An exact production was created");
+            result = ChrestStatus.EXACT_PRODUCTION_LEARNED;
+          }
+          else{
+            this.printDebugStatement("    + An overgeneralised production was created");
+            result = ChrestStatus.OVERGENERALISED_PRODUCTION_LEARNED;
+          }
         }
         else{
           this.printDebugStatement("    + Production not added");
@@ -3188,62 +3219,106 @@ public class Chrest extends Observable {
   }
   
   /**
-   * Attempts to reinforce the most closely matched production specified by the 
-   * {@code vision} and {@code action} passed as parameters.
+   * In order for a production to be reinforced, the production to reinforce 
+   * must first be identified.  To do this, the <b>source</b> {@link 
+   * jchrest.architecture.Node}, denoted <i>V*</i>, and <b>terminus</b> {@link 
+   * jchrest.architecture.Node}, denoted <i>A*</i>, must be identified using 
+   * the {@code vision} and {@code action} specified.
+   * 
+   * Setting <i>V*</i> is done by first getting the result of invoking {@link
+   * jchrest.architecture.Chrest#searchStm(jchrest.lib.ListPattern, int)} on 
+   * {@link jchrest.lib.Modality#VISUAL} {@link jchrest.architecture.Stm} and 
+   * passing the {@code vision} and {@code time} specified as parameters.  The
+   * result is then filtered to create a set of candidates, denoted <i>V</i>,
+   * that cause the following statements to all evaluate to 
+   * {@link java.lang.Boolean#TRUE}:
+   * 
+   * <ol type="1">
+   *  <li>
+   *    {@link jchrest.architecture.Node Node's} image equals or matches the 
+   *    {@code vision} after {@link 
+   *    jchrest.architecture.Chrest#searchStm(jchrest.lib.ListPattern, int)} has 
+   *    been invoked (see {@link jchrest.architecture.Node#getImage(int)}, 
+   *    {@link jchrest.lib.ListPattern#equals(java.lang.Object)} and {@link 
+   *    jchrest.lib.ListPattern#matches(jchrest.lib.Pattern)}).
+   *  </li>
+   *  <li>
+   *    {@link jchrest.architecture.Node} contains productions after {@link 
+   *    jchrest.architecture.Chrest#searchStm(jchrest.lib.ListPattern, int)} has 
+   *    been invoked (see {@link jchrest.architecture.Node#getProductions(int)}).
+   *  </li>
+   * </ol>
+   * 
+   * Each element of <i>V</i>, <i>v</i> is then checked how closely its image 
+   * matches the {@code vision} specified: if <i>v</i>'s image equals
+   * the {@code vision} specified, it is set to be <i>V*</i>.  If no <i>v</i> 
+   * has an image that equals the {@code vision} specified, the <i>v</i> that 
+   * matches the {@code vision} specified the most is set to be <i>V*</i>.
    * <p>
-   * In order for a production to be reinforced, the {@code vision} passed must 
-   * first match or equal (see {@link 
-   * jchrest.lib.ListPattern#matches(jchrest.lib.Pattern)} and {@link 
-   * jchrest.lib.ListPattern#equals(java.lang.Object)}, respectively) the 
-   * contents of a {@link jchrest.lib.Modality#VISUAL} or {@link 
-   * jchrest.architecture.Node} (see {@link 
-   * jchrest.architecture.Node#getContents()}) that is present in {@link 
-   * jchrest.lib.Modality#VISUAL} {@link jchrest.architecture.Stm} at the {@code 
-   * time} specified.  The candidate {@link jchrest.lib.Modality#VISUAL} {@link 
-   * jchrest.architecture.Nodes} are denoted as <i>V</i> and the {@link 
-   * jchrest.lib.Modality#VISUAL} {@link jchrest.architecture.Node} selected is
-   * denoted as <i>V*</i>.
+   * Setting <i>A*</i> is done by first creating a set, denoted <i>A</i>, of 
+   * all {@link jchrest.lib.Modality#ACTION} {@link jchrest.architecture.Node 
+   * Nodes} that are productions in <i>V*</i> which cause all the following 
+   * statements to evaluate to {@link java.lang.Boolean#TRUE}:
+   * 
+   * <ol type="1">
+   *  <li>
+   *    Invoking {@link 
+   *    jchrest.architecture.Chrest#isNodeInStm(jchrest.architecture.Node, int, 
+   *    boolean)} returns {@link java.lang.Boolean#TRUE} when the {@link 
+   *    jchrest.lib.Modality#ACTION} {@link jchrest.architecture.Node}, current 
+   *    time and {@link java.lang.Boolean#FALSE} are passed as parameters 
+   *    (attention is not consumed when checking if the {@link 
+   *    jchrest.lib.Modality#ACTION} {@link jchrest.architecture.Node} is in 
+   *    {@link jchrest.lib.Modality#ACTION} {@link jchrest.architecture.Stm}).
+   *  </li>
+   *  <li>
+   *    {@link jchrest.lib.Modality#ACTION} {@link jchrest.architecture.Node 
+   *    Node's} image equals or matches the {@code action} (see {@link 
+   *    jchrest.architecture.Node#getImage(int)}, {@link 
+   *    jchrest.lib.ListPattern#equals(java.lang.Object)} and {@link 
+   *    jchrest.lib.ListPattern#matches(jchrest.lib.Pattern)}).
+   *  </li>
+   * </ol>
+   * 
+   * Each element of <i>A</i>, <i>a</i> is then checked how closely its image 
+   * matches the {@code action} specified: if <i>a</i>'s image equals
+   * the {@code action} specified, it is set to be <i>A*</i>.  If no <i>a</i> 
+   * has an image that equals the {@code action} specified, the <i>a</i> that 
+   * matches the {@code action} specified the most is set to be <i>A*</i>.
    * <p>
-   * <i>V</i> must contain a production at the {@code time} specified to a 
-   * {@link jchrest.architecture.Node} with {@link jchrest.lib.Modality#ACTION}
-   * whose contents match/equal the {@code action} passed and is present in 
-   * {@link jchrest.lib.Modality#ACTION} {@link jchrest.architecture.Stm} at the
-   * {@code time} specified. The candidate {@link jchrest.lib.Modality#ACTION} 
-   * {@link jchrest.architecture.Nodes} are denoted as <i>A</i> and the {@link 
-   * jchrest.lib.Modality#ACTION} {@link jchrest.architecture.Node} selected is
-   * denoted as <i>A*</i>.
-   * <p>
-   * There is a preference ordering on what {@link jchrest.architecture.Node 
-   * Nodes} are selected from <i>V</i> and <i>A</i> to be <i>V*</i> and 
-   * <i>A*</i>.  These preference orderings are provided below from most 
-   * preferred to least preferred:
+   * As can be inferred from reading the algorithms for selecting <i>V*</i> and
+   * <i>A*</i> above, there is a preference ordering on what {@link 
+   * jchrest.architecture.Node Nodes} are selected to be <i>V*</i> and 
+   * <i>A*</i> according to how closely the images of elements in <i>V</i> and 
+   * <i>A</i> match the {@code vision} and {@code action} specified.  
+   * Explicitly, this preference ordering is:
    * <ol type="1">
    *  <li>
    *    An <b>exact</b> match: Invoking {@link 
-   *    jchrest.architecture.Node#getContents()} on a {@link 
+   *    jchrest.architecture.Node#getImage(int)} on a {@link 
    *    jchrest.architecture.Node} in <i>V</i> causes {@link 
    *    jchrest.lib.ListPattern#equals(java.lang.Object)} to evaluate to {@link 
    *    java.lang.Boolean#TRUE} when {@code vision} is passed as a parameter.
    *    Similarly, invoking {@link 
-   *    jchrest.architecture.Node#getContents()} on a {@link 
+   *    jchrest.architecture.Node#getImage(int)} on a {@link 
    *    jchrest.architecture.Node} in <i>A</i> causes {@link 
    *    jchrest.lib.ListPattern#equals(java.lang.Object)} to evaluate to {@link 
    *    java.lang.Boolean#TRUE} when {@code action} is passed as a parameter.
    *  </li>
    *  <li>
-   *    An <b>close</b> match: Invoking {@link 
-   *    jchrest.architecture.Node#getContents()} on a {@link 
+   *    A <b>high</b> match: Invoking {@link 
+   *    jchrest.architecture.Node#getImage(int)} on a {@link 
    *    jchrest.architecture.Node} in <i>V</i> causes {@link 
    *    jchrest.lib.ListPattern#equals(java.lang.Object)} to evaluate to {@link 
    *    java.lang.Boolean#TRUE} when {@code vision} is passed as a parameter.
    *    However, {@link jchrest.lib.ListPattern#equals(java.lang.Object)} does
    *    not return {@link java.lang.Boolean#TRUE} when passed the result of 
-   *    invoking {@link  jchrest.architecture.Node#getContents()} on any of the 
+   *    invoking {@link  jchrest.architecture.Node#getImage(int)} on any of the 
    *    {@link jchrest.architecture.Node Nodes} in <i>A</i> together with the
    *    {@code action} specified.  Instead, {@link 
-   *    jchrest.lib.ListPattern#matches(jchrest.lib.Pattern) returns {@link 
+   *    jchrest.lib.ListPattern#matches(jchrest.lib.Pattern)} returns {@link 
    *    java.lang.Boolean#TRUE} when passed the result of invoking {@link 
-   *    jchrest.architecture.Node#getContents()} on any of the {@link 
+   *    jchrest.architecture.Node#getImage(int)} on any of the {@link 
    *    jchrest.architecture.Node Nodes} in <i>A</i> together with the
    *    {@code action} specified.
    *  </li>
@@ -3251,29 +3326,29 @@ public class Chrest extends Observable {
    *    A <b>moderate</b> match: {@link 
    *    jchrest.lib.ListPattern#equals(java.lang.Object)} does not return {@link 
    *    java.lang.Boolean#TRUE} when passed the result of invoking {@link 
-   *    jchrest.architecture.Node#getContents()} on any of the {@link 
+   *    jchrest.architecture.Node#getImage(int)} on any of the {@link 
    *    jchrest.architecture.Node Nodes} in <i>V</i> together with the
    *    {@code vision} specified.  Instead, {@link 
-   *    jchrest.lib.ListPattern#matches(jchrest.lib.Pattern) returns {@link 
+   *    jchrest.lib.ListPattern#matches(jchrest.lib.Pattern)} returns {@link 
    *    java.lang.Boolean#TRUE} when passed the result of invoking {@link 
-   *    jchrest.architecture.Node#getContents()} on any of the {@link 
+   *    jchrest.architecture.Node#getImage(int)} on any of the {@link 
    *    jchrest.architecture.Node Nodes} in <i>V</i> together with the
    *    {@code vision} specified.  Conversely, invoking {@link 
-   *    jchrest.architecture.Node#getContents()} on a {@link 
+   *    jchrest.architecture.Node#getImage(int)} on a {@link 
    *    jchrest.architecture.Node} in <i>A</i> causes {@link 
    *    jchrest.lib.ListPattern#equals(java.lang.Object)} to evaluate to {@link 
    *    java.lang.Boolean#TRUE} when {@code action} is passed as a parameter.
    *  </li>
    *  <li>
-   *    A <b>weak</b> match: {@link 
+   *    A <b>low</b> match: {@link 
    *    jchrest.lib.ListPattern#equals(java.lang.Object)} does not return {@link 
    *    java.lang.Boolean#TRUE} when passed the result of invoking {@link 
-   *    jchrest.architecture.Node#getContents()} on any of the {@link 
+   *    jchrest.architecture.Node#getImage(int)} on any of the {@link 
    *    jchrest.architecture.Node Nodes} in <i>V</i> together with the
    *    {@code vision} specified.  Instead, {@link 
-   *    jchrest.lib.ListPattern#matches(jchrest.lib.Pattern) returns {@link 
+   *    jchrest.lib.ListPattern#matches(jchrest.lib.Pattern)} returns {@link 
    *    java.lang.Boolean#TRUE} when passed the result of invoking {@link 
-   *    jchrest.architecture.Node#getContents()} on any of the {@link 
+   *    jchrest.architecture.Node#getImage(int)} on any of the {@link 
    *    jchrest.architecture.Node Nodes} in <i>V</i> together with the
    *    {@code vision} specified.  The same is also true for the {@link 
    *    jchrest.architecture.Node Nodes} in <i>A</i>.
@@ -3282,7 +3357,7 @@ public class Chrest extends Observable {
    * In normal operation circumstances, no two {@link jchrest.architecture.Node 
    * Nodes} in <i>V</i> or <i>A</i> should return {@link 
    * java.lang.Boolean#TRUE} when the result of invoking {@link 
-   * jchrest.architecture.Node#getContents()} and the {@code vision} or {@code
+   * jchrest.architecture.Node#getImage(int)} and the {@code vision} or {@code
    * action} specified are passed as parameters to {@link 
    * jchrest.lib.ListPattern#equals(java.lang.Object)}.  However, if this is
    * ever the case, <i>V*</i> would be set to the first {@link 
@@ -3299,10 +3374,10 @@ public class Chrest extends Observable {
    * evaluate to {@link java.lang.Boolean#TRUE}.  In this case, the {@link 
    * jchrest.architecture.Node} selected will be the first one encountered that 
    * matches the {@code vision} or {@code action} passed the most.  For example,
-   * given a {@code vision} of <[T 0 1][H 0 2][O 2 0]> and 3 {@link 
+   * given a {@code vision} of {@code <[T 0 1][H 0 2][O 2 0]>} and 3 {@link 
    * jchrest.architecture.Node Nodes} encountered in the order <i>x</i>, 
-   * <i>y</i> and <i>z</i> whose contents are equal to <[T 0 1]>, 
-   * <[T 0 1][H 0 2]> and <[T 0 1][H 0 2]> respectively, {@link 
+   * <i>y</i> and <i>z</i> whose contents are equal to {@code <[T 0 1]>}, 
+   * {@code <[T 0 1][H 0 2]>} and {@code <[T 0 1][H 0 2]>} respectively, {@link 
    * jchrest.architecture.Node} <i>y</i> would become <i>V*</i> since two of 
    * the {@link jchrest.lib.PrimitivePattern PrimitivePatterns} in its contents
    * match the {@code vision} input and, despite this also being true for {@link 
@@ -3313,13 +3388,11 @@ public class Chrest extends Observable {
    * of {@link #this}:
    * <ul>
    *  <li>
-   *    Checking if the {@code vision} and {@code action} passed are present in 
-   *    {@link jchrest.lib.Modality#VISUAL} and {@link 
-   *    jchrest.lib.Modality#ACTION} {@link jchrest.architecture.Stm} 
-   *    respectively consumes attention. The attentional time cost incurred is 
-   *    equal to that detailed in {@link 
-   *    jchrest.architecture.Chrest#searchStm(jchrest.lib.ListPattern, int)} for
-   *    each {@link jchrest.architecture.Node} present in {@link 
+   *    Checking if the {@code vision} passed is present in {@link 
+   *    jchrest.lib.Modality#VISUAL} {@link jchrest.architecture.Stm} consumes 
+   *    attention. The attentional time cost incurred is equal to that detailed 
+   *    in {@link jchrest.architecture.Chrest#searchStm(jchrest.lib.ListPattern,
+   *    int)} for each {@link jchrest.architecture.Node} present in {@link 
    *    jchrest.lib.Modality#VISUAL} {@link jchrest.architecture.Stm}.
    *  </li>
    *  <li>
@@ -3342,10 +3415,9 @@ public class Chrest extends Observable {
    * java.lang.Double[])}. 
    * @param time 
    * 
-   * @return One of {@link jchrest.lib.ChrestStatus} as follows.  Note that, 
-   * for the {@link jchrest.lib.ChrestStatus} to be returned by a statement, all 
-   * previous statements must not have returned a {@link 
-   * jchrest.lib.ChrestStatus}:
+   * @return A {@link jchrest.lib.ChrestStatus}.  Note that, for the {@link 
+   * jchrest.lib.ChrestStatus} to be returned by a statement, all previous 
+   * statements must not have returned a {@link jchrest.lib.ChrestStatus}:
    * <ul>
    *  <li>
    *    If {@link #this#getCreationTime()} is less than the {@code time} 
@@ -3358,23 +3430,29 @@ public class Chrest extends Observable {
    *    jchrest.lib.ChrestStatus#ATTENTION_BUSY} is returned.
    *  </li>
    *  <li>
-   *    If <i>V*<i> or <i>A*</i> are not identified, {@link 
+   *    If <i>V*</i> or <i>A*</i> are not identified, {@link 
    *    jchrest.lib.ChrestStatus#NO_PRODUCTION_IDENTIFIED} is returned.
    *  </li>
    *  <li>
    *    If {@link #this#isCognitionFree(int)} returns {@link 
-   *    java.lang.Boolean#FALSE} after <i>V*<i> and <i>A*</i> have been 
+   *    java.lang.Boolean#FALSE} after <i>V*</i> and <i>A*</i> have been 
    *    identified, {@link jchrest.lib.ChrestStatus#COGNITION_BUSY} is returned.
    *  </li>
    *  <li>
-   *    If reinforcing the production between <i>V*<i> and <i>A*</i> fails,
+   *    If reinforcing the production between <i>V*</i> and <i>A*</i> fails,
    *    {@link jchrest.lib.ChrestStatus#PRODUCTION_REINFORCEMENT_FAILED} is 
    *    returned.
    *  </li>
    *  <li>
-   *    If reinforcing the production between <i>V*<i> and <i>A*</i> succeeds,
-   *    {@link jchrest.lib.ChrestStatus#PRODUCTION_REINFORCEMENT_SUCCESSFUL} is 
-   *    returned.
+   *    If reinforcing the production between <i>V*</i> and <i>A*</i> succeeds,
+   *    one of the following is returned depending on the type of production
+   *    reinforced:
+   *    <ul>
+   *      <li>Exact production match: {@link jchrest.lib.ChrestStatus#EXACT_PRODUCTION_MATCH_REINFORCED}.</li>
+   *      <li>High production match: {@link jchrest.lib.ChrestStatus#HIGH_PRODUCTION_MATCH_REINFORCED}.</li>
+   *      <li>Moderate production match: {@link jchrest.lib.ChrestStatus#MODERATE_PRODUCTION_MATCH_REINFORCED}.</li>
+   *      <li>Low production match: {@link jchrest.lib.ChrestStatus#LOW_PRODUCTION_MATCH_REINFORCED}.</li>
+   *    </ul>
    *  </li>
    * </ul>
    */
@@ -3448,41 +3526,41 @@ public class Chrest extends Observable {
           "vision."
         );
       
-        List<Node> visualNodesWithProductionsAndWhoseContentsEqualVision = new ArrayList();
-        List<Node> visualNodesWithProductionsAndWhoseContentsMatchVision = new ArrayList();
+        List<Node> visualNodesWithProductionsAndWhoseImageEqualsVision = new ArrayList();
+        List<Node> visualNodesWithProductionsAndWhoseImageMatchesVision = new ArrayList();
 
         for(Node node : matchingVisualNodes){
           LinkedHashMap<Node, Double> productions = node.getProductions(time);
           
           this.printDebugStatement(
             "  ~ Checking if Node with reference " + node.getReference() + " and " +
-            "contents " + node.getContents().toString() + " contains productions " +
-            !productions.isEmpty()
+            "contents " + node.getContents().toString() + " contains productions (" +
+            !productions.isEmpty() + ")"
           );
 
           if(!productions.isEmpty()){
-            ListPattern nodeContents = node.getContents();
             this.printDebugStatement(
-              "    + Node contains productions, checking if contents equal/match " +
-              "the vision (" + vision.toString() + ")"
+              "    + Node contains productions, checking if its image at the " +
+              "current time equals/matches the vision (" + vision.toString() + ")"
             );
-
-            if(nodeContents.equals(vision)){
+            
+            ListPattern nodeImage = node.getImage(time);
+            if(nodeImage.equals(vision)){
               this.printDebugStatement(
-                "    + Contents equal vision, adding Node to the list of visual " +
-                "Nodes whose contents equal the vision"
+                "    + Image equals vision, adding Node to the list of visual " +
+                "Nodes whose image equals the vision"
               );
-              visualNodesWithProductionsAndWhoseContentsEqualVision.add(node);
+              visualNodesWithProductionsAndWhoseImageEqualsVision.add(node);
             }
-            //Can just use an else here, no need to check if the contents match 
+            //Can just use an else here, no need to check if the image matches 
             //the vision: they must if they're in the list being processed.
             else{
 
               this.printDebugStatement(
-                "    + Contents match vision, adding Node to the list of visual " +
-                "Nodes whose contents match the vision"
+                "    + Image matches vision, adding Node to the list of visual " +
+                "Nodes whose image matches the vision"
               );
-              visualNodesWithProductionsAndWhoseContentsMatchVision.add(node);
+              visualNodesWithProductionsAndWhoseImageMatchesVision.add(node);
             }
           }
           else{
@@ -3494,22 +3572,19 @@ public class Chrest extends Observable {
         ///// GET THE MOST CLOSELY MATCHED PRODUCTION /////
         ///////////////////////////////////////////////////
 
-        //In this code block, time is only advanced after the checks are 
-        //performed.  This is because the model assumes that a human does not 
-        //incur attentional time costs for each type of check performed.  
-        //Instead, the structure of the checks is a programmatic requirement, it 
-        //is not intended to exactly simulate normal human cognition. 
-        //Essentially, a human would just get the closest matching action.  This 
-        //is why the third parameter is set to false for all "this.isNodeInStm()"
-        //method invocations during the checks.
+        //The model assumes that a human does not incur an attentional time cost 
+        //for determining the terminus of the production.  Essentially, it 
+        //assumes that finding V* and A* is simultaneous. This is why the third 
+        //parameter is set to false for all "this.isNodeInStm()" method calls in 
+        //the block below.
 
         this.printDebugStatement(
           "- Identifying action Node to use as the terminus of the production " +
           "to reinforce (thereby identifying the entire production to reinforce). " +
           "This should only be done if action STM is not empty at time " + time + 
-          " and there are visual STM nodes that either equal the vision (" + 
-          !visualNodesWithProductionsAndWhoseContentsEqualVision.isEmpty() + ")" +
-          " or match the vision (" + !visualNodesWithProductionsAndWhoseContentsMatchVision.isEmpty() +
+          " and there are visual STM nodes whose images either equal the vision (" + 
+          !visualNodesWithProductionsAndWhoseImageEqualsVision.isEmpty() + ")" +
+          " or match the vision (" + !visualNodesWithProductionsAndWhoseImageMatchesVision.isEmpty() +
           ")"
         );
 
@@ -3517,14 +3592,17 @@ public class Chrest extends Observable {
         if(
           !actionStmContents.isEmpty() &&
           (
-            !visualNodesWithProductionsAndWhoseContentsEqualVision.isEmpty() ||
-            !visualNodesWithProductionsAndWhoseContentsMatchVision.isEmpty()
+            !visualNodesWithProductionsAndWhoseImageEqualsVision.isEmpty() ||
+            !visualNodesWithProductionsAndWhoseImageMatchesVision.isEmpty()
           )
         ){
           this.printDebugStatement("  ~ Action STM is not empty");
           this.printDebugStatement("- Action STM contents:");
           for(Node node : actionStmContents){
-            this.printDebugStatement("  ~ Node reference: " + node.getReference() + ", contents: " + node.getContents().toString());
+            this.printDebugStatement(
+              "  ~ Node reference: " + node.getReference() + ", contents: " + 
+              node.getContents().toString()
+            );
           }
 
           //Check for exact match.  There should only be 1 of these during 
@@ -3532,18 +3610,18 @@ public class Chrest extends Observable {
           //enforces that it should be the first one found that is used.
           this.printDebugStatement(
             "- Checking for an exact production match, i.e. a visual Node whose " +
-            "contents equal the vision and contains a production to an action " +
-            "Node whose contents equal the action (" + action.toString() + ")"
+            "image equals the vision and contains a production to an action " +
+            "Node whose image equals the action (" + action.toString() + ")"
           );
           
-          for(Node v : visualNodesWithProductionsAndWhoseContentsEqualVision){
+          for(Node v : visualNodesWithProductionsAndWhoseImageEqualsVision){
             this.printDebugStatement("  ~ Checking visual Node with reference: " + v.getReference());
             
             for(Node a : v.getProductions(time).keySet()){
               this.printDebugStatement("    + Checking action Node linked to: " + a.getReference());
               
-              if(a.getContents().equals(action) && this.isNodeInStm(a, time, false)){
-                this.printDebugStatement("      = Action Node contents equals action input and action Node is in STM");
+              if(a.getImage(time).equals(action) && this.isNodeInStm(a, time, false)){
+                this.printDebugStatement("      = Action Node image equals action input and action Node is in STM");
                 visualNode = v;
                 actionNode = a;
                 break;
@@ -3556,33 +3634,33 @@ public class Chrest extends Observable {
             if (visualNode != null && actionNode != null) break;
           }
 
-          //Check for a close match
+          //Check for a high match
           if(visualNode == null && actionNode == null){
 
             this.printDebugStatement(
               "- An exact production match hasn't been found, checking for a " +
-              "close match, i.e. a visual Node whose contents equal the vision " +
-              "and contains a production to an action Node whose contents match " +
+              "high match, i.e. a visual Node whose image equals the vision " +
+              "and contains a production to an action Node whose image matches " +
               "the action (" + action.toString() + ").  The action Node selected " +
               "will be the one that matches the action most"
             );
 
-            for(Node v : visualNodesWithProductionsAndWhoseContentsEqualVision){
+            for(Node v : visualNodesWithProductionsAndWhoseImageEqualsVision){
               this.printDebugStatement("  ~ Checking visual Node with reference: " + v.getReference());
               
               for(Node a : v.getProductions(time).keySet()){
                 this.printDebugStatement("    + Checking action Node linked to: " + a.getReference());
                 
                 if(
-                  a.getContents().matches(action) && 
+                  a.getImage(time).matches(action) && 
                   this.isNodeInStm(a, time, false) &&
-                  (actionNode == null || actionNode.getContents().size() < a.getContents().size())
+                  (actionNode == null || actionNode.getImage(time).size() < a.getImage(time).size())
                 ){
                   this.printDebugStatement(
-                    "      = Action Node contents matches action input, action " +
+                    "      = Action Node image matches action input, action " +
                     "Node is in STM and either, the production terminus hasn't " +
                     "been set yet (" + (actionNode == null)  + ") or, it has " +
-                    "but this action Node's contents match more"
+                    "but this action Node's image matches more"
                   );
                   visualNode = v;
                   actionNode = a;
@@ -3600,31 +3678,31 @@ public class Chrest extends Observable {
           if(visualNode == null && actionNode == null){
 
             this.printDebugStatement(
-              "- A close production match hasn't been found, checking for a " +
-              "moderate match, i.e. a visual Node whose contents match the vision " +
-              "and contains a production to an action Node whose contents equal " +
+              "- A high production match hasn't been found, checking for a " +
+              "moderate match, i.e. a visual Node whose image matches the vision " +
+              "and contains a production to an action Node whose image equals " +
               "the action (" + action.toString() + ").  The visual Node selected " +
               "will be the one that matches the vision most."
             );
 
-            for(Node v : visualNodesWithProductionsAndWhoseContentsMatchVision){
+            for(Node v : visualNodesWithProductionsAndWhoseImageMatchesVision){
               this.printDebugStatement("  ~ Checking visual Node with reference: " + v.getReference());
               
-              if(visualNode == null || visualNode.getContents().size() < v.getContents().size()){
+              if(visualNode == null || visualNode.getImage(time).size() < v.getImage(time).size()){
                 this.printDebugStatement(
-                  "      = Visual Node contents matches visual input and either, " +
+                  "      = Visual Node image matches visual input and either, " +
                   "the production source hasn't been set yet (" + (visualNode == null) + 
-                  ") or, it has but this visual Node's contents match more"
+                  ") or, it has but this visual Node's image matches more"
                 );
                 
                 for(Node a : v.getProductions(time).keySet()){
                   this.printDebugStatement("    + Checking action Node linked to: " + a.getReference());
                   
                   if(
-                    a.getContents().equals(action) && 
+                    a.getImage(time).equals(action) && 
                     this.isNodeInStm(a, time, false)
                   ){
-                    this.printDebugStatement("      = Action Node contents equals action input and action Node is in STM");
+                    this.printDebugStatement("      = Action Node image equals action input and action Node is in STM");
                     visualNode = v;
                     actionNode = a;
                     
@@ -3642,35 +3720,35 @@ public class Chrest extends Observable {
 
             this.printDebugStatement(
               "- A moderate production match hasn't been found, checking for a " +
-              "low match, i.e. a visual Node whose contents match the vision " +
-              "and contains a production to an action Node whose contents match " +
+              "low match, i.e. a visual Node whose image matches the vision " +
+              "and contains a production to an action Node whose image matches " +
               "the action (" + action.toString() + ").  The visual and action Node " +
-              "selected will be the ones that match the vision and action most"
+              "selected will be the ones whose image matches the vision and action most"
             );
 
-            for(Node v : visualNodesWithProductionsAndWhoseContentsMatchVision){
+            for(Node v : visualNodesWithProductionsAndWhoseImageMatchesVision){
               this.printDebugStatement("  ~ Checking visual Node with reference: " + v.getReference());
               
-              if(visualNode == null || visualNode.getContents().size() < v.getContents().size()){
+              if(visualNode == null || visualNode.getImage(time).size() < v.getImage(time).size()){
                 this.printDebugStatement(
-                  "      = Visual Node contents matches visual input and either, " +
+                  "      = Visual Node image matches visual input and either, " +
                   "the production source hasn't been set yet (" + (visualNode == null) + 
-                  ") or, it has but this visual Node's contents match more"
+                  ") or, it has but this visual Node's image matches more"
                 );
                 
                 for(Node a : v.getProductions(time).keySet()){
                   this.printDebugStatement("    + Checking action Node linked to: " + a.getReference());
                   
                   if(
-                    a.getContents().matches(action) && 
+                    a.getImage(time).matches(action) && 
                     this.isNodeInStm(a, time, false) &&
-                    (actionNode == null || actionNode.getContents().size() < a.getContents().size())
+                    (actionNode == null || actionNode.getImage(time).size() < a.getImage(time).size())
                   ){
                     this.printDebugStatement(
-                      "      = Action Node contents matches action input, action " +
+                      "      = Action Node image matches action input, action " +
                       "Node is in STM and either, the production terminus hasn't " +
                       "been set yet (" + (actionNode == null)  + ") or, it has " +
-                      "but this action Node's contents match more"
+                      "but this action Node's image matches more"
                     );
                     visualNode = v;
                     actionNode = a;
@@ -3684,11 +3762,11 @@ public class Chrest extends Observable {
             "- The visual and action Node whose production should be reinforced are as follows:" +
             "\n  ~ Visual Node = " + (visualNode == null ?
               "null" :
-              "reference: " + visualNode.getReference() + ", contents: " + visualNode.getContents().toString()
+              "reference: " + visualNode.getReference() + ", contents: " + visualNode.getContents().toString() + ", image: " + visualNode.getImage(time).toString()
             ) +
             "\n  ~ Action Node: " + (actionNode == null ?
               "null" :
-              "reference: " + actionNode.getReference() + ", contents: " + actionNode.getContents().toString()
+              "reference: " + actionNode.getReference() + ", contents: " + actionNode.getContents().toString() + ", image: " + actionNode.getImage(time).toString()
             )
           );
         }
@@ -3726,10 +3804,8 @@ public class Chrest extends Observable {
         this.printDebugStatement(
           "- All checks evaluate to true, attempting to reinforce production " +
           "between visual Node with reference " + visualNode.getReference() + 
-          "and contents " + visualNode.getContents().toString() + " and action " +
-          "Node with reference " + actionNode.getReference() + " and contents " +
-          actionNode.getContents().toString() + " at time reinforcement should " +
-          "occur"
+          "and action Node with reference " + actionNode.getReference() + 
+          " at time reinforcement should occur (" + timeReinforcementShouldOccur + ")"
         );
         
         if(visualNode.reinforceProduction(actionNode, variables, timeReinforcementShouldOccur)){
@@ -3738,7 +3814,15 @@ public class Chrest extends Observable {
           
           this.setChanged();
           if (!_frozen) notifyObservers ();
-          result = ChrestStatus.PRODUCTION_REINFORCEMENT_SUCCESSFUL;
+          
+          ListPattern visualNodeImage = visualNode.getImage(time);
+          ListPattern actionNodeImage = actionNode.getImage(time);
+          result = (
+            visualNodeImage.equals(vision) && actionNodeImage.equals(action) ? ChrestStatus.EXACT_PRODUCTION_MATCH_REINFORCED :
+            visualNodeImage.equals(vision) && actionNodeImage.matches(action) ? ChrestStatus.HIGH_PRODUCTION_MATCH_REINFORCED :
+            visualNodeImage.matches(vision) && actionNodeImage.equals(action) ? ChrestStatus.MODERATE_PRODUCTION_MATCH_REINFORCED :
+            ChrestStatus.LOW_PRODUCTION_MATCH_REINFORCED
+          );
         }
         else{
           this.printDebugStatement("  ~ Production reinforcement unsuccessful, exiting");

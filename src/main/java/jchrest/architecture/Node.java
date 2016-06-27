@@ -473,7 +473,7 @@ public class Node extends Observable {
    * jchrest.lib.ListPattern, jchrest.architecture.Node, int, java.lang.String)}. 
    */
   boolean addChild (ListPattern pattern, int time) {
-
+    
     Node child = new Node (
       _model, 
       ( (_reference == 0) ? pattern : _model.getDomainSpecifics().normalise (_contents.append(pattern))), // don't append to 'Root'
@@ -665,7 +665,11 @@ public class Node extends Observable {
    *  </li>
    *  <li>
    *    A production between {@link #this} and the {@code node} specified does
-   *    not already exist at the {@code time} specified.
+   *    not already exist at the {@code time} specified.  This is checked by
+   *    comparing the result of invoking {@link 
+   *    jchrest.architecture.Node#getImage(int)} at the {@code time} specified
+   *    in context of {@link #this} and the {@code node} specified using {@link
+   *    jchrest.lib.ListPattern#equals(java.lang.Object)}.
    *  </li>
    *  <li>
    *    Adding the production will not rewrite the production history of {@link 
@@ -694,7 +698,7 @@ public class Node extends Observable {
       "- Attempting to add a production between Node " + this.getReference() +
       " and Node " + node.getReference() + " at time " + time
     );
-    ChrestStatus result;
+    ChrestStatus result = ChrestStatus.LEARN_PRODUCTION_FAILED;
     
     //No need to check if this node and the node to create a production between
     //are the same since they must have different modalities.  The implication
@@ -722,28 +726,37 @@ public class Node extends Observable {
       
       this._model.printDebugStatement("- Checking if production already exists for Node " + this.getReference());
       LinkedHashMap<Node, Double> currentProductions = this.getProductions(time);
-      if(currentProductions != null && !currentProductions.containsKey(node)){
-        this._model.printDebugStatement("  ~ Production does not already exist");
+      if(currentProductions != null){
         
-        this._model.printDebugStatement("- Attempting to add production");
-        LinkedHashMap<Node, Double> newProductions = new LinkedHashMap();
-        newProductions.put(node, 1.0);
-        newProductions.putAll(currentProductions);
-        this._productionHistory.put(time, newProductions);
+        boolean productionAlreadyExists = false;
+        for(Node currentProduction: currentProductions.keySet()){
+          if(currentProduction.getImage(time).equals(node.getImage(time))){
+            productionAlreadyExists = true;
+          }
+        }
+        
+        if(!productionAlreadyExists){
+          this._model.printDebugStatement("  ~ Production does not already exist");
 
-        this._model.printDebugStatement("  ~ Production added successfully");
-        this.setChanged();
-        this.notifyObservers();
-        result = ChrestStatus.LEARN_PRODUCTION_SUCCESSFUL;
-      }
-      else{
-        this._model.printDebugStatement("  ~ Production already exists, exiting");
-        result = ChrestStatus.PRODUCTION_ALREADY_LEARNED;
+          this._model.printDebugStatement("- Attempting to add production");
+          LinkedHashMap<Node, Double> newProductions = new LinkedHashMap();
+          newProductions.put(node, 1.0);
+          newProductions.putAll(currentProductions);
+          this._productionHistory.put(time, newProductions);
+
+          this._model.printDebugStatement("  ~ Production added successfully");
+          this.setChanged();
+          this.notifyObservers();
+          result = ChrestStatus.LEARN_PRODUCTION_SUCCESSFUL;
+        }
+        else{
+          this._model.printDebugStatement("  ~ Production already exists, exiting");
+          result = ChrestStatus.PRODUCTION_ALREADY_LEARNED;
+        }
       }
     }
     else{
       this._model.printDebugStatement("    + A statement evaluated to false, exiting");
-      result = ChrestStatus.LEARN_PRODUCTION_FAILED;
     }
     
     this._model.printDebugStatement("===== RETURN Node.addProduction() =====");
