@@ -3006,7 +3006,7 @@ process_test "reinforce_production" do
         visual_node_2_image_history = HistoryTreeMap.new()
         visual_node_2_image_history.put(time_chrest_model_created.to_java(:int), visual_node_2_contents)
         visual_node_2._imageHistory = visual_node_2_image_history
-        
+
         visual_node_3_contents = node_contents_field.value(visual_node_3)
         visual_node_3_contents._list.add(tile_location)
         visual_node_3_contents._list.add(hole_location)
