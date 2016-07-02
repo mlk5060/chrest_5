@@ -16,6 +16,9 @@ public class FileUtilities {
   /**
    * Request user for a filename to save to.  Argument 'parent' centres the dialog on the 
    * given component.
+   * 
+   * @param parent
+   * @return
    */
   public static File getSaveFilename (Component parent) {
     return FileUtilities.getSaveFilename (parent, "Save");
@@ -24,6 +27,10 @@ public class FileUtilities {
   /**
    * Request user for a filename to save to.  Argument 'parent' centres the dialog on the 
    * given component.  Argument 'title' gives a title for the dialog.
+   * 
+   * @param parent
+   * @param title
+   * @return 
    */
   public static File getSaveFilename (Component parent, String title) {
     _fileChooser.setDialogTitle (title);
@@ -53,6 +60,9 @@ public class FileUtilities {
 
   /**
    * Get a filename to load from.
+   * 
+   * @param parent
+   * @return 
    */
   public static File getLoadFilename (Component parent) {
     _fileChooser.setMultiSelectionEnabled (false);

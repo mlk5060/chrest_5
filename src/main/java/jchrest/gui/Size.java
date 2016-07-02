@@ -38,11 +38,23 @@ public class Size {
 	public int getVerticalSeparator (Orientation orientation) {
 		return ((orientation == Orientation.HORIZONTAL) ? _axis_gap_1 : _axis_gap_2);
 	}
-	/** Return true if this size should be drawn as a box rather than with text and graphics.
-	 Indicator is whether a margin has been provided or not. */
-	public boolean isSmall () { return _margin == 0; }
-	/** Size of box for small size. */
-	public int getSmallSize () { return _small_size; }
+	/** 
+   * @return {@link java.lang.Boolean#TRUE} if this size should be drawn as a 
+   * box rather than with text and graphics.  Indicator is whether a margin has 
+   * been provided or not. 
+   */
+	public boolean isSmall () { 
+    return _margin == 0; 
+  }
+  
+	/** 
+   * Size of box for small size.
+   * 
+   * @return 
+   */
+	public int getSmallSize () { 
+    return _small_size; 
+  }
 
 	public static List<Size> getValues () { 
 		if (_values == null) {
@@ -58,13 +70,21 @@ public class Size {
 		return _values; 
 	}
 
-	/** Return the TextLayout for given string at this size */
+	/** 
+   * @param str
+   * @param g
+   * @return The layout for the {@code str} specified at this size.
+   */
 	public TextLayout getTextLayout (String str, Graphics2D g) {
 		FontRenderContext frc = g.getFontRenderContext ();
 		return new TextLayout (str, getFont (), frc);
 	}
 	
-	/** Return the bounding box for given string drawn at this size */
+	/**
+   * @param str
+   * @param g
+   * @return The bounding box for the {@code str} specified drawn at this size. 
+   */
 	public Rectangle2D getTextBounds (String str, Graphics2D g) {
 		return getTextLayout(str, g).getBounds ();
 	}
@@ -77,8 +97,15 @@ public class Size {
 		return (int)(getTextBounds(str, g).getWidth ());
 	}
 	
-	/** Display given text at coordinates. 
-	 * x, y represent the top left corner.  Add the desired margin. 
+	/** 
+   * Display given text at coordinates specified.
+   * 
+   * Margins added automatically.
+   * 
+   * @param g
+   * @param x Should represent the top left corner.
+   * @param y Should represent the top left corner.
+   * @param str
 	 */
 	public void drawText(Graphics2D g, float x, float y, String str) {
 		float m = (float)(getMargin ());

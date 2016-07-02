@@ -142,7 +142,11 @@ public class ChrestLtmView extends JPanel {
 //	}
 
   /**
-   * Save the network as an image file.  Currently, only .png format is supported.
+   * Save the network as an image file. 
+   * 
+   * Only PNG format is supported currently.
+   * 
+   * @param file
    */
   public void saveLongTermMemory (File file) {
     BufferedImage img = new BufferedImage(_ltmView.getExtentWidth (), _ltmView.getExtentHeight (), BufferedImage.TYPE_INT_RGB);  
@@ -161,13 +165,17 @@ public class ChrestLtmView extends JPanel {
 
   /**
    * Change the orientation of the displayed network.
+   * 
+   * @param newOrientation
    */
-	public void updateOrientation (Orientation newOrientation) {
+	private void updateOrientation (Orientation newOrientation) {
 		_ltmView.setOrientation (newOrientation);
 	}
 	
   /**
    * Change the displayed size of the network.
+   * 
+   * @param newSize
    */
 	public void updateSize (Size newSize) {
 		_ltmView.setSize (newSize);
@@ -187,6 +195,9 @@ public class ChrestLtmView extends JPanel {
 
   /** 
    * Clone and wrap the model's LTM as a set of LtmTreeViewNode objects.
+   * 
+   * @param baseNode
+   * @param time
    */
   private LtmTreeViewNode constructTree (Node baseNode, int time) {
     NodeDisplay baseTreeViewNode = new NodeDisplay (baseNode, this._stateAtTimeValue);
@@ -498,7 +509,7 @@ class TreeViewNode {
 		_w = _object.getWidth((Graphics2D)g, size);
 		_h = _object.getHeight((Graphics2D)g, size);
 
-		// clear cached values, to force recomputation
+		// clearShortAndLongTermMemory cached values, to force recomputation
 		_extentWidth = 0;
 		_extentHeight = 0;
 		if (orientation == Orientation.HORIZONTAL) {

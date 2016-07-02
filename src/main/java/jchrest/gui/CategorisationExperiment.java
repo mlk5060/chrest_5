@@ -79,7 +79,7 @@ public class CategorisationExperiment extends JPanel {
 
     public void actionPerformed (ActionEvent e) {
       String lastExperimentLocatedInName = _model.getExperimentsLocatedInNames().get(_model.getExperimentsLocatedInNames().size() - 1);
-      _model.clear ();
+      _model.clearShortAndLongTermMemory (0);
       _responses.clear ();
       _exptClock = 0;
       _model.setNotEngagedInExperiment();

@@ -39,7 +39,7 @@ import org.uncommons.watchmaker.framework.selection.RouletteWheelSelection;
 
 /**
  * A CHREST model.
- * 
+ * <p>
  * All times are specified in milliseconds.
  * 
  * @author Peter C. R. Lane
@@ -93,9 +93,9 @@ public class Chrest extends Observable {
   private int _timeToRetrieveFixationFromPerceiver = 30;
   private int _timeToRetrieveItemFromStm = 10;
   private int _timeToAccessVisualSpatialField = 100; //From "Mental Imagery and Chunks" by Gobet and Waters
-  private int _timeToEncodeRecognisedSceneObjectAsVisualSpatialFieldObject = 5;
-  private int _timeToEncodeUnrecognisedNonEmptySquareSceneObjectAsVisualSpatialFieldObject = 25; 
-  private int _timeToEncodeUnrecognisedEmptySquareSceneObjectAsVisualSpatialFieldObject = 10; 
+  private int _timeToEncodeRecognisedVisualSpatialFieldObject = 5;
+  private int _timeToEncodeUnrecognisedVisualSpatialFieldObject = 25; 
+  private int _timeToEncodeUnrecognisedEmptySquareAsVisualSpatialFieldObject = 10; 
   private int _timeToProcessUnrecognisedSceneObjectDuringVisualSpatialFieldConstruction = 10;
   private int _recognisedVisualSpatialFieldObjectLifespan = 10000; 
   private int _unrecognisedVisualSpatialFieldObjectLifespan = 8000;
@@ -276,27 +276,29 @@ public class Chrest extends Observable {
   /****************************************************************************/
 
   /**
-   * Constructor.
-   * 
-   * Note that the domain for {@link #this} is set to be {@link 
-   * jchrest.domainSpecifics.generic.GenericDomain} initially and should be
-   * modified, if necessary, after {@link #this} has been constructed.
+   * The domain that the {@link jchrest.architecture.Chrest} model exists in is 
+   * set to be a {@link jchrest.domainSpecifics.generic.GenericDomain} initially 
+   * and should be modified, if necessary, after the {@link 
+   * jchrest.architecture.Chrest} model has been constructed (see {@link 
+   * jchrest.architecture.Chrest#setDomain(jchrest.domainSpecifics.DomainSpecifics)}).
    * 
    * @param time 
    * @param learnObjectLocationsRelativeToAgent When the {@link 
    * jchrest.architecture.Perceiver} associated with {@link #this} generates new
    * {@link jchrest.lib.Modality#VISUAL} {@link jchrest.lib.ListPattern 
    * ListPatterns} from {@link jchrest.domainSpecifics.Scene Scenes} or when 
-   * {@link jchrest.lib.ListPattern ListPatterns} stored in long-term memory are 
-   * used to suggest new {@link jchrest.domainSpecifics.Fixation Fixations}, 
-   * this variable is used to control whether the columns and rows of {@link 
-   * jchrest.lib.Square Squares} that {@link jchrest.domainSpecifics.SceneObject 
-   * SceneObjects} are located on are absolute or relative to the agent that
-   * is equipped with {@link #this}.  Consider the following {@link 
+   * {@link jchrest.lib.Modality#VISUAL} {@link jchrest.lib.ListPattern 
+   * ListPatterns} stored in long-term memory are used to suggest new {@link 
+   * jchrest.domainSpecifics.Fixation Fixations}, this variable controls whether 
+   * the column and row coordinates of {@link jchrest.lib.Square Squares} are 
+   * absolute or relative to the agent that equipped with this {@link 
+   * jchrest.architecture.Chrest} model. Consider the following {@link 
    * jchrest.domainSpecifics.Scene} ("SELF" denotes the agent equipped with
-   * {@link #this}, "OO" denotes a {@link jchrest.domainSpecifics.SceneObject}):
-   * 
-   * Row
+   * this {@link jchrest.architecture.Chrest} model, "OO" denotes a {@link 
+   * jchrest.domainSpecifics.SceneObject}):
+   * <p>
+   * <pre>
+   * <i>Row</i>
    *    |----|----|----|
    *  2 |    |    |    |
    *    |----|----|----|
@@ -304,24 +306,22 @@ public class Chrest extends Observable {
    *    |----|----|----|
    *  0 |    |    | OO |
    *    |----|----|----|
-   *      0     1    2    Col
-   * 
+   *      0     1    2    <i>Col</i>
+   * </pre>
+   * <p>
    * If this variable is set to {@link java.lang.Boolean#TRUE} and the agent is
    * to learn the location of "OO", the {@link jchrest.lib.ListPattern} 
-   * generated and (potentially) memorised would be: <[OO, 1, -1]> ("OO" is 1 
-   * square east and 1 square south of the agent's location). If this 
+   * generated and (potentially) memorised would be: {@code <[OO, 1, -1]>} ("OO" 
+   * is 1 square east and 1 square south of the agent's location). If this 
    * variable were set to {@link java.lang.Boolean#FALSE}, the {@link 
    * jchrest.lib.ListPattern} generated and (potentially) memorised would be: 
-   * <[OO, 2, 0]>.  Note that, if the domain-coordinates were not zero-indexed,
-   * the coordinates used would change, i.e. the zero-indexed {@link 
-   * jchrest.domainSpecifics.Scene} coordinates are never used in this case.
-   * 
-   * <b>CAVEATS:</b> this variable can not be changed after being set and if
-   * set to {@link java.lang.Boolean#TRUE}, all {@link 
-   * jchrest.domainSpecifics.Scene Scenes} used by the {@link 
-   * jchrest.architecture.Perceiver} associated with {@link #this} must have the
-   * agent equipped with {@link #this} identified (see {@link 
-   * jchrest.domainSpecifics.Scene#getCreatorToken()).
+   * {@code <[OO, 2, 0]>} (column and row coordinates are domain-specific, i.e.
+   * absolute).
+   * <p>
+   * If this parameter is set to {@link java.lang.Boolean#TRUE}, the agent 
+   * equipped with this {@link jchrest.architecture.Chrest} model must identify
+   * itself in all {@link jchrest.domainSpecifics.Scene Scenes} generated and 
+   * used (see {@link jchrest.domainSpecifics.Scene#getCreatorToken()}).
    */
   public Chrest (int time, boolean learnObjectLocationsRelativeToAgent) {
     
@@ -418,7 +418,7 @@ public class Chrest extends Observable {
     this._debug = false;
   }
   
-  public boolean debug(){
+  public boolean isDebuggingEnabled(){
     return this._debug;
   }
   
@@ -547,16 +547,16 @@ public class Chrest extends Observable {
     return this._semanticLinkCreationTime;
   }
   
-  public int getTimeToEncodeRecognisedSceneObjectAsVisualSpatialFieldObject(){
-    return this._timeToEncodeRecognisedSceneObjectAsVisualSpatialFieldObject;
+  public int getTimeToEncodeRecognisedVisualSpatialFieldObject(){
+    return this._timeToEncodeRecognisedVisualSpatialFieldObject;
   }
   
-  public Integer getTimeToEncodeUnrecognisedEmptySquareSceneObjectAsVisualSpatialFieldObject(){
-    return this._timeToEncodeUnrecognisedEmptySquareSceneObjectAsVisualSpatialFieldObject;
+  public Integer getTimeToEncodeUnrecognisedEmptySquareAsVisualSpatialFieldObject(){
+    return this._timeToEncodeUnrecognisedEmptySquareAsVisualSpatialFieldObject;
   }
   
-  public Integer getTimeToEncodeUnrecognisedNonEmptySquareSceneObjectAsVisualSpatialFieldObject(){
-    return this._timeToEncodeUnrecognisedNonEmptySquareSceneObjectAsVisualSpatialFieldObject;
+  public Integer getTimeToEncodeUnrecognisedVisualSpatialFieldObject(){
+    return this._timeToEncodeUnrecognisedVisualSpatialFieldObject;
   }
   
   public Integer getTimeToMoveVisualSpatialFieldObject(){
@@ -564,7 +564,7 @@ public class Chrest extends Observable {
   }
   
   public int getTimeToProcessUnrecognisedSceneObjectDuringVisualSpatialFieldConstruction(){
-    return _timeToProcessUnrecognisedSceneObjectDuringVisualSpatialFieldConstruction;
+    return this._timeToProcessUnrecognisedSceneObjectDuringVisualSpatialFieldConstruction;
   }
   
   public int getTimeToRetrieveFixationFromPerceiver(){
@@ -584,8 +584,9 @@ public class Chrest extends Observable {
   }
   
   /**
-   * @return The {@link jchrest.architecture.VisualSpatialField 
-   * VisualSpatialFields} constructed by {@link #this}.
+   * @return All {@link jchrest.architecture.VisualSpatialField 
+   * VisualSpatialFields} constructed by this {@link jchrest.architecture.Chrest}
+   * model.
    */
   public TreeMap<Integer,VisualSpatialField> getVisualSpatialFields(){
     return this._visualSpatialFields;
@@ -611,68 +612,240 @@ public class Chrest extends Observable {
     return this._perceiverClock <= time;
   }
   
+  /**
+   * Set to {@link jchrest.domainSpecifics.generic.GenericDomain} by default.
+   * 
+   * @param domain 
+   */
   public void setDomain (DomainSpecifics domain) {
-    _domainSpecifics = domain;
-  }
-  
-  public void setAddProductionTime (int time) {
-    this._addProductionTime = time;
-  }
-  
-  public void setDiscriminationTime (int time) {
-    _discriminationTime = time;
-  }
-  
-  public void setFamiliarisationTime (int time) {
-    _familiarisationTime = time;
-  }
-  
-  public void setReinforceProductionTime(int time){
-    this._reinforceProductionTime = time;
-  }
-
-  public void setRho (float rho) {
-    _rho = rho;
-  }
-  
-  public void setNodeImageSimilarityThreshold (int threshold) {
-    _nodeImageSimilarityThreshold = threshold;
-  }
-
-  public void setCreateSemanticLinks (boolean value) {
-    _canCreateSemanticLinks = value;
-  }
-
-  public void setCreateTemplates (boolean value) {
-    _canCreateTemplates = value;
-  }
-
-  public void setLtmLinkTraversalTime(int ltmLinkTraversalTime) {
-    this._ltmLinkTraversalTime = ltmLinkTraversalTime;
-  }
-  
-  public void setNodeComparisonTime(int nodeComparisonTime){
-    this._nodeComparisonTime = nodeComparisonTime;
+    this._domainSpecifics = domain;
   }
   
   /**
-   * Default is 1.
+   * Set to 10000ms by default
    * 
-   * @param maximumSemanticLinkSearchDistance The number of semantic links that
-   * can be followed from a {@link jchrest.architecture.Node} reached after 
-   * sorting a {@link jchrest.lib.ListPattern} vertically through long-term 
-   * memory.  For example, if 3 {@link jchrest.architecture.Node}s are 
-   * semantically linked to as 1 -> 2 -> 3 and {@link jchrest.architecture.Node} 
-   * 1 is retrieved after long-term memory sorting and the maximum semantic link 
-   * search distance parameter is set to 1, {@link jchrest.architecture.Node} 2 
-   * would be retrieved.
+   * @param time Should be >= 0
    */
-  public void setMaximumSemanticLinkSearchDistance(int maximumSemanticLinkSearchDistance){
-    this._maximumSemanticLinkSearchDistance = maximumSemanticLinkSearchDistance;
+  public void setAddProductionTime (int time) {
+    if(time < 0){
+      throw new IllegalArgumentException(
+        "The time specified to add a new production is < 0 (" + time + ")."
+      );
+    }
+    else{
+      this._addProductionTime = time;
+    }
   }
   
-  public void setRecognisedVisualSpatialFieldObjectLifespan(int lifespan){
-    this._recognisedVisualSpatialFieldObjectLifespan = lifespan;
+  /**
+   * Sets whether this {@link jchrest.architecture.Chrest} model can create
+   * semantic links between {@link jchrest.architecture.Node Nodes}.
+   * 
+   * Set to {@link java.lang.Boolean#TRUE} by default.
+   * 
+   * @param value 
+   */
+  public void setCanCreateSemanticLinks (boolean value) {
+    this._canCreateSemanticLinks = value;
+  }
+  
+  /**
+   * Sets whether this {@link jchrest.architecture.Chrest} model can convert 
+   * {@link jchrest.architecture.Node Nodes} into templates.
+   * 
+   * Set to {@link java.lang.Boolean#TRUE} by default.
+   * 
+   * @param value 
+   */
+  public void setCanCreateTemplates (boolean value) {
+    this._canCreateTemplates = value;
+  }
+  
+  /**
+   * Set to 10000ms by default: see table 8.2 found in "Perception and Memory 
+   * in Chess" by de Groot and Gobet.
+   * 
+   * @param time Should be >= 0
+   */
+  public void setDiscriminationTime (int time) {
+    if(time < 0){
+      throw new IllegalArgumentException(
+        "The time specified to discriminate is < 0 (" + time + ")."
+      );
+    }
+    else{
+      this._discriminationTime = time;
+    }
+  }
+  
+  /**
+   * Set to 2000ms by default: see table 8.2 found in "Perception and Memory 
+   * in Chess" by de Groot and Gobet.
+   * 
+   * @param time Should be >= 0
+   */
+  public void setFamiliarisationTime (int time) {
+    if(time < 0){
+      throw new IllegalArgumentException(
+        "The time specified to familiarise is < 0 (" + time + ")."
+      );
+    }
+    else{
+      this._familiarisationTime = time;
+    }
+  }
+  
+  /**
+   * Sets the time taken to traverse a {@link jchrest.architecture.Link} during
+   * {@link jchrest.architecture.Chrest#recogniseAndLearn(jchrest.lib.ListPattern, 
+   * int)} and {@link jchrest.architecture.Chrest#recognise(jchrest.lib.ListPattern, 
+   * java.lang.Integer, java.lang.Boolean)}.
+   * 
+   * Set to 10ms by default: see table 8.2 found in "Perception and Memory in 
+   * Chess" by de Groot and Gobet.
+   * 
+   * @param time Should be >= 0.
+   */
+  public void setLtmLinkTraversalTime(int time) {
+    if(time < 0){
+      throw new IllegalArgumentException(
+        "The time specified to traverse a LTM link is < 0 (" + time + ")."
+      );
+    }
+    else{
+      this._ltmLinkTraversalTime = time;
+    }
+  }
+  
+  /**
+   * Sets the number of semantic links that can be followed from a {@link 
+   * jchrest.architecture.Node} reached after sorting a {@link 
+   * jchrest.lib.ListPattern} "vertically" through the long-term memory of this
+   * {@link jchrest.architecture.Chrest} model.  For example, if 3 {@link 
+   * jchrest.architecture.Node Nodes} are semantically linked: 1 -> 2 -> 3, the 
+   * maximum semantic link search distance is set to 1 and {@link 
+   * jchrest.architecture.Node} 1 is retrieved after sorting a {@link 
+   * jchrest.lib.ListPattern} "vertically" through long-term memory, {@link 
+   * jchrest.architecture.Node} 2 would be retrieved.
+   * 
+   * Set to 1 by default.
+   * 
+   * @param maximumSemanticLinkSearchDistance Should be >= 0.
+   */
+  public void setMaximumSemanticLinkSearchDistance(int maximumSemanticLinkSearchDistance){
+    if(maximumSemanticLinkSearchDistance < 0){
+      throw new IllegalArgumentException(
+        "The maximum semantic link search distance specified is < 0 (" + maximumSemanticLinkSearchDistance + ")."
+      );
+    }
+    else{
+      this._maximumSemanticLinkSearchDistance = maximumSemanticLinkSearchDistance;
+    }
+  }
+  
+  /**
+   * Sets the time taken to compare two {@link jchrest.architecture.Node Nodes}
+   * during short/long-term memory operations.
+   * 
+   * Set to 50ms by default: see table 8.2 found in "Perception and Memory in 
+   * Chess" by de Groot and Gobet.
+   * 
+   * @param time Should be >= 0.
+   */
+  public void setNodeComparisonTime(int time){
+    if(time < 0){
+      throw new IllegalArgumentException(
+        "The time specified to compare two nodes is < 0 (" + time + ")."
+      );
+    }
+    else{
+      this._nodeComparisonTime = time;
+    }
+  }
+  
+  /**
+   * Controls whether a semantic link can be created between two {@link 
+   * jchrest.architecture.Node Nodes} when {@link 
+   * jchrest.architecture.Chrest#recognise(jchrest.lib.ListPattern, 
+   * java.lang.Integer, java.lang.Boolean)} or {@link 
+   * jchrest.architecture.Chrest#recogniseAndLearn(jchrest.lib.ListPattern, 
+   * int)} is invoked.
+   * 
+   * {@link jchrest.architecture.Node} image similarity is based upon how many
+   * {@link jchrest.lib.PrimitivePattern PrimitivePatterns} are shared by the
+   * images of two {@link jchrest.architecture.Node Nodes}.
+   * <p>
+   * Set to 4 by default.
+   * 
+   * @param threshold Should be >= 0.
+   */
+  public void setNodeImageSimilarityThreshold (int threshold) {
+    if(threshold < 0){
+      throw new IllegalArgumentException(
+        "The node image similarity threshold specified is < 0 (" + threshold + ")."
+      );
+    }
+    else{
+      this._nodeImageSimilarityThreshold = threshold;
+    }
+  }
+  
+  /**
+   * Set to 50ms by default.
+   * 
+   * @param time Should be >= 0
+   */
+  public void setReinforceProductionTime(int time){
+    if(time < 0){
+      throw new IllegalArgumentException(
+        "The time specified to reinforce a production is < 0 (" + time + ")."
+      );
+    }
+    else{
+      this._reinforceProductionTime = time;
+    }
+  }
+
+  /**
+   * Sets the likelihood that this {@link jchrest.architecture.Chrest} model 
+   * will not randomly refuse to learn (see {@link 
+   * jchrest.architecture.Chrest#recogniseAndLearn(jchrest.lib.ListPattern, 
+   * int)}.
+   * 
+   * Set to 1.0 by default, i.e. this {@link jchrest.architecture.Chrest} model
+   * will never randomly refuse to learn.
+   * 
+   * @param rho Should be greater than/equal to 0.0 and less than/equal to 1.0.  
+   * The lower the value, the more likely this {@link 
+   * jchrest.architecture.Chrest} model is to refuse to learn.
+   */
+  public void setRho (float rho) {
+    if(!(rho >= 0.0 && rho <= 1.0)){
+      throw new IllegalArgumentException(
+        "The rho specified is either < 0.0 or > 1.0 (" + rho + ")."
+      );
+    }
+    this._rho = rho;
+  }
+  
+  /**
+   * Sets the length of time a recognised {@link 
+   * jchrest.lib.VisualSpatialFieldObject} will exist on a {@link 
+   * jchrest.architecture.VisualSpatialField} for before decaying.
+   * 
+   * Set to 10000ms by default.
+   * 
+   * @param time Should be >= 0.
+   */
+  public void setRecognisedVisualSpatialFieldObjectLifespan(int time){
+    if(time < 0){
+      throw new IllegalArgumentException(
+        "The recognised visual-spatial field object lifespan specified is < 0 (" + time + ")."
+      );
+    }
+    else{
+      this._recognisedVisualSpatialFieldObjectLifespan = time;
+    }
   }
   
   /**
@@ -747,10 +920,46 @@ public class Chrest extends Observable {
     }
   }
   
-  public void setTimeToEncodeRecognisedSceneObjectAsVisualSpatialFieldObject(int time){
-    this._timeToEncodeRecognisedSceneObjectAsVisualSpatialFieldObject = time;
+  /**
+   * Sets the length of time taken to encode a recognised {@link 
+   * jchrest.lib.VisualSpatialFieldObject} onto a {@link 
+   * jchrest.architecture.VisualSpatialField}.
+   * 
+   * Set to 5ms by default.
+   * 
+   * @param time Should be >= 0.
+   */
+  public void setTimeToEncodeRecognisedVisualSpatialFieldObject(int time){
+    if(time < 0){
+      throw new IllegalArgumentException(
+        "The time specified to encode a recognised VisualSpatialFieldObject is < 0 (" + time + ")."
+      );
+    }
+    else{
+      this._timeToEncodeRecognisedVisualSpatialFieldObject = time;
+    }
   }
   
+  /**
+   * Set the parameters that control whether a {@link 
+   * jchrest.architecture.Node}, N, can be converted into a template.
+   * 
+   * @param minNodeDepthInNetworkToBeTemplate How many {@link 
+   * jchrest.architecture.Link Links} must be between the {@link 
+   * jchrest.lib.Modality} root {@link jchrest.architecture.Node} of N and N 
+   * itself before N can be a candidate for template conversion.  Set to 3 by 
+   * default, should be >= 1.
+   * 
+   * @param minItemOrPositionOccurrencesInNodeImagesToBeSlotValue The minimum 
+   * number of times the result of invoking {@link 
+   * jchrest.lib.ItemSquarePattern#getItem()}, I, or the result
+   * of packaging {@link jchrest.lib.ItemSquarePattern#getColumn()} and {@link
+   * jchrest.lib.ItemSquarePattern#getRow()} as a {@link jchrest.lib.Square}, S, 
+   * on the image of N must occur in the images of the child {@link 
+   * jchrest.architecture.Node Nodes} of N before N can be a candidate for 
+   * template conversion and I/S can be a slot value for N. Set to 2 by default,
+   * should be >= 1.
+   */
   public void setTemplateConstructionParameters (int minNodeDepthInNetworkToBeTemplate, int minItemOrPositionOccurrencesInNodeImagesToBeSlotValue) {
     if(minNodeDepthInNetworkToBeTemplate >= 1 && minItemOrPositionOccurrencesInNodeImagesToBeSlotValue >= 1){
       this._minNodeDepthInNetworkToBeTemplate = minNodeDepthInNetworkToBeTemplate;
@@ -764,78 +973,227 @@ public class Chrest extends Observable {
   }
   
   /**
-   * @param time The base time for accessing a {@link 
-   * jchrest.architecture.VisualSpatialField} associated with {@link #this}.
+   * Sets the base time for accessing a {@link 
+   * jchrest.architecture.VisualSpatialField}.
+   * 
+   * Set to 100ms by default: see "Mental Imagery and Chunks" by Gobet and 
+   * Waters
+   * 
+   * @param time Should be >= 0.
    */
   public void setTimeToAccessVisualSpatialField(int time){
-    this._timeToAccessVisualSpatialField = time;
-  }
-  
-  public void setTimeToCreateNamingLink(int timeToCreateNamingLink) {
-    this._namingLinkCreationTime = timeToCreateNamingLink;
-  }
-  
-  public void setTimeToCreateSemanticLink(int timeToCreateSemanticLink) {
-    this._semanticLinkCreationTime = timeToCreateSemanticLink;
+    if(time < 0){
+      throw new IllegalArgumentException(
+        "The time specified to access a visual-spatial field is < 0 (" + time + ")."
+      );
+    }
+    else{
+      this._timeToAccessVisualSpatialField = time;
+    }
   }
   
   /**
-   * @param time The time taken to encode new {@link 
+   * Sets the time taken to create a link between a {@link 
+   * jchrest.lib.Modality#VISUAL} {@link jchrest.architecture.Node} and a {@link 
+   * jchrest.lib.Modality#VERBAL} {@link jchrest.architecture.Node} during 
+   * {@link jchrest.architecture.Chrest#recogniseAndLearn(jchrest.lib.ListPattern, 
+   * int)} or {@link jchrest.architecture.Chrest#recognise(jchrest.lib.ListPattern, 
+   * java.lang.Integer, java.lang.Boolean)}.
+   * 
+   * Set to 10000ms by default.
+   * 
+   * @param time Should be >= 0.
+   */
+  public void setTimeToCreateNamingLink(int time) {
+    if(time < 0){
+      throw new IllegalArgumentException(
+        "The time specified to create a naming link is < 0 (" + time + ")."
+      );
+    }
+    else{
+      this._namingLinkCreationTime = time;
+    }
+  }
+  
+  /**
+   * Sets the time taken to create a link between two {@link 
+   * jchrest.architecture.Node Nodes} of the same {@link jchrest.lib.Modality} 
+   * during {@link jchrest.architecture.Chrest#recogniseAndLearn(jchrest.lib.ListPattern, 
+   * int)} or {@link jchrest.architecture.Chrest#recognise(jchrest.lib.ListPattern, 
+   * java.lang.Integer, java.lang.Boolean)}.
+   * 
+   * Set to 10000ms by default.
+   * 
+   * @param time Should be >= 0.
+   */
+  public void setTimeToCreateSemanticLink(int time) {
+    if(time < 0){
+      throw new IllegalArgumentException(
+        "The time specified to create a semantic link is < 0 (" + time + ")."
+      );
+    }
+    else{
+      this._semanticLinkCreationTime = time;
+    }
+  }
+  
+  /**
+   * Sets the time taken to encode new {@link 
    * jchrest.domainSpecifics.SceneObject SceneObjects} that represent empty 
    * {@link jchrest.lib.Square Squares} in a {@link 
    * jchrest.domainSpecifics.Scene} as {@link 
-   * jchrest.lib.VisualSpatialFieldObject VisualSpatialFieldObjects}.
+   * jchrest.lib.VisualSpatialFieldObject VisualSpatialFieldObjects} on a {@link
+   * jchrest.architecture.VisualSpatialField}.
+   * 
+   * Set to 10ms by default.
+   * 
+   * @param time Should be >= 0.
    */
-  public void setTimeToEncodeUnrecognisedEmptySquareSceneObjectAsVisualSpatialFieldObject(int time){
-    this._timeToEncodeUnrecognisedEmptySquareSceneObjectAsVisualSpatialFieldObject = time;
+  public void setTimeToEncodeUnrecognisedEmptySquareAsVisualSpatialFieldObject(int time){
+    if(time < 0){
+      throw new IllegalArgumentException(
+        "The time specified to encode an unrecognised empty square as a visual-spatial field object is < 0 (" + time + ")."
+      );
+    }
+    else{
+      this._timeToEncodeUnrecognisedEmptySquareAsVisualSpatialFieldObject = time;
+    }
   }
   
   /**
-   * @param time The time taken to encode new {@link 
+   * Sets the time taken to encode new, unrecognised {@link 
    * jchrest.domainSpecifics.SceneObject SceneObjects} that do not represent 
    * empty {@link jchrest.lib.Square Squares} in a {@link 
    * jchrest.domainSpecifics.Scene} as {@link 
-   * jchrest.lib.VisualSpatialFieldObject VisualSpatialFieldObjects}.
+   * jchrest.lib.VisualSpatialFieldObject VisualSpatialFieldObjects} on a {@link
+   * jchrest.architecture.VisualSpatialField}.
+   * 
+   * Set to 25ms by default.
+   * 
+   * @param time Should be >= 0.
    */
-  public void setTimeToEncodeUnrecognisedNonEmptySquareSceneObjectAsVisualSpatialFieldObject(int time){
-    this._timeToEncodeUnrecognisedNonEmptySquareSceneObjectAsVisualSpatialFieldObject = time;
+  public void setTimeToEncodeUnrecognisedVisualSpatialFieldObject(int time){
+    if(time < 0){
+      throw new IllegalArgumentException(
+        "The time specified to encode an unrecognised visual-spatial field object is < 0 (" + time + ")."
+      );
+    }
+    else{
+      this._timeToEncodeUnrecognisedVisualSpatialFieldObject = time;
+    }
   }
   
   /**
-   * @param movementTime The time taken to move a {@link 
+   * Sets the time taken to move a {@link 
    * jchrest.architecture.VisualSpatialFieldObject} on a {@link 
-   * jchrest.architecture.VisualSpatialField} associated with {@link #this}.
+   * jchrest.architecture.VisualSpatialField}.
+   * 
+   * Set to 50ms by default: see "Mental Imagery and Chunks" by Gobet and 
+   * Waters.
+   * 
+   * @param movementTime Should be >= 0.
    */
   public void setTimeToMoveVisualSpatialFieldObject(int time){
-    this._timeToMoveVisualSpatialFieldObject = time;
+    if(time < 0){
+      throw new IllegalArgumentException(
+        "The time specified to move a visual-spatial field object is < 0 (" + time + ")."
+      );
+    }
+    else{
+      this._timeToMoveVisualSpatialFieldObject = time;
+    }
   }
   
   /**
-   * @param time The base time taken to process a {@link 
+   * Sets the time taken to process (not encode) an unrecognised {@link 
    * jchrest.domainSpecifics.SceneObject} during {@link 
-   * jchrest.architecture.VisualSpatialField} construction (see {@link 
-   * #this#constructVisualSpatialField(int)}, irrespective of whether the {@link 
-   * jchrest.domainSpecifics.SceneObject} is encoded as a {@link 
-   * jchrest.lib.VisualSpatialFieldObject}.
+   * jchrest.architecture.VisualSpatialField} construction.
+   * 
+   * Set to 10ms by default.
+   * 
+   * @param time Should be >= 0.
    */
   public void setTimeToProcessUnrecognisedSceneObjectDuringVisualSpatialFieldConstruction(int time){
-    this._timeToProcessUnrecognisedSceneObjectDuringVisualSpatialFieldConstruction = time;
+    if(time < 0){
+      throw new IllegalArgumentException(
+        "The time specified to process an unrecognised visual-spatial field object is < 0 (" + time + ")."
+      );
+    }
+    else{
+      this._timeToProcessUnrecognisedSceneObjectDuringVisualSpatialFieldConstruction = time;
+    }
   }
   
+  /**
+   * Used during {@link jchrest.architecture.Chrest#getFixationPerformed(int, 
+   * int)}. 
+   * 
+   * Set to 30ms by default.
+   * 
+   * @param time Should be >= 0.
+   */
   public void setTimeToRetrieveFixationFromPerceiver(int time){
-    this._timeToRetrieveFixationFromPerceiver = time;
+    if(time < 0){
+      throw new IllegalArgumentException(
+        "The time specified to retrieve a fixation from the perceiver is < 0 (" + time + ")."
+      );
+    }
+    else{
+      this._timeToRetrieveFixationFromPerceiver = time;
+    }
   }
   
-  public void setTimeToRetrieveItemFromStm(int timeToRetrieveItemFromStm){
-    this._timeToRetrieveItemFromStm = timeToRetrieveItemFromStm;
+  /**
+   * Set to 10 ms by default.
+   * 
+   * @param time Should be >= 0.
+   */
+  public void setTimeToRetrieveItemFromStm(int time){
+    if(time < 0){
+      throw new IllegalArgumentException(
+        "The time specified to retrieve an item from short-term memory is < 0 (" + time + ")."
+      );
+    }
+    else{
+      this._timeToRetrieveItemFromStm = time;
+    }
   }
 
-  public void setTimeToUpdateStm(int timeToUpdateStm){
-    this._timeToUpdateStm = timeToUpdateStm;
+  /**
+   * Set to 50ms by default: see table 8.2 in "Perception and Memory in Chess" 
+   * by deGroot and Gobet.
+   * 
+   * @param time Should be >= 0.
+   */
+  public void setTimeToUpdateStm(int time){
+    if(time < 0){
+      throw new IllegalArgumentException(
+        "The time specified to update short-term memory is < 0 (" + time + ")."
+      );
+    }
+    else{
+      this._timeToUpdateStm = time;
+    }
   }
   
-  public void setUnrecognisedVisualSpatialFieldObjectLifespan(int lifespan){
-    this._unrecognisedVisualSpatialFieldObjectLifespan = lifespan;
+  /**
+   * Sets the length of time an unrecognised {@link 
+   * jchrest.lib.VisualSpatialFieldObject} will exist on a {@link 
+   * jchrest.architecture.VisualSpatialField} for before decaying.
+   * 
+   * Set to 8000ms by default.
+   * 
+   * @param time Should be >= 0.
+   */
+  public void setUnrecognisedVisualSpatialFieldObjectLifespan(int time){
+    if(time < 0){
+      throw new IllegalArgumentException(
+        "The lifespan specified for unrecognised visual-spatial field objects is < 0 (" + time + ")."
+      );
+    }
+    else{
+      this._unrecognisedVisualSpatialFieldObjectLifespan = time;
+    }
   }
 
   /**************************************/
@@ -844,8 +1202,7 @@ public class Chrest extends Observable {
   
   /**
    * @param modality
-   * @return The root {@link jchrest.architecture.Node} of the long-term memory 
-   * {@link jchrest.lib.Modality} specified.
+   * @return 
    */
   public Node getLtmModalityRootNode(Modality modality){
     Node result = null;
@@ -1008,8 +1365,9 @@ public class Chrest extends Observable {
   /**
    * @param node
    * @param time
-   * @return The average depth below the {@link jchrest.architecture.Node} 
-   * passed at the time specified.
+   * 
+   * @return The average number of {@link jchrest.architecture.Link Links} 
+   * below the {@code Node} specified at {@code time}.
    */
   public Double averageDepthBelowNode(Node node, int time) {
     if(this._creationTime <= time){
@@ -1038,6 +1396,14 @@ public class Chrest extends Observable {
     return null;
   }
   
+  /**
+   * Should be used as a recursive function.
+   * 
+   * @param node
+   * @param currentDepth
+   * @param depths
+   * @param time 
+   */
   private void findDepth (Node node, int currentDepth, List<Integer> depths, int time) {
     List<Link> children = node.getChildren(time);
     
@@ -1093,8 +1459,9 @@ public class Chrest extends Observable {
   
   /**
    * @param time
-   * @return A count of the number of {@link jchrest.architecture.Node}s in 
-   * visual LTM that are templates at the time specified.
+   * @return The number of {@link jchrest.lib.Modality#VISUAL} {@link 
+   * jchrest.architecture.Node Nodes} that have been converted to templates at 
+   * the {@code time} specified.
    */
   public int countTemplatesInVisualLtm(int time) {
     return this.countTemplatesBelowNode(this.getLtmModalityRootNode(Modality.VISUAL), 0, time);
@@ -1102,9 +1469,9 @@ public class Chrest extends Observable {
   
   /**
    * @param node
+   * @param count
    * @param time
-   * @return The number of template {@link jchrest.architecture.Node}s below the
-   * {@link jchrest.architecture.Node} passed at the time specified.
+   * @return
    */
   private int countTemplatesBelowNode (Node node, int count, int time) {
     boolean nodeIsTemplate = node.isTemplate (time);
@@ -1122,8 +1489,28 @@ public class Chrest extends Observable {
   
   /**
    * @param time
-   * @return A map of content sizes to frequencies for this {@link #this} 
-   * model's LTM at the time specified.
+   * @return A map of invoking {@link jchrest.lib.ListPattern#size()} on the 
+   * result of invoking {@link jchrest.architecture.Node#getContents()} on every 
+   * {@link jchrest.architecture.Node} of every {@link jchrest.lib.Modality} in 
+   * long-term memory at the {@code time} specified together with their 
+   * frequency of occurrence.
+   * <p>
+   * For example, if there are 6 {@link jchrest.architecture.Node Nodes} in 
+   * total in long-term memory and their contents are:
+   * <pre>
+   * Node 1: <[H 0 2]>
+   * Node 2: <[T 0 1]>
+   * Node 3: <[H -2 1]>
+   * Node 4: <[H 0 2][H 0 1][T 1 0]]>
+   * Node 5: <[H 2 0][O 2 1][T 0 2]]>
+   * Node 6: <[H 0 1][H 0 2][T 2 0][O -1 -1]>
+   * </pre>
+   * Then the {@link java.util.Map} returned would be:
+   * <pre>
+   * 1 => 3,
+   * 3 => 2,
+   * 4 => 1
+   * </pre>
    */ 
   public Map<Integer, Integer> getContentSizeCounts(int time) {
     Map<Integer, Integer> size = new HashMap();
@@ -1136,14 +1523,13 @@ public class Chrest extends Observable {
   }
   
   /**
-   * Add a map of content sizes to node counts for this {@link #this} and its 
-   * children.
+   * Should be used as a recursive function.
    * 
    * @param node
    * @param contentSizeCountsAndFrequencies
    * @param time
    */
-  protected void getContentSizeCounts (Node node, Map<Integer, Integer> contentSizeCountsAndFrequencies, int time) {
+  private void getContentSizeCounts (Node node, Map<Integer, Integer> contentSizeCountsAndFrequencies, int time) {
     int contentsSize = node.getContents().size ();
     
     if (contentSizeCountsAndFrequencies.containsKey (contentsSize)) {
@@ -1161,9 +1547,29 @@ public class Chrest extends Observable {
   }
 
   /**
-   * @param time 
-   * @return A map of image sizes to frequencies across the entirety of this 
-   * {@link #this} model's LTM at the time specified.
+   * @param time
+   * @return A map of invoking {@link jchrest.lib.ListPattern#size()} on the 
+   * result of invoking {@link jchrest.architecture.Node#getImage(int)} on every 
+   * {@link jchrest.architecture.Node} of every {@link jchrest.lib.Modality} in 
+   * long-term memory at the {@code time} specified together with their 
+   * frequency of occurrence.
+   * <p>
+   * For example, if there are 6 {@link jchrest.architecture.Node Nodes} in 
+   * total in long-term memory and their images are:
+   * <pre>
+   * Node 1: <[H 0 2]>
+   * Node 2: <[T 0 1]>
+   * Node 3: <[H -2 1]>
+   * Node 4: <[H 0 2][H 0 1][T 1 0]]>
+   * Node 5: <[H 2 0][O 2 1][T 0 2]]>
+   * Node 6: <[H 0 1][H 0 2][T 2 0][O -1 -1]>
+   * </pre>
+   * Then the {@link java.util.Map} returned would be:
+   * <pre>
+   * 1 => 3,
+   * 3 => 2,
+   * 4 => 1
+   * </pre>
    */ 
   public Map<Integer, Integer> getImageSizeCounts(int time) {
     Map<Integer, Integer> sizesToFrequencies = new HashMap();
@@ -1176,15 +1582,13 @@ public class Chrest extends Observable {
   }
   
   /**
-   * Populates the {@link java.util.Map} passed with how many {@link 
-   * jchrest.architecture.Node}s have an image of a particular size at the time
-   * specified.
+   * Should be used as a recursive function.
    * 
-   * @param node The {@link jchrest.architecture.Node} to take counts from.
-   * @param sizesToFrequencies Should be empty when invoking this function.
+   * @param node
+   * @param sizesToFrequencies
    * @param time
    */
-  public void getImageSizeCounts (Node node, Map<Integer, Integer> sizesToFrequencies, int time) {
+  private void getImageSizeCounts (Node node, Map<Integer, Integer> sizesToFrequencies, int time) {
     ListPattern image = node.getImage(time);
     if(image != null){
       int size = image.size();
@@ -1230,10 +1634,9 @@ public class Chrest extends Observable {
   /**
    * @param node
    * @param time
-   * @return The average image size of the child {@link 
-   * jchrest.architecture.Node}s and their child's {@link 
-   * jchrest.architecture.Node}s etc. below the {@link 
-   * jchrest.architecture.Node} specified at the time specified.
+   * @return The average image size of the {@link jchrest.architecture.Node 
+   * Nodes} below (children of and their children's children etc.) the {@code 
+   * node} specified at {@code time}.
    */
   public double averageImageSize (Node node, int time) {
     return (double)this.totalImageSize(node, time) / node.size(time);
@@ -1423,7 +1826,7 @@ public class Chrest extends Observable {
    */
   public void addEpisodeToExecutionHistory(HashMap<String, Object> columnNamesAndValues) {
     
-    if(this.canRecordHistory()){
+    if(this.canRecordExecutionHistory()){
 
       /*********************************/
       /***** Set time column value *****/
@@ -1508,7 +1911,7 @@ public class Chrest extends Observable {
    * inserted into the model's execution history table with relevant data.
    */
   private void updateLastExecutionHistoryRowInserted(){
-    if(this.canRecordHistory()){
+    if(this.canRecordExecutionHistory()){
       String getLastRowInsertedSql = "SELECT * FROM " + Chrest._executionHistoryTableName + " WHERE " + Chrest._executionHistoryTableRowIdColumnName + " = "
         + "(SELECT MAX(" + Chrest._executionHistoryTableRowIdColumnName + ") FROM " + Chrest._executionHistoryTableName + ")";
 
@@ -1530,21 +1933,11 @@ public class Chrest extends Observable {
     }
   }
   
-  /**
-   * Enables a user to switch history recording on/off for this model.
-   * 
-   * @param value True to turn on history recording, false to turn off
-   */
-  public void setRecordHistory(boolean value){
+  public void setExecutionHistoryRecording(boolean value){
     this._executionHistoryRecordingEnabled = value;
   }
   
-  /**
-   * Indicates whether this model can currently record its execution history.
-   * 
-   * @return Boolean true if yes, boolean false if not.
-   */
-  public boolean canRecordHistory(){
+  public boolean canRecordExecutionHistory(){
     return this._executionHistoryRecordingEnabled;
   }
   
@@ -1732,8 +2125,6 @@ public class Chrest extends Observable {
   }
   
   /**
-   * Accessor for "_engagedInExperiment" instance variable.
-   * 
    * @return
    */
   public boolean engagedInExperiment(){
@@ -1763,18 +2154,12 @@ public class Chrest extends Observable {
   }
   
   /**
-   * Determines if the model will allow Node history updates or LTM drawing
-   * given the current size of LTM.
-   * 
-   * @return 
+   * @return {@link java.lang.Boolean#TRUE} if the total number of {@link 
+   * jchrest.architecture.Node Nodes} in long-term memory at {@code time} is 
+   * less than 5000.
    */
   public boolean canDrawLtmState(int time){
-    int ltmSize = 0;
-    for(Modality modality : Modality.values()){
-      ltmSize += this.getLtmModalitySize(modality, time);
-    }
-    
-    return ltmSize < this._nodeDrawingThreshold;
+    return this._nextLtmNodeReference < this._nodeDrawingThreshold;
   }
   
   /***********************/
@@ -1805,12 +2190,9 @@ public class Chrest extends Observable {
   /****************************************************************************/
   
   /**
-   * Advances the attention clock of {@link #this} by the {@code time} 
-   * specified.
-   * 
    * This should be used if there are attentional time costs incurred external 
-   * to the operations of {@link #this} in the domain (domain-specific problem
-   * solving, for example).
+   * to the operations of this {@link jchrest.architecture.Chrest} model in the 
+   * domain (domain-specific problem solving, for example).
    * 
    * @param time 
    */
@@ -3171,23 +3553,20 @@ public class Chrest extends Observable {
   }
   
   /**
-   * Attempts to extend the image for a {@link jchrest.architecture.Node} by 
-   * adding new information from the {@link jchrest.lib.ListPattern} provided at 
-   * the time specified.
-   * 
-   * If successful, familiarisation will set the cognition clock of {@link 
-   * #this} to the time specified.
-   * 
+   * Attempts to extend the image of {@code nodeToFamiliarise} by adding new 
+   * information from the {@code pattern} specified at {@code time}.
+   * <p>
+   * If successful, familiarisation will set the cognition clock of this {@link 
+   * jchrest.architecture.Chrest} model to {@code time}.
+   * <p>
    * <b>NOTE:</b> If the new information to add to the image hasn't been learned
    * as a primitive then the primitive will be learned via. discrimination (see 
    * {@link #this#discriminate(jchrest.architecture.Node, 
    * jchrest.lib.ListPattern, int)}).
    * 
    * @param nodeToFamiliarise
-   * @param pattern New information to be added to the {@link 
-   * jchrest.architecture.Node} to familiarise's image.
-   * @param time The time the new information should be added to the
-   * {@link jchrest.architecture.Node} to familiarise's image.
+   * @param pattern
+   * @param time
    * 
    * @return Either {@link jchrest.lib.Status#FAMILIARISATION_SUCCESSFUL} or
    * {@link jchrest.lib.Status#FAMILIARISATION_FAILED}.
@@ -4353,11 +4732,11 @@ public class Chrest extends Observable {
   
   /**
    * Selects an {@link jchrest.lib.Modality#ACTION} {@link 
-   * jchrest.architecture.Node} that is linked to via. a production from one of
-   * the {@link jchrest.lib.Modality#VISUAL} {@link jchrest.architecture.Node 
-   * Nodes} currently in {@link jchrest.lib.Modality#VISUAL} {@link 
-   * jchrest.architecture.Stm}.
-   * 
+   * jchrest.architecture.Node} that is linked to from a production contained in 
+   * one of the {@link jchrest.lib.Modality#VISUAL} {@link 
+   * jchrest.architecture.Node Nodes} currently in {@link 
+   * jchrest.lib.Modality#VISUAL} {@link jchrest.architecture.Stm}.
+   * <p>
    * The {@link jchrest.lib.Modality#ACTION} {@link jchrest.architecture.Node} 
    * selected is selected using two rounds of {@link 
    * org.uncommons.watchmaker.framework.selection.RouletteWheelSelection}.  The
@@ -4373,7 +4752,16 @@ public class Chrest extends Observable {
    * that are better known have a greater chance of being selected. After 
    * selecting a {@link jchrest.lib.Modality#VISUAL} {@link 
    * jchrest.architecture.Node}, its productions are selected between based upon 
-   * their values. 
+   * their values.
+   * <p>
+   * <b>NOTE:</b> the attention of this {@link jchrest.architecture.Chrest} 
+   * model must be free at {@code time} otherwise, pattern-recognition can not
+   * occur.  If attention if free, the attention of this {@link 
+   * jchrest.architecture.Chrest} model will be consumed from {@code time} until
+   * the result of {@link 
+   * jchrest.architecture.Chrest#getTimeToRetrieveItemFromStm()} multiplied by
+   * the number of {@link jchrest.architecture.Node Nodes} in {@link 
+   * jchrest.lib.Modality#VISUAL} {@link jchrest.architecture.Stm}.
    * 
    * @return A two-element {@link jchrest.architecture.Node} {@link 
    * java.util.Arrays Array}.  If no {@link jchrest.lib.Modality#VISUAL} or 
@@ -4924,7 +5312,7 @@ public class Chrest extends Observable {
   private Fixation getInitialFixation(int time){
     this.printDebugStatement("===== Chrest.scheduleInitialFixation() =====");
     
-    if(this.debug()){
+    if(this.isDebuggingEnabled()){
       this.printDebugStatement("- Attempting to get an initial Fixation.  This will occur if the following all evaluate to true:");
       this.printDebugStatement("  ~ Attention is free at time this function is invoked (" + time + "): " + this.isAttentionFree(time));
       this.printDebugStatement("  ~ This CHREST model is not currently performing Fixations: " + !this._performingFixations);
@@ -4941,7 +5329,7 @@ public class Chrest extends Observable {
       this._attentionClock = initialFixation.getTimeDecidedUpon();
     }
     
-    if(this.debug()){
+    if(this.isDebuggingEnabled()){
       this.printDebugStatement("- Initial Fixation to return: " + (initialFixation == null ? "null" : initialFixation.toString()));
       this.printDebugStatement("- Attention clock set to " + this._attentionClock);
       this.printDebugStatement("- CHREST model performing Fixations: " + this._performingFixations);
@@ -4997,7 +5385,7 @@ public class Chrest extends Observable {
   private Fixation getNonInitialFixation(int time, int numberFixationsScheduled, int numberFixationsAttempted){
     this.printDebugStatement("===== Chrest.getNonInitialFixation() =====");
     
-    if(this.debug()){
+    if(this.isDebuggingEnabled()){
       this.printDebugStatement("- Attempting to get a non initial Fixation. This will occur if the following all evaluate to true:");
       this.printDebugStatement("  ~ Attention is free at time this function is invoked (" + time + "): " + this.isAttentionFree(time));
       this.printDebugStatement("  ~ This CHREST model is currently performing Fixations: " + this._performingFixations);
@@ -5513,7 +5901,7 @@ public class Chrest extends Observable {
     
     VisualSpatialField visualSpatialFieldRepresented = lastFixationAttempted.getScene().getVisualSpatialFieldRepresented();
     
-    if(this.debug()){
+    if(this.isDebuggingEnabled()){
       this.printDebugStatement("- Method will continue if the following statements evaluate to true:");
       this.printDebugStatement("  ~ This CHREST model is no longer performing Fixations: " + !this._performingFixations);
       this.printDebugStatement("  ~ The last Fixation attempted actually attempted to fixate on a Scene representing a VisualSpatialField: " + (visualSpatialFieldRepresented != null));
@@ -5551,7 +5939,7 @@ public class Chrest extends Observable {
           for(VisualSpatialFieldObject visualSpatialFieldObject : visualSpatialFieldRepresented.getCoordinateContents(col, row, time, false)){
 
             this.printDebugStatement("  ~ Processing VisualSpatialFieldObject:" + visualSpatialFieldObject.toString());
-            if(this.debug()){
+            if(this.isDebuggingEnabled()){
               this.printDebugStatement("    + Checking if all the following statements evaluate to true:");
               this.printDebugStatement("      > The VisualSpatialFieldObject is alive at time " + time + ": " + visualSpatialFieldObject.isAlive(time));
               this.printDebugStatement("      > The VisualSpatialFieldObject does not represent the creator: " + !visualSpatialFieldObject.getObjectType().equals(Scene.getCreatorToken()));
@@ -6090,7 +6478,7 @@ public class Chrest extends Observable {
           }
         }
         this.printDebugStatement("\n- SceneObjects seen information: ");
-        if(this.debug()){
+        if(this.isDebuggingEnabled()){
           for(HashMap<SceneObject, Scene> sceneObjectSeenInfo : sceneObjectsSeenInfo){
             for(Entry<SceneObject, Scene> info : sceneObjectSeenInfo.entrySet()){
               this.printDebugStatement("   ~ " + info.getKey().toString());
@@ -6114,7 +6502,7 @@ public class Chrest extends Observable {
         this.printDebugStatement("\n===== Encoding recognised SceneObjects");
         List<Node> visualStmContentsAtCurrentTime = this.getStm(Modality.VISUAL).getContents(time);
         this.printDebugStatement("- State of visual STM at time " + time + " (hypothesis first):");
-        if(this.debug()){
+        if(this.isDebuggingEnabled()){
           for(int n = 0; n < visualStmContentsAtCurrentTime.size(); n++){
             Node stmNode = visualStmContentsAtCurrentTime.get(n);
             this.printDebugStatement(
@@ -6268,14 +6656,14 @@ public class Chrest extends Observable {
           }
           
           this.printDebugStatement("   ~ " + sceneObjectRecognisedInfo.size() + " SceneObjects recognised:");
-          if(this.debug()){
+          if(this.isDebuggingEnabled()){
             for(SceneObject recognisedSceneObject : sceneObjectRecognisedInfo.keySet()){
               this.printDebugStatement("      + " + recognisedSceneObject.toString());
             }
           }
           
           this.printDebugStatement("   ~ " + domainSpecificCoordinatesRecognised.size() + " coordinates recognised:");
-          if(this.debug()){
+          if(this.isDebuggingEnabled()){
             for(Square coordinatesRecognised : domainSpecificCoordinatesRecognised){
               this.printDebugStatement("      + " + coordinatesRecognised.toString());
             }
@@ -6303,10 +6691,10 @@ public class Chrest extends Observable {
           this.printDebugStatement("- If any SceneObjects recognised in this Node are to be encoded, " +
             "they will all be encoded at the same time, i.e. the current time (" + 
             time + ") plus the time taken to encode a recognised SceneObject (" +
-            this._timeToEncodeRecognisedSceneObjectAsVisualSpatialFieldObject + "), in other words, at time "
-            + (time + this._timeToEncodeRecognisedSceneObjectAsVisualSpatialFieldObject)
+            this._timeToEncodeRecognisedVisualSpatialFieldObject + "), in other words, at time "
+            + (time + this._timeToEncodeRecognisedVisualSpatialFieldObject)
           );
-          int visualSpatialFieldObjectEncodingTime = time + this._timeToEncodeRecognisedSceneObjectAsVisualSpatialFieldObject;
+          int visualSpatialFieldObjectEncodingTime = time + this._timeToEncodeRecognisedVisualSpatialFieldObject;
           
           this.printDebugStatement("- Encoding any recognised SceneObjects first (if there are any)");
           for(Entry<SceneObject, Scene> recognisedSceneObjectInfo : sceneObjectsRecognisedInStmNodes.get(node).entrySet()){
@@ -6459,14 +6847,14 @@ public class Chrest extends Observable {
                 this.printDebugStatement("   ~ Attempting to encode SceneObject with " + unrecognisedSceneObject.toString() + 
                   " as a VisualSpatialFieldObject at the current time + "  +
                   (unrecognisedSceneObject.getObjectType().equals(Scene.getEmptySquareToken()) ? 
-                    this._timeToEncodeUnrecognisedEmptySquareSceneObjectAsVisualSpatialFieldObject + "since this is an empty square":
-                    this._timeToEncodeUnrecognisedNonEmptySquareSceneObjectAsVisualSpatialFieldObject + "since this is a non-empty square"
+                    this._timeToEncodeUnrecognisedEmptySquareAsVisualSpatialFieldObject + "since this is an empty square":
+                    this._timeToEncodeUnrecognisedVisualSpatialFieldObject + "since this is a non-empty square"
                   )
                 );
 
                 int encodingTime = time + (unrecognisedSceneObject.getObjectType().equals(Scene.getEmptySquareToken()) ? 
-                  this._timeToEncodeUnrecognisedEmptySquareSceneObjectAsVisualSpatialFieldObject :
-                  this._timeToEncodeUnrecognisedNonEmptySquareSceneObjectAsVisualSpatialFieldObject
+                  this._timeToEncodeUnrecognisedEmptySquareAsVisualSpatialFieldObject :
+                  this._timeToEncodeUnrecognisedVisualSpatialFieldObject
                 );
                 this.printDebugStatement("   ~ Attempting to encode VisualSpatialFieldObject at time " + encodingTime);
 
@@ -6893,7 +7281,7 @@ public class Chrest extends Observable {
                     //Now, "move" the object to be moved to its destination 
                     //coordinates.
                     visualSpatialField.addObjectToCoordinates(colToMoveTo, rowToMoveTo, objectAfterMove, time);
-                    if(this.debug()){
+                    if(this.isDebuggingEnabled()){
                       this.printDebugStatement("   ~ Added VisualSpatialFieldObject to VisualSpatialFieldCoordinates to move to.  Coordinate content:");
                       for(VisualSpatialFieldObject objectOnSquareToMoveTo : visualSpatialField.getCoordinateContents(colToMoveTo, rowToMoveTo, time, false)){
                         this.printDebugStatement("\n" + objectOnSquareToMoveTo.toString());
@@ -7013,7 +7401,7 @@ public class Chrest extends Observable {
     this.printDebugStatement("===== RETURN =====");
   }
   
-     /**
+  /**
    * Intended for use during {@link jchrest.architecture.VisualSpatialField}
    * construction: encodes a {@link jchrest.domainSpecifics.SceneObject} as a 
    * {@link jchrest.lib.VisualSpatialFieldObject} on the {@link 
@@ -7079,7 +7467,7 @@ public class Chrest extends Observable {
     
     List<VisualSpatialFieldObject> coordinateContents = visualSpatialField.getCoordinateContents(col, row, time, false);
     this.printDebugStatement("- Contents of coordinates:");
-    if(this.debug()){
+    if(this.isDebuggingEnabled()){
       for(VisualSpatialFieldObject coordinateContent : coordinateContents){
         this.printDebugStatement(coordinateContent.toString());
       }
@@ -7200,22 +7588,11 @@ public class Chrest extends Observable {
   }
   
   /** 
-   * Clear the STM and LTM of this {@link #this} model.
+   * Clears all {@link jchrest.architecture.Stm} and {@link 
+   * jchrest.architecture.Node Nodes} of every {@link jchrest.lib.Modality} at 
+   * the {@code time} specified.
    */
-  //TODO: Time needs to be passed here however, there is a problem: when a new 
-  //      experiment begins, it should have an initial time of 0 and if STM is 
-  //      cleared (for example) a new empty list will be added at time 0.  
-  //      However, since items in STM are handled using 
-  //      jchrest.lib.HistoryTreeMap instances, the "put" method will fail since 
-  //      adding the empty list at time 0 would be rewriting history (there will 
-  //      be entries from the previous experiment at times >= 0).  The same is 
-  //      true for other architecture components.  The best solution would be to 
-  //      "carry-over" the current experiment time when a CHREST instance is 
-  //      moved from one experiment to the other.  Essentially, a CHREST model 
-  //      should have its own clock that starts when it is placed in the first 
-  //      experiment and is never reset.  Alternatively, a CHREST model should 
-  //      only ever exist in one experiment and this function should be removed.
-  public void clear () {
+  public void clearShortAndLongTermMemory(int time) {
     this.clearHistory(); 
     this.setClocks(0);
     
@@ -7227,14 +7604,14 @@ public class Chrest extends Observable {
         ltmModalityRoot.set(this, new Node(this, modality, 0));
         
         Stm stmModality = (Stm)Chrest.class.getDeclaredField("_" + modality.toString().toLowerCase() + "Stm").get(this);
-        stmModality.clear(0);
+        stmModality.clear(time);
       } catch (NoSuchFieldException | SecurityException | IllegalArgumentException | IllegalAccessException ex) {
         Logger.getLogger(Chrest.class.getName()).log(Level.SEVERE, null, ex);
       }
     }
     
     this._nextLtmNodeReference = 0;
-    _experimentsLocatedInNames.clear();
+    this._experimentsLocatedInNames.clear();
     this._engagedInExperiment = false;
     setChanged ();
     if (!_frozen) notifyObservers ();
@@ -7264,33 +7641,37 @@ public class Chrest extends Observable {
     _emotionAssociator.setDefaultAlpha (alpha);
   }
 
-  /**
-   * Accessor for Emotion Associator.
-   */
   public EmotionAssociator getEmotionAssociator () {
     return _emotionAssociator;
   }
 
   /**
-   * Propagate emotion across all the given STMs.
+   * Propagate current emotion across {@code stms} specified at {@code time}.
    */
-  public void emoteAndPropagateAcrossModalities (Object stmsobject, int time) {
-    Stm[] stms = (Stm[]) stmsobject;
-    _emotionAssociator.emoteAndPropagateAcrossModalities (stms, time);
+  public void emoteAndPropagateAcrossModalities (Stm[] stms, int time) {
+    this._emotionAssociator.emoteAndPropagateAcrossModalities (stms, time);
   }
 
   /**
-   * Attach given emotion to top item in STM, if present.
+   * Attach {@code emotion} to the current hypothesis {@link 
+   * jchrest.architecture.Node} in the {@code stm} specified at {@code time}.
+   * 
+   * @param stm
+   * @param emotion
+   * @param time
    */
-  public void assignEmotionToCurrentItem (Stm stm, Emotion emotion, int time) {
-    if (stm.getCount(time) == 0) {
-      return;  // STM empty, so nothing to be done
+  public void assignEmotionToStmHypothesis (Stm stm, Emotion emotion, int time) {
+    if (stm.getCount(time) > 0) {
+      this._emotionAssociator.setRWEmotion (stm.getItem(0, time), emotion);
     }
-    _emotionAssociator.setRWEmotion (stm.getItem(0, time), emotion);
   }
 
   /** 
-   * Accessor for the emotion associated with the topmost item in STM.
+   * @return The {@link jchrest.architecture.Emotion} associated with the 
+   * hypothesis {@link jchrest.architecture.Node} in the {@code stm} specified
+   * at {@code time}.  If there is no hypothesis {@link 
+   * jchrest.architecture.Node} in the {@code stm} specified at {@code time}, 
+   * {@code null} is returned.
    */
   public Emotion getCurrentEmotion (Stm stm, int time) {
     if (stm.getCount (time) == 0) {
@@ -7300,6 +7681,19 @@ public class Chrest extends Observable {
     }
   }
 
+  /**
+   * 
+   * @param stm
+   * @param time
+   * @return The {@link jchrest.architecture.Emotion} associated with the 
+   * {@link jchrest.architecture.Node} associated with the hypothesis {@link 
+   * jchrest.architecture.Node} (see {@link 
+   * jchrest.architecture.Node#getAssociatedNode(int)}) in the {@code stm} 
+   * specified at {@code time}.  If there is no hypothesis {@link 
+   * jchrest.architecture.Node} in the {@code stm} specified at {@code time}, or
+   * the is no {@link jchrest.architecture.Node} associated with the hypothesis,
+   * {@code null} is returned.
+   */
   public Emotion getCurrentFollowedByEmotion (Stm stm, int time) {
     if (stm.getCount (time) == 0) {
       return null;

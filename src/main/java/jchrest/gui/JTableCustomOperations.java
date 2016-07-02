@@ -13,7 +13,7 @@ import javax.swing.table.TableColumn;
 /**
  * Class containing useful non-native Java functionality for JTables.
  * 
- * @author Martyn Lloyd-Kelly <martynlk@liverpool.ac.uk>
+ * @author Martyn Lloyd-Kelly {@code <martynlk@liverpool.ac.uk>}
  */
 public class JTableCustomOperations {
   

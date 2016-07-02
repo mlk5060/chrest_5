@@ -1,0 +1,13 @@
+jchrest.architecture
+jchrest.database
+jchrest.domainSpecifics
+jchrest.domainSpecifics.chess
+jchrest.domainSpecifics.chess.fixations
+jchrest.domainSpecifics.fixations
+jchrest.domainSpecifics.generic
+jchrest.domainSpecifics.tileworld
+jchrest.domainSpecifics.tileworld.fixations
+jchrest.experimentScripts
+jchrest.gui
+jchrest.gui.experiments
+jchrest.lib

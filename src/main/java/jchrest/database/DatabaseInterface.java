@@ -15,7 +15,7 @@ import java.util.logging.Logger;
 /**
  * An interface to a h2 database.
  * 
- * @author Martyn Lloyd-Kelly <martynlk@liverpool.ac.uk>
+ * @author Martyn Lloyd-Kelly {@code <martynlk@liverpool.ac.uk>}
  */
 public class DatabaseInterface {
   
@@ -60,6 +60,8 @@ public class DatabaseInterface {
    * where <i>m</i> = the number of columns in the table.  The third dimension's
    * length will be 2: the first element contains the column's name and the 
    * second element contains the column's value for that row.
+   * 
+   * @throws SQLException
    */
   public ArrayList<ArrayList<Object[]>> executeSqliteQuery(String sqlString, ArrayList<Object> bindings) throws SQLException{
     PreparedStatement sql = null;

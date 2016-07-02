@@ -23,8 +23,8 @@ import jchrest.domainSpecifics.fixations.PeripheralSquareFixation;
   * Default {@link jchrest.domainSpecifics.DomainSpecifics} used by a {@link 
   * jchrest.architecture.Chrest} instance.
   * 
-  * @author Peter C. R. Lane <p.c.lane@herts.ac.uk>
-  * @author Martyn Lloyd-Kelly <martynlk@liverpool.ac.uk>
+  * @author Peter C. R. Lane {@code <p.c.lane@herts.ac.uk>}
+  * @author Martyn Lloyd-Kelly {@code <martynlk@liverpool.ac.uk>}
   */
 public class GenericDomain extends DomainSpecifics {
   
@@ -35,8 +35,8 @@ public class GenericDomain extends DomainSpecifics {
    * @param model
    * @param maxFixationsInSet
    * @param peripheralItemFixationMaxAttempts See second parameter for {@link 
-   * jchrest.domainSpecifics.fixations.PeripheralItemFixation#PeripheralItemFixation(
-   * jchrest.architecture.Chrest, int, int)}.
+   * jchrest.domainSpecifics.fixations.PeripheralItemFixation#PeripheralItemFixation(jchrest.architecture.Chrest, 
+   * int, int, int)}.
    */
   public GenericDomain(Chrest model, Integer maxFixationsInSet, int peripheralItemFixationMaxAttempts) {
     super(model, maxFixationsInSet);
@@ -44,14 +44,15 @@ public class GenericDomain extends DomainSpecifics {
   }
   
   /**
-   * @param pattern
+   * @param pattern 
+   * 
    * @return A {@link jchrest.lib.ListPattern} stripped of {@link 
    * jchrest.lib.ItemSquarePattern}s that:
    * 
    * <ol type="1">
    *  <li>
-   *    Represent the agent equipped with the {@link 
-   *    jchrest.architecture.Chrest} model associated with {@link #this}.
+   *    Represents the agent equipped with the associated {@link 
+   *    jchrest.architecture.Chrest} model.
    *  </li>
    *  <li> 
    *    Represent blind/empty {@link jchrest.lib.Square Squares}.
@@ -109,11 +110,11 @@ public class GenericDomain extends DomainSpecifics {
    * 
    * @return If {@link 
    * jchrest.architecture.Chrest#isLearningObjectLocationsRelativeToAgent()} 
-   * returns {@link java.lang.Boolean#TRUE} when invoked in context of {@link 
-   * #this#getAssociatedModel()}, a {@link 
-   * jchrest.domainSpecifics.fixations.AheadOfAgentFixation} is returned.  
-   * Otherwise, a {@link jchrest.domainSpecifics.fixations.CentralFixation} is
-   * returned.
+   * returns {@link java.lang.Boolean#TRUE} when invoked in context of 
+   * {@link jchrest.domainSpecifics.generic.GenericDomain#getAssociatedModel()}, 
+   * a {@link jchrest.domainSpecifics.fixations.AheadOfAgentFixation} is 
+   * returned.  Otherwise, a {@link jchrest.domainSpecifics.fixations.CentralFixation} 
+   * is returned.
    */
   @Override
   public Fixation getInitialFixationInSet(int time) {
@@ -135,8 +136,8 @@ public class GenericDomain extends DomainSpecifics {
    * <ol type="1">
    *  <li>
    *    There is such a {@link jchrest.domainSpecifics.Fixation} already being 
-   *    deliberated on by {@link #this#getAssociatedModel()} but hasn't been 
-   *    performed yet.
+   *    deliberated on by the associated {@link jchrest.architecture.Chrest} 
+   *    model but hasn't been performed yet.
    *  </li>
    *  <li>
    *    The most recent {@link jchrest.domainSpecifics.Fixation} attempted was 
@@ -149,7 +150,7 @@ public class GenericDomain extends DomainSpecifics {
    * jchrest.domainSpecifics.fixations.HypothesisDiscriminationFixation} is 
    * unknown so instead of generating another which may fail again (essentially 
    * wasting a {@link jchrest.domainSpecifics.Fixation} since only a finite 
-   * number can be attempted (see {@link #this#getMaximumFixationsInSet()}), 
+   * number can be attempted (see {@link GenericDomain#getMaximumFixationsInSet()}), 
    * generate another type of {@link jchrest.domainSpecifics.Fixation}.
    * <p>
    * In the second case, the outcome of attempting to make a {@link 
@@ -157,7 +158,8 @@ public class GenericDomain extends DomainSpecifics {
    * known and the attempt was unsuccessful so other {@link 
    * jchrest.domainSpecifics.Fixation Fixations} need to be attempted to try and 
    * replace the hypothesis present in the {@link jchrest.lib.Modality#VISUAL} 
-   * {@link jchrest.architecture.Stm} of {@link #this#getAssociatedModel()} 
+   * {@link jchrest.architecture.Stm} of the {@link jchrest.architecture.Chrest}
+   * model associated with this {@link jchrest.domainSpecifics.generic.GenericDomain}
    * since its information is not useful in the current {@link 
    * jchrest.domainSpecifics.Scene} being fixated on.
    */
@@ -256,9 +258,10 @@ public class GenericDomain extends DomainSpecifics {
    * @param time
    * 
    * @return {@link java.lang.Boolean#FALSE} since there are no extra conditions
-   * to consider when a {@link jchrest.architecture.Chrest} model using {@link 
-   * #this} determines whether the {@link jchrest.domainSpecifics.Fixation 
-   * Fixations} it has performed should be learned from.
+   * to consider when a {@link jchrest.architecture.Chrest} model using this 
+   * {@link jchrest.domainSpecifics.generic.GenericDomain} determines whether 
+   * the {@link jchrest.domainSpecifics.Fixation Fixations} it has performed 
+   * should be learned from.
    */
   @Override
   public boolean shouldLearnFromNewFixations(int time) {
@@ -285,8 +288,8 @@ public class GenericDomain extends DomainSpecifics {
    * 
    * @return {@link java.lang.Boolean#TRUE} since there are no additional checks
    * to be made when adding a new {@link jchrest.domainSpecifics.Fixation} in
-   * {@link jchrest.architecture.Chrest#scheduleOrMakeNextFixation(
-   * jchrest.domainSpecifics.Scene, boolean, int)}.
+   * {@link jchrest.architecture.Chrest#scheduleOrMakeNextFixation(jchrest.domainSpecifics.Scene, 
+   * boolean, boolean, int)}.
    */
   @Override
   public boolean shouldAddNewFixation(int time) {

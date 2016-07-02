@@ -824,7 +824,7 @@ public class Node extends Observable {
     Theory reinforcementLearningTheory = this._model.getReinforcementLearningTheory();
     
     this._model.printDebugStatement("Checking if the following all evaluate to true:");
-    if(this._model.debug()){
+    if(this._model.isDebuggingEnabled()){
       this._model.printDebugStatement("  ~ Visual Node has been created at time reinforcement should occur: " + (this.getCreationTime() <= time));
       this._model.printDebugStatement("  ~ Action Node has been created at time reinforcement should occur: " + (node.getCreationTime() <= time));
       this._model.printDebugStatement("  ~ Visual Node has Visual modality: " + (this.getModality() == Modality.VISUAL));

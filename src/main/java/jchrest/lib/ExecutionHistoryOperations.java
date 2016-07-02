@@ -9,7 +9,7 @@ import java.lang.reflect.Method;
  * Declares generic operations that can be performed by CHREST.  Allows for
  * consistent execution history modification and querying.
  * 
- * @author Martyn Lloyd-Kelly <martynlk@liverpool.ac.uk>
+ * @author Martyn Lloyd-Kelly {@code <martynlk@liverpool.ac.uk>}
  */
 public class ExecutionHistoryOperations {
   

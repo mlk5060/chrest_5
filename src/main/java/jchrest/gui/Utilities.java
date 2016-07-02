@@ -42,9 +42,12 @@ import java.awt.*;
  * SpringBox and SpringCompactGrid.
  */
 public class Utilities {
+  
   /**
    * A debugging utility that prints to stdout the component's
    * minimum, preferred, and maximum sizes.
+   * 
+   * @param c
    */
   public static void printSizes(Component c) {
     System.out.println("minimumSize = " + c.getMinimumSize());
@@ -59,6 +62,7 @@ public class Utilities {
    * preferred width and height of the components.
    * The parent is made just big enough to fit them all.
    *
+   * @param parent
    * @param rows number of rows
    * @param cols number of columns
    * @param initialX x location to start the grid at
@@ -162,6 +166,7 @@ public class Utilities {
    * height is similarly determined for each row.
    * The parent is made just big enough to fit them all.
    *
+   * @param parent
    * @param rows number of rows
    * @param cols number of columns
    * @param initialX x location to start the grid at
@@ -226,6 +231,10 @@ public class Utilities {
   /**
    * Add label and component to given pane. 
    * Written by Peter Lane.
+   * 
+   * @param pane
+   * @param text
+   * @param component
    */
   public static void addLabel (JPanel pane, String text, JComponent component) {
     JLabel label = new JLabel (text, JLabel.TRAILING);
