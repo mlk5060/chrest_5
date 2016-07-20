@@ -3,12 +3,14 @@
 
 package jchrest.lib;
 
+import java.io.Serializable;
+
 /**
  * Square is a convenience class to hold a row and column.
  *
  * @author Peter C. R. Lane
  */
-public class Square {
+public class Square implements Serializable {
   private int _column;
   private int _row;
 

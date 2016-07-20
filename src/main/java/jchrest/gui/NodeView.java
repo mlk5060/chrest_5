@@ -19,7 +19,6 @@ public class NodeView extends JFrame implements java.util.Observer {
   private final int _time;
   private final JLabel _contentsLabel;
   private final JLabel _imageLabel;
-  private final JLabel _associatedNode;
   private final JLabel _namedBy;
   private final DefaultListModel _childLinksView, _similarityLinksView;
   private final JList _childLinks, _similarityLinks;
@@ -46,15 +45,6 @@ public class NodeView extends JFrame implements java.util.Observer {
     fields.add (_contentsLabel);
     fields.add (new JLabel ("Image: ", SwingConstants.RIGHT));
     fields.add (_imageLabel);
-    
-    _associatedNode = new JLabel ("");
-    _associatedNode.setBorder (new CompoundBorder (new EmptyBorder (3, 3, 3, 3), new EtchedBorder ()));
-    Node associatedNode = _node.getAssociatedNode (_time);
-    if (associatedNode != null) {
-      _associatedNode.setIcon (new NodeIcon (associatedNode, _associatedNode, _time));
-    }
-    fields.add (new JLabel ("Assocated node: ", SwingConstants.RIGHT));
-    fields.add (_associatedNode);
 
     _namedBy = new JLabel ("");
     _namedBy.setBorder (new CompoundBorder (new EmptyBorder (3, 3, 3, 3), new EtchedBorder ()));
@@ -109,11 +99,6 @@ public class NodeView extends JFrame implements java.util.Observer {
   void close () {
     _node.deleteObserver (this);
     
-    Node associatedNode = _node.getAssociatedNode (_time);
-    if (associatedNode != null) {
-      associatedNode.deleteObserver (this);
-    }
-    
     Node namedBy = _node.getNamedBy (_time);
     if (namedBy != null) {
       namedBy.deleteObserver (this);
@@ -139,12 +124,6 @@ public class NodeView extends JFrame implements java.util.Observer {
 
   private void updateDisplays () {
     _imageLabel.setText (_node.getImage(_time).toString ());
-    
-    Node associatedNode = _node.getAssociatedNode (_time);
-    if (associatedNode != null) {
-      _associatedNode.setIcon (new NodeIcon (associatedNode, _associatedNode, _time));
-      associatedNode.addObserver (this);
-    }
     
     Node namedBy = _node.getNamedBy (_time);
     if (namedBy != null) {

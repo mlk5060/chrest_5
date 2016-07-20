@@ -3,13 +3,14 @@
 
 package jchrest.domainSpecifics;
 
+import java.io.Serializable;
 import jchrest.architecture.Chrest;
 import jchrest.lib.ListPattern;
 
 /**
   * An interface for defining domain-specific methods.
   */
-public abstract class DomainSpecifics {
+public abstract class DomainSpecifics implements Serializable {
   
   protected final Chrest _associatedModel;
   protected Integer _maxFixationsInSet;

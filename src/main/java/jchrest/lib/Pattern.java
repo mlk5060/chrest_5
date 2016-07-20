@@ -3,14 +3,14 @@
 
 package jchrest.lib;
 
-import java.util.ArrayList;
+import java.io.Serializable;
 
 /** 
  * Parent class of all patterns.
  *
  * @author Peter C. R. Lane
  */
-public abstract class Pattern {
+public abstract class Pattern implements Serializable {
 
   /**
    * Factory method to make a NumberPattern.

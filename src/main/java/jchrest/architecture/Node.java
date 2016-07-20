@@ -4,7 +4,9 @@
 package jchrest.architecture;
 
 import java.io.IOException;
+import java.io.Serializable;
 import java.io.Writer;
+import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.LinkedHashMap;
@@ -12,6 +14,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Observable;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import jchrest.lib.ChrestStatus;
 import jchrest.lib.HistoryTreeMap;
 import jchrest.lib.ItemSquarePattern;
@@ -106,7 +110,7 @@ import jchrest.lib.Square;
  * @author Peter C. R. Lane
  * @author Martyn Lloyd-Kelly <martynlk@liverpool.ac.uk>
  */
-public class Node extends Observable {
+public class Node extends Observable implements Serializable{
   
   /****************************/
   /**** INSTANCE VARIABLES ****/
@@ -124,7 +128,6 @@ public class Node extends Observable {
   //life-cycle.
   private HistoryTreeMap<Integer, List<Link>> _childHistory = new HistoryTreeMap();
   private HistoryTreeMap<Integer, LinkedHashMap<Node, Double>> _productionHistory = new HistoryTreeMap();
-  private HistoryTreeMap<Integer, Node> _associatedNodeHistory = new HistoryTreeMap();
   private HistoryTreeMap<Integer, Node> _namedByHistory = new HistoryTreeMap();
   private HistoryTreeMap<Integer, List<Node>> _semanticLinksHistory = new HistoryTreeMap();
   private HistoryTreeMap<Integer, ListPattern> _imageHistory = new HistoryTreeMap();
@@ -132,7 +135,7 @@ public class Node extends Observable {
   
   // Template slot history variables: only instantiated when needed since most 
   // Node instances will never become templates so they don't need to waste the 
-  // storage space.
+  // memory.
   private HistoryTreeMap _itemSlotsHistory;
   private HistoryTreeMap _positionSlotsHistory;
   private HistoryTreeMap _filledItemSlotsHistory;
@@ -144,9 +147,6 @@ public class Node extends Observable {
 
   /**
    * Constructs a new root {@link jchrest.architecture.Node}.
-   * 
-   * Package access only: should only be used by {@link 
-   * jchrest.architecture.Chrest}.
    * 
    * @param model
    * @param modality
@@ -160,28 +160,37 @@ public class Node extends Observable {
       Pattern.makeList(new String[]{"Root"}, modality), 
       creationTime
     );
+    
+    //Its safe to assume that, when this constructor is called, the next LTM
+    //Node reference of the associated model should be incremented since there
+    //should be no uncertainty associated with creating a new root LTM modality
+    //Node.
+    model.incrementNextNodeReference();
   }
  
   /**
    * Constructs a new, non-root {@link jchrest.architecture.Node}.
-   * 
-   * TODO: This is public since making it package-access only causes testing to 
-   *       become nearly impossible; try to circumvent this.  
    * 
    * @param model
    * @param contents
    * @param image
    * @param creationTime
    */
+  //TODO: This is public since making it package-access only causes testing to 
+  //      become nearly impossible; try to circumvent this.  
   public Node (Chrest model, ListPattern contents, ListPattern image, int creationTime) {
     this (model, false, contents, image, creationTime);
   }
 
   /**
-   * Constructs a new {@link jchrest.architecture.Node} (root/non-root).
+   * Constructs a new {@link jchrest.architecture.Node} that can be either a 
+   * root or non-root {@link jchrest.architecture.Node}.
    * 
-   * Package access only: should only be used by {@link 
-   * jchrest.architecture.Chrest}.
+   * @param model
+   * @param rootNode 
+   * @param contents 
+   * @param image 
+   * @param creationTime 
    */
   private Node (Chrest model, boolean rootNode, ListPattern contents, ListPattern image, int creationTime) {
     if(model.getCreationTime() <= creationTime){
@@ -192,25 +201,73 @@ public class Node extends Observable {
       this._contents = contents.clone();
       this._modality = image.getModality();
       
-      this._childHistory.put(creationTime, new ArrayList());
-      this._productionHistory.put(creationTime, new LinkedHashMap());
-      this._associatedNodeHistory.put(creationTime, null);
-      this._namedByHistory.put(creationTime, null);
-      this._semanticLinksHistory.put(creationTime, new ArrayList());
-      this._imageHistory.put(creationTime, image);
-      this._templateHistory.put(creationTime, false);
-      
-      this._model.incrementNextNodeReference();
-      
-      if(!rootNode){
-        this._model.incrementLtmModalityNodeCount(contents.getModality(), creationTime);
-      }
+      this._childHistory.put(creationTime - 1, new ArrayList());
+      this._productionHistory.put(creationTime - 1, new LinkedHashMap());
+      this._namedByHistory.put(creationTime - 1, null);
+      this._semanticLinksHistory.put(creationTime - 1, new ArrayList());
+      this._imageHistory.put(creationTime - 1, image);
+      this._templateHistory.put(creationTime - 1, false);
     }
     else{
       throw new RuntimeException("Creation time specified for new Node instance ("
         + creationTime + ") is earlier than the creation time of the CHREST model "
         + "it will be associated with (" + model.getCreationTime() + ")"
       );
+    }
+  }
+  
+  /**
+   * Intended for use when a {@link jchrest.architecture.Chrest} model is being  
+   * deserialized.
+   * <p>
+   * Returns a copy of the {@code nodeToDeserialize} except the {@link 
+   * jchrest.architecture.Node} returned's historical information is set to the 
+   * most recent state of {@code nodeToDeserialize}, all other historical 
+   * information is lost.
+   * 
+   * @param model
+   * @param nodeToDeserialize
+   * @param creationTime
+   */
+  Node (Chrest model, Node nodeToDeserialize, int creationTime) {
+    this._creationTime = creationTime;
+    this._model = model;
+    this._rootNode = nodeToDeserialize._rootNode;
+    this._reference = nodeToDeserialize._reference;
+    this._contents = nodeToDeserialize._contents.clone();
+    this._modality = nodeToDeserialize._modality;
+    
+    //If the Node being desrialized is a template, the new Node should also be a
+    //template.  So, to avoid NullPointerExceptions from occurring due to 
+    //HistoryTreeMaps concerned with templates not being instantiated (remember 
+    //that HistoryTreeMap structures concerned with template slots aren't 
+    //instantiated when a Node is constructed) having attempts to put entries in 
+    //them in the HistoryTreeMap population loop below this code block, 
+    //instantiate the relevant HistoryTreeMaps here.
+    if(nodeToDeserialize._templateHistory.lastEntry().getValue()){
+      this._filledItemSlotsHistory = new HistoryTreeMap();
+      this._filledPositionSlotsHistory = new HistoryTreeMap();
+      this._itemSlotsHistory = new HistoryTreeMap();
+      this._positionSlotsHistory = new HistoryTreeMap();
+    }
+    
+    //Populate HistoryTreeMaps in the new Node with the most recent information
+    //from the Node being deserialized.
+    try {
+      for(Field nodeField : Node.class.getDeclaredFields()){
+        if(nodeField.getName().matches("_.*History")){
+          HistoryTreeMap historyField = (HistoryTreeMap)nodeField.get(nodeToDeserialize);
+          if(historyField != null){
+            Entry lastEntry = historyField.lastEntry();
+            if(lastEntry != null){
+              ((HistoryTreeMap)nodeField.get(this)).put(creationTime - 1, lastEntry.getValue());
+            }
+          }
+        }
+      }
+  
+    } catch (IllegalArgumentException | IllegalAccessException ex) {
+      Logger.getLogger(Node.class.getName()).log(Level.SEVERE, null, ex);
     }
   }
   
@@ -438,6 +495,14 @@ public class Node extends Observable {
         childAdded = true;
         this.setChanged();
         this.notifyObservers();
+        
+        //Increment the relevant Node metrics for the associated model at this
+        //stage since its now guaranteed that the child has been added to the
+        //model's LTM structure.
+        this._model.incrementNextNodeReference();
+        if(!childToAdd.isRootNode()){
+          this._model.incrementLtmModalityNodeCount(childToAdd.getModality(), time);
+        }
       }
       else{
         this._model.printDebugStatement(
@@ -950,84 +1015,6 @@ public class Node extends Observable {
     return false;
   }
   
-  /***********************************/
-  /**** ASSOCIATED NODE FUNCTIONS ****/
-  /***********************************/
-  
-  /**
-   * @param time
-   * 
-   * @return The {@link jchrest.architecture.Node} associated with this {@link
-   * #this} at the time specified. If this {@link #this} was not associated with
-   * another {@link jchrest.architecture.Node} at the time specified then null
-   * is returned. 
-   */
-  public Node getAssociatedNode(int time){
-    Entry entry = this._associatedNodeHistory.floorEntry(time);
-    return entry == null ? null : (Node)entry.getValue();
-  }
-  
-  /**
-   * Set the {@link jchrest.architecture.Node} that is associated with this 
-   * {@link #this} at the time specified and set the learning clock of the 
-   * {@link jchrest.architecture.Chrest} model associated with this {@link 
-   * #this} to the time this function was invoked plus the time returned by 
-   * {@link jchrest.architecture.Chrest#getTimeToCreateSemanticLink()}.
-   * 
-   * @param node
-   * @param time
-   * @return True if this function has now associated the two {@link 
-   * jchrest.architecture.Node}s together, false if not.  The {@link 
-   * jchrest.architecture.Node}s won't be associated if any of the following
-   * conditions evaluate to true:
-   * <ul>
-   *  <li>
-   *    This {@link #this} and the {@link jchrest.architecture.Node} to create
-   *    the association between are the same {@link jchrest.architecture.Node}.
-   *  </li>
-   *  <li>
-   *    This {@link #this} hasn't been created when this function is invoked.
-   *  </li>
-   *  <li>
-   *    The {@link jchrest.architecture.Node} to be associated with this 
-   *    {@link #this} hasn't been created when this function is invoked.
-   *  </li>
-   *  <li>
-   *    This {@link #this} is a root node.
-   *  </li>
-   *  <li>
-   *    The {@link jchrest.architecture.Node} to associate with {@link #this} is
-   *    a root node.
-   *  </li>
-   *  <li>
-   *    {@link #this} is not currently associated with the {@link 
-   *    jchrest.architecture.Node} to be associated.
-   *  </li>
-   *  <li>
-   *    This function will not rewrite the associated node history of {@link 
-   *    #this} (see {@link jchrest.architecture.Chrest#isRewritingHistory(
-   *    java.util.TreeMap, int)).
-   *  </li>
-   * </ul>
-   */
-  boolean setAssociatedNode (Node node, int time) {
-    if(
-      node != this &&
-      this.getCreationTime() <= time &&
-      node.getCreationTime() <= time &&
-      !this.isRootNode() &&
-      !node.isRootNode() &&
-      this.getAssociatedNode(time) != node
-    ){
-      this._associatedNodeHistory.put(time, node);
-      setChanged ();
-      notifyObservers ();
-      return true;
-    }
-    
-    return false;
-  }
-  
   /********************************/
   /**** NAMED BY FUNCTIONALITY ****/
   /********************************/
@@ -1213,7 +1200,7 @@ public class Node extends Observable {
    * 
    * @param time
    */
-  boolean makeTemplate (int time) {
+  final boolean makeTemplate (int time) {
     if(this.canBeTemplate(time)){
       
       //Instantiate the slot history instance variables, if necessary (this Node 
@@ -1259,8 +1246,8 @@ public class Node extends Observable {
 
         //Create a hashmap of occurrences of items and positions in the cumulative
         //image.
-        Map<String,Integer> itemCount = new LinkedHashMap<String, Integer> ();
-        Map<Integer,Integer> positionCount = new LinkedHashMap<Integer, Integer> ();
+        LinkedHashMap<String,Integer> itemCount = new LinkedHashMap();
+        LinkedHashMap<Integer,Integer> positionCount = new LinkedHashMap();
         for (ListPattern cumulativeImagePattern : cumulativeImage) {
           for (PrimitivePattern cumulativeImagePatternPrimitive : cumulativeImagePattern) {
             if (cumulativeImagePatternPrimitive instanceof ItemSquarePattern) {

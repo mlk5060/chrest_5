@@ -3,6 +3,7 @@
 
 package jchrest.architecture;
 
+import java.io.Serializable;
 import jchrest.lib.ListPattern;
 
 /**
@@ -10,11 +11,12 @@ import jchrest.lib.ListPattern;
  * The link has a test, which must be passed when sorting a pattern 
  * through to the child node.
  */
-public class Link {
+public class Link implements Serializable {
   
   private final ListPattern _test;
   private final Node _child;
-  private final int _creationTime;
+  
+  private final transient int _creationTime;
   private final String _createdInExperiment; //Used for drawing LTM.
 
   /**

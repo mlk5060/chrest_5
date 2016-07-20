@@ -684,7 +684,7 @@ public class Shell extends JFrame implements Observer {
       jtb.addTab ("Info", getInfoPane (_time));
       jtb.addTab ("Contents", getHistogramPane (_model.getContentSizeCounts(_time), "contents", "Histogram of Contents Sizes", "Contents size"));
       jtb.addTab ("Images", getHistogramPane (_model.getImageSizeCounts(_time), "images", "Histogram of Image Sizes", "Image size"));
-      jtb.addTab ("Semantic links", getHistogramPane (_model.getSemanticLinkCounts(_time), "semantic", "Histogram of Number of Semantic Links", "Number of semantic links"));
+      jtb.addTab ("Semantic links", getHistogramPane (_model.getSemanticLinkCountsAndFrequencies(_time), "semantic", "Histogram of Number of Semantic Links", "Number of semantic links"));
       jtb.addTab("Exec. History", getExecutionHistoryPanel());
       base.add (jtb);
 

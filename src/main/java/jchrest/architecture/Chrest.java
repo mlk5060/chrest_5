@@ -4,12 +4,20 @@
 
 package jchrest.architecture;
 
+import java.io.EOFException;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
 import jchrest.lib.VisualSpatialFieldObject;
 import jchrest.domainSpecifics.Scene;
 import jchrest.domainSpecifics.generic.GenericDomain;
 import jchrest.domainSpecifics.DomainSpecifics;
 import java.io.IOException;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
 import java.io.PrintStream;
+import java.io.Serializable;
 import java.io.Writer;
 import java.lang.reflect.Field;
 import java.sql.SQLException;
@@ -47,7 +55,7 @@ import org.uncommons.watchmaker.framework.selection.RouletteWheelSelection;
  */
 //TODO: Implement template time variables (how long to create a template, fill 
 //      slots etc.
-public class Chrest extends Observable {
+public class Chrest extends Observable implements Serializable {
   
   /****************************************************************************/
   /****************************************************************************/
@@ -59,15 +67,15 @@ public class Chrest extends Observable {
   /**** Simple variables ****/
   /**************************/
   
-  private final int _creationTime;
+  private transient final int _creationTime;
   private DomainSpecifics _domainSpecifics;
   
   /*************************/
   /**** Debug variables ****/
   /*************************/
   
-  private boolean _debug = false;
-  private PrintStream _debugOutput = System.out;
+  private transient boolean _debug = false;
+  private transient PrintStream _debugOutput = System.out;
   
   /*************************/
   /**** Clock variables ****/
@@ -81,39 +89,39 @@ public class Chrest extends Observable {
    */
   
   // Attention parameters
-  private int _attentionClock;
+  private transient int _attentionClock;
   
-  private int _ltmLinkTraversalTime = 10; //From "Perception and Memory in Chess" by deGroot and Gobet
-  private int _saccadeTime = 30;
-  private int _timeTakenToDecideUponAheadOfAgentFixations = 150;
-  private int _timeTakenToDecideUponCentralFixations = 150;
-  private int _timeTakenToDecideUponPeripheralItemFixations = 150;
-  private int _timeTakenToDecideUponPeripheralSquareFixations = 150;
-  private int _timeToUpdateStm = 50; //From "Perception and Memory in Chess" by deGroot and Gobet
-  private int _timeToRetrieveFixationFromPerceiver = 30;
-  private int _timeToRetrieveItemFromStm = 10;
-  private int _timeToAccessVisualSpatialField = 100; //From "Mental Imagery and Chunks" by Gobet and Waters
-  private int _timeToEncodeRecognisedSceneObjectAsVisualSpatialFieldObject = 5;
-  private int _timeToEncodeUnrecognisedNonEmptySquareSceneObjectAsVisualSpatialFieldObject = 25; 
-  private int _timeToEncodeUnrecognisedEmptySquareSceneObjectAsVisualSpatialFieldObject = 10; 
-  private int _timeToProcessUnrecognisedSceneObjectDuringVisualSpatialFieldConstruction = 10;
-  private int _recognisedVisualSpatialFieldObjectLifespan = 10000; 
-  private int _unrecognisedVisualSpatialFieldObjectLifespan = 8000;
-  private int _timeToMoveVisualSpatialFieldObject = 50;  //From "Mental Imagery and Chunks" by Gobet and Waters
+  private transient int _ltmLinkTraversalTime = 10; //From "Perception and Memory in Chess" by deGroot and Gobet
+  private transient int _saccadeTime = 30;
+  private transient int _timeTakenToDecideUponAheadOfAgentFixations = 150;
+  private transient int _timeTakenToDecideUponCentralFixations = 150;
+  private transient int _timeTakenToDecideUponPeripheralItemFixations = 150;
+  private transient int _timeTakenToDecideUponPeripheralSquareFixations = 150;
+  private transient int _timeToUpdateStm = 50; //From "Perception and Memory in Chess" by deGroot and Gobet
+  private transient int _timeToRetrieveFixationFromPerceiver = 30;
+  private transient int _timeToRetrieveItemFromStm = 10;
+  private transient int _timeToAccessVisualSpatialField = 100; //From "Mental Imagery and Chunks" by Gobet and Waters
+  private transient int _timeToEncodeRecognisedSceneObjectAsVisualSpatialFieldObject = 5;
+  private transient int _timeToEncodeUnrecognisedNonEmptySquareSceneObjectAsVisualSpatialFieldObject = 25; 
+  private transient int _timeToEncodeUnrecognisedEmptySquareSceneObjectAsVisualSpatialFieldObject = 10; 
+  private transient int _timeToProcessUnrecognisedSceneObjectDuringVisualSpatialFieldConstruction = 10;
+  private transient int _recognisedVisualSpatialFieldObjectLifespan = 10000; 
+  private transient int _unrecognisedVisualSpatialFieldObjectLifespan = 8000;
+  private transient int _timeToMoveVisualSpatialFieldObject = 50;  //From "Mental Imagery and Chunks" by Gobet and Waters
   
   // Cognitive parameters
-  private int _cognitionClock;
+  private transient int _cognitionClock;
   
-  private int _addProductionTime = 10000;
-  private int _nodeComparisonTime = 50;
-  private int _discriminationTime = 10000;
-  private int _familiarisationTime = 2000;
-  private int _reinforceProductionTime = 50;
-  private int _namingLinkCreationTime = 10000;
-  private int _semanticLinkCreationTime = 10000;
+  private transient int _addProductionTime = 10000;
+  private transient int _nodeComparisonTime = 50;
+  private transient int _discriminationTime = 10000;
+  private transient int _familiarisationTime = 2000;
+  private transient int _reinforceProductionTime = 50;
+  private transient int _namingLinkCreationTime = 10000;
+  private transient int _semanticLinkCreationTime = 10000;
   
   // Perceiver parameters
-  private int _perceiverClock;
+  private transient int _perceiverClock;
   
   /********************************/
   /**** Architecture variables ****/
@@ -130,9 +138,9 @@ public class Chrest extends Observable {
    * This will ensure that generic operations using Java reflection will work
    * with new long-term memory modalities.
    */
-  private Node _visualLtm;
-  private Node _verbalLtm;
-  private Node _actionLtm;
+  private transient Node _visualLtm;
+  private transient Node _verbalLtm;
+  private transient Node _actionLtm;
   
   private TreeMap _totalNumberVisualLtmNodes = new TreeMap();
   private TreeMap _totalNumberVerbalLtmNodes = new TreeMap();
@@ -145,14 +153,14 @@ public class Chrest extends Observable {
    * This will ensure that generic operations using Java reflection will work
    * with new short-term memory modalities.
    */
-  private Stm _visualStm;
-  private Stm _verbalStm;
-  private Stm _actionStm; // TODO: Incorporate into displays
+  private transient Stm _visualStm;
+  private transient Stm _verbalStm;
+  private transient Stm _actionStm; // TODO: Incorporate into displays
   
-  private final Perceiver _perceiver;
+  private transient final Perceiver _perceiver;
   
-  private final TreeMap<Integer, VisualSpatialField> _visualSpatialFields = new TreeMap();
-  private final EmotionAssociator _emotionAssociator = new EmotionAssociator();
+  private transient final TreeMap<Integer, VisualSpatialField> _visualSpatialFields = new TreeMap();
+  private transient final EmotionAssociator _emotionAssociator = new EmotionAssociator();
   
   /******************************/
   /**** Perceptual variables ****/
@@ -160,7 +168,7 @@ public class Chrest extends Observable {
   
   //Used for scheduling and tracking the next fixation point that is to be made
   //by this model, if applicable.
-  private HistoryTreeMap _fixationsScheduled = new HistoryTreeMap();
+  private transient HistoryTreeMap _fixationsScheduled = new HistoryTreeMap();
   
   //Stipulates whether object locations in a Scene will have their coordinates 
   //specified relative to the agent equipped with CHREST's location in the Scene 
@@ -172,8 +180,8 @@ public class Chrest extends Observable {
   private final boolean _learnObjectLocationsRelativeToAgent;
   
   //Indicates whether the model is currently performing a Fixation set.
-  private boolean _performingFixations = false;
-  private int _fixationsAttemptedInCurrentSet = 0;
+  private transient boolean _performingFixations = false;
+  private transient int _fixationsAttemptedInCurrentSet = 0;
   
   /****************************/
   /**** Learning variables ****/
@@ -181,17 +189,17 @@ public class Chrest extends Observable {
   
   // The probability that discrimination or familiarisation will occur when 
   // requested (if the learning resource is free).
-  private float _rho = 1.0f; 
+  private transient float _rho = 1.0f; 
   
-  private boolean _canCreateSemanticLinks = true;
-  private int _nodeImageSimilarityThreshold = 4;
-  private int _maximumSemanticLinkSearchDistance = 1;
+  private transient boolean _canCreateSemanticLinks = true;
+  private transient int _nodeImageSimilarityThreshold = 4;
+  private transient int _maximumSemanticLinkSearchDistance = 1;
   
-  private boolean _canCreateTemplates = true;
-  private int _minNodeDepthInNetworkToBeTemplate = 3;
-  private int _minItemOrPositionOccurrencesInNodeImagesToBeSlotValue = 2;
+  private transient boolean _canCreateTemplates = true;
+  private transient int _minNodeDepthInNetworkToBeTemplate = 3;
+  private transient int _minItemOrPositionOccurrencesInNodeImagesToBeSlotValue = 2;
   
-  private Theory _reinforcementLearningTheory = null; //Must be set explicitly using Chrest.setReinforcementLearningTheory();
+  private transient Theory _reinforcementLearningTheory = null; //Must be set explicitly using Chrest.setReinforcementLearningTheory();
   
   /****************************************/
   /**** Visual-Spatial Field variables ****/
@@ -199,23 +207,23 @@ public class Chrest extends Observable {
   
   //Stores all VisualSpatialFieldObject identifiers that have been recognised in
   //the Fixation set currently being performed.
-  private List<String> _recognisedVisualSpatialFieldObjectIdentifiers = new ArrayList();
+  private transient List<String> _recognisedVisualSpatialFieldObjectIdentifiers = new ArrayList();
   
   /******************************************/
   /**** Experiment information variables ****/
   /******************************************/
   
-  private boolean _loadedIntoExperiment = true;
-  private boolean _engagedInExperiment = true;
-  private Experiment _currentExperiment = null;
+  private transient boolean _loadedIntoExperiment = true;
+  private transient boolean _engagedInExperiment = true;
+  private transient Experiment _currentExperiment = null;
   
   //Stores the names of the experiments that this model has been loaded into.
   //Used primarily for rendering the model's state graphically.
-  private List<String> _experimentsLocatedInNames = new ArrayList<>();
+  private transient List<String> _experimentsLocatedInNames = new ArrayList<>();
   
   //Stores the time that an experiment (keys) was run until (values).  Used 
   //primarily for rendering the model's state graphically.
-  private Map<String, Integer> _experimentNamesAndMaximumTimes = new HashMap<>();
+  private transient Map<String, Integer> _experimentNamesAndMaximumTimes = new HashMap<>();
     
   //Stores the string that is prepended to pre-experiment names in the 
   //"_experimentsLocatedInNames" instance variable.
@@ -225,11 +233,11 @@ public class Chrest extends Observable {
   /***** Execution history variables *****/
   /***************************************/
   
-  private final DatabaseInterface _databaseInterface;
+  private transient final DatabaseInterface _databaseInterface;
   
   //The model should not record its execution history by default since it can
   //slow down its operation significantly.
-  private boolean _executionHistoryRecordingEnabled = false;
+  private transient boolean _executionHistoryRecordingEnabled = false;
   
   //Save names of important database variables so consistency with operations is 
   //ensured.
@@ -250,24 +258,24 @@ public class Chrest extends Observable {
   //history database table itself.  The length of each array contained in each 
   //ArrayList element is 2: the first element is the column's name, the second 
   //element is the column's datatype.
-  private final ArrayList<String[]> _executionHistoryTableColumnMetadata = new ArrayList<>();
+  private transient final ArrayList<String[]> _executionHistoryTableColumnMetadata = new ArrayList<>();
   
   //Set-up a data structure to hold the values set for the columns in the last 
   //history row inserted.  The keys are column names, the values are the column 
   //values for the last row. This will be used to "fill-in" data for execution
   //history rows inserted that do not have all column values specified (values 
   //for the "TIME" column, for instance).
-  private final HashMap<String, Object> _lastHistoryRowInserted = new HashMap<>();
+  private transient final HashMap<String, Object> _lastHistoryRowInserted = new HashMap<>();
   
   /*************************/
   /***** GUI variables *****/
   /*************************/
   
-  private final int _nodeDrawingThreshold = 5000;
+  private transient final int _nodeDrawingThreshold = 5000;
   
   // use to freeze/unfreeze updates to the model to prevent GUI
   // seizing up during training
-  private boolean _frozen = false;
+  private transient boolean _frozen = false;
   
   /****************************************************************************/
   /****************************************************************************/
@@ -399,6 +407,154 @@ public class Chrest extends Observable {
       } catch (NoSuchFieldException | SecurityException | IllegalArgumentException | IllegalAccessException ex) {
         Logger.getLogger(Chrest.class.getName()).log(Level.SEVERE, null, ex);
       }
+    }
+  }
+  
+  /**
+   * Used to restore a {@link jchrest.architecture.Chrest} model from a 
+   * serialized file (to create such a file, see {@link 
+   * jchrest.architecture.Chrest#saveLtmState(java.lang.String, int)}) 
+   * whose location on the local system is specified by {@code 
+   * absolutePathToSaveFile}.
+   * <p>
+   * Note that it is only the long-term memory that is restored and metrics 
+   * concerning this, all other {@link jchrest.architecture.Chrest} model 
+   * parameters are set to their defaults.  Therefore, the only information that 
+   * will persist between serialized and deserialized {@link 
+   * jchrest.architecture.Chrest} models are:
+   * <ul>
+   *  <li>The complete state of every {@link jchrest.architecture.Link}</li>
+   *  <li>The complete state of every {@link jchrest.architecture.Node}</li>
+   *  <li>
+   *    Whether the {@link jchrest.architecture.Chrest} model learns object
+   *    locations relative to itself
+   *  </li>
+   *  <li>The next {@link jchrest.architecture.Node} reference</li>
+   *  <li>
+   *    The number of {@link jchrest.lib.Modality#ACTION}, {@link 
+   *    jchrest.lib.Modality#VERBAL} and {@link jchrest.lib.Modality#VISUAL} 
+   *    {@link jchrest.architecture.Node Nodes} in long-term memory.
+   * </ul>
+   * The history of every deserialized {@link jchrest.architecture.Node} will 
+   * not be complete; their history will be set to the most recent version of 
+   * its serialized counterpart.
+   * 
+   * @param absolutePathToSaveFile
+   * @param time The time that the new {@link jchrest.architecture.Chrest} model
+   * will be created (all historical information for the deserialized objects 
+   * will be set according to this time).
+   */
+  public Chrest(String absolutePathToSaveFile, int time){
+    
+    this._creationTime = time;
+    this.setClocks(time - 1);
+    this._visualStm = new Stm (this, Modality.VISUAL, 4, time);
+    this._verbalStm = new Stm (this, Modality.VERBAL, 2, time);
+    this._actionStm = new Stm (this, Modality.ACTION, 4, time);
+    this._perceiver = new Perceiver(this, time);
+    this._visualSpatialFields.put(time - 1, null);
+    this._fixationsScheduled.put(time - 1, new ArrayList());
+    this._databaseInterface = new DatabaseInterface(null);
+    String[] idColumnNameAndType = {Chrest._executionHistoryTableRowIdColumnName, "INT"};
+    String[] timeColumnNameAndType = {Chrest._executionHistoryTableTimeColumnName, "INT"};
+    String[] operationColumnNameAndType = {Chrest._executionHistoryTableOperationColumnName, "VARCHAR(255)"};
+    String[] inputColumnNameAndType = {Chrest._executionHistoryTableInputColumnName, "VARCHAR(255)"};
+    String[] descriptionColumnNameAndType = {Chrest._executionHistoryTableDescriptionColumnName, "LONGVARCHAR"};
+    String[] outputColumnNameAndType = {Chrest._executionHistoryTableOutputColumnName, "VARCHAR(255)"};
+    this._executionHistoryTableColumnMetadata.add(idColumnNameAndType);
+    this._executionHistoryTableColumnMetadata.add(timeColumnNameAndType);
+    this._executionHistoryTableColumnMetadata.add(operationColumnNameAndType);
+    this._executionHistoryTableColumnMetadata.add(inputColumnNameAndType);
+    this._executionHistoryTableColumnMetadata.add(descriptionColumnNameAndType);
+    this._executionHistoryTableColumnMetadata.add(outputColumnNameAndType);
+    
+    //Set instance variables that need to be set to satisfy the compiler but 
+    //will be overwritten during deserialization.
+    this._domainSpecifics = new GenericDomain(this, 10, 3);
+    this._learnObjectLocationsRelativeToAgent = false;
+    
+    try {
+
+      //Instantiate lists containing the deserialized Node and Link objects.
+      //These are required since deserialized Links will point to the original
+      //versions of Nodes.  Consequently, these pointers need to be updated to
+      //point to the Nodes deserialized from the file specified.
+      ArrayList<Node> restoredNodes = new ArrayList();
+      ArrayList<Link> restoredLinks = new ArrayList();
+      
+      try (ObjectInputStream input = new ObjectInputStream( new FileInputStream(absolutePathToSaveFile) )) {
+        
+        while(true){
+          Object readObject = input.readObject();
+          Class<? extends Object> objectReadClass = readObject.getClass();
+
+          ///// DESERIALIZE MODEL /////
+          if(objectReadClass.equals(Chrest.class)){
+            Chrest savedModel = (Chrest)readObject;
+
+            //Set newModel._learnObjectLocationsRelativeToAgent using reflection
+            //since this field is "final" and will have been set when the Chrest
+            //constructor is used to instantiate the new model above.
+            Field learnObjectLocationsRelativeToAgentField = Chrest.class.getDeclaredField("_learnObjectLocationsRelativeToAgent");
+            learnObjectLocationsRelativeToAgentField.setAccessible(true);
+            learnObjectLocationsRelativeToAgentField.set(this, savedModel._learnObjectLocationsRelativeToAgent);
+
+            //Set Node metrics.
+            this._nextLtmNodeReference = savedModel._nextLtmNodeReference;
+            this._totalNumberActionLtmNodes.put(time, savedModel._totalNumberActionLtmNodes.lastEntry().getValue());
+            this._totalNumberVerbalLtmNodes.put(time, savedModel._totalNumberVerbalLtmNodes.lastEntry().getValue());
+            this._totalNumberVisualLtmNodes.put(time, savedModel._totalNumberVisualLtmNodes.lastEntry().getValue());
+          }
+          ///// DESERIALIZE NODE /////
+          else if(objectReadClass.equals(Node.class)){
+            Node node = new Node(this, (Node)readObject, time);
+            restoredNodes.add(node);
+
+            //Set Node as root of a Modality, if applicable.
+            if(node.isRootNode()){
+              Modality nodeModality = node.getModality();
+              if(nodeModality == Modality.ACTION){
+                this._actionLtm = node;
+              }
+              else if(nodeModality == Modality.VERBAL){
+                this._verbalLtm = node;
+              }
+              else if(nodeModality == Modality.VISUAL){
+                this._visualLtm = node;
+              }
+            }
+          }
+          ///// DESERIALIZE LINK /////
+          else if(objectReadClass.equals(Link.class)){
+            Link link = (Link)readObject;
+            restoredLinks.add(link);
+
+            Field linkCreationTimeField = Link.class.getDeclaredField("_creationTime");
+            linkCreationTimeField.setAccessible(true);
+            linkCreationTimeField.set(link, time);
+          }
+        } 
+      } catch (EOFException ex){
+        //This exception is expected and doesn't need to be logged so it can be
+        //swallowed with no record of its occurrence.  When the exception is
+        //thrown, the input from the serialized model file will be closed and 
+        //the read-in while loop above will be terminated. 
+      }
+      
+      //Correct Nodes pointed to by Links (see comment above).
+      Field linkChildField = Link.class.getDeclaredField("_child");
+      linkChildField.setAccessible(true);
+      for(Link restoredLink : restoredLinks){
+        int reference = restoredLink.getChildNode().getReference();
+        for(Node restoredNode : restoredNodes){
+          if(restoredNode.getReference() == reference){
+            linkChildField.set(restoredLink, restoredNode);
+            break;
+          }
+        }
+      }
+    } catch (IOException | ClassNotFoundException | IllegalArgumentException | IllegalAccessException | NoSuchFieldException | SecurityException ex) {
+      Logger.getLogger(Chrest.class.getName()).log(Level.SEVERE, null, ex);
     }
   }
   
@@ -1097,7 +1253,7 @@ public class Chrest extends Observable {
    * visual LTM that are templates at the time specified.
    */
   public int countTemplatesInVisualLtm(int time) {
-    return this.countTemplatesBelowNode(this.getLtmModalityRootNode(Modality.VISUAL), 0, time);
+    return this.countTemplatesBelowNode(this.getLtmModalityRootNode(Modality.VISUAL), time);
   }
   
   /**
@@ -1106,14 +1262,14 @@ public class Chrest extends Observable {
    * @return The number of template {@link jchrest.architecture.Node}s below the
    * {@link jchrest.architecture.Node} passed at the time specified.
    */
-  private int countTemplatesBelowNode (Node node, int count, int time) {
-    boolean nodeIsTemplate = node.isTemplate (time);
-    if(nodeIsTemplate) count += 1;
+  private int countTemplatesBelowNode (Node node, int time) {
+    int count = 0;
+    if(node.isTemplate (time)) count = 1;
 
     List<Link> children = node.getChildren(time);
     if(children != null){
       for (Link link : children) {
-        count += this.countTemplatesBelowNode(link.getChildNode(), count, time);
+        count += this.countTemplatesBelowNode(link.getChildNode(), time);
       }
     }
 
@@ -1240,6 +1396,36 @@ public class Chrest extends Observable {
   }
   
   /**
+   * 
+   * @param time
+   * 
+   * @return The total number of naming links in visual long-term memory. 
+   */
+  public int getNamingLinkCount(int time){
+    return this.getNamingLinkCount(this._visualLtm, time);
+  }
+  
+  /**
+   * @param node The {@link jchrest.architecture.Node} to count from.
+   * @param time
+   * 
+   * @return See parameter documentation.
+   */
+  protected int getNamingLinkCount(Node node, int time){
+    int count = 0;
+    if(node.getNamedBy(time) != null) count = 1;
+      
+    List<Link> children = node.getChildren(time);
+    if(children != null){
+      for(Link link : children){
+        count += this.getNamingLinkCount(link.getChildNode(), time);
+      }
+    }
+    
+    return count;
+  }
+  
+  /**
    * @param time
    * @return The total number of productions for this {@link #this} model's
    * {@link jchrest.lib.Modality#VISUAL} LTM at the time specified.
@@ -1281,15 +1467,30 @@ public class Chrest extends Observable {
   }
   
   /**
+   * 
+   * @param time
+   * @return The total number of semantic links in the entirety of this {@link 
+   * jchrest.architecture.Chrest} model's long-term memory at the {@code time}
+   * specified.
+   */
+  public int getSemanticLinkCount(int time){
+    int totalSemanticLinks = 0;
+    for(Entry<Integer, Integer> semanticLinkCountAndFrequency : this.getSemanticLinkCountsAndFrequencies(time).entrySet()){
+      totalSemanticLinks += (semanticLinkCountAndFrequency.getKey() * semanticLinkCountAndFrequency.getValue());
+    }
+    return totalSemanticLinks;
+  }
+  
+  /**
    * @param time
    * @return A map of the number of semantic links to frequencies for this 
    * {@link #this} model's LTM at the time specified.
    */ 
-  public Map<Integer, Integer> getSemanticLinkCounts(int time) {
+  public Map<Integer, Integer> getSemanticLinkCountsAndFrequencies(int time) {
     Map<Integer, Integer> semanticLinkCountsAndFrequencies = new HashMap();
 
     for(Modality modality : Modality.values()){
-      this.getSemanticLinkCounts(this.getLtmModalityRootNode(modality), semanticLinkCountsAndFrequencies, time);
+      this.getSemanticLinkCountsAndFrequencies(this.getLtmModalityRootNode(modality), semanticLinkCountsAndFrequencies, time);
     }
 
     return semanticLinkCountsAndFrequencies;
@@ -1303,7 +1504,7 @@ public class Chrest extends Observable {
    * @param semanticLinkCountsAndFrequencies 
    * @param time
    */
-  public void getSemanticLinkCounts (Node node, Map<Integer, Integer> semanticLinkCountsAndFrequencies, int time) {
+  private void getSemanticLinkCountsAndFrequencies (Node node, Map<Integer, Integer> semanticLinkCountsAndFrequencies, int time) {
     int semanticLinkCount = 0;
     
     List<Node> semanticLinks = node.getSemanticLinks(time);
@@ -1322,7 +1523,7 @@ public class Chrest extends Observable {
     List<Link> children = node.getChildren(time);
     if(children != null){
       for (Link child : children) {
-        this.getSemanticLinkCounts(child.getChildNode(), semanticLinkCountsAndFrequencies, time);
+        this.getSemanticLinkCountsAndFrequencies(child.getChildNode(), semanticLinkCountsAndFrequencies, time);
       }
     }
   }
@@ -1822,40 +2023,10 @@ public class Chrest extends Observable {
   /**** Long-term memory ****/
   /**************************/
   
-  /** 
-   * @param pattern
-   * @param time
-   * @return The image of the {@link jchrest.architecture.Node} associated with
-   * the {@link jchrest.architecture.Node} recognised after sorting the 
-   * {@link jchrest.lib.ListPattern} specified through the long-term memory of 
-   * {@link #this} at the time specified.  If cognition is busy at the time
-   * specified or there is no {@link jchrest.architecture.Node} associated with
-   * the {@link jchrest.architecture.Node} recognised then null is returned.
-   */
-  public ListPattern getAssociatedPattern (ListPattern pattern, int time) {
-    Node recognisedNode = recognise(pattern, time, true);
-    
-    if(recognisedNode != null){
-      
-      //Cognition must be free at this point otherwise the recognised node would
-      //be null so try to get the node associated with the one recognised.  If 
-      //such a node exists, set the cognition clock to the time its set to after 
-      //recognition plus the time taken to traverse a long term memory link 
-      //(time to get to the associated node from the recognised node).
-      Node associatedNode = recognisedNode.getAssociatedNode(time);
-      if (associatedNode != null) {
-        time += this._ltmLinkTraversalTime;
-        this._cognitionClock = time;
-        return associatedNode.getImage(time);
-      }
-    }
-    
-    return null;
-  }
-  
   /**
    * @param pattern
    * @param time
+   * 
    * @return The image of the {@link jchrest.architecture.Node} that names the
    * {@link jchrest.architecture.Node} recognised by sorting the {@link 
    * jchrest.lib.ListPattern} specified through the long-term memory of {@link 
@@ -2858,10 +3029,12 @@ public class Chrest extends Observable {
       this.printDebugStatement(
         "- Checking modality of nodes to associate (node to associate from modality: '" +
         nodeToAssociateFromModality.toString() + "', node to associate to modality: '" +
-        nodeToAssociateToModality.toString() + "'."
+        nodeToAssociateToModality.toString() + "'  If these are equal and the model " +
+        "can create semantic links (" + this._canCreateSemanticLinks + "), a " +
+        "uni/bi-directional semantic link may be created."
       );
       
-      if(nodeToAssociateFromModality.equals(nodeToAssociateToModality)){
+      if(nodeToAssociateFromModality.equals(nodeToAssociateToModality) && this._canCreateSemanticLinks){
         this.printDebugStatement("  ~ Attempting to create a semantic link");
         
         List<Node> nodeToAssociateFromSemanticLinks = nodeToAssociateFrom.getSemanticLinks(time);
@@ -2919,6 +3092,7 @@ public class Chrest extends Observable {
                 "  ~ Time incremented by semantic link creation time specified (" + 
                 this._semanticLinkCreationTime + ") to " + time
               );
+              
               toFromAssociationCreated = nodeToAssociateTo.addSemanticLink(nodeToAssociateFrom, time);
             }
           
@@ -3155,13 +3329,6 @@ public class Chrest extends Observable {
     
     if(discriminationSuccessful){
       this._cognitionClock = time;
-    }
-    else if(
-      nextLtmNodeReferenceBeforeDiscrimination == this._nextLtmNodeReference - 1 &&
-      ltmModalitySizeBeforeDiscrimination == this.getLtmModalitySize(pattern.getModality(), time) - 1
-    ){
-      this._nextLtmNodeReference--;
-      this.decrementLtmModalityNodeCount(pattern.getModality(), time);
     }
     
     ChrestStatus discriminationResult = (discriminationSuccessful ? ChrestStatus.DISCRIMINATION_SUCCESSFUL : ChrestStatus.DISCRIMINATION_FAILED);
@@ -4269,7 +4436,7 @@ public class Chrest extends Observable {
             nonSemanticAssociationsCreated = this.associateNodes(visualStmHypothesis, nodeToAdd, time);
           }
         }
-
+        
         if(!nonSemanticAssociationsCreated){
           List<Node> stmContents = stm.getContents(time);
           if(stmContents != null && !stmContents.isEmpty()){
@@ -4540,21 +4707,32 @@ public class Chrest extends Observable {
    * have {@link jchrest.lib.ItemSquarePattern} images.
    * 
    * @param time
+   * 
+   * @return The number of templates made.
    */
-  public void makeTemplates (int time) {
+  public int makeTemplates (int time) {
+    int numberTemplatesMade = 0;
+    
     if(
       this._creationTime <= time && 
       this._canCreateTemplates &&
       this._cognitionClock < time
     ){
-      this.makeTemplates (this._visualLtm, time);
+      numberTemplatesMade = this.makeTemplates (this._visualLtm, time);
     }
+    
+    return numberTemplatesMade;
   }
   
   /**
+   * Invokes {@link jchrest.architecture.Node#makeTemplate(int)} on the {@code 
+   * node} specified at the {@code time} specified and recursively invokes this
+   * function on all of the {@code node} specified's children.
    * 
    * @param node
    * @param time 
+   * 
+   * @return The number of templates made.
    * 
    * @author Martyn Lloyd-Kelly <martynlk@liverpool.ac.uk>
    */
@@ -4573,18 +4751,18 @@ public class Chrest extends Observable {
   //      each slot.  This means that the Node.makeTemplate() procedure should
   //      return how many slots were created and then the cognition clock 
   //      should be incremented accordingly.
-  private void makeTemplates(Node node, int time){
-    
-    if(!node.isRootNode()){
-      node.makeTemplate(time);
-    }
+  private int makeTemplates(Node node, int time){
+    int count = 0;
+    if(!node.isRootNode() && node.makeTemplate(time)) count++;
     
     List<Link> children = node.getChildren(time);
     if(children != null){
       for (Link link : children) {
-        this.makeTemplates (link.getChildNode(), time);
+        count += this.makeTemplates (link.getChildNode(), time);
       }
     }
+    
+    return count;
   }
 
   //TODO: Organise and check all code below this point.
@@ -7301,16 +7479,17 @@ public class Chrest extends Observable {
   }
 
   public Emotion getCurrentFollowedByEmotion (Stm stm, int time) {
-    if (stm.getCount (time) == 0) {
-      return null;
-    } else {
-      Node followed_by = stm.getItem(0, time).getAssociatedNode (time);
-      if (followed_by == null) {
-        return null;
-      } else {
-        return _emotionAssociator.getRWEmotion (followed_by);
-      }
-    }
+    throw new UnsupportedOperationException();
+//    if (stm.getCount (time) == 0) {
+//      return null;
+//    } else {
+//      Node followed_by = stm.getItem(0, time).getAssociatedNode (time);
+//      if (followed_by == null) {
+//        return null;
+//      } else {
+//        return _emotionAssociator.getRWEmotion (followed_by);
+//      }
+//    }
   }
 
   public Theory getReinforcementLearningTheory(){
@@ -7388,13 +7567,82 @@ public class Chrest extends Observable {
    * 
    * @param time 
    */
-  public void setClocks(int time){
+  public final void setClocks(int time){
     for(Field field : this.getClockInstanceVariables()){
       try {
         field.setInt(this, time);
       } catch (IllegalArgumentException | IllegalAccessException ex) {
         Logger.getLogger(Chrest.class.getName()).log(Level.SEVERE, null, ex);
       }
+    }
+  }
+  
+  /**
+   * Used to save this {@link jchrest.architecture.Chrest} model to a serialized 
+   * file for use later (to load a model from such a file, see {@link 
+   * jchrest.architecture.Chrest#Chrest(java.lang.String, int)}) 
+   * whose location on the local system is specified by {@code 
+   * absolutePathToSaveFile}.
+   * <p>
+   * The only information saved is:
+   * <ul>
+   *  <li>The complete state of every {@link jchrest.architecture.Link}</li>
+   *  <li>The complete state of every {@link jchrest.architecture.Node}</li>
+   *  <li>
+   *    Whether the {@link jchrest.architecture.Chrest} model learns object
+   *    locations relative to itself
+   *  </li>
+   *  <li>The next {@link jchrest.architecture.Node} reference</li>
+   *  <li>
+   *    The number of {@link jchrest.lib.Modality#ACTION}, {@link 
+   *    jchrest.lib.Modality#VERBAL} and {@link jchrest.lib.Modality#VISUAL} 
+   *    {@link jchrest.architecture.Node Nodes} in long-term memory.
+   *  </li>
+   * </ul>
+   * 
+   * @param absolutePathToSaveFile
+   * @param time 
+   */
+  public void saveLtmState(String absolutePathToSaveFile, int time){
+    try {
+      File file = new File(absolutePathToSaveFile);
+      if(file.exists()) file.delete();
+      
+      ObjectOutputStream output = new ObjectOutputStream( new FileOutputStream(absolutePathToSaveFile) );
+      output.writeObject(this);
+      this.writeNodeObjectToFile(this._actionLtm, output, time);
+      this.writeNodeObjectToFile(this._verbalLtm, output, time);
+      this.writeNodeObjectToFile(this._visualLtm, output, time);
+      
+    } catch (FileNotFoundException ex) {
+      Logger.getLogger(Chrest.class.getName()).log(Level.SEVERE, null, ex);
+    } catch (IOException ex) {
+      Logger.getLogger(Chrest.class.getName()).log(Level.SEVERE, null, ex);
+    }
+  }
+  
+  /**
+   * Recursive function: serializes the {@code nodeToSerialize} to the {@code 
+   * output} specified and does the same for all children below the {@code 
+   * nodeToSerialize} at the {@code time} specified.
+   * 
+   * @param nodeToSerialize 
+   * @param output
+   * @param time
+   */
+  private void writeNodeObjectToFile(Node nodeToSerialize, ObjectOutputStream output, int time){
+    try {
+      output.writeObject(nodeToSerialize);
+    
+      List<Link> children = nodeToSerialize.getChildren(time);
+      if(children != null){
+        for(Link link : children){
+          output.writeObject(link);
+          this.writeNodeObjectToFile(link.getChildNode(), output, time);
+        }
+      }
+    } catch (IOException ex) {
+      Logger.getLogger(Chrest.class.getName()).log(Level.SEVERE, null, ex);
     }
   }
 }

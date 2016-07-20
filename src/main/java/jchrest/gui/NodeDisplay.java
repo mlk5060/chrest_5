@@ -51,11 +51,6 @@ class NodeDisplay implements LtmTreeViewNode {
       int fixedItemsWidth = Math.max (getNodeNumberWidth (g, size), 
           size.getWidth (toDisplay(), g));
       
-      Node associatedNode = _node.getAssociatedNode (_time);
-      if (associatedNode != null) {
-        fixedItemsWidth = Math.max (fixedItemsWidth, size.getWidth (associatedNode.getReference() + "", g));
-      }
-      
       Node namedBy = _node.getNamedBy (_time);
       if (namedBy != null) {
         fixedItemsWidth = Math.max (fixedItemsWidth, size.getWidth (namedBy.getReference() + "", g));
@@ -77,12 +72,6 @@ class NodeDisplay implements LtmTreeViewNode {
       height += getNodeNumberHeight (g, size);
       height += size.getMargin (); // gap between the two
       height += size.getHeight (toDisplay ().toString (), g);
-      
-      Node associatedNode = _node.getAssociatedNode(_time);
-      if (associatedNode != null) {
-        height += size.getMargin ();
-        height += size.getHeight (associatedNode.getReference() + "", g);
-      }
       
       Node namedBy = _node.getNamedBy(_time);
       if (namedBy != null) {
@@ -131,13 +120,6 @@ class NodeDisplay implements LtmTreeViewNode {
 
     int textHeight = size.getHeight (getNodeNumberString (), g);
     size.drawText (g, x, y + textHeight + size.getMargin (), toDisplay ().toString ());
-    
-    Node associatedNode = _node.getAssociatedNode (_time);
-    if (associatedNode != null) {
-      textHeight += size.getMargin () + size.getHeight ((associatedNode.getReference() + ""), g);
-      g.setColor (Color.BLUE);
-      size.drawText (g, x, y + textHeight + size.getMargin (), associatedNode.getReference() + "");
-    }
     
     Node namedBy = _node.getNamedBy (_time);
     if (namedBy != null) {

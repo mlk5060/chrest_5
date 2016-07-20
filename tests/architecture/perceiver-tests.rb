@@ -181,7 +181,10 @@ unit_test "add_fixation" do
   Chrest.class_eval{
     field_accessor :_recognisedVisualSpatialFieldObjectLifespan, 
       :_unrecognisedVisualSpatialFieldObjectLifespan,
-      :_timeTakenToDecideUponCentralFixations
+      :_timeTakenToDecideUponCentralFixations,
+      :_cognitionClock,
+      :_attentionClock,
+      :_nextLtmNodeReference
   }
   
   vsf_field = VisualSpatialField.java_class.declared_field("_visualSpatialField")
@@ -203,7 +206,12 @@ unit_test "add_fixation" do
   # Need access to private instance variables of Node for template construction
   # so that scenario 8 can operate correctly.
   Node.class_eval{
-    field_accessor :_childHistory, :_itemSlotsHistory, :_positionSlotsHistory, :_filledItemSlotsHistory, :_filledPositionSlotsHistory, :_templateHistory
+    field_accessor :_childHistory, 
+    :_itemSlotsHistory, 
+    :_positionSlotsHistory, 
+    :_filledItemSlotsHistory, 
+    :_filledPositionSlotsHistory, 
+    :_templateHistory
   }
   
   for scenario in 1..24
@@ -323,6 +331,7 @@ unit_test "add_fixation" do
         template_node_content = ListPattern.new(Modality::VISUAL)
         template_node_content.add(template_node_image.getItem(0))
         template_node = Node.new(model, template_node_content, template_node_image, time)
+        model._nextLtmNodeReference += 1
 
         # Specify slot values for template node.
         itemSlots = ArrayList.new()
@@ -513,13 +522,13 @@ unit_test "add_fixation" do
 
       assert_equal(
         expected_cognition_clock,
-        model.getCognitionClock,
+        model._cognitionClock,
         "occurred when checking cognition clock in scenario " + scenario.to_s
       )
 
       assert_equal(
         expected_attention_clock,
-        model.getAttentionClock,
+        model._attentionClock,
         "occurred when checking attention clock in scenario " + scenario.to_s
       )
       
@@ -657,7 +666,7 @@ unit_test "add_fixation" do
         expected_cognition_clock = (fixation._performanceTime + (model.getLtmLinkTraversalTime() * 2) + model.getFamiliarisationTime())
         assert_equal(
           expected_cognition_clock,
-          model.getCognitionClock,
+          model._cognitionClock,
           "occurred when checking cognition clock after addFixation " +
           "is called for the second time in scenario " + scenario.to_s
         )
@@ -665,7 +674,7 @@ unit_test "add_fixation" do
         expected_attention_clock = (fixation._performanceTime + (model.getLtmLinkTraversalTime() * 2) + model.getTimeToUpdateStm())
         assert_equal(
           expected_attention_clock,
-          model.getAttentionClock,
+          model._attentionClock,
           "occurred when checking attention clock after addFixation " +
           "is called for the second time in scenario " + scenario.to_s
         )

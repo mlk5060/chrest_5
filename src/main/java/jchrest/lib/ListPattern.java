@@ -3,6 +3,7 @@
 
 package jchrest.lib;
 
+import java.io.Serializable;
 import jchrest.domainSpecifics.Scene;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -23,7 +24,7 @@ import java.util.Objects;
  *
  * @author Peter C. R. Lane
  */
-public class ListPattern extends Pattern implements Iterable<PrimitivePattern> {
+public class ListPattern extends Pattern implements Iterable<PrimitivePattern>, Serializable {
   private List<PrimitivePattern> _list;  // items within the pattern
   private Modality _modality;   // record type of ListPattern
   private boolean _finished;    // marker to indicate if pattern complete

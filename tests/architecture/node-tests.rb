@@ -62,11 +62,15 @@ end
 # 1. Node should be constructed when requested.
 # 2. Node should not be constructed when requested.
 process_test "non-root node constructor" do
+  
+  Chrest.class_eval{
+    field_accessor :_nextLtmNodeReference
+  }
+  
   model_creation_time = 0
   model = Chrest.new(model_creation_time, false) # Modality root nodes will have 
                                                  # been constructed now too.
   time = model_creation_time
-  node_reference = 3
   Modality.values().each do |modality|
     
     ##################
@@ -89,9 +93,9 @@ process_test "non-root node constructor" do
         node_image,
         node_creation_time
       )
+      model._nextLtmNodeReference += 1
 
       assert_false(node.isRootNode(), "when checking if node is a root node")
-      assert_equal(node_reference, node.getReference(), "when checking reference of node")
       assert_equal(node_contents, node.getContents(), "when checking contents of node")
       assert_equal(node_image, node.getImage(node_creation_time), "when checking image of node")
       assert_equal(node_creation_time, node.getCreationTime(), "when checking creation time of node")
@@ -119,6 +123,7 @@ process_test "non-root node constructor" do
         Pattern.makeList(["image"].to_java(:String), Modality::VISUAL),
         model_creation_time - 1
       )
+      model._nextLtmNodeReference += 1
     rescue
       error_thrown = true
     end
@@ -127,19 +132,7 @@ process_test "non-root node constructor" do
       "when checking if an error is thrown when the Node is constructed before " + 
       "the time its associated model was created"
     )
-    
-    node_reference += 1
   end
-  
-  ####################
-  ### FINAL CHECKS ###
-  ####################
-  
-  # The total number of LTM nodes in the model should be 1 since modality root
-  # nodes are not included in the count and only 1 Node construction request 
-  # should have been served.
-  assert_equal(3, model.getLtmSize(time), "when checking total number of LTM nodes after constructing nodes")
-  assert_equal(6, model.getNextLtmNodeReference(), "when checking next node reference after constructing nodes")
 end
 
 ################################################################################
@@ -148,6 +141,10 @@ unit_test "size" do
   #############
   ### SETUP ###
   #############
+  
+  Chrest.class_eval {
+    field_accessor :_nextLtmNodeReference
+  }
   
   #Node.addChild() needs to be made publicly accessible
   add_child = Node.java_class.declared_method(:addChild, ListPattern, Node, Java::int, java.lang.String)
@@ -164,16 +161,19 @@ unit_test "size" do
   node_1_image = Pattern.makeVisualList(["1"].to_java(:String))
   node_1_creation_time = model_creation_time + 1
   node_1 = Node.new(model, node_1_contents, node_1_image, node_1_creation_time)
+  model._nextLtmNodeReference += 1
   
   node_2_contents = Pattern.makeVisualList(["2"].to_java(:String))
   node_2_image = Pattern.makeVisualList(["2"].to_java(:String))
   node_2_creation_time = node_1_creation_time + 1
   node_2 = Node.new(model, node_2_contents, node_2_image, node_2_creation_time)
+  model._nextLtmNodeReference += 1
   
   node_3_contents = Pattern.makeVisualList(["3"].to_java(:String))
   node_3_image = Pattern.makeVisualList(["3"].to_java(:String))
   node_3_creation_time = node_2_creation_time + 1
   node_3 = Node.new(model, node_3_contents, node_3_image, node_3_creation_time)
+  model._nextLtmNodeReference += 1
   
   add_node_1_as_child_to_visual_root_time = node_3_creation_time + 5
   visual_root_node.addChild(
@@ -266,6 +266,10 @@ process_test "child functionality" do
   ### SETUP ###
   #############
   
+  Chrest.class_eval{
+    field_accessor :_nextLtmNodeReference
+  }
+  
   # The "Node.addChild()" method is overloaded with 2 variations: one with an 
   # extended number of parameters (ext_add_child below), the other with a 
   # restricted number of parameters (res_add_child below) and both have private 
@@ -288,6 +292,7 @@ process_test "child functionality" do
     parent_node_image,
     parent_node_creation_time
   )
+  model._nextLtmNodeReference += 1
   
   #Child is invalid since it is not the same Modality as the parent.
   invalid_child_creation_time = parent_node_creation_time + 1
@@ -299,6 +304,11 @@ process_test "child functionality" do
     invalid_child_image,
     invalid_child_creation_time
   )
+  # Note that model._nextLtmNodeReference isn't incremented by 1 here since, 
+  # during regular CHREST model operation, this Node would not be added as a 
+  # child and, consequently, the model's "_nextLtmNodeReference" variable would
+  # not be incremented by 1.  So, the reference for the Node created above and
+  # below are the same.
   
   child_node_1_creation_time = parent_node_creation_time + 1
   child_node_1_contents = Pattern.makeList(["child_1_contents"].to_java(:String), Modality::VISUAL)
@@ -309,6 +319,7 @@ process_test "child functionality" do
     child_node_1_image,
     child_node_1_creation_time
   )
+  model._nextLtmNodeReference += 1
   
   child_node_2_creation_time = child_node_1_creation_time + 1
   child_node_2_contents = Pattern.makeList(["child_2_contents"].to_java(:String), Modality::VISUAL)
@@ -319,10 +330,25 @@ process_test "child functionality" do
     child_node_2_image,
     child_node_2_creation_time
   )
+  model._nextLtmNodeReference += 1
+  
+  
+  # Reset the model's "_nextLtmReference" variable to 4, not 3, as expected.  To
+  # explain: when the model is constructed, the modality root Nodes for LTM are
+  # constructed and the model's "_nextLtmReference" variable is incremented 
+  # accordingly.  This means that, when the parent Node is constructed, it is 
+  # assigned the reference 3.  However, this test doesn't add the parent Node to
+  # the relevant modality root Node using "Node.addChild()" so the model's
+  # "_nextLtmReference" variable is not incremented programatically.  Therefore,
+  # the expected value of the model's "_nextLtmReference" variable when the first
+  # child is added to the parent Node should be 4.  This is absolutely vital for
+  # correct test progression since Node reference numbers determine whether 
+  # child links should be added or not.
+  model._nextLtmNodeReference -= 2
   
   # Setup times to use
   before_model_created_time = model_creation_time - 1
-  after_model_created_but_before_parent_created_time = parent_node_creation_time - 1
+  after_model_created_but_before_parent_created_time = parent_node_creation_time - 2
   after_model_and_parent_created_but_before_children_created_time = child_node_1_creation_time - 1
   after_model_parent_and_child_1_created_but_before_child_2_created_time = child_node_2_creation_time - 1
   after_model_parent_and_both_child_nodes_created_time = child_node_2_creation_time
@@ -558,9 +584,9 @@ process_test "child functionality" do
     "occurred when checking if the third child Node added is a root Node"
   )
   assert_equal(
-    7, # 3 modality root nodes created when CHREST created (0, 1, 2), parent 
-       # node (3), invalid child (4) first and second children (5, 6), this node
-       # (7).
+    6, # 3 modality root nodes created when CHREST created (0, 1, 2), parent 
+       # node (3), invalid child (4) first and second children (4, 5), this node
+       # (6).
     first_child_after_adding_three_children.getChildNode().getReference(),
     "occurred when checking the reference of the third child Node added"
   )
@@ -658,7 +684,7 @@ process_test "image functionality" do
   #############
   ### SETUP ###
   #############
-   
+  
   # Node.setImage() has private access so, to test it, its accessibility must
   # be public.
   set_image = Node.java_class.declared_method(:setImage, ListPattern, Java::int)
@@ -730,17 +756,17 @@ process_test "image functionality" do
   for time in model_creation_time..(extend_image_at_valid_time + 3)
     result = node.getImage(time)
     
-    if time >= model_creation_time and time < node_creation_time
+    if time >= model_creation_time and time < (node_creation_time - 1)
       assert_equal(
         nil, 
         result, 
         "occurred when checking node image before node created"
       )
-    elsif time >= node_creation_time and time < new_image_set_at_time
+    elsif time >= (node_creation_time - 1) and time < new_image_set_at_time
       assert_equal(
         Pattern.makeVisualList(["initial_image"].to_java(:String)).toString(), 
         result.toString(), 
-        "occurred when checking node image after node created but before image changed"
+        "occurred when checking node image before/after node created but before image changed"
       )
     elsif time >= new_image_set_at_time and time < extend_image_at_valid_time
       assert_equal(
@@ -970,8 +996,11 @@ process_test "production functionality" do
   ### "getProductions()" TESTING ###
   ##################################
   
-  productions_before_visual_node_1_created = visual_node_1.getProductions(time_visual_node_1_created - 1)
-  assert_equal(nil, productions_before_visual_node_1_created, "occurred when checking the number of productions present in a visual node before the visual node is created")
+  productions_before_visual_node_1_created = visual_node_1.getProductions(time_visual_node_1_created - 2)
+  assert_equal(nil, productions_before_visual_node_1_created, "occurred when checking the productions present in a visual node before the visual node is created")
+  
+  productions_when_visual_node_1_created = visual_node_1.getProductions(time_visual_node_1_created - 1)
+  assert_equal(LinkedHashMap.new(), productions_when_visual_node_1_created, "occurred when checking the productions present in a visual node when the visual node is created")
   
   productions_before_any_production_added = visual_node_1.getProductions(time_first_production_added - 1)
   assert_equal(0, productions_before_any_production_added.size(), "occurred when checking the number of productions present in a visual node before any productions are added")
@@ -1071,11 +1100,12 @@ process_test "semantic link functionality" do
     node_1_semantic_links_at_time = node_1.getSemanticLinks(time)
     node_2_semantic_links_at_time = node_2.getSemanticLinks(time)
     
-    if time < node_1_creation_time
+    if time < (node_1_creation_time - 1)
       assert_equal(
         nil, 
         node_1_semantic_links_at_time, 
-        "occurred")
+        "occurred when checking the semantic links of node_1 before it is created"
+      )
     else
       assert_true(
         node_1_semantic_links_at_time.isEmpty(), 
@@ -1085,9 +1115,7 @@ process_test "semantic link functionality" do
       )
     end
     
-    if time < node_2_creation_time
-      assert_equal(nil, node_2_semantic_links_at_time)
-    else
+    if time >= node_2_creation_time
       assert_true(
         node_2_semantic_links_at_time.isEmpty(),
         "occurred when checking the semantic links of node_2 after attempting to " +
@@ -1117,7 +1145,7 @@ process_test "semantic link functionality" do
     Modality.values().each do |modality|
       modality_root_node = model.getLtmModalityRootNode(modality)
       
-      if time < node_1_creation_time
+      if time < (node_1_creation_time - 1)
         assert_equal(
           nil,
           node_1_semantic_links_at_time,
@@ -1129,10 +1157,10 @@ process_test "semantic link functionality" do
       else
         assert_true(
           node_1_semantic_links_at_time.isEmpty(),
-          "occurred when checking the semantic links of node_1 at a time after " +
-          "node_1 was created and after attempting to add semantic links to " +
-          "modality root nodes at times where both the source and terminus " +
-          "nodes of the semantic link exist"
+          "occurred when checking the semantic links of node_1 when node_1 was " +
+          "created or after node_1 was created and after attempting to add " +
+          "semantic links to modality root nodes at times where both the " +
+          "source and terminus nodes of the semantic link exist"
         )
       end
       
@@ -1165,14 +1193,14 @@ process_test "semantic link functionality" do
   for time in model_creation_time..(final_time + 1)
     semantic_links = node_1.getSemanticLinks(time)
     
-    if time >= model_creation_time and time < node_1_creation_time
+    if time >= model_creation_time and time < (node_1_creation_time - 1)
       assert_equal(
         nil, 
         semantic_links,
         "occurred when checking the semantic links for node_1 before the node " +
         "was created"
       )
-    elsif time >= node_1_creation_time and time < node_1_to_node_2_semantic_link_creation_time
+    elsif time >= (node_1_creation_time - 1) and time < node_1_to_node_2_semantic_link_creation_time
       assert_true(
         semantic_links.isEmpty(),
         "occurred when checking the number of semantic links for node_1 before " +
@@ -1212,120 +1240,6 @@ process_test "semantic link functionality" do
     end
   end
 end
-
-################################################################################
-#
-# Timeline
-# 
-# - 0: Model created (modality root nodes also created)
-# - 3: attempt to associate node_1 with node_2 (test 2)
-# - 5: node_1_created
-# - 6: attempt to associate node_1 with itself (test 1)
-# - 7: attempt to associate node_1 with node_2 (test 3)
-# - 8: attempt to associate all modality root nodes with node 1 (test 4)
-# - 9: attempt to associate node_1 with all modality root nodes (test 5)
-# - 10: node_2_created
-# - 15: node_3_created
-# - 20: associate node 1 with node 3 (test 6)
-# - 25: associate node 1 with node 2 (test 7)
-process_test "associated node functionality" do
-  
-  model_creation_time = 0
-  node_1_creation_time = 5
-  node_2_creation_time = 10
-  node_3_creation_time = 15
-  node_1_associate_with_node_3_time = 20
-  node_1_associate_with_node_2_time = 25
-  
-  model = Chrest.new(model_creation_time, false)
-  
-  node_1 = Node.new(
-    model,
-    Pattern.makeVisualList(["node_1_c"].to_java(:String)),
-    Pattern.makeVisualList(["node_1_i"].to_java(:String)),
-    node_1_creation_time
-  )
-  
-  node_2 = Node.new(
-    model,
-    Pattern.makeVisualList(["node_2_c"].to_java(:String)),
-    Pattern.makeVisualList(["node_2_i"].to_java(:String)),
-    node_2_creation_time
-  )
-  
-  node_3 = Node.new(
-    model,
-    Pattern.makeVisualList(["node_3_c"].to_java(:String)),
-    Pattern.makeVisualList(["node_3_i"].to_java(:String)),
-    node_3_creation_time
-  )
-  
-  # Attempt to associate node_1 with itself.
-  assert_false(
-    node_1.setAssociatedNode(node_1, 6),
-    "occurred when attempting to associate node_1 with itself"
-  )
-  
-  # Attempt to associate node_1 with node_2 before node_1 is created.
-  assert_false(
-    node_1.setAssociatedNode(node_2, 3),
-    "occurred when attempting to associate node_1 with node_2 before either node " +
-    "has been created"
-  )
-  
-  # Attempt to associate node_1 with node_2 before node_2 is created.
-  assert_false(
-    node_1.setAssociatedNode(node_2, 7),
-    "occurred when attempting to associate node_1 with node_2 after node_1 is " +
-    "created but before node_2 has been created"
-  )
-  
-  # Attempt to associate each root node with node_1 when node_1 and all root nodes have been created
-  # Attempt to associate node_1 with each root node when node_1 and all root nodes have been created
-  Modality.values().each do |modality|
-    root_node = model.getLtmModalityRootNode(modality)
-    
-    assert_false(
-      node_1.setAssociatedNode(root_node, 8),
-      "occurred when attempting to associate node_1 with the " + modality.toString() + " " +
-      "root node"
-    )
-    
-    assert_false(
-      root_node.setAssociatedNode(node_1, 9),
-      "occurred when attempting to associate the " + modality.toString() + " " +
-      "root node with node_1"
-    )
-  end
-  
-  # Associate node_1 with node_3 at a time when both have been created and history is not being rewritten
-  assert_true(
-    node_1.setAssociatedNode(node_3, node_1_associate_with_node_3_time),
-    "occurred when attempting to associate node_1 with node_3 and association " + 
-    "should be successful"
-  )
-  
-  # Associate node_1 with node_2 at a time when both have been created (after node_3 so node_1's associated node history is updated) and history is not being rewritten
-  assert_true(
-    node_1.setAssociatedNode(node_2, node_1_associate_with_node_2_time),
-    "occurred when attempting to associate node_1 with node_2 and association " + 
-    "should be successful"
-  )
-  
-  # Check that "getAssociatedNodes" returns what is expected.
-  for time in 0..30
-    associated_node = node_1.getAssociatedNode(time)
-    if time < node_1_associate_with_node_3_time
-      assert_equal(nil, associated_node, "occurred when checking the node associated with node_1 before any associations have been made for this node")
-    elsif time >= node_1_associate_with_node_3_time and time < node_1_associate_with_node_2_time
-      assert_equal(node_3, associated_node, "occurred when checking the node associated with node_1 after node_3 has been associated")
-    elsif time >= node_1_associate_with_node_2_time
-      assert_equal(node_2, associated_node, "occurred when checking the node associated with node_1 after node_2 has been associated")
-    end
-  end
-end
-
-################################################################################
 
 process_test "named by functionality" do
   
@@ -2078,6 +1992,12 @@ process_test "information" do
   ### SETUP ###
   #############
   
+  Chrest.class_eval{
+    field_accessor :_nextLtmNodeReference,
+    :_minNodeDepthInNetworkToBeTemplate,
+    :_minItemOrPositionOccurrencesInNodeImagesToBeSlotValue
+  }
+  
   # Node.setImage() has private access so, to use it in this test, its 
   # accessibility must be public.
   set_image = Node.java_class.declared_method(:setImage, ListPattern, Java::int)
@@ -2129,6 +2049,7 @@ process_test "information" do
     node_image,
     node_creation_time
   )
+  model._nextLtmNodeReference += 1
   
   # Update the non-root node image.
   node_image_update_time = node_creation_time + 2
@@ -2142,13 +2063,8 @@ process_test "information" do
   # template depth field value of the model and set it to 0 (the 
   # Chrest.setTemplateConstructionParameters() won't allow values 
   # to be set below sensible levels but this would make the test very long)
-  min_template_depth_field = Chrest.java_class.declared_field("_minNodeDepthInNetworkToBeTemplate")
-  min_template_depth_field.accessible = true
-  min_template_depth_field.set_value(model, 0)
-  
-  min_template_occurrences_field = Chrest.java_class.declared_field("_minItemOrPositionOccurrencesInNodeImagesToBeSlotValue")
-  min_template_occurrences_field.accessible = true
-  min_template_occurrences_field.set_value(model, 1)
+  model._minNodeDepthInNetworkToBeTemplate = 0
+  model._minItemOrPositionOccurrencesInNodeImagesToBeSlotValue = 1
   
   child_creation_time = node_image_update_time + 1
   
@@ -2164,6 +2080,7 @@ process_test "information" do
     child_image,
     child_creation_time
   )
+  model._nextLtmNodeReference += 1
   
   child_addition_time = child_creation_time + 5
   node.addChild(
@@ -2174,10 +2091,10 @@ process_test "information" do
   )
   
   template_construction_time = (child_addition_time + 2)
-  assert_true(node.makeTemplate(template_construction_time))
+  assert_true(node.makeTemplate(template_construction_time), "occurred when checking the rsult of converting the node to a template")
   
   for time in node_creation_time..(template_construction_time + 3)
-    if time >= node_creation_time and time < node_image_update_time
+    if time >= (node_creation_time - 1) and time < node_image_update_time
       # When node is constructed, its image is empty, i.e. no primitives so its
       # information amount is 0.
       assert_equal(0, node.information(time), "occurred when checking the information count of the node before its image is updated")

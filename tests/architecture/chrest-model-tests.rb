@@ -18,13 +18,17 @@ unit_test "get_ltm_modality_size" do
   
   time += 1
   for modality in Modality.values()
+    node = model.getLtmModalityRootNode(modality)
 
     until time % 50 == 0
-      node = Node.new(model, ListPattern.new(modality), ListPattern.new(modality), time)
+      new_node = Node.new(model, ListPattern.new(modality), ListPattern.new(modality), time)
+      node.addChild(ListPattern.new(modality), new_node, time, "")
+      node = new_node
       time += 1
     end 
     
-    node = Node.new(model, ListPattern.new(modality), ListPattern.new(modality), time)
+    new_node = Node.new(model, ListPattern.new(modality), ListPattern.new(modality), time)
+    node.addChild(ListPattern.new(modality), new_node, time, "")
     time += 1
   end
   
@@ -35,15 +39,15 @@ unit_test "get_ltm_modality_size" do
   for time in 1..50
     number_action_nodes += 1
     assert_equal(number_action_nodes, model.getLtmModalitySize(Modality::ACTION, time), "when checking the number of action nodes at time " + time.to_s)
-    assert_equal(0, model.getLtmModalitySize(Modality::VERBAL, time), "when checking the number of verbal nodes at time " + time.to_s)
-    assert_equal(0, model.getLtmModalitySize(Modality::VISUAL, time), "when checking the number of visual nodes at time " + time.to_s)
+    assert_equal(number_verbal_nodes, model.getLtmModalitySize(Modality::VERBAL, time), "when checking the number of verbal nodes at time " + time.to_s)
+    assert_equal(number_visual_nodes, model.getLtmModalitySize(Modality::VISUAL, time), "when checking the number of visual nodes at time " + time.to_s)
   end
   
   for time in 51..100 
     number_verbal_nodes += 1
     assert_equal(number_action_nodes, model.getLtmModalitySize(Modality::ACTION, time), "when checking the number of action nodes at time " + time.to_s)
     assert_equal(number_verbal_nodes, model.getLtmModalitySize(Modality::VERBAL, time), "when checking the number of verbal nodes at time " + time.to_s)
-    assert_equal(0, model.getLtmModalitySize(Modality::VISUAL, time), "when checking the number of visual nodes at time " + time.to_s)
+    assert_equal(number_visual_nodes, model.getLtmModalitySize(Modality::VISUAL, time), "when checking the number of visual nodes at time " + time.to_s)
   end
   
   for time in 101..150
@@ -51,6 +55,126 @@ unit_test "get_ltm_modality_size" do
     assert_equal(number_action_nodes, model.getLtmModalitySize(Modality::ACTION, time), "when checking the number of action nodes at time " + time.to_s)
     assert_equal(number_verbal_nodes, model.getLtmModalitySize(Modality::VERBAL, time), "when checking the number of verbal nodes at time " + time.to_s)
     assert_equal(number_visual_nodes, model.getLtmModalitySize(Modality::VISUAL, time), "when checking the number of visual nodes at time " + time.to_s)
+  end
+end
+
+################################################################################
+unit_test "get_naming_link_count" do
+  Chrest.class_eval{
+    field_accessor :_visualLtm
+  }
+  
+  Node.class_eval{
+    field_accessor :_namedByHistory, :_childHistory
+  }
+  
+  50.times do
+    
+    time = 0
+    model = Chrest.new(time, [true, false].sample)
+    time += 1
+    
+    previous_visual_node = model._visualLtm
+    new_visual_node = Node.new(model, ListPattern.new(Modality::VISUAL), ListPattern.new(Modality::VISUAL), time)
+    new_visual_node._namedByHistory.put(time.to_java(:int), Node.new(model, ListPattern.new(Modality::VERBAL), ListPattern.new(Modality::VERBAL), time))
+    previous_visual_node_child_history = ArrayList.new()
+    previous_visual_node_child_history.add(Link.new(ListPattern.new(Modality::VISUAL), new_visual_node, time, ""))
+    previous_visual_node._childHistory.put(time.to_java(:int), previous_visual_node_child_history)
+    previous_visual_node = new_visual_node
+    
+    number_naming_links_to_add = (rand(100) + 1)
+    number_naming_links_to_add.times do
+      time += 1
+      new_visual_node = Node.new(model, ListPattern.new(Modality::VISUAL), ListPattern.new(Modality::VISUAL), time)
+      new_visual_node._namedByHistory.put(time.to_java(:int), Node.new(model, ListPattern.new(Modality::VERBAL), ListPattern.new(Modality::VERBAL), time))
+      previous_visual_node_child_history = ArrayList.new()
+      previous_visual_node_child_history.add(Link.new(ListPattern.new(Modality::VISUAL), new_visual_node, time, ""))
+      previous_visual_node._childHistory.put(time.to_java(:int), previous_visual_node_child_history)
+      previous_visual_node = new_visual_node
+    end
+    
+    expected_number_naming_links = number_naming_links_to_add + 1
+    assert_equal(expected_number_naming_links, model.getNamingLinkCount(time.to_java(:int)))
+  end
+end
+
+################################################################################
+unit_test "get_semantic_link_counts" do
+  
+  Chrest.class_eval{
+    field_accessor :_nextLtmNodeReference
+  }
+  
+  chrest_fields = Chrest.java_class.declared_fields
+  modality_root_node_fields = []
+  for field in chrest_fields
+    if (field.name() =~ /\A_[a-z]*Ltm\Z/)
+      field.accessible = true
+      modality_root_node_fields.push(field)
+    end
+  end
+  
+  Node.class_eval{
+    field_accessor :_semanticLinksHistory, :_childHistory
+  }
+  
+  50.times do
+    time = 0
+    model = Chrest.new(time, [true, false].sample)
+    
+    expected_semantic_link_count = 0
+    
+    # Populate each LTM modality with semantic links.  Ensure that each modality
+    # has links at multiple depths in the network to ensure that the function 
+    # that calculates the number of semantic links recurses correctly through 
+    # long-term memory.
+    for modality in Modality.values()
+      number_parent_nodes = rand(2..5)
+      parent_node = Node.new(model, ListPattern.new(modality), ListPattern.new(modality), time)
+      model._nextLtmNodeReference += 1
+      
+      modality_root_node = nil
+      for field in modality_root_node_fields
+        if (field.name() =~ /\A_#{Regexp.quote(modality.to_s.downcase)}*Ltm\Z/)
+          modality_root_node = field.value(model)
+        end
+      end
+      
+      parent_node_link = Link.new(ListPattern.new(modality), parent_node, time, "")
+      modality_root_node_child_links = ArrayList.new()
+      modality_root_node_child_links.add(parent_node_link)
+      modality_root_node._childHistory.put(time.to_java(:int), modality_root_node_child_links)
+      
+      number_parent_nodes.times do
+    
+        number_nodes_to_link_to = rand(2..5)
+        node_semantic_links = ArrayList.new()
+        expected_semantic_link_count += number_nodes_to_link_to
+    
+        number_nodes_to_link_to.times do
+          node_semantic_links.add(Node.new(model, ListPattern.new(modality), ListPattern.new(modality), time))
+          model._nextLtmNodeReference += 1
+        end
+      
+        parent_node._semanticLinksHistory.put(time.to_java(:int), node_semantic_links)
+        
+        time += 1
+        child_node = Node.new(model, ListPattern.new(modality), ListPattern.new(modality), time)
+        model._nextLtmNodeReference += 1
+        
+        child_node_link = Link.new(ListPattern.new(modality), child_node, time, "")
+        parent_node_child_links = ArrayList.new()
+        parent_node_child_links.add(child_node_link)
+        parent_node._childHistory.put(time.to_java(:int), parent_node_child_links)
+        
+        parent_node = child_node
+      end
+    end
+    
+    assert_equal(
+      expected_semantic_link_count,
+      model.getSemanticLinkCount(time)
+    )
   end
 end
 
@@ -249,7 +373,8 @@ process_test "discriminate" do
     :_verbalLtm, 
     :_visualLtm, 
     :_cognitionClock, 
-    :_discriminationTime
+    :_discriminationTime,
+    :_nextLtmNodeReference
   }
   
   ListPattern.class_eval{
@@ -340,6 +465,7 @@ process_test "discriminate" do
           node_to_discriminate_from_contents = ListPattern.new(modality)
           node_to_discriminate_from_contents._list.add(primitive_1)
           node_to_discriminate_from = Node.new(model, node_to_discriminate_from_contents, ListPattern.new(modality), time)
+          model._nextLtmNodeReference += 1
           
           # Create Link to Node
           link_1_test = ListPattern.new(modality)
@@ -376,6 +502,7 @@ process_test "discriminate" do
             
             # Create Node
             finished_delimiter_node = Node.new(model, end_primitive, ListPattern.new(modality), time_function_invoked)
+            model._nextLtmNodeReference += 1
             
             # Create Link to Node
             finished_delimiter_link_test = ListPattern.new(modality)
@@ -397,6 +524,7 @@ process_test "discriminate" do
             node_to_learn_contents._list.add(primitive_2)
             if scenario == 5 then node_to_learn_contents._finished = true end
             node_to_learn = Node.new(model, node_to_learn_contents, ListPattern.new(modality), time_function_invoked)
+            model._nextLtmNodeReference += 1
             
             node_to_learn_link_test = ListPattern.new(modality)
             node_to_learn_link_test._list.add(primitive_2)
@@ -717,7 +845,8 @@ process_test "familiarise" do
       :_verbalLtm,
       :_visualLtm,
       :_familiarisationTime,
-      :_discriminationTime
+      :_discriminationTime,
+      :_nextLtmNodeReference
   }
   
   ListPattern.class_eval{
@@ -804,6 +933,7 @@ process_test "familiarise" do
             node_to_familiarise_image, 
             time_method_invoked
           )
+          model._nextLtmNodeReference += 1
           
           # Create Link to Node
           link_1_test = ListPattern.new(modality)
@@ -835,6 +965,7 @@ process_test "familiarise" do
             node_to_learn_image = ListPattern.new(modality)
             node_to_learn_image._list.add(primitive_2)
             node_to_learn = Node.new(model, node_to_learn_contents, node_to_learn_image, time_method_invoked)
+            model._nextLtmNodeReference += 1
             
             node_to_learn_link_test = ListPattern.new(modality)
             node_to_learn_link_test._list.add(primitive_2)
@@ -1649,7 +1780,8 @@ process_test "learn_production" do
     :_actionStm,
     :_timeToRetrieveItemFromStm,
     :_nodeComparisonTime,
-    :_addProductionTime
+    :_addProductionTime,
+    :_nextLtmNodeReference
   }
   
   # Set-up access to STM variables.
@@ -1811,19 +1943,41 @@ process_test "learn_production" do
         
         # Construct visual nodes
         visual_node_1 = Node.new(model, half_visual_match, ListPattern.new(Modality::VISUAL), chrest_model_creation_time)
+        model._nextLtmNodeReference += 1
+        
         visual_node_2 = Node.new(model, three_quarter_visual_match, ListPattern.new(Modality::VISUAL), chrest_model_creation_time)
+        model._nextLtmNodeReference += 1
+        
         visual_node_3 = Node.new(model, full_visual_match, ListPattern.new(Modality::VISUAL), chrest_model_creation_time) 
+        model._nextLtmNodeReference += 1
+        
         visual_node_4 = Node.new(model, full_visual_match, half_visual_match, chrest_model_creation_time)
+        model._nextLtmNodeReference += 1
+        
         visual_node_5 = Node.new(model, full_visual_match, three_quarter_visual_match, chrest_model_creation_time)
+        model._nextLtmNodeReference += 1
+        
         visual_node_6 = Node.new(model, full_visual_match, full_visual_match, chrest_model_creation_time)
+        model._nextLtmNodeReference += 1
         
         # Construct action nodes
         action_node_1 = Node.new(model, half_action_match, ListPattern.new(Modality::ACTION), chrest_model_creation_time)
+        model._nextLtmNodeReference += 1
+        
         action_node_2 = Node.new(model, three_quarter_action_match, ListPattern.new(Modality::ACTION), chrest_model_creation_time)
+        model._nextLtmNodeReference += 1
+        
         action_node_3 = Node.new(model, full_action_match, ListPattern.new(Modality::ACTION), chrest_model_creation_time) 
+        model._nextLtmNodeReference += 1
+        
         action_node_4 = Node.new(model, full_action_match, half_action_match, chrest_model_creation_time)
+        model._nextLtmNodeReference += 1
+        
         action_node_5 = Node.new(model, full_action_match, three_quarter_action_match, chrest_model_creation_time)
+        model._nextLtmNodeReference += 1
+        
         action_node_6 = Node.new(model, full_action_match, full_action_match, chrest_model_creation_time)
+        model._nextLtmNodeReference += 1
         
         nodes = [
           visual_node_1, 
@@ -1935,30 +2089,30 @@ process_test "learn_production" do
         )
         
         expected_visual_node_1_productions = HistoryTreeMap.new()
-        expected_visual_node_1_productions.put(chrest_model_creation_time.to_java(:int), HashMap.new())
+        expected_visual_node_1_productions.put((chrest_model_creation_time - 1).to_java(:int), HashMap.new())
         expected_visual_node_2_productions = HistoryTreeMap.new()
-        expected_visual_node_2_productions.put(chrest_model_creation_time.to_java(:int), HashMap.new())
+        expected_visual_node_2_productions.put((chrest_model_creation_time - 1).to_java(:int), HashMap.new())
         expected_visual_node_3_productions = HistoryTreeMap.new()
-        expected_visual_node_3_productions.put(chrest_model_creation_time.to_java(:int), HashMap.new())
+        expected_visual_node_3_productions.put((chrest_model_creation_time - 1).to_java(:int), HashMap.new())
         expected_visual_node_4_productions = HistoryTreeMap.new()
-        expected_visual_node_4_productions.put(chrest_model_creation_time.to_java(:int), HashMap.new())
+        expected_visual_node_4_productions.put((chrest_model_creation_time - 1).to_java(:int), HashMap.new())
         expected_visual_node_5_productions = HistoryTreeMap.new()
-        expected_visual_node_5_productions.put(chrest_model_creation_time.to_java(:int), HashMap.new())
+        expected_visual_node_5_productions.put((chrest_model_creation_time - 1).to_java(:int), HashMap.new())
         expected_visual_node_6_productions = HistoryTreeMap.new()
-        expected_visual_node_6_productions.put(chrest_model_creation_time.to_java(:int), HashMap.new())
+        expected_visual_node_6_productions.put((chrest_model_creation_time - 1).to_java(:int), HashMap.new())
         
         expected_action_node_1_productions = HistoryTreeMap.new()
-        expected_action_node_1_productions.put(chrest_model_creation_time.to_java(:int), HashMap.new())
+        expected_action_node_1_productions.put((chrest_model_creation_time - 1).to_java(:int), HashMap.new())
         expected_action_node_2_productions = HistoryTreeMap.new()
-        expected_action_node_2_productions.put(chrest_model_creation_time.to_java(:int), HashMap.new())
+        expected_action_node_2_productions.put((chrest_model_creation_time - 1).to_java(:int), HashMap.new())
         expected_action_node_3_productions = HistoryTreeMap.new()
-        expected_action_node_3_productions.put(chrest_model_creation_time.to_java(:int), HashMap.new())
+        expected_action_node_3_productions.put((chrest_model_creation_time - 1).to_java(:int), HashMap.new())
         expected_action_node_4_productions = HistoryTreeMap.new()
-        expected_action_node_4_productions.put(chrest_model_creation_time.to_java(:int), HashMap.new())
+        expected_action_node_4_productions.put((chrest_model_creation_time - 1).to_java(:int), HashMap.new())
         expected_action_node_5_productions = HistoryTreeMap.new()
-        expected_action_node_5_productions.put(chrest_model_creation_time.to_java(:int), HashMap.new())
+        expected_action_node_5_productions.put((chrest_model_creation_time - 1).to_java(:int), HashMap.new())
         expected_action_node_6_productions = HistoryTreeMap.new()
-        expected_action_node_6_productions.put(chrest_model_creation_time.to_java(:int), HashMap.new())
+        expected_action_node_6_productions.put((chrest_model_creation_time - 1).to_java(:int), HashMap.new())
         
         expected_production = HashMap.new()
         case scenario
@@ -2101,7 +2255,8 @@ unit_test "isNodeInStm" do
     :_visualStm, 
     :_attentionClock,
     :_timeToRetrieveItemFromStm,
-    :_nodeComparisonTime
+    :_nodeComparisonTime,
+    :_nextLtmNodeReference
   }
   
   stm_item_history_field = Stm.java_class.declared_field("_itemHistory")
@@ -2124,9 +2279,16 @@ unit_test "isNodeInStm" do
           ################################
           
           node_to_search_for = Node.new(model, ListPattern.new(modality), ListPattern.new(modality), chrest_model_creation_time)
+          model._nextLtmNodeReference += 1 
+          
           node_1 = Node.new(model, ListPattern.new(modality), ListPattern.new(modality), chrest_model_creation_time)
+          model._nextLtmNodeReference += 1 
+          
           node_2 = Node.new(model, ListPattern.new(modality), ListPattern.new(modality), chrest_model_creation_time)
+          model._nextLtmNodeReference += 1 
+          
           node_3 = Node.new(model, ListPattern.new(modality), ListPattern.new(modality), chrest_model_creation_time)
+          model._nextLtmNodeReference += 1 
           
           ############################
           ##### CREATE SCENARIOS #####
@@ -2378,7 +2540,8 @@ process_test "reinforce_production" do
     :_attentionClock, 
     :_cognitionClock, 
     :_timeToRetrieveItemFromStm,
-    :_reinforceProductionTime
+    :_reinforceProductionTime,
+    :_nextLtmNodeReference
   }
   
   chrest_creation_time_field = Chrest.java_class.declared_field("_creationTime")
@@ -2448,18 +2611,40 @@ process_test "reinforce_production" do
       ########################
       
       visual_node_1 = Node.new(model, ListPattern.new(Modality::VISUAL), ListPattern.new(Modality::VISUAL), time_chrest_model_created)
+      model._nextLtmNodeReference += 1
+      
       visual_node_2 = Node.new(model, ListPattern.new(Modality::VISUAL), ListPattern.new(Modality::VISUAL), time_chrest_model_created)
+      model._nextLtmNodeReference += 1
+      
       visual_node_3 = Node.new(model, ListPattern.new(Modality::VISUAL), ListPattern.new(Modality::VISUAL), time_chrest_model_created)
+      model._nextLtmNodeReference += 1
       
       action_node_1 = Node.new(model, ListPattern.new(Modality::ACTION), ListPattern.new(Modality::ACTION), time_chrest_model_created)
+      model._nextLtmNodeReference += 1
+      
       action_node_2 = Node.new(model, ListPattern.new(Modality::ACTION), ListPattern.new(Modality::ACTION), time_chrest_model_created)
+      model._nextLtmNodeReference += 1
+      
       action_node_3 = Node.new(model, ListPattern.new(Modality::ACTION), ListPattern.new(Modality::ACTION), time_chrest_model_created)
+      model._nextLtmNodeReference += 1
+      
       action_node_4 = Node.new(model, ListPattern.new(Modality::ACTION), ListPattern.new(Modality::ACTION), time_chrest_model_created)
+      model._nextLtmNodeReference += 1
+      
       action_node_5 = Node.new(model, ListPattern.new(Modality::ACTION), ListPattern.new(Modality::ACTION), time_chrest_model_created)
+      model._nextLtmNodeReference += 1
+      
       action_node_6 = Node.new(model, ListPattern.new(Modality::ACTION), ListPattern.new(Modality::ACTION), time_chrest_model_created)
+      model._nextLtmNodeReference += 1
+      
       action_node_7 = Node.new(model, ListPattern.new(Modality::ACTION), ListPattern.new(Modality::ACTION), time_chrest_model_created)
+      model._nextLtmNodeReference += 1
+      
       action_node_8 = Node.new(model, ListPattern.new(Modality::ACTION), ListPattern.new(Modality::ACTION), time_chrest_model_created)
+      model._nextLtmNodeReference += 1
+      
       action_node_9 = Node.new(model, ListPattern.new(Modality::ACTION), ListPattern.new(Modality::ACTION), time_chrest_model_created)
+      model._nextLtmNodeReference += 1
       
       ############################
       ##### CREATE SCENARIOS #####
@@ -3159,11 +3344,11 @@ process_test "reinforce_production" do
       )
       
       expected_visual_node_1_production_history = HistoryTreeMap.new()
-      expected_visual_node_1_production_history.put(time_chrest_model_created.to_java(:int), LinkedHashMap.new())
+      expected_visual_node_1_production_history.put((time_chrest_model_created - 1).to_java(:int), LinkedHashMap.new())
       expected_visual_node_2_production_history = HistoryTreeMap.new()
-      expected_visual_node_2_production_history.put(time_chrest_model_created.to_java(:int), LinkedHashMap.new())
+      expected_visual_node_2_production_history.put((time_chrest_model_created - 1).to_java(:int), LinkedHashMap.new())
       expected_visual_node_3_production_history = HistoryTreeMap.new()
-      expected_visual_node_3_production_history.put(time_chrest_model_created.to_java(:int), LinkedHashMap.new())
+      expected_visual_node_3_production_history.put((time_chrest_model_created - 1).to_java(:int), LinkedHashMap.new())
       
       if [8,9].include?(scenario)
         productions = LinkedHashMap.new()
@@ -3395,7 +3580,8 @@ unit_test "generate_action_using_visual_pattern_recognition" do
   Chrest.class_eval{
     field_accessor :_visualStm, 
     :_timeToRetrieveItemFromStm,
-    :_attentionClock
+    :_attentionClock,
+    :_nextLtmNodeReference
   }
   
   ListPattern.class_eval{
@@ -3429,10 +3615,12 @@ unit_test "generate_action_using_visual_pattern_recognition" do
       visual_node_1_contents = ListPattern.new(Modality::VISUAL);
       visual_node_1_contents._list.add(ItemSquarePattern.new("T", 0, -1));
       visual_node_1 = Node.new(model, visual_node_1_contents, ListPattern.new(Modality::VISUAL), chrest_model_creation_time);
+      model._nextLtmNodeReference += 1 
       
       visual_node_2_contents = ListPattern.new(Modality::VISUAL);
       visual_node_2_contents._list.add(ItemSquarePattern.new("H", 4, 2));
       visual_node_2 = Node.new(model, visual_node_2_contents, ListPattern.new(Modality::VISUAL), chrest_model_creation_time);
+      model._nextLtmNodeReference += 1 
       
       ###############################
       ##### CREATE ACTION NODES #####
@@ -3441,18 +3629,22 @@ unit_test "generate_action_using_visual_pattern_recognition" do
       action_node_1_contents = ListPattern.new(Modality::ACTION);
       action_node_1_contents._list.add(ItemSquarePattern.new("Push", 270, 1));
       action_node_1 = Node.new(model, action_node_1_contents, ListPattern.new(Modality::ACTION), chrest_model_creation_time);
+      model._nextLtmNodeReference += 1 
       
       action_node_2_contents = ListPattern.new(Modality::ACTION);
       action_node_2_contents._list.add(ItemSquarePattern.new("Walk", 0, 1));
       action_node_2 = Node.new(model, action_node_2_contents, ListPattern.new(Modality::ACTION), chrest_model_creation_time);
+      model._nextLtmNodeReference += 1 
       
       action_node_3_contents = ListPattern.new(Modality::ACTION);
       action_node_3_contents._list.add(ItemSquarePattern.new("Jump", 90, 2));
       action_node_3 = Node.new(model, action_node_3_contents, ListPattern.new(Modality::ACTION), chrest_model_creation_time);
+      model._nextLtmNodeReference += 1 
       
       action_node_4_contents = ListPattern.new(Modality::ACTION);
       action_node_4_contents._list.add(ItemSquarePattern.new("Run", 180, 1));
       action_node_4 = Node.new(model, action_node_4_contents, ListPattern.new(Modality::ACTION), chrest_model_creation_time);
+      model._nextLtmNodeReference += 1 
       
       ############################
       ##### CREATE SCENARIOS #####
@@ -9681,7 +9873,676 @@ process_test "move_visual_spatial_field_object" do
   end 
 end
 
+################################################################################
+# Creates a long-term memory structure, saves it to a specified location and 
+# restores it. The long-term memory structure created will contain all possible
+# types of Nodes (modalities and templates) and linkages between them 
+# (productions, semantic links etc.), this allows the test to validate that all
+# potential scenarios can be handled. 
+#
+canonical_result_test "save_and_load_ltm" do
+  
+  ### jchrest.architecture.Chrest variable access set-up
+  Chrest.class_eval{ 
+    field_accessor :_cognitionClock, :_attentionClock,
+    
+    :_ltmLinkTraversalTime,
+    :_saccadeTime,
+    :_timeTakenToDecideUponAheadOfAgentFixations,
+    :_timeTakenToDecideUponCentralFixations,
+    :_timeTakenToDecideUponPeripheralItemFixations,
+    :_timeTakenToDecideUponPeripheralSquareFixations,
+    :_timeToUpdateStm,
+    :_timeToRetrieveFixationFromPerceiver,
+    :_timeToRetrieveItemFromStm,
+    
+    :_addProductionTime,
+    :_nodeComparisonTime,
+    :_discriminationTime,
+    :_familiarisationTime,
+    :_reinforceProductionTime,
+    :_namingLinkCreationTime,
+    :_semanticLinkCreationTime,
+    
+    :_rho,
+    :_canCreateSemanticLinks,
+    :_nodeImageSimilarityThreshold,
+    :_maximumSemanticLinkSearchDistance,
+    :_canCreateTemplates,
+    :_minNodeDepthInNetworkToBeTemplate,
+    :_minItemOrPositionOccurrencesInNodeImagesToBeSlotValue,
+    
+    :_actionLtm,
+    :_verbalLtm,
+    :_visualLtm,
+    :_totalNumberActionLtmNodes,
+    :_totalNumberVerbalLtmNodes,
+    :_totalNumberVisualLtmNodes,
+    :_nextLtmNodeReference
+  }
+  
+  ### jchrest.lib.ListPattern variable access set-up
+  ListPattern.class_eval{
+    field_accessor :_list, :_modality
+  }
+  
+  ### jchrest.architecture.Node variable access set-up
+  Node.class_eval{
+    field_accessor :_childHistory, 
+    :_productionHistory,
+    :_namedByHistory,
+    :_semanticLinksHistory,
+    :_imageHistory,
+    :_templateHistory,
+    :_itemSlotsHistory,
+    :_positionSlotsHistory,
+    :_filledItemSlotsHistory,
+    :_filledPositionSlotsHistory
+  }
+  
+  node_contents_field = Node.java_class.declared_field("_contents")
+  node_creation_time_field = Node.java_class.declared_field("_creationTime")
+  node_model_field = Node.java_class.declared_field("_model")
+  node_reference_field = Node.java_class.declared_field("_reference")
+  node_root_node_field = Node.java_class.declared_field("_rootNode")
+  node_modality_field = Node.java_class.declared_field("_modality")
+  
+  final_node_fields = [
+    node_contents_field, 
+    node_creation_time_field, 
+    node_model_field, 
+    node_reference_field, 
+    node_root_node_field, 
+    node_modality_field
+  ]
+  for field in final_node_fields
+    field.accessible = true
+  end
+  
+  ### jchrest.architecture.Link variable access set-up
+  link_creation_time_field = Link.java_class.declared_field("_creationTime")
+  link_creation_time_field.accessible = true
+  
+  link_test_field = Link.java_class.declared_field("_test")
+  link_test_field.accessible = true
+  
+  link_created_in_experiment_field = Link.java_class.declared_field("_createdInExperiment")
+  link_created_in_experiment_field.accessible = true
+  
+  ###########################
+  ##### START TEST CODE #####
+  ###########################
+        
+  time = 0
+  model = Chrest.new(time, false)
+  time += 1
+  
+  model._ltmLinkTraversalTime = 1
+  model._saccadeTime = 1
+  model._timeTakenToDecideUponAheadOfAgentFixations = 1
+  model._timeTakenToDecideUponCentralFixations = 1
+  model._timeTakenToDecideUponPeripheralItemFixations = 1
+  model._timeTakenToDecideUponPeripheralSquareFixations = 1
+  model._timeToUpdateStm = 1
+  model._timeToRetrieveFixationFromPerceiver = 1
+  model._timeToRetrieveItemFromStm = 1
 
+  model._addProductionTime = 1
+  model._nodeComparisonTime = 1
+  model._discriminationTime = 1
+  model._familiarisationTime = 1
+  model._reinforceProductionTime = 1
+  model._namingLinkCreationTime = 1
+  model._semanticLinkCreationTime = 1
+
+  model._rho = 1.0
+  model._canCreateSemanticLinks = true
+  model._nodeImageSimilarityThreshold = 0 #Setting to a value higher than this causes the test to run for a *long* time
+  model._maximumSemanticLinkSearchDistance = 2
+  model._canCreateTemplates = true
+  model._minNodeDepthInNetworkToBeTemplate = 2
+  model._minItemOrPositionOccurrencesInNodeImagesToBeSlotValue = 2
+  
+  action_nodes_required = 50
+  verbal_nodes_required = 50
+  visual_nodes_required = 50
+  productions_required = 10
+  naming_links_required = 10
+  semantic_links_required = 10
+  templates_required = 10
+  slots_filled = false
+  
+  puts ""
+  puts "     Conditions required for LTM to be saved"
+  puts "       - \# Action nodes: " + action_nodes_required.to_s
+  puts "       - \# Verbal nodes: " + verbal_nodes_required.to_s
+  puts "       - \# Visual nodes: " + visual_nodes_required.to_s
+  puts "       - \# Productions: " + productions_required.to_s
+  puts "       - \# Naming links: " + naming_links_required.to_s
+  puts "       - \# Semantic links: " + semantic_links_required.to_s
+  puts "       - \# Templates: " + templates_required.to_s
+  puts "       - Slots filled: true"
+  
+  while
+    model._totalNumberActionLtmNodes.lastEntry().getValue() < action_nodes_required ||
+    model._totalNumberVerbalLtmNodes.lastEntry().getValue() < verbal_nodes_required ||
+    model._totalNumberVisualLtmNodes.lastEntry().getValue() < visual_nodes_required ||
+    model.getProductionCount(time) < productions_required  ||
+    model.getNamingLinkCount(time) < naming_links_required ||
+    model.getSemanticLinkCount(time) < semantic_links_required ||
+    model.countTemplatesInVisualLtm(time) < templates_required ||
+    !slots_filled
+  #####
+    
+    #Create visual list pattern
+    visual_list_pattern = ListPattern.new(Modality::VISUAL)
+    (rand(24) + 1).times do
+      pattern = ItemSquarePattern.new(
+        ["T","H","O"].sample,
+        [-2,-1,1,0,1,2].sample,
+        [-2,-1,1,0,1,2].sample
+      )
+      
+      while visual_list_pattern._list.contains(pattern)
+        pattern = ItemSquarePattern.new(
+          ["T","H","O"].sample,
+          [-2,-1,1,0,1,2].sample,
+          [-2,-1,1,0,1,2].sample
+        )
+      end
+      
+      visual_list_pattern._list.add(pattern)
+    end
+    
+    #Create action/verbal list pattern
+    other_list_pattern = nil
+    if rand() < 0.5
+      other_list_pattern = ListPattern.new(Modality::ACTION)
+      (rand(3) + 1).times do
+        pattern = ItemSquarePattern.new(
+          ["push", "walk", "jump"].sample,
+          [0,90,180,270].sample,
+          [1,2,3].sample
+        )
+        
+        while other_list_pattern._list.contains(pattern)
+          pattern = ItemSquarePattern.new(
+            ["push", "walk", "jump"].sample,
+            [0,90,180,270].sample,
+            [1,2,3].sample
+          )
+        end
+        
+        other_list_pattern._list.add(pattern)
+      end
+    else
+      other_list_pattern = ListPattern.new(Modality::VERBAL)
+      verbal_string = ""
+      (rand(6) + 1).times do
+        verbal_string += ["bi", "da", "ku"].sample
+      end
+      other_list_pattern._list.add(Pattern.makeString(verbal_string))
+    end
+    
+    # Learn visual list pattern
+    model.recogniseAndLearn(visual_list_pattern, time)
+    time = [model._cognitionClock, model._attentionClock].max
+    
+    # Learn other pattern (this will automatically create a semantic/naming link
+    # if applicable).
+    model.recogniseAndLearn(other_list_pattern, time)
+    time = [model._cognitionClock, model._attentionClock].max
+    
+    # Try to learn a production (if applicable).
+    if other_list_pattern._modality == Modality::ACTION
+      model.learnProduction(visual_list_pattern, other_list_pattern, time)
+      time = [model._cognitionClock, model._attentionClock].max
+    end
+    
+    # Try to create templates.
+    templates_made = model.makeTemplates(time)
+    time = [model._cognitionClock, model._attentionClock].max
+    
+    # Try to fill some template slots using the visual list pattern if a 
+    # template wasn't created (avoids history rewrite errors)
+    if templates_made == 0
+      filled_slots = fill_slots(model, model._visualLtm, visual_list_pattern, time)
+      time = [model._cognitionClock, model._attentionClock].max
+      if filled_slots > 0
+        slots_filled = true
+      end
+    end
+    
+    # Print out the counters that control this loop so that the user can tell if
+    # the loop is broken or not and to have some idea of test progress (this 
+    # test can go on for a relatively *long* time compared to other tests).
+    status_string = "     Action nodes: " + model._totalNumberActionLtmNodes.lastEntry().getValue().to_s + ", " +
+      "Verbal nodes: " + model._totalNumberVerbalLtmNodes.lastEntry().getValue().to_s + ", " +
+      "Visual nodes: " + model._totalNumberVisualLtmNodes.lastEntry().getValue().to_s + ", " +
+      "Productions: " + model.getProductionCount(time).to_s + ", " +
+      "Naming links: " + model.getNamingLinkCount(time).to_s + ", " +
+      "Semantic links: " + model.getSemanticLinkCount(time).to_s + ", " +
+      "Templates: " + model.countTemplatesInVisualLtm(time).to_s + ", " + 
+      "Slots filled: " + slots_filled.to_s
+    
+    clear_status_string = " "
+    status_string.length.times do
+      clear_status_string += " "
+    end
+    
+    print clear_status_string + "\r"
+    print status_string + "\r"
+  end 
+  print "\n"
+  
+  #################################################################
+  ##### COLLECT/SAVE LONG-TERM MEMORY INFORMATION FOR TESTING #####
+  #################################################################
+  
+  ltm_nodes_before_save = []
+  ltm_nodes_before_save = record_nodes_from_node(model._actionLtm, ltm_nodes_before_save, time)
+  ltm_nodes_before_save = record_nodes_from_node(model._verbalLtm, ltm_nodes_before_save, time)
+  ltm_nodes_before_save = record_nodes_from_node(model._visualLtm, ltm_nodes_before_save, time)
+  
+  absolute_path_to_save_file = Dir.pwd.to_s + File::SEPARATOR + "saveStateTest.ser"
+  model.saveLtmState(absolute_path_to_save_file, time)
+  
+  time_restoration_requested = 0
+  restored_model = Chrest.new(absolute_path_to_save_file, time_restoration_requested)
+  ltm_nodes_after_restoration = []
+  ltm_nodes_after_restoration = record_nodes_from_node(restored_model._actionLtm, ltm_nodes_after_restoration, time)
+  ltm_nodes_after_restoration = record_nodes_from_node(restored_model._verbalLtm, ltm_nodes_after_restoration, time)
+  ltm_nodes_after_restoration = record_nodes_from_node(restored_model._visualLtm, ltm_nodes_after_restoration, time)
+  
+  # Delete the serialized model file.
+  File.delete(absolute_path_to_save_file)
+  
+  #################
+  ##### TESTS #####
+  #################
+  
+  # Check model's Node metrics
+  assert_equal(
+    model._nextLtmNodeReference, 
+    restored_model._nextLtmNodeReference, 
+    "occurred when checking the next LTM Node reference"
+  )
+  
+  assert_equal(
+    model._totalNumberActionLtmNodes.lastEntry().getValue(), 
+    restored_model._totalNumberActionLtmNodes.firstEntry().getValue(), 
+    "occurred when checking the total number of action Nodes"
+  )
+  
+  assert_equal(
+    model._totalNumberVerbalLtmNodes.lastEntry().getValue(), 
+    restored_model._totalNumberVerbalLtmNodes.firstEntry().getValue(), 
+    "occurred when checking the total number of verbal Nodes"
+  )
+  
+  assert_equal(
+    model._totalNumberVisualLtmNodes.lastEntry().getValue(), 
+    restored_model._totalNumberVisualLtmNodes.firstEntry().getValue(), 
+    "occurred when checking the total number of visual Nodes"
+  )
+  
+  # Check that the total number of LTM Nodes is equal so that subsequent checks 
+  # can be performed accurately.
+  assert_equal(
+    ltm_nodes_before_save.size, 
+    ltm_nodes_after_restoration.size, 
+    "occurred when checking the total number of LTM Nodes"
+  )
+  
+  # Check that each Node after restoration is as it should be compared to its
+  # before save counterpart.
+  for ltm_node_before_save in ltm_nodes_before_save
+    ltm_node_before_save_reference = node_reference_field.value(ltm_node_before_save)
+    ltm_reference_found = false
+    
+    for ltm_node_after_restoration in ltm_nodes_after_restoration
+      if ltm_node_before_save_reference == node_reference_field.value(ltm_node_after_restoration)
+        ltm_reference_found = true
+        
+        err_msg_prepend = "occurred when checking Node " + ltm_node_before_save_reference.to_s + "'s "
+        assert_equal(node_contents_field.value(ltm_node_before_save), node_contents_field.value(ltm_node_after_restoration), err_msg_prepend + "contents")
+        assert_equal(time_restoration_requested, node_creation_time_field.value(ltm_node_after_restoration), err_msg_prepend + "creation time")
+        assert_equal(restored_model, node_model_field.value(ltm_node_after_restoration), err_msg_prepend + "associated CHREST model")
+        assert_equal(node_root_node_field.value(ltm_node_before_save), node_root_node_field.value(ltm_node_after_restoration), err_msg_prepend + "'root-node?' variable")
+        assert_equal(node_modality_field.value(ltm_node_before_save), node_modality_field.value(ltm_node_after_restoration), err_msg_prepend + "modality")
+        
+        #Check child link history
+        assert_equal(
+          time_restoration_requested - 1,
+          ltm_node_after_restoration._childHistory.firstEntry().getKey(),
+          "occurred when checking the time of the first child links entry for " +
+          "Node " + ltm_node_before_save_reference.to_s + " after restoration"
+        )
+        
+        ltm_node_before_save_most_recent_child_history_entry = ltm_node_before_save._childHistory.lastEntry().getValue()
+        ltm_node_after_restoration_first_child_history_entry = ltm_node_after_restoration._childHistory.firstEntry().getValue()
+        assert_equal(
+          ltm_node_before_save_most_recent_child_history_entry.size, 
+          ltm_node_after_restoration_first_child_history_entry.size,
+          "occurred when checking the number of children Node " + 
+          ltm_node_before_save_reference.to_s + " has after restoration"
+        )
+        
+        for child_link_before_save in ltm_node_before_save_most_recent_child_history_entry
+          child_node_reference_before_save = node_reference_field.value(child_link_before_save.getChildNode())
+          child_node_reference_found = false
+          
+          for child_link_after_restoration in ltm_node_after_restoration_first_child_history_entry
+            assert_equal(
+              time_restoration_requested, 
+              link_creation_time_field.value(child_link_after_restoration),
+              "occurred when checking the creation time of a child link for Node " +
+              ltm_node_before_save_reference.to_s + " after LTM restoration"
+            )
+            
+            child_node_reference_after_restoration = node_reference_field.value(child_link_after_restoration.getChildNode())
+            if child_node_reference_after_restoration == child_node_reference_before_save
+              child_node_reference_found = true
+              
+              assert_equal(
+                link_test_field.value(child_link_before_save).to_s,
+                link_test_field.value(child_link_after_restoration).to_s,
+                "occurred when checking the test on a child link for Node " +
+                ltm_node_before_save_reference.to_s + " after LTM restoration"
+              )
+              
+              assert_equal(
+                link_created_in_experiment_field.value(child_link_before_save),
+                link_created_in_experiment_field.value(child_link_after_restoration),
+                "occurred when checking the experiment that a child link for " +
+                "Node " + ltm_node_before_save_reference.to_s + " was created " +
+                "in after LTM restoration"
+              )
+            end
+          end
+          
+          assert_true(
+            child_node_reference_found,
+            "occurred when checking if Node " + child_node_reference_before_save.to_s +
+            " is a child of Node " + ltm_node_before_save_reference.to_s + " after " +
+            "LTM restoration"
+          )
+        end
+        
+        #Check production history
+        assert_equal(
+          time_restoration_requested - 1,
+          ltm_node_after_restoration._productionHistory.firstEntry().getKey(),
+          "occurred when checking the time of the first production history entry for " +
+          "Node " + ltm_node_before_save_reference.to_s + " after restoration"
+        )
+        
+        productions_before_save = ltm_node_before_save._productionHistory.lastEntry().getValue().entrySet().to_a
+        productions_after_restoration = ltm_node_after_restoration._productionHistory.firstEntry().getValue().entrySet().to_a
+        assert_equal(
+          productions_before_save.length, 
+          productions_after_restoration.length,
+          "occurred when checking the number of productions Node " + 
+          ltm_node_before_save_reference.to_s + " has after restoration"
+        )
+        
+        for p in 0...productions_before_save.length
+          assert_equal(
+            node_reference_field.value(productions_before_save[p].getKey()),
+            node_reference_field.value(productions_after_restoration[p].getKey()),
+            "occurred when checking the reference of a Node linked to by a " +
+            "production from Node " + ltm_node_before_save_reference.to_s
+          )
+          
+          assert_equal(
+            productions_before_save[p].getValue(),
+            productions_after_restoration[p].getValue(),
+            "occurred when checking the value of a production from Node " + 
+            ltm_node_before_save_reference.to_s
+          )
+        end
+        
+        # Check naming link history
+        assert_equal(
+          time_restoration_requested - 1,
+          ltm_node_after_restoration._namedByHistory.firstEntry().getKey(),
+          "occurred when checking the time of the first named by history entry for " +
+          "Node " + ltm_node_before_save_reference.to_s + " after restoration"
+        )
+        
+        last_named_by_node_for_ltm_node_before_save = ltm_node_before_save._namedByHistory.lastEntry().getValue()
+        first_named_by_node_for_ltm_node_after_restoration = ltm_node_after_restoration._namedByHistory.firstEntry().getValue()
+        if last_named_by_node_for_ltm_node_before_save == nil
+          assert_equal(
+            nil, 
+            first_named_by_node_for_ltm_node_after_restoration,
+            "occurred when checking the Node that Node " + 
+            ltm_node_before_save_reference.to_s + " is named by after " +
+            "restoration"
+          )
+        else
+          assert_equal(
+            node_reference_field.value(last_named_by_node_for_ltm_node_before_save),
+            node_reference_field.value(first_named_by_node_for_ltm_node_after_restoration),
+            "occurred when checking the Node that Node " + 
+            ltm_node_before_save_reference.to_s + " is named by after " +
+            "restoration"
+          )
+        end
+        
+        # Check semantic link history
+        assert_equal(
+          time_restoration_requested - 1,
+          ltm_node_after_restoration._semanticLinksHistory.firstEntry().getKey(),
+          "occurred when checking the time of the first semantic link history entry for " +
+          "Node " + ltm_node_before_save_reference.to_s + " after restoration"
+        )
+        
+        semantic_links_before_save = ltm_node_before_save._semanticLinksHistory.lastEntry().getValue().to_a
+        semantic_links_after_restoration = ltm_node_after_restoration._semanticLinksHistory.firstEntry().getValue().to_a
+        assert_equal(
+          semantic_links_before_save.length, 
+          semantic_links_after_restoration.length,
+          "occurred when checking the number of semantic links Node " + 
+          ltm_node_before_save_reference.to_s + " has after restoration"
+        )
+        
+        for s in 0...semantic_links_before_save.length
+          assert_equal(
+            node_reference_field.value(semantic_links_before_save[s]),
+            node_reference_field.value(semantic_links_after_restoration[s]),
+            "occurred when checking the reference of a Node linked to by a " +
+            "semantic link from Node " + ltm_node_before_save_reference.to_s
+          )
+        end
+        
+        # Check image history
+        assert_equal(
+          time_restoration_requested - 1,
+          ltm_node_after_restoration._imageHistory.firstEntry().getKey(),
+          "occurred when checking the time of the first image history entry for " +
+          "Node " + ltm_node_before_save_reference.to_s + " after restoration"
+        )
+        
+        assert_equal(
+          ltm_node_before_save._imageHistory.lastEntry().getValue().toString(),
+          ltm_node_after_restoration._imageHistory.lastEntry().getValue().toString(),
+          "occurred when checking the value of the first image history entry for " +
+          "Node " + ltm_node_before_save_reference.to_s + " after restoration"
+        )
+        
+        # Check template history
+        assert_equal(
+          time_restoration_requested - 1,
+          ltm_node_after_restoration._templateHistory.firstEntry().getKey(),
+          "occurred when checking the time of the first template history entry for " +
+          "Node " + ltm_node_before_save_reference.to_s + " after restoration"
+        )
+        
+        assert_equal(
+          ltm_node_before_save._templateHistory.lastEntry().getValue(),
+          ltm_node_after_restoration._templateHistory.firstEntry().getValue(),
+          "occurred when checking the value of the first template history entry for " +
+          "Node " + ltm_node_before_save_reference.to_s + " after restoration"
+        )
+        
+        # Check item slots history
+        item_slot_history_for_ltm_node_before_save = ltm_node_before_save._itemSlotsHistory
+        item_slot_history_for_ltm_node_after_restoration = ltm_node_after_restoration._itemSlotsHistory
+        if item_slot_history_for_ltm_node_before_save == nil
+          assert_equal(
+            nil,
+            item_slot_history_for_ltm_node_after_restoration,
+            "occurred when checking if the item slot history for the restored node " +
+            "is set to nil"
+          )
+        else
+          assert_equal(
+            time_restoration_requested - 1,
+            item_slot_history_for_ltm_node_after_restoration.firstEntry().getKey(),
+            "occurred when checking the time of the first item slots history entry for " +
+            "Node " + ltm_node_before_save_reference.to_s + " after restoration"
+          )
+
+          last_item_slot_history_entry_before_save = item_slot_history_for_ltm_node_before_save.lastEntry().getValue().to_a
+          first_item_slot_history_entry_after_restoration = item_slot_history_for_ltm_node_after_restoration.firstEntry().getValue().to_a
+          assert_equal(
+            last_item_slot_history_entry_before_save.length,
+            first_item_slot_history_entry_after_restoration.length,
+            "occurred when checking the number of item slots in the first item slot history entry for " +
+            "Node " + ltm_node_before_save_reference.to_s + " after restoration"
+          )
+          
+          for i in 0...last_item_slot_history_entry_before_save.length
+            assert_equal(
+              last_item_slot_history_entry_before_save[i],
+              first_item_slot_history_entry_after_restoration[i],
+              "occurred when checking the item in slot " + i.to_s + " for Node " +
+              ltm_node_before_save_reference.to_s + " after restoration"
+            )
+          end
+        end
+        
+        # Check position slots history
+        position_slot_history_for_ltm_node_before_save = ltm_node_before_save._positionSlotsHistory
+        position_slot_history_for_ltm_node_after_restoration = ltm_node_after_restoration._positionSlotsHistory
+        if position_slot_history_for_ltm_node_before_save == nil
+          assert_equal(
+            nil,
+            position_slot_history_for_ltm_node_after_restoration,
+            "occurred when checking if the position slot history for the restored node " +
+            "is set to nil"
+          )
+        else
+          assert_equal(
+            time_restoration_requested - 1,
+            position_slot_history_for_ltm_node_after_restoration.firstEntry().getKey(),
+            "occurred when checking the time of the first position slots history entry for " +
+            "Node " + ltm_node_before_save_reference.to_s + " after restoration"
+          )
+
+          last_position_slot_history_entry_before_save = position_slot_history_for_ltm_node_before_save.lastEntry().getValue().to_a
+          first_position_slot_history_entry_after_restoration = position_slot_history_for_ltm_node_after_restoration.firstEntry().getValue().to_a
+          assert_equal(
+            last_position_slot_history_entry_before_save.length,
+            first_position_slot_history_entry_after_restoration.length,
+            "occurred when checking the number of position slots in the first position slot history entry for " +
+            "Node " + ltm_node_before_save_reference.to_s + " after restoration"
+          )
+          
+          for p in 0...last_position_slot_history_entry_before_save.length
+            assert_equal(
+              last_position_slot_history_entry_before_save[p],
+              first_position_slot_history_entry_after_restoration[p],
+              "occurred when checking the position in slot " + p.to_s + " for Node " +
+              ltm_node_before_save_reference.to_s + " after restoration"
+            )
+          end
+        end
+        
+        # Check filled item slots history
+        filled_item_slot_history_for_ltm_node_before_save = ltm_node_before_save._filledItemSlotsHistory
+        filled_item_slot_history_for_ltm_node_after_restoration = ltm_node_after_restoration._filledItemSlotsHistory
+        if filled_item_slot_history_for_ltm_node_before_save == nil
+          assert_equal(
+            nil,
+            filled_item_slot_history_for_ltm_node_after_restoration,
+            "occurred when checking if the filled item slot history for the restored node " +
+            "is set to nil"
+          )
+        else
+          assert_equal(
+            time_restoration_requested - 1,
+            filled_item_slot_history_for_ltm_node_after_restoration.firstEntry().getKey(),
+            "occurred when checking the time of the first filled item slots history entry for " +
+            "Node " + ltm_node_before_save_reference.to_s + " after restoration"
+          )
+
+          last_filled_item_slot_history_entry_before_save = filled_item_slot_history_for_ltm_node_before_save.lastEntry().getValue().to_a
+          first_filled_item_slot_history_entry_after_restoration = filled_item_slot_history_for_ltm_node_after_restoration.firstEntry().getValue().to_a
+          assert_equal(
+            last_filled_item_slot_history_entry_before_save.length,
+            first_filled_item_slot_history_entry_after_restoration.length,
+            "occurred when checking the number of filled item slots in the first filled item slot history entry for " +
+            "Node " + ltm_node_before_save_reference.to_s + " after restoration"
+          )
+          
+          for fi in 0...last_filled_item_slot_history_entry_before_save.length
+            assert_equal(
+              last_filled_item_slot_history_entry_before_save[fi],
+              first_filled_item_slot_history_entry_after_restoration[fi],
+              "occurred when checking the item in filled slot " + fi.to_s + " for Node " +
+              ltm_node_before_save_reference.to_s + " after restoration"
+            )
+          end
+        end
+        
+        # Check filled position slots history
+        filled_position_slot_history_for_ltm_node_before_save = ltm_node_before_save._filledPositionSlotsHistory
+        filled_position_slot_history_for_ltm_node_after_restoration = ltm_node_after_restoration._filledPositionSlotsHistory
+        if filled_position_slot_history_for_ltm_node_before_save == nil
+          assert_equal(
+            nil,
+            filled_position_slot_history_for_ltm_node_after_restoration,
+            "occurred when checking if the filled position slot history for the restored node " +
+            "is set to nil"
+          )
+        else
+          assert_equal(
+            time_restoration_requested - 1,
+            filled_position_slot_history_for_ltm_node_after_restoration.firstEntry().getKey(),
+            "occurred when checking the time of the first filled position slots history entry for " +
+            "Node " + ltm_node_before_save_reference.to_s + " after restoration"
+          )
+
+          last_filled_position_slot_history_entry_before_save = filled_position_slot_history_for_ltm_node_before_save.lastEntry().getValue().to_a
+          first_filled_position_slot_history_entry_after_restoration = filled_position_slot_history_for_ltm_node_after_restoration.firstEntry().getValue().to_a
+          assert_equal(
+            last_filled_position_slot_history_entry_before_save.length,
+            first_filled_position_slot_history_entry_after_restoration.length,
+            "occurred when checking the number of filled position slots in the first filled position slot history entry for " +
+            "Node " + ltm_node_before_save_reference.to_s + " after restoration"
+          )
+          
+          for fp in 0...last_filled_position_slot_history_entry_before_save.length
+            assert_equal(
+              last_filled_position_slot_history_entry_before_save[fp],
+              first_filled_position_slot_history_entry_after_restoration[fp],
+              "occurred when checking the filled position in slot " + fp.to_s + " for Node " +
+              ltm_node_before_save_reference.to_s + " after restoration"
+            )
+          end
+        end
+      end
+    end
+    
+    assert_true(
+      ltm_reference_found, 
+      "occurred when checking if Node " + ltm_node_before_save_reference.to_s +
+      " is in LTM after restoration"
+    )
+  end
+end
 
 ################################################################################
 ################################################################################
@@ -9719,6 +10580,30 @@ def move_visual_spatial_field_object_test(
     "associated with the visual-spatial field will be free in scenario " +
     scenario.to_s
   )
+end
+
+def record_nodes_from_node (node, record, time)
+  link_child_field = Link.java_class.declared_field("_child")
+  link_child_field.accessible = true
+  
+  for link in node._childHistory.floorEntry(time.to_java(:int)).getValue()
+    record = record_nodes_from_node(link_child_field.value(link), record, time)
+  end
+  
+  record.push(node)
+  return record
+end
+
+def fill_slots (model, node, pattern, time)
+  time = [model._cognitionClock, model._attentionClock].max
+  result = node.fillSlots(pattern, time)
+  if result == nil then result = 0 end
+  
+  for child_link in node._childHistory.lastEntry().getValue()
+    result += fill_slots(model, child_link.getChildNode(), pattern, time)
+  end
+  
+  return result
 end
 
 ##The aim of this test is to check for the correct operation of setting a CHREST
