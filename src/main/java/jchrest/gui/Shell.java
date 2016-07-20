@@ -478,7 +478,7 @@ public class Shell extends JFrame implements Observer {
   }
 
   /**
-   * Action to clear data held in the model.
+   * Action to clearShortAndLongTermMemory data held in the model.
    */
   class ClearModelAction extends AbstractAction implements ActionListener {
     private Shell _parent;
@@ -498,7 +498,7 @@ public class Shell extends JFrame implements Observer {
         JOptionPane.QUESTION_MESSAGE
       )){
         String lastExperimentLocatedInName = _model.getExperimentsLocatedInNames().get(_model.getExperimentsLocatedInNames().size() - 1);
-        _model.clear ();
+        _model.clearShortAndLongTermMemory (0);
         _model.setNotEngagedInExperiment();
         _model.addExperimentsLocatedInName(lastExperimentLocatedInName);
       }
@@ -539,9 +539,9 @@ public class Shell extends JFrame implements Observer {
         _model.getStm(Modality.VISUAL).setCapacity(((SpinnerNumberModel)_visualStmSize.getModel()).getNumber().intValue(), currentExperimentTime);
         _model.getStm(Modality.VERBAL).setCapacity(((SpinnerNumberModel)_verbalStmSize.getModel()).getNumber().intValue(), currentExperimentTime);
         _model.getPerceiver().setFixationFieldOfView (((SpinnerNumberModel)_fieldOfView.getModel()).getNumber().intValue ());
-        _model.setCreateSemanticLinks (_createSemanticLinks.isSelected ());
-        _model.setCreateTemplates(_createTemplates.isSelected ());
-        _model.setRecordHistory(_recordHistory.isSelected());
+        _model.setCanCreateSemanticLinks (_createSemanticLinks.isSelected ());
+        _model.setCanCreateTemplates(_createTemplates.isSelected ());
+        _model.setExecutionHistoryRecording(_recordHistory.isSelected());
         _model.setNodeImageSimilarityThreshold(((SpinnerNumberModel)_similarityThreshold.getModel()).getNumber().intValue ());
       }
     }
@@ -574,7 +574,7 @@ public class Shell extends JFrame implements Observer {
       _similarityThreshold = new JSpinner (new SpinnerNumberModel (_model.getNodeImageSimilarityThreshold(), 1, 100, 1));
       _createSemanticLinks = new JCheckBox ("Use semantic links", _model.canCreateSemanticLinks ());
       _createTemplates = new JCheckBox ("Use templates", _model.canCreateTemplates ());
-      _recordHistory = new JCheckBox ("Record history", _model.canRecordHistory());
+      _recordHistory = new JCheckBox ("Record history", _model.canRecordExecutionHistory());
 
       JPanel panel = new JPanel ();
       panel.setLayout (new SpringLayout ());
@@ -754,7 +754,7 @@ public class Shell extends JFrame implements Observer {
     if(_executionHistory.isEmpty()){
       String emptyMessage = "No execution history recorded yet.<br><hr><br>";
 
-      if(this._model.canRecordHistory()){
+      if(this._model.canRecordExecutionHistory()){
         emptyMessage += "The CHREST model associated with this GUI can record history so "
         + "<br>try running an experiment.";
       }
@@ -1104,7 +1104,9 @@ public class Shell extends JFrame implements Observer {
   }
 
   /**
-   * main method to get everything started.
+   * Start the GUI.
+   * 
+   * @param args Non-applicable.
    */
   public static void main (String[] args) {
     javax.swing.SwingUtilities.invokeLater(new Runnable() {

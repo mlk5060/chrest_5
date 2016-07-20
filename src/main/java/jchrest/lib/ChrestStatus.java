@@ -2,7 +2,7 @@ package jchrest.lib;
 
 /**
  *
- * @author Martyn Lloyd-Kelly <martynlk@liverpool.ac.uk>
+ * @author Martyn Lloyd-Kelly {@code <martynlk@liverpool.ac.uk>}
  */
 public enum ChrestStatus {
   ACTION_NOT_IN_STM,

@@ -9,24 +9,24 @@ import java.util.function.BiFunction;
  * Should be used to maintain a history of states for classes in the {@link
  * jchrest.architecture} package.
  * 
- * Despite instances of this class extending {@link java.util.TreeMap>} the only
+ * Despite instances of this class extending {@link java.util.TreeMap} the only
  * functionality available to modify its {@link java.util.Map.Entry entries} 
  * are those functions that add new {@link java.util.Map.Entry entries}, i.e.
  * 
  * <ul>
  *  <li>
- *    {@link jchrest.lib.HistoryTreeMap#put(java.lang.Integer, 
- *    java.lang.Object)}
+ *    {@link jchrest.lib.HistoryTreeMap#put(java.lang.Object, java.lang.Object)}
  *  </li>
- *  <li>{@link jchrest.lib.HistoryTreeMap#putAll(java.util.Map)}</li>
+ *  <li>
+ *    {@link jchrest.lib.HistoryTreeMap#putAll(java.util.Map)}
+ *  </li>
  * </ul>
  * 
  * Both of these methods always check to see if the new {@link 
- * java.util.Map.Entry} that will be created does not rewrite the existing 
- * history of {@link #this}.  If they will, a {@link java.lang.RuntimeException}
- * is thrown.
+ * java.util.Map.Entry} that will be created does not rewrite history.  If they 
+ * will, a {@link java.lang.RuntimeException} is thrown.
  * 
- * The following methods inherited from {@link java.util.TreeMap>} are also
+ * The following methods inherited from {@link java.util.TreeMap} are also
  * unsupported since they will either modify {@link java.util.Map.Entry entries} 
  * in unexpected ways, remove {@link java.util.Map.Entry entries} or replace the 
  * values of {@link java.util.Map.Entry entries}, i.e. they will rewrite the
@@ -42,7 +42,7 @@ import java.util.function.BiFunction;
  *  <li>
  *    {@link java.util.TreeMap#putIfAbsent(java.lang.Object, 
  *    java.lang.Object)} (redundant since the {@link 
- *    jchrest.lib.HistoryTreeMap#put(java.lang.Integer, java.lang.Object)} and 
+ *    jchrest.lib.HistoryTreeMap#put(java.lang.Object, java.lang.Object)} and 
  *    {@link jchrest.lib.HistoryTreeMap#putAll(java.util.Map)} functions already 
  *    provide such functionality)
  *  </li>
@@ -63,13 +63,12 @@ import java.util.function.BiFunction;
  * </ul>
  * 
  * 
- * @author Martyn Lloyd-Kelly <martynlk@liverpool.ac.uk>
+ * @author Martyn Lloyd-Kelly {@code <martynlk@liverpool.ac.uk>}
  */
-public class HistoryTreeMap<Integer, V> extends TreeMap<Integer, V>{
+public class HistoryTreeMap<Integer, V> extends TreeMap<Integer, V> {
   
   /**
-   * Determines if adding the specified key to {@link #this} would rewrite its
-   * current history.
+   * Determines if adding the specified key would rewrite history.
    * 
    * @param time
    * @return 
@@ -90,7 +89,7 @@ public class HistoryTreeMap<Integer, V> extends TreeMap<Integer, V>{
    * @param func
    * @return
    * @throws UnsupportedOperationException since it should not be possible to
-   * rewrite the history of {@link #this} by merging.
+   * rewrite history by merging.
    */
   @Override
   public V merge(
@@ -105,7 +104,7 @@ public class HistoryTreeMap<Integer, V> extends TreeMap<Integer, V>{
    * 
    * @return
    * @throws UnsupportedOperationException since it should not be possible to
-   * rewrite the history of {@link #this} by removing entries.
+   * rewrite history by removing entries.
    */
   @Override
   public Entry pollFirstEntry() throws UnsupportedOperationException{
@@ -116,7 +115,7 @@ public class HistoryTreeMap<Integer, V> extends TreeMap<Integer, V>{
    * 
    * @return
    * @throws UnsupportedOperationException since it should not be possible to
-   * rewrite the history of {@link #this} by removing entries.
+   * rewrite history by removing entries.
    */
   @Override
   public Entry pollLastEntry() throws UnsupportedOperationException{
@@ -129,9 +128,8 @@ public class HistoryTreeMap<Integer, V> extends TreeMap<Integer, V>{
    * @param value
    * @return
    * @throws UnsupportedOperationException since the only functions that should 
-   * be used to add entries to {@link #this} are {@link 
-   * jchrest.lib.HistoryTreeMap#put(java.lang.Integer, java.lang.Object)} and
-   * {@link jchrest.lib.HistoryTreeMap#putAll(java.util.Map)}.
+   * be used to add entries are {@link jchrest.lib.HistoryTreeMap#put(java.lang.Object, 
+   * java.lang.Object)} and {@link jchrest.lib.HistoryTreeMap#putAll(java.util.Map)}.
    */
   @Override
   public V putIfAbsent(Integer time, V value) throws UnsupportedOperationException{
@@ -144,8 +142,8 @@ public class HistoryTreeMap<Integer, V> extends TreeMap<Integer, V>{
    * @param value
    * @return The result of {@link java.util.TreeMap#put(java.lang.Object, 
    * java.lang.Object)} if adding a new {@link java.util.Map.Entry} 
-   * consisting of the time and value specified will not rewrite the history of
-   * {@link #this}, {@code null} if it will or if {@link 
+   * consisting of the time and value specified will not rewrite history.  
+   * Otherwise, {@code null} if it will or if {@link 
    * java.util.TreeMap#put(java.lang.Object, java.lang.Object)} fails.
    */
   @Override
@@ -174,7 +172,7 @@ public class HistoryTreeMap<Integer, V> extends TreeMap<Integer, V>{
    * @param time
    * @return 
    * @throws UnsupportedOperationException since it should not be possible to
-   * rewrite the history of {@link #this} by removing entries.
+   * rewrite history by removing entries.
    */
   @Override
   public V remove(Object time) throws UnsupportedOperationException{
@@ -186,7 +184,7 @@ public class HistoryTreeMap<Integer, V> extends TreeMap<Integer, V>{
    * @param value
    * @return 
    * @throws UnsupportedOperationException since it should not be possible to
-   * rewrite the history of {@link #this} by removing entries.
+   * rewrite history by removing entries.
    */
   @Override
   public boolean remove(Object time, Object value) throws UnsupportedOperationException{
@@ -198,7 +196,7 @@ public class HistoryTreeMap<Integer, V> extends TreeMap<Integer, V>{
    * @param value
    * @return
    * @throws UnsupportedOperationException since it should not be possible to
-   * rewrite the history of {@link #this} by replacing entries.
+   * rewrite history by replacing entries.
    */
   @Override
   public V replace(Integer time, V value) throws UnsupportedOperationException{
@@ -211,7 +209,7 @@ public class HistoryTreeMap<Integer, V> extends TreeMap<Integer, V>{
    * @param newValue
    * @return
    * @throws UnsupportedOperationException since it should not be possible to
-   * rewrite the history of {@link #this} by replacing entries.
+   * rewrite history by replacing entries.
    */
   @Override
   public boolean replace(Integer time, V oldValue, V newValue) throws UnsupportedOperationException{
@@ -221,7 +219,7 @@ public class HistoryTreeMap<Integer, V> extends TreeMap<Integer, V>{
   /**
    * @param func
    * @throws UnsupportedOperationException since it should not be possible to
-   * rewrite the history of {@link #this} by replacing entries.
+   * rewrite history by replacing entries.
    */
   @Override
   public void replaceAll(BiFunction<? super Integer, ? super V, ? extends V> func) throws UnsupportedOperationException{

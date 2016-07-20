@@ -7503,9 +7503,9 @@ process_test "construct_visual_spatial_field" do
     
     Chrest.class_eval{
       field_accessor :_timeToRetrieveItemFromStm,
-        :_timeToEncodeRecognisedSceneObjectAsVisualSpatialFieldObject,
-        :_timeToEncodeUnrecognisedEmptySquareSceneObjectAsVisualSpatialFieldObject,
-        :_timeToEncodeUnrecognisedNonEmptySquareSceneObjectAsVisualSpatialFieldObject,
+        :_timeToEncodeRecognisedVisualSpatialFieldObject,
+        :_timeToEncodeUnrecognisedEmptySquareAsVisualSpatialFieldObject,
+        :_timeToEncodeUnrecognisedVisualSpatialFieldObject,
         :_timeToProcessUnrecognisedSceneObjectDuringVisualSpatialFieldConstruction,
         :_recognisedVisualSpatialFieldObjectLifespan,
         :_unrecognisedVisualSpatialFieldObjectLifespan,
@@ -7516,9 +7516,9 @@ process_test "construct_visual_spatial_field" do
     perceiver = model.getPerceiver()
     
     model._timeToRetrieveItemFromStm = 50
-    model._timeToEncodeRecognisedSceneObjectAsVisualSpatialFieldObject = 5
-    model._timeToEncodeUnrecognisedEmptySquareSceneObjectAsVisualSpatialFieldObject = 10
-    model._timeToEncodeUnrecognisedNonEmptySquareSceneObjectAsVisualSpatialFieldObject = 25
+    model._timeToEncodeRecognisedVisualSpatialFieldObject = 5
+    model._timeToEncodeUnrecognisedEmptySquareAsVisualSpatialFieldObject = 10
+    model._timeToEncodeUnrecognisedVisualSpatialFieldObject = 25
     model._timeToProcessUnrecognisedSceneObjectDuringVisualSpatialFieldConstruction = 100
     model._recognisedVisualSpatialFieldObjectLifespan = 10000
     model._unrecognisedVisualSpatialFieldObjectLifespan = 8000
@@ -7870,7 +7870,7 @@ process_test "construct_visual_spatial_field" do
       node_processing_times.push(creation_time)
       
        if [1,2,3,4].include?(node) then 
-        creation_time += model._timeToEncodeRecognisedSceneObjectAsVisualSpatialFieldObject
+        creation_time += model._timeToEncodeRecognisedVisualSpatialFieldObject
       end
       
       coordinates_to_edit = []
@@ -7900,9 +7900,9 @@ process_test "construct_visual_spatial_field" do
       fixation_processing_times.push(creation_time)
       
       if fixation == 1 || fixation == 3 
-        creation_time += model._timeToEncodeUnrecognisedEmptySquareSceneObjectAsVisualSpatialFieldObject
+        creation_time += model._timeToEncodeUnrecognisedEmptySquareAsVisualSpatialFieldObject
       elsif fixation == 2 || fixation == 4
-        creation_time += model._timeToEncodeUnrecognisedNonEmptySquareSceneObjectAsVisualSpatialFieldObject
+        creation_time += model._timeToEncodeUnrecognisedVisualSpatialFieldObject
       end
       
       coordinates_to_edit = []
@@ -8142,9 +8142,9 @@ process_test "move_visual_spatial_field_object" do
     # directly.  Since these fields are private but not final, a class_eval 
     # structure can be used to set them directly.
     Chrest.class_eval{
-      field_accessor :_timeToEncodeRecognisedSceneObjectAsVisualSpatialFieldObject,
-        :_timeToEncodeUnrecognisedEmptySquareSceneObjectAsVisualSpatialFieldObject,
-        :_timeToEncodeUnrecognisedNonEmptySquareSceneObjectAsVisualSpatialFieldObject,
+      field_accessor :_timeToEncodeRecognisedVisualSpatialFieldObject,
+        :_timeToEncodeUnrecognisedEmptySquareAsVisualSpatialFieldObject,
+        :_timeToEncodeUnrecognisedVisualSpatialFieldObject,
         :_timeToProcessUnrecognisedSceneObjectDuringVisualSpatialFieldConstruction,
         :_recognisedVisualSpatialFieldObjectLifespan,
         :_unrecognisedVisualSpatialFieldObjectLifespan,
@@ -8152,9 +8152,9 @@ process_test "move_visual_spatial_field_object" do
         :_timeToMoveVisualSpatialFieldObject
     }
     
-    model._timeToEncodeRecognisedSceneObjectAsVisualSpatialFieldObject = 10
-    model._timeToEncodeUnrecognisedEmptySquareSceneObjectAsVisualSpatialFieldObject = 15
-    model._timeToEncodeUnrecognisedNonEmptySquareSceneObjectAsVisualSpatialFieldObject = 20
+    model._timeToEncodeRecognisedVisualSpatialFieldObject = 10
+    model._timeToEncodeUnrecognisedEmptySquareAsVisualSpatialFieldObject = 15
+    model._timeToEncodeUnrecognisedVisualSpatialFieldObject = 20
     model._timeToProcessUnrecognisedSceneObjectDuringVisualSpatialFieldConstruction = 100
     model._recognisedVisualSpatialFieldObjectLifespan = 60000
     model._unrecognisedVisualSpatialFieldObjectLifespan = 30000
@@ -8184,8 +8184,8 @@ process_test "move_visual_spatial_field_object" do
         model, 
         visual_spatial_field, 
         time += (scenario.between?(7, 12) ? 
-          model._timeToProcessUnrecognisedSceneObjectDuringVisualSpatialFieldConstruction + model._timeToEncodeUnrecognisedNonEmptySquareSceneObjectAsVisualSpatialFieldObject : 
-          model._timeToEncodeRecognisedSceneObjectAsVisualSpatialFieldObject
+          model._timeToProcessUnrecognisedSceneObjectDuringVisualSpatialFieldConstruction + model._timeToEncodeUnrecognisedVisualSpatialFieldObject : 
+          model._timeToEncodeRecognisedVisualSpatialFieldObject
         ), 
         (scenario.between?(7, 12) ? false : true), 
         true
@@ -8197,7 +8197,7 @@ process_test "move_visual_spatial_field_object" do
       "B", 
       model, 
       visual_spatial_field, 
-      time += model._timeToEncodeRecognisedSceneObjectAsVisualSpatialFieldObject, 
+      time += model._timeToEncodeRecognisedVisualSpatialFieldObject, 
       true, 
       true
     )
@@ -8207,7 +8207,7 @@ process_test "move_visual_spatial_field_object" do
       "C", 
       model, 
       visual_spatial_field, 
-      time += (model._timeToProcessUnrecognisedSceneObjectDuringVisualSpatialFieldConstruction + model._timeToEncodeUnrecognisedNonEmptySquareSceneObjectAsVisualSpatialFieldObject), 
+      time += (model._timeToProcessUnrecognisedSceneObjectDuringVisualSpatialFieldConstruction + model._timeToEncodeUnrecognisedVisualSpatialFieldObject), 
       false, 
       true
     )
@@ -8231,7 +8231,7 @@ process_test "move_visual_spatial_field_object" do
         Scene.getEmptySquareToken(), 
         model, 
         visual_spatial_field, 
-        time += (model._timeToProcessUnrecognisedSceneObjectDuringVisualSpatialFieldConstruction + model._timeToEncodeUnrecognisedEmptySquareSceneObjectAsVisualSpatialFieldObject), 
+        time += (model._timeToProcessUnrecognisedSceneObjectDuringVisualSpatialFieldConstruction + model._timeToEncodeUnrecognisedEmptySquareAsVisualSpatialFieldObject), 
         false, 
         true
       )
@@ -8267,8 +8267,8 @@ process_test "move_visual_spatial_field_object" do
         (scenario.between?(1, 12) ?
           (expected_creation_time += 
             (scenario.between?(1, 6) ? 
-              model._timeToEncodeRecognisedSceneObjectAsVisualSpatialFieldObject :
-              model._timeToProcessUnrecognisedSceneObjectDuringVisualSpatialFieldConstruction + model._timeToEncodeUnrecognisedNonEmptySquareSceneObjectAsVisualSpatialFieldObject
+              model._timeToEncodeRecognisedVisualSpatialFieldObject :
+              model._timeToProcessUnrecognisedSceneObjectDuringVisualSpatialFieldConstruction + model._timeToEncodeUnrecognisedVisualSpatialFieldObject
             )
           ) : 
           visual_spatial_field_creation_time # Creator encoded when the VisualSpatialField is constructed
@@ -8289,7 +8289,7 @@ process_test "move_visual_spatial_field_object" do
       "2", 
       "B", 
       true, 
-      expected_creation_time += model._timeToEncodeRecognisedSceneObjectAsVisualSpatialFieldObject, 
+      expected_creation_time += model._timeToEncodeRecognisedVisualSpatialFieldObject, 
       expected_creation_time + model._recognisedVisualSpatialFieldObjectLifespan
     ]]
   
@@ -8298,7 +8298,7 @@ process_test "move_visual_spatial_field_object" do
       "3", 
       "C", 
       false, 
-      expected_creation_time += (model._timeToProcessUnrecognisedSceneObjectDuringVisualSpatialFieldConstruction + model._timeToEncodeUnrecognisedNonEmptySquareSceneObjectAsVisualSpatialFieldObject), 
+      expected_creation_time += (model._timeToProcessUnrecognisedSceneObjectDuringVisualSpatialFieldConstruction + model._timeToEncodeUnrecognisedVisualSpatialFieldObject), 
       expected_creation_time + model._unrecognisedVisualSpatialFieldObjectLifespan
     ]]
   
@@ -8309,7 +8309,7 @@ process_test "move_visual_spatial_field_object" do
         nil,
         Scene.getEmptySquareToken(),
         false,
-        expected_creation_time += (model._timeToProcessUnrecognisedSceneObjectDuringVisualSpatialFieldConstruction + model._timeToEncodeUnrecognisedEmptySquareSceneObjectAsVisualSpatialFieldObject),
+        expected_creation_time += (model._timeToProcessUnrecognisedSceneObjectDuringVisualSpatialFieldConstruction + model._timeToEncodeUnrecognisedEmptySquareAsVisualSpatialFieldObject),
         expected_creation_time + model._unrecognisedVisualSpatialFieldObjectLifespan
       ]]
     end
@@ -8320,7 +8320,7 @@ process_test "move_visual_spatial_field_object" do
         nil, 
         Scene.getEmptySquareToken, 
         false, 
-        expected_creation_time += (model._timeToProcessUnrecognisedSceneObjectDuringVisualSpatialFieldConstruction + model._timeToEncodeUnrecognisedEmptySquareSceneObjectAsVisualSpatialFieldObject), 
+        expected_creation_time += (model._timeToProcessUnrecognisedSceneObjectDuringVisualSpatialFieldConstruction + model._timeToEncodeUnrecognisedEmptySquareAsVisualSpatialFieldObject), 
         expected_creation_time + model._unrecognisedVisualSpatialFieldObjectLifespan]]
     )
     

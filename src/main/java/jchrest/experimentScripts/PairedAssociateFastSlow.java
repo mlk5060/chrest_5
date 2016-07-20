@@ -1457,7 +1457,7 @@ public class PairedAssociateFastSlow {
     @Override
     public void actionPerformed(ActionEvent e) {
       PairedAssociateFastSlow.this._model.unfreeze();
-      PairedAssociateFastSlow.this._model.clear();
+      PairedAssociateFastSlow.this._model.clearShortAndLongTermMemory(0);
       
       PairedAssociateFastSlow.this._dictionary.clear();
       PairedAssociateFastSlow.this._experiment = null;
@@ -1564,8 +1564,8 @@ public class PairedAssociateFastSlow {
       
       //Get the model's current history recording setting and turn off history
       //recording.
-      this._originalRecordKeepingSetting = _model.canRecordHistory();
-      PairedAssociateFastSlow.this._model.setRecordHistory(false);
+      this._originalRecordKeepingSetting = _model.canRecordExecutionHistory();
+      PairedAssociateFastSlow.this._model.setExecutionHistoryRecording(false);
       
       //If the experiment is not "resuming" after being stopped, set the 
       //experiment number to 1 otherwise, do not change it.
@@ -1767,7 +1767,7 @@ public class PairedAssociateFastSlow {
         /***** Clean Up *****/
         /********************/
         
-        _model.clear();
+        _model.clearShortAndLongTermMemory(0);
         PairedAssociateFastSlow.this.updateExperimentsProcessedLabel();
       }
 
@@ -1783,7 +1783,7 @@ public class PairedAssociateFastSlow {
       //"StopExperimentAction" should be run.
       if(PairedAssociateFastSlow.this._experimentCondition > PairedAssociateFastSlow.this._experimentConditionsTotal ){
         _model.unfreeze();
-        _model.setRecordHistory(this._originalRecordKeepingSetting);
+        _model.setExecutionHistoryRecording(this._originalRecordKeepingSetting);
         PairedAssociateFastSlow.this._exportDataButton.setEnabled(true);
         PairedAssociateFastSlow.this._restartButton.setEnabled(true);
         PairedAssociateFastSlow.this._stopButton.setEnabled(false);

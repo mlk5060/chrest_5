@@ -205,7 +205,7 @@ public class PeripheralSquareFixation extends Fixation{
         //
         //Finally, ensure that the time this function is being invoked is 
         //greater than or equal to the performance time of this Fixation.
-        if(this._model.debug()){
+        if(this._model.isDebuggingEnabled()){
           this._model.printDebugStatement("- Checking if the following statements all evaluate to true:");
           this._model.printDebugStatement("  ~ Scene fixated on by the most recent Fixation performed is not null: " + (sceneMostRecentFixationPerformedOn != null));
           this._model.printDebugStatement("  ~ Column fixated on by the most recent Fixation performed is not null: " + (colFixatedOnByMostRecentFixationPerformed != null));

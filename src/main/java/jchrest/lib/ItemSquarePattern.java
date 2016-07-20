@@ -29,7 +29,9 @@ public class ItemSquarePattern extends PrimitivePattern {
   }
 
   /** 
-   * Accessor method for the stored item.
+   * Accessor method for the item.
+   * 
+   * @return 
    */
   public String getItem () {
     return _item;
@@ -37,6 +39,8 @@ public class ItemSquarePattern extends PrimitivePattern {
 
   /**
    * Accessor method for the column.
+   * 
+   * @return 
    */
   public int getColumn () {
     return _column;
@@ -44,13 +48,36 @@ public class ItemSquarePattern extends PrimitivePattern {
 
   /**
    * Accessor method for the row.
+   * 
+   * @return
    */
   public int getRow () {
     return _row;
   }
 
   /**
-   * Two ItemSquarePatterns are only equal if all their parts are the same.
+   * @return {@link java.lang.Boolean#TRUE} if the following statements all 
+   * evaluate to {@link java.lang.Boolean#TRUE}:
+   * <ul>
+   *  <li>
+   *    The {@code object} specified is an {@link jchrest.lib.ItemSquarePattern}.
+   *  </li>
+   *  <li>
+   *    The result of invoking {@link jchrest.lib.ItemSquarePattern#getItem()} 
+   *    on this {@link jchrest.lib.ItemSquarePattern} and the {@code object}
+   *    specified returns the same result.
+   *  </li>
+   *  <li>
+   *    The result of invoking {@link jchrest.lib.ItemSquarePattern#getColumn()} 
+   *    on this {@link jchrest.lib.ItemSquarePattern} and the {@code object}
+   *    specified returns the same result.
+   *  </li>
+   *  <li>
+   *    The result of invoking {@link jchrest.lib.ItemSquarePattern#getRow()} 
+   *    on this {@link jchrest.lib.ItemSquarePattern} and the {@code object}
+   *    specified returns the same result.
+   *  </li>
+   * </ul>
    */
   @Override
   public boolean equals (Object object) {
@@ -74,16 +101,13 @@ public class ItemSquarePattern extends PrimitivePattern {
   }
 
   /** 
-   * Two ItemSquarePatterns only match if they are the same.
+   * @return The result of invoking {@link 
+   * jchrest.lib.ItemSquarePattern#equals(java.lang.Object)}.
    */
   public boolean matches (Pattern givenPattern) {
-    if (!(givenPattern instanceof ItemSquarePattern)) return false;
     return this.equals ((ItemSquarePattern)givenPattern);
   }
 
-  /**
-   * Return a string representation of the item on square.
-   */
   public String toString () {
     return "[" + _item + " " + _column + " " + _row + "]";
   }

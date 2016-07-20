@@ -14,6 +14,9 @@ public abstract class Pattern implements Serializable {
 
   /**
    * Factory method to make a NumberPattern.
+   * 
+   * @param number
+   * @return 
    */
   public static NumberPattern makeNumber (int number) {
     return NumberPattern.create (number);
@@ -21,6 +24,9 @@ public abstract class Pattern implements Serializable {
 
   /**
    * Factory method to make a StringPattern.
+   * 
+   * @param str
+   * @return 
    */
   public static StringPattern makeString (String str) {
     return StringPattern.create (str);
@@ -35,9 +41,14 @@ public abstract class Pattern implements Serializable {
     return list;
   }
 
-  /** Factory method to make a ListPattern given an array of numbers.
-   * Each number is converted into a NumberPattern and added to the 
-   * ListPattern.
+  /** 
+   * Factory method.
+   * 
+   * @param numbers Each {@link java.lang.Integer} is converted into a {@link 
+   * jchrest.lib.NumberPattern} and added to a {@link jchrest.lib.ListPattern}.
+   * 
+   * @return A {@link jchrest.lib.ListPattern} containing {@code numbers} with
+   * {@link jchrest.lib.Modality#VISUAL}.
    */
   public static ListPattern makeVisualList (int[] numbers) {
     return makeList (numbers, Modality.VISUAL);

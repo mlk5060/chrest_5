@@ -30,7 +30,7 @@ import org.xml.sax.SAXException;
 /**
  * Handles reading in of data to use in CHREST experiments.
  * 
- * @author Martyn Lloyd-Kelly <martynlk@liverpool.ac.uk>
+ * @author Martyn Lloyd-Kelly {@code <martynlk@liverpool.ac.uk>}
  */
 public class InputOutput {
   
