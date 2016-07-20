@@ -1989,7 +1989,7 @@ unit_test "constructor" do
     initial_fixation_threshold = (i == 1 ? -1 : i == 2 ? 0 : 1) 
     exception_thrown = false
     begin
-      ChessDomain.new(model, initial_fixation_threshold, 3, 5, 0, 0)
+      ChessDomain.new(model, initial_fixation_threshold, 3, 5)
     rescue
       exception_thrown = true
     end
@@ -2010,7 +2010,7 @@ unit_test "constructor" do
     max_periphery_fixation_attempts = (i == 1 ? -1 : i == 2 ? 0 : 1)
     exception_thrown = false
     begin
-      ChessDomain.new(model, 4, max_periphery_fixation_attempts, 5, 0, 0)
+      ChessDomain.new(model, 4, max_periphery_fixation_attempts, 5)
     rescue
       exception_thrown = true
     end
@@ -2038,7 +2038,7 @@ unit_test "constructor" do
     
     exception_thrown = false
     begin
-      ChessDomain.new(model, initial_fixation_threshold, 3, max_fixations_in_set, 0, 0)
+      ChessDomain.new(model, initial_fixation_threshold, 3, max_fixations_in_set)
     rescue
       exception_thrown = true
     end
@@ -2048,60 +2048,6 @@ unit_test "constructor" do
       exception_thrown,
       "occurred when checking if an exception is thrown when the maximum fixations " +
       "in set parameter is set to " + max_fixations_in_set.to_s + " and " +
-      "all other constructor parameters are valid."
-    )
-  end
-  
-  # Check if exceptions are thrown as expected when differing values for the
-  # time taken to decide upon global strategy fixations constructor parameter 
-  # are provided.
-  for i in 1..3
-    time_taken_to_decide_on_global_strategy_fixations = (
-      i == 1 ? -1 :
-      i == 2 ? 0 :
-      1
-    )
-    
-    exception_thrown = false
-    begin
-      ChessDomain.new(model, 4, 3, 10, time_taken_to_decide_on_global_strategy_fixations, 0)
-    rescue
-      exception_thrown = true
-    end
-
-    assert_equal(
-      (i == 1 ? true : false),
-      exception_thrown,
-      "occurred when checking if an exception is thrown when the time taken to " +
-      "decide on global strategy fixations parameter is set to " + 
-      time_taken_to_decide_on_global_strategy_fixations.to_s + " and " +
-      "all other constructor parameters are valid."
-    )
-  end
-  
-  # Check if exceptions are thrown as expected when differing values for the
-  # time taken to decide upon global strategy fixations constructor parameter 
-  # are provided.
-  for i in 1..3
-    time_taken_to_decide_on_salient_man_fixations = (
-      i == 1 ? -1 :
-      i == 2 ? 0 :
-      1
-    )
-    
-    exception_thrown = false
-    begin
-      ChessDomain.new(model, 4, 3, 10, 0, time_taken_to_decide_on_salient_man_fixations)
-    rescue
-      exception_thrown = true
-    end
-
-    assert_equal(
-      (i == 1 ? true : false),
-      exception_thrown,
-      "occurred when checking if an exception is thrown when the time taken to " +
-      "decide on salient man fixations parameter is set to " + 
-      time_taken_to_decide_on_salient_man_fixations.to_s + " and " +
       "all other constructor parameters are valid."
     )
   end
@@ -2134,7 +2080,7 @@ unit_test "normalisation" do
     end
   end
 
-  normalised_list_pattern = ChessDomain.new(Chrest.new(0, false), 4, 3, 8, 0, 0).normalise(list_pattern)
+  normalised_list_pattern = ChessDomain.new(Chrest.new(0, false), 4, 3, 8).normalise(list_pattern)
   
   assert_equal(
     normalised_list_pattern.to_s,
@@ -2148,7 +2094,7 @@ end
 # CentralFixation tests.
 unit_test "get_initial_fixation_in_set" do
   50.times do
-    initial_fixation = ChessDomain.new(Chrest.new(0, false), 4, 3, 8, 0, 0).getInitialFixationInSet(0)
+    initial_fixation = ChessDomain.new(Chrest.new(0, false), 4, 3, 8).getInitialFixationInSet(0)
     assert_true(initial_fixation.java_kind_of?(CentralFixation))
   end
 end
@@ -2238,7 +2184,7 @@ unit_test "get_non_initial_fixation_in_set" do
     #########################
 
     intial_fixation_threshold = 4
-    chess_domain = ChessDomain.new(model, intial_fixation_threshold, 3, 8, 0, 0)
+    chess_domain = ChessDomain.new(model, intial_fixation_threshold, 3, 8)
 
     ########################
     ##### BOARD SET-UP #####
@@ -2281,7 +2227,7 @@ unit_test "get_non_initial_fixation_in_set" do
       # Add Fixation to CHREST model's "_fixationsScheduled" data structure.
       fixations_scheduled = ArrayList.new()
       fixations_scheduled.add(fixation)
-      model._fixationsScheduled.put(time.to_java(:int), fixations_scheduled)
+      model._fixationsScheduled.put(time, fixations_scheduled)
       
       # Set Fixation variables so it has been "performed"
       fixation._performed = true
@@ -2296,9 +2242,9 @@ unit_test "get_non_initial_fixation_in_set" do
       # Remove/add the Fixation from/to the CHREST model's/Perceiver's Fixation 
       # data structure
       fixations_scheduled = ArrayList.new()
-      model._fixationsScheduled.put(fixation._performanceTime.to_java(:int), fixations_scheduled)
+      model._fixationsScheduled.put(fixation._performanceTime, fixations_scheduled)
       fixations_attempted.add(fixation)
-      perceiver_fixations_field.value(model.getPerceiver()).put(fixation._performanceTime.to_java(:int), fixations_attempted)
+      perceiver_fixations_field.value(model.getPerceiver()).put(fixation._performanceTime, fixations_attempted)
       
       # Advance time
       time = fixation._performanceTime + 300
@@ -2375,7 +2321,7 @@ unit_test "get_non_initial_fixation_in_set" do
       # structure.
       fixations_scheduled = ArrayList.new()
       fixations_scheduled.add(fixation)
-      model._fixationsScheduled.put(time.to_java(:int), fixations_scheduled)
+      model._fixationsScheduled.put(time, fixations_scheduled)
       
       # Set Fixation variables that would be set if the Fixation were performed
       # "properly"
@@ -2385,9 +2331,9 @@ unit_test "get_non_initial_fixation_in_set" do
       # Remove/add the last, unperformed, HypothesisDiscriminationFixation 
       # instance from/to the CHREST model's/Perceiver's Fixation data structure
       fixations_scheduled = ArrayList.new()
-      model._fixationsScheduled.put(fixation._performanceTime.to_java(:int), fixations_scheduled)
+      model._fixationsScheduled.put(fixation._performanceTime, fixations_scheduled)
       fixations_attempted.add(fixation)
-      perceiver_fixations_field.value(model.getPerceiver()).put(fixation._performanceTime.to_java(:int), fixations_attempted)
+      perceiver_fixations_field.value(model.getPerceiver()).put(fixation._performanceTime, fixations_attempted)
       
       ##########################################################################
       ##### GET FIXATION BEFORE HypothesisDiscriminationFixation PERFORMED #####
@@ -2467,7 +2413,7 @@ unit_test "get_non_initial_fixation_in_set" do
       # Add the Fixation to the CHREST model's Fixation to make data structure.
       fixations_scheduled = ArrayList.new()
       fixations_scheduled.add(fixation)
-      model._fixationsScheduled.put(time.to_java(:int), fixations_scheduled)
+      model._fixationsScheduled.put(time, fixations_scheduled)
 
       # "Perform" the fixation.  Note that the coordinates fixated on are 
       # randomly generated, this is because some Fixations returned when a 
@@ -2488,9 +2434,9 @@ unit_test "get_non_initial_fixation_in_set" do
       # Remove/add the last Fixation from/to the CHREST model's/Perceiver's 
       # Fixation data structure
       fixations_scheduled = ArrayList.new()
-      model._fixationsScheduled.put(fixation._performanceTime.to_java(:int), fixations_scheduled)
+      model._fixationsScheduled.put(fixation._performanceTime, fixations_scheduled)
       fixations_attempted.add(fixation)
-      perceiver_fixations_field.value(model.getPerceiver()).put(fixation._performanceTime.to_java(:int), fixations_attempted)
+      perceiver_fixations_field.value(model.getPerceiver()).put(fixation._performanceTime, fixations_attempted)
       
       # Advance time
       time = fixation._performanceTime + 300
@@ -2536,7 +2482,7 @@ unit_test "should_learn_from_new_fixations" do
   perceiver = model.getPerceiver()
   max_peripheral_item_fixations = 3
   max_fixations_in_set = 8
-  chess_domain = ChessDomain.new(model, 4, max_peripheral_item_fixations, max_fixations_in_set, 0, 0)
+  chess_domain = ChessDomain.new(model, 4, max_peripheral_item_fixations, max_fixations_in_set)
   chess_board = ChessDomain.constructBoard(chess_board_to_construct)
   
   assert_false(
@@ -2562,10 +2508,10 @@ unit_test "should_learn_from_new_fixations" do
     # - Fixation 7 should trigger the GlobalStrategyFixation condition ONLY
     # - Fixation 8 should trigger the PeripheralItemFixation condition ONLY
     if(i == 1)  
-      fixation = CentralFixation.new(time, 0)
+      fixation = CentralFixation.new(time)
       square_fixated_on = Square.new(0,0)
     elsif(i == 2)  
-      fixation = SalientManFixation.new(model, time, 0)
+      fixation = SalientManFixation.new(model, time)
       square_fixated_on = Square.new(1,0)
     elsif(i == 3)  
       fixation = HypothesisDiscriminationFixation.new(model, time) 
@@ -2574,13 +2520,13 @@ unit_test "should_learn_from_new_fixations" do
       fixation = AttackDefenseFixation.new(model, chess_board, time) 
       square_fixated_on = Square.new(3,0)
     elsif(i == 5  || i == 6)  
-      fixation = PeripheralSquareFixation.new(model, time, 0) 
+      fixation = PeripheralSquareFixation.new(model, time) 
       square_fixated_on = (i == 5 ? Square.new(4,0) : Square.new(0,3))
     elsif(i == 7)  
-      fixation = GlobalStrategyFixation.new(model, time, 0) 
+      fixation = GlobalStrategyFixation.new(model, time) 
       square_fixated_on = Square.new(5,0)
     elsif(i == 8)  
-      fixation = PeripheralItemFixation.new(model, max_peripheral_item_fixations, time, 0) 
+      fixation = PeripheralItemFixation.new(model, max_peripheral_item_fixations, time) 
       square_fixated_on = Square.new(6,0)
     end
     

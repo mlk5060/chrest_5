@@ -5,7 +5,7 @@ unit_test "constructor" do
   
   200.times do
     time_decided_upon = 150
-    fixation = SalientObjectFixation.new(time_decided_upon, 0)
+    fixation = SalientObjectFixation.new(time_decided_upon)
     assert_equal(time_decided_upon, fixation._timeDecidedUpon)
   end
 end
@@ -87,7 +87,7 @@ unit_test "make" do
         end
       end
 
-      fixation = SalientObjectFixation.new(150, 0)
+      fixation = SalientObjectFixation.new(150)
       fixation._performanceTime = fixation._timeDecidedUpon + 30
       
       result = fixation.make(scene, (scenario == 1 ? fixation._performanceTime - 1 : fixation._performanceTime))

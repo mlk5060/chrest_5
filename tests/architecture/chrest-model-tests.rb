@@ -8,72 +8,6 @@ require_relative "visual-spatial-field-tests.rb"
 ################################################################################
 
 ################################################################################
-unit_test "get_ltm_modality_size" do
-  
-  node_creation_time_field = Node.java_class.declared_field("_creationTime")
-  node_creation_time_field.accessible = true
-  
-  time = 0
-  model = Chrest.new(time, [true, false].sample)
-  
-  time += 1
-  for modality in Modality.values()
-
-    until time % 50 == 0
-      node = Node.new(model, ListPattern.new(modality), ListPattern.new(modality), time)
-      time += 1
-    end 
-    
-    node = Node.new(model, ListPattern.new(modality), ListPattern.new(modality), time)
-    time += 1
-  end
-  
-  number_action_nodes = 0
-  number_verbal_nodes = 0
-  number_visual_nodes = 0
-  
-  for time in 1..50
-    number_action_nodes += 1
-    assert_equal(number_action_nodes, model.getLtmModalitySize(Modality::ACTION, time), "when checking the number of action nodes at time " + time.to_s)
-    assert_equal(0, model.getLtmModalitySize(Modality::VERBAL, time), "when checking the number of verbal nodes at time " + time.to_s)
-    assert_equal(0, model.getLtmModalitySize(Modality::VISUAL, time), "when checking the number of visual nodes at time " + time.to_s)
-  end
-  
-  for time in 51..100 
-    number_verbal_nodes += 1
-    assert_equal(number_action_nodes, model.getLtmModalitySize(Modality::ACTION, time), "when checking the number of action nodes at time " + time.to_s)
-    assert_equal(number_verbal_nodes, model.getLtmModalitySize(Modality::VERBAL, time), "when checking the number of verbal nodes at time " + time.to_s)
-    assert_equal(0, model.getLtmModalitySize(Modality::VISUAL, time), "when checking the number of visual nodes at time " + time.to_s)
-  end
-  
-  for time in 101..150
-    number_visual_nodes += 1
-    assert_equal(number_action_nodes, model.getLtmModalitySize(Modality::ACTION, time), "when checking the number of action nodes at time " + time.to_s)
-    assert_equal(number_verbal_nodes, model.getLtmModalitySize(Modality::VERBAL, time), "when checking the number of verbal nodes at time " + time.to_s)
-    assert_equal(number_visual_nodes, model.getLtmModalitySize(Modality::VISUAL, time), "when checking the number of visual nodes at time " + time.to_s)
-  end
-end
-
-################################################################################
-unit_test "advance_attention_clock" do
-  Chrest.class_eval{
-    field_accessor :_attentionClock
-  }
-  
-  20.times do
-    model = Chrest.new(0, [true, false].sample)
-    
-    intial_attention_clock_value = rand(0..200)
-    model._attentionClock = intial_attention_clock_value
-    
-    advance_attention_by = rand(0..200)
-    model.advanceAttentionClock(advance_attention_by)
-    
-    assert_equal(intial_attention_clock_value + advance_attention_by, model._attentionClock)
-  end
-end
-
-################################################################################
 # Tests the "Chrest.discriminate()" method using a number of scenarios that 
 # trigger each type of discrimination in the method.
 # 
@@ -94,6 +28,9 @@ end
 # Scenario 5: new information is not empty and is known. After being recognised,
 #             the new information does not match the contents of the recognised 
 #             Node.
+# Scenario 6: discrimination fails since the new test to add to the node to 
+#             discriminate from already exists as a test on the node to #
+#             discriminate.
 # 
 # Method Parameters
 # =================
@@ -118,7 +55,8 @@ end
 # for each scenario repeat:
 # 
 # - The result of the method invocation.
-#   ~ Should always return a DISCRIMINATION_SUCCESSFUL status.
+#   ~ For scenarios 1-5, the method should return a DISCRIMINATION_SUCCESSFUL 
+#     status, the DISCRIMINATION_FAILED status should be returned in scenario 6.
 #     
 # - The model's cognition clock value.
 #   ~ For scenarios 1-5, this should equal the time the method is invoked plus
@@ -239,6 +177,18 @@ end
 # |--{<[$]>}--(4: <[$]>)
 # |
 # |--{<[H 0 2>}--(5: <[H 0 2 $]>)
+# 
+# ~~~~~~~~~~
+# Scenario 6
+# ~~~~~~~~~~
+# 
+# BEFORE/AFTER METHOD INVOCATION
+# o
+# |--{<[T 0 1]>}--(3: <[T 0 1]>)
+# |               |
+# |               |--{<[H 0 2>}--(5: <[T 0 1][H 0 2]>)
+# |
+# |--{<[H 0 2]>}--(4: <[H 0 2]>)
 #
 process_test "discriminate" do
   discriminate_method = Chrest.java_class.declared_method(:discriminate, Node, ListPattern, Java::int)
@@ -272,7 +222,7 @@ process_test "discriminate" do
   link_test_field = Link.java_class.declared_field("_test")
   link_test_field.accessible = true
   
-  for scenario in 1..5
+  for scenario in 1..6
     for pattern_type in PrimitivePattern.subclasses
       for modality in Modality.values()
         10.times do
@@ -363,6 +313,26 @@ process_test "discriminate" do
           
           if scenario == 5 then input_list_pattern._list.add(primitive_3) end
           
+          # In scenario 6, the new information shouldn't be recognised so should
+          # be learned as a primitive however, this should fail since it already 
+          # exists as a test from the root modality.  Create this situation now.
+          if scenario == 6 
+            link_test = ListPattern.new(modality)
+            link_test._list.add(primitive_2)
+            node = Node.new(model, link_test, ListPattern.new(modality), time_function_invoked)
+            link = Link.new(link_test, node, time_function_invoked, "")
+            ltm_modality_root_node_child_links.add(link)
+            
+            node_contents = ListPattern.new(modality)
+            node_contents._list.add(primitive_1)
+            node_contents._list.add(primitive_2)
+            node = Node.new(model, node_contents, ListPattern.new(modality), time_function_invoked)
+            link = Link.new(link_test, node, time_function_invoked, "")
+            node_to_discriminate_from_child_history = ArrayList.new()
+            node_to_discriminate_from_child_history.add(link)
+            node_to_discriminate_from._childHistory.put(time_function_invoked, node_to_discriminate_from_child_history)
+          end
+          
           ######################################################
           ##### CREATE ListPattern FINISHED DELIMITER NODE #####
           ######################################################
@@ -411,7 +381,7 @@ process_test "discriminate" do
           ##### "LEARN" NODES #####
           #########################
           
-          ltm_modality_root_node._childHistory.put(time_function_invoked.to_java(:int), ltm_modality_root_node_child_links)
+          ltm_modality_root_node._childHistory.put(time_function_invoked, ltm_modality_root_node_child_links)
           
           #########################
           ##### INVOKE METHOD #####
@@ -430,14 +400,20 @@ process_test "discriminate" do
           
           # Check overall result
           assert_equal(
-            ChrestStatus::DISCRIMINATION_SUCCESSFUL.to_s,
+            (scenario == 6 ?
+              Status::DISCRIMINATION_FAILED :
+              Status::DISCRIMINATION_SUCCESSFUL
+            ).to_s,
             result.to_s,
             "occurred in scenario " + scenario.to_s
           )
           
           # Check cognition clock
           assert_equal(
-            time_function_invoked + model._discriminationTime,
+            (scenario != 6 ? 
+              time_function_invoked + model._discriminationTime :
+              -1
+            ),
             model._cognitionClock,
             "occurred when checking the cognition clock in scenario " + scenario.to_s
           )
@@ -495,12 +471,15 @@ process_test "discriminate" do
                 expected_child_link_tests.push(primitive_1)
                 expected_child_link_tests.push(end_primitive)
                 expected_child_link_tests.push(primitive_2)
+              when 6
+                expected_child_link_tests.push(primitive_1)
+                expected_child_link_tests.push(primitive_2)
               end
             else
                
               if node_ref == 3 
                 if scenario == 1 then expected_child_link_tests.push(end_primitive) end
-                if [4,5].include?(scenario) then expected_child_link_tests.push(primitive_2) end
+                if [4,5,6].include?(scenario) then expected_child_link_tests.push(primitive_2) end
               end
             end
             
@@ -550,6 +529,9 @@ process_test "discriminate" do
                 elsif scenario == 5
                   expected_contents._list.add(primitive_2)
                   expected_contents._finished = true
+                elsif scenario == 6
+                  expected_contents._list.add(primitive_1)
+                  expected_contents._list.add(primitive_2)
                 end
                 
               when 6
@@ -607,6 +589,9 @@ end
 #             unrecognised
 # Scenario 3: New information in ListPattern that triggers familiarisation 
 #             recognised
+# Scenario 4: Familiarisation fails when extending image since a history rewrite
+#             is attempted on the Node to familiarise's image history when an
+#             attempt is made to extend the image during familiarisation.
 # 
 # Method Parameters
 # =================
@@ -621,7 +606,7 @@ end
 # "triggers" familiarisation and the first PrimtivePattern in the remainder is
 # collected):
 #   - Scenario 1: <[]> (no new information)
-#   - Scenario 2, 3: <[H 0 2]>
+#   - Scenario 2, 3, 4: <[H 0 2]>
 #   
 # Expected Output
 # ===============
@@ -633,6 +618,7 @@ end
 #   ~ Scenario 1: FAMILIARISATION_FAILED
 #   ~ Scenario 2: DISCRIMINATION_SUCCESSFUL
 #   ~ Scenario 3: FAMILIARISATION_SUCCESSFUL
+#   ~ Scenario 4: FAMILIARISATION_FAILED
 #     
 # - The model's cognition clock value.
 #   ~ Scenario 1: should be set to its default value since familiarisation 
@@ -643,6 +629,8 @@ end
 #   ~ Scenario 3: should equal the time the method is invoked plus the time 
 #                 taken by the model to familiarise since familiarisation should
 #                 occur
+#   ~ Scenario 4: should be set to its default value since familiarisation 
+#                 should not occur
 #     
 # - The number of children for each Node in LTM.
 # - The test on each Node's child link in LTM.
@@ -708,6 +696,16 @@ end
 # |
 # |--{<[H 0 2]>}--(4: <[H 0 2]>)
 #
+# ~~~~~~~~~~
+# Scenario 4
+# ~~~~~~~~~~
+#
+# BEFORE/AFTER METHOD INVOCATION
+# o
+# |--{<[T 0 1]>}--(3: <[T 0 1]>)
+# |
+# |--{<[H 0 2]>}--(4: <[H 0 2]>)
+#
 process_test "familiarise" do
   chrest_familiarisation_method = Chrest.java_class.declared_method(:familiarise, Node, ListPattern, Java::int)
   chrest_familiarisation_method.accessible = true
@@ -740,7 +738,7 @@ process_test "familiarise" do
   link_test_field = Link.java_class.declared_field("_test")
   link_test_field.accessible = true
   
-  for scenario in 1..3
+  for scenario in 1..4
     for pattern_type in PrimitivePattern.subclasses
       for modality in Modality.values()
         10.times do
@@ -805,6 +803,20 @@ process_test "familiarise" do
             time_method_invoked
           )
           
+          # In scenario 4, set the image history so that the image is changed
+          # at a time after the method is invoked so that, when an attempt is 
+          # made to extend the node to familiarise's image, a history rewrite 
+          # occurs causing the extension and thus, familiarisation, to fail.
+          if scenario == 4
+            bogus_image_history = ListPattern.new(modality)
+            bogus_image_history.add(primitive_1)
+            bogus_image_history.add(primitive_2)
+            node_to_familiarise._imageHistory.put(
+              time_method_invoked + model._familiarisationTime * 100, 
+              bogus_image_history
+            )
+          end
+          
           # Create Link to Node
           link_1_test = ListPattern.new(modality)
           link_1_test._list.add(primitive_1)
@@ -829,7 +841,7 @@ process_test "familiarise" do
           ##### "LEARN" AUXILLARY NODE #####
           ##################################
           
-          if scenario == 3
+          if [3,4].include?(scenario)
             node_to_learn_contents = ListPattern.new(modality)
             node_to_learn_contents._list.add(primitive_2)
             node_to_learn_image = ListPattern.new(modality)
@@ -849,7 +861,7 @@ process_test "familiarise" do
           ##### "LEARN" NODES #####
           #########################
           
-          ltm_modality_root_node._childHistory.put(time_method_invoked.to_java(:int), ltm_modality_root_node_child_links)
+          ltm_modality_root_node._childHistory.put(time_method_invoked, ltm_modality_root_node_child_links)
           
           #########################
           ##### INVOKE METHOD #####
@@ -863,9 +875,9 @@ process_test "familiarise" do
           
           # Check method return value
           expected_result = (
-            scenario == 1 ? ChrestStatus::FAMILIARISATION_FAILED :
-            scenario == 2 ? ChrestStatus::DISCRIMINATION_SUCCESSFUL :
-            ChrestStatus::FAMILIARISATION_SUCCESSFUL
+            [1,4].include?(scenario) ? Status::FAMILIARISATION_FAILED :
+            scenario == 2 ? Status::DISCRIMINATION_SUCCESSFUL :
+            Status::FAMILIARISATION_SUCCESSFUL
           )
           assert_equal(
             expected_result.to_s,
@@ -924,6 +936,9 @@ process_test "familiarise" do
               when 3
                 expected_child_link_tests.push(primitive_1)
                 expected_child_link_tests.push(primitive_2)
+              when 4
+                expected_child_link_tests.push(primitive_1)
+                expected_child_link_tests.push(primitive_2)
               end
             end
             
@@ -952,9 +967,11 @@ process_test "familiarise" do
               when 3
                 expected_image._list.add(primitive_1)
                 
-                # In scenario 3, the last image entry will be a ListPattern 
-                # containing primitives 1 and 2 since familiarisation occurs.
-                if scenario == 3 then expected_image._list.add(primitive_2) end
+                # In scenarios 3 and 4 the last image entry will be a 
+                # ListPattern containing primitives 1 and 2.  In scenario 3, 
+                # this is because familiarisation occurs, in scenario 4 its 
+                # because the last image entry is the bogus image.
+                if [3,4].include?(scenario) then expected_image._list.add(primitive_2) end
               when 4
                 if scenario != 2 then expected_image._list.add(primitive_2) end
               end
@@ -1079,7 +1096,7 @@ canonical_result_test "recognise_and_learn" do
             link = Link.new(input, node, time_function_invoked, "")
             ltm_modality_root_node_history = ArrayList.new()
             ltm_modality_root_node_history.add(link)
-            ltm_modality_root_node._childHistory.put(time_function_invoked.to_java(:int), ltm_modality_root_node_history)
+            ltm_modality_root_node._childHistory.put(time_function_invoked, ltm_modality_root_node_history)
           end
 
           # In scenario 3 the model should refuse to learn so set the model's
@@ -1094,11 +1111,11 @@ canonical_result_test "recognise_and_learn" do
           
           
           expected_result = (
-            scenario == 1 ? ChrestStatus::COGNITION_BUSY :
-            scenario == 2 ? ChrestStatus::INPUT_ALREADY_LEARNED :
-            scenario == 3 ? ChrestStatus::LEARNING_REFUSED :
-            scenario == 4 ? ChrestStatus::DISCRIMINATION_SUCCESSFUL :
-            ChrestStatus::FAMILIARISATION_SUCCESSFUL
+            scenario == 1 ? Status::COGNITION_BUSY :
+            scenario == 2 ? Status::INPUT_ALREADY_LEARNED :
+            scenario == 3 ? Status::LEARNING_REFUSED :
+            scenario == 4 ? Status::DISCRIMINATION_SUCCESSFUL :
+            Status::FAMILIARISATION_SUCCESSFUL
           )
           
           ################
@@ -1114,131 +1131,6 @@ canonical_result_test "recognise_and_learn" do
     end
   end
 end
-
-################################################################################
-#
-# Scenario Descriptions
-# =====================
-#
-# - Scenario 1
-#   ~ Cognition isn't free
-#   
-# - Scenario 2
-#   ~ Cognition is free
-#   ~ Node to associate from is a root node
-# 
-# - Scenario 3
-#   ~ Cognition is free
-#   ~ Node to associate from is not a root node
-#   ~ Node to associate to is a root node
-#   
-# - Scenario 4
-#   ~ Cognition is free
-#   ~ Node to associate from is not a root node
-#   ~ Node to associate to is not a root node
-#   
-#   ~ Node to associate from modality is VISUAL and node to associate to 
-#     modality is VERBAL
-#   ~ Association already exists
-#
-# - Scenario 5
-#   ~ Cognition is free
-#   ~ Node to associate from is not a root node
-#   ~ Node to associate to is not a root node
-#   
-#   ~ Node to associate from modality is VISUAL and node to associate to 
-#     modality is VERBAL
-#   ~ Association does not already exist
-#   
-# The following scenarios are now repeated with each type of Modality specified
-# in CHREST.  
-# 
-# - Scenario 6/10/14
-#   ~ Cognition is free
-#   ~ Node to associate from is not a root node
-#   ~ Node to associate to is not a root node
-#   
-#   ~ Node to associate from modality is equal to node to associate from 
-#     modality.
-#   ~ Node to associate from and node to associate to images are not similar
-#
-# - Scenario 7/11/15
-#   ~ Cognition is free
-#   ~ Node to associate from is not a root node
-#   ~ Node to associate to is not a root node
-#   
-#   ~ Node to associate from modality is equal to node to associate from 
-#     modality.
-#   ~ Node to associate from and node to associate to images are similar
-#   ~ Node to associate from already linked to node to associate to
-#   ~ Node to associate to not already linked to node to associate from
-#     
-# - Scenario 8/12/16
-#   ~ Cognition is free
-#   ~ Node to associate from is not a root node
-#   ~ Node to associate to is not a root node
-#   
-#   ~ Node to associate from modality is equal to node to associate from 
-#     modality.
-#   ~ Node to associate from and node to associate to images are similar
-#   ~ Node to associate from not already linked to node to associate to
-#   ~ Node to associate to already linked to node to associate from
-#
-# - Scenario 9/13/17
-#   ~ Cognition is free
-#   ~ Node to associate from is not a root node
-#   ~ Node to associate to is not a root node
-#   
-#   ~ Node to associate from modality is equal to node to associate from 
-#     modality.
-#   ~ Node to associate from and node to associate to images are similar
-#   ~ Node to associate from not already linked to node to associate to
-#   ~ Node to associate to not already linked to node to associate from
-#
-# Expected Outcomes
-# =================
-#
-# - The following scenarios should report false and the cognition clock of the 
-#   CHREST model should not differ from the time the function is requested.
-#   ~ 1, 2, 3, 4, 6, 10, 14
-#   
-# - The following scenarios should report true but and the cognition clock of 
-#   the CHREST model should be set to the time indicated.
-#     
-#   ~ Scenario 5
-#     > Time function requested + time to add naming link
-#     
-#   ~ Scenarios 7/9/11/12/15/16
-#     > Time function requested + node comparison time + time to add semantic 
-#       link
-#     
-#   ~ Scenarios 9/13/17
-#     > Time function requested + node comparison time + (time to add semantic 
-#       link * 2)
-process_test "associateNodes" do
-  
-  Chrest.class_eval{
-    field_accessor :_addProductionTime, 
-    :_cognitionClock, 
-    :_namingLinkCreationTime,
-    :_nodeComparisonTime,
-    :_nodeImageSimilarityThreshold,
-    :_semanticLinkCreationTime
-  }
-  
-  associate_nodes_method = Chrest.java_class.declared_method(:associateNodes, Node.java_class, Node.java_class, Java::int)
-  associate_nodes_method.accessible = true
-  
-  Node.class_eval{
-    field_accessor :_namedByHistory, :_productionHistory, :_semanticLinksHistory
-  }
-  node_root_node_field = Node.java_class.declared_field("_rootNode")
-  node_root_node_field.accessible = true
-  
-  for scenario in 1..17
-    time = 0
-    model = Chrest.new(time, true)
-    
     if scenario == 1 then model._cognitionClock = time + 5 end
     
     ############################
@@ -1273,13 +1165,13 @@ process_test "associateNodes" do
     if [4,7,11,15].include?(scenario)
       if scenario == 4
         association_history = HistoryTreeMap.new()
-        association_history.put(time.to_java(:int), node_2)
+        association_history.put(time, node_2)
         node_1._namedByHistory = association_history
       else
         association_with_node_2 = ArrayList.new()
         association_with_node_2.add(node_2)
         association_history = HistoryTreeMap.new()
-        association_history.put(time.to_java(:int), association_with_node_2)
+        association_history.put(time, association_with_node_2)
         node_1._semanticLinksHistory = association_history
       end
     end
@@ -1288,7 +1180,7 @@ process_test "associateNodes" do
       association_with_node_1 = ArrayList.new()
       association_with_node_1.add(node_1)
       association_history = HistoryTreeMap.new()
-      association_history.put(time.to_java(:int), association_with_node_1)
+      association_history.put(time, association_with_node_1)
       node_2._semanticLinksHistory = association_history
     end
     
@@ -1306,7 +1198,7 @@ process_test "associateNodes" do
     ##### INVOKE FUNCTION #####
     ###########################
     
-    result = associate_nodes_method.invoke(model, node_1, node_2, time.to_java(:int))
+    result = associate_nodes_method.invoke(model, node_1, node_2, time)
     
     #################################
     ##### SET EXPECTED OUTCOMES #####
@@ -1333,204 +1225,7 @@ process_test "associateNodes" do
     assert_equal(expected_result, result, "occurred when checking the result in scenario " + scenario.to_s)
     assert_equal(expected_cognition_clock, model._cognitionClock, "occurred when checking the cognition clock in scenario " + scenario.to_s)
   end
-end
-
-################################################################################
-# Tests the "Chrest.searchStm()" method using all possible scenarios that could
-# occur.
-# 
-# Scenario Descriptions
-# =====================
-# 
-# Scenario 1: Attention not free
-# Scenario 2: STM contents null (method invoked before STM exists but when 
-#             attention is free)
-# Scenario 3: STM contents empty
-# Scenario 4: STM contents not empty and does not contain matching Nodes
-# Scenario 5: STM contents not empty and contains matching Nodes (ensures that
-#             multiple matching Nodes are returned).
-#
-# Each Scenario is repeated so that:
-# 
-#  - Each type of PrimitivePattern is included as the content of the ListPattern 
-#    input to the method.
-#  - Each Modality is used as the modality of the ListPattern input to the 
-#    method.
-#  - Each scenario with each PrimitivePattern and Modality permutation is 
-#    repeated 10 times to ensure consistency of behaviour.
-#
-# Tests Performed
-# ===============
-# 
-# At the conclusion of each scenario, the result of the method is checked and, 
-# since the attention clock may be modified by this method, the model's 
-# attention clock is checked.
-# 
-# Expected Outcomes
-# =================
-# 
-# See code.
-#
-process_test "search_stm" do
-  Chrest.class_eval{
-    field_accessor :_attentionClock, 
-    :_actionStm, 
-    :_verbalStm, 
-    :_visualStm,
-    :_timeToRetrieveItemFromStm,
-    :_nodeComparisonTime
-  }
   
-  ListPattern.class_eval{
-    field_accessor :_list
-  }
-  
-  stm_item_history_field = Stm.java_class.declared_field("_itemHistory")
-  stm_item_history_field.accessible = true
-  
-  for scenario in 1..5
-    for modality in Modality.values()
-      for primitive_pattern in PrimitivePattern.subclasses
-        10.times do
-          
-          ##########################
-          ##### INITIAL SET-UP #####
-          ##########################
-          
-          time = 0
-          model = Chrest.new(time, [true, false].sample)
-          time_method_invoked = time + 10
-          
-          ##############################################
-          ##### CREATE ListPattern TO USE AS INPUT #####
-          ##############################################
-
-          list_pattern = ListPattern.new(modality)
-          list_pattern._list.add((
-            primitive_pattern == ItemSquarePattern ? ItemSquarePattern.new("T", 0, 1) :
-            primitive_pattern == NumberPattern ? NumberPattern.create(42) :
-            primitive_pattern == StringPattern ? StringPattern.create("foo") :
-            raise("PrimitivePattern " + primitive_pattern.java_class.to_s + " not supported")
-          ))
-          list_pattern._list.add((
-            primitive_pattern == ItemSquarePattern ? ItemSquarePattern.new("H", 0, 2) :
-            primitive_pattern == NumberPattern ? NumberPattern.create(43) :
-            primitive_pattern == StringPattern ? StringPattern.create("bar") :
-            raise("PrimitivePattern " + primitive_pattern.java_class.to_s + " not supported")
-          ))
-        
-          ############################
-          ##### CREATE STM NODES #####
-          ############################
-          
-          # Node 1 will not match
-          stm_node_1_contents = ListPattern.new(modality)
-          stm_node_1_contents._list.add((
-            primitive_pattern == ItemSquarePattern ? ItemSquarePattern.new("H", 0, 2) :
-            primitive_pattern == NumberPattern ? NumberPattern.create(43) :
-            primitive_pattern == StringPattern ? StringPattern.create("bar") :
-            raise("PrimitivePattern " + primitive_pattern.java_class.to_s + " not supported")
-          ))
-          stm_node_1 = Node.new(model, stm_node_1_contents, ListPattern.new(modality), time_method_invoked)
-
-          # Node 2 will not match
-          stm_node_2_contents = ListPattern.new(modality)
-          stm_node_2_contents._list.add((
-            primitive_pattern == ItemSquarePattern ? ItemSquarePattern.new("O", 0, 3) :
-            primitive_pattern == NumberPattern ? NumberPattern.create(44) :
-            primitive_pattern == StringPattern ? StringPattern.create("baz") :
-            raise("PrimitivePattern " + primitive_pattern.java_class.to_s + " not supported")
-          ))
-          stm_node_2 = Node.new(model, stm_node_2_contents, ListPattern.new(modality), time_method_invoked)
-          
-          # Node 3 will match
-          stm_node_3_contents = ListPattern.new(modality)
-          stm_node_3_contents._list.add((
-            primitive_pattern == ItemSquarePattern ? ItemSquarePattern.new("T", 0, 1) :
-            primitive_pattern == NumberPattern ? NumberPattern.create(42) :
-            primitive_pattern == StringPattern ? StringPattern.create("foo") :
-            raise("PrimitivePattern " + primitive_pattern.java_class.to_s + " not supported")
-          ))
-          stm_node_3 = Node.new(model, stm_node_3_contents, ListPattern.new(modality), time_method_invoked)
-
-          # Node 4 will match
-          stm_node_4_contents = ListPattern.new(modality)
-          stm_node_4_contents._list.add((
-            primitive_pattern == ItemSquarePattern ? ItemSquarePattern.new("T", 0, 1) :
-            primitive_pattern == NumberPattern ? NumberPattern.create(42) :
-            primitive_pattern == StringPattern ? StringPattern.create("foo") :
-            raise("PrimitivePattern " + primitive_pattern.java_class.to_s + " not supported")
-          ))
-          stm_node_4_contents._list.add((
-            primitive_pattern == ItemSquarePattern ? ItemSquarePattern.new("H", 0, 2) :
-            primitive_pattern == NumberPattern ? NumberPattern.create(43) :
-            primitive_pattern == StringPattern ? StringPattern.create("bar") :
-            raise("PrimitivePattern " + primitive_pattern.java_class.to_s + " not supported")
-          ))
-          stm_node_4 = Node.new(model, stm_node_4_contents, ListPattern.new(modality), time_method_invoked)
-          
-          ############################
-          ##### CREATE SCENARIOS #####
-          ############################
-          
-          if scenario == 1 then model._attentionClock = time_method_invoked + 10 end
-          if scenario == 2 then time_method_invoked = time - 1 end
-          # In scenario 3, nothing should be altered (STM will be empty)
-          if [4,5].include?(scenario)
-            stm = (
-              modality == Modality::ACTION ? model._actionStm :
-              modality == Modality::VERBAL ? model._verbalStm :
-              modality == Modality::VISUAL ? model._visualStm :
-              raise("Modality " + modality.name() + " not supported")
-            )
-            
-            stm_contents = ArrayList.new()
-            stm_contents.add(stm_node_1)
-            stm_contents.add(stm_node_2)
-            
-            if scenario == 5
-              stm_contents.add(stm_node_3)
-              stm_contents.add(stm_node_4)
-            end
-
-            stm_item_history_field.value(stm).put(time_method_invoked.to_java(:int), stm_contents)
-          end
-
-          #########################
-          ##### INVOKE METHOD #####
-          #########################
-          
-          result = model.searchStm(list_pattern, time_method_invoked)
-          
-          ##################################
-          ##### SET EXPECTED VARIABLES #####
-          ##################################
-          
-          expected_result = nil
-          if [2,3,4].include?(scenario) then expected_result = ArrayList.new() end
-          if scenario == 5
-            expected_result = ArrayList.new()
-            expected_result.add(stm_node_3)
-            expected_result.add(stm_node_4)
-          end
-          
-          expected_attention_clock = (
-            scenario == 1 ? time_method_invoked + 10 :
-            scenario == 4 ? time_method_invoked + ((model._timeToRetrieveItemFromStm + model._nodeComparisonTime) * 2) :
-            scenario == 5 ? time_method_invoked + ((model._timeToRetrieveItemFromStm + model._nodeComparisonTime) * 4) :
-            -1
-          )
-          
-          #################
-          ##### TESTS #####
-          #################
-          
-          assert_equal(expected_result, result, "occurred when checking the result returned in scenario " + scenario.to_s)
-          assert_equal(expected_attention_clock, model._attentionClock, "occurred when checking the attention clock in scenario " + scenario.to_s)
-        end
-      end
-    end
-  end
 end
 
 ################################################################################
@@ -1541,99 +1236,21 @@ end
 # Scenario Descriptions
 # =====================
 # 
-# Scenario 1: Model does not exist at time method invoked
+# Scenario 1: Model not alive at time method invoked
 # Scenario 2: Model's attention not free at time method invoked
-# Scenario 3: Vision specified doesn't have Visual modality
-# Scenario 4: Action specified doesn't have Action modality
-# Scenario 5: No matching nodes in visual STM
-# Scenario 6: No matching nodes in action STM
-# Scenario 7: Production not added successfully (checks that cognition clock setting ignored)
-# 
-# In the following scenario, a production is added (checks that cognition clock 
-# setting performed) but the Node selected from STM differs (checks the Node
-# selection functionality)
-# 
-# Scenario 8: Visual STM contains
-#             - A Node whose contents matches 50% of the vision input
-#             Action STM contains
-#             - A Node whose contents matches 50% of the action input
-#             
-# Scenario 9: Visual STM contains
-#             - A Node whose contents matches 50% of the vision input
-#             - A Node whose contents matches 75% of the vision input
-#             Action STM contains
-#             - A Node whose contents matches 50% of the action input
-#             - A Node whose contents matches 75% of the action input
-#             
-# Scenario 10: Visual STM contains
-#             - A Node whose contents matches 50% of the vision input
-#             - A Node whose contents matches 75% of the vision input
-#             - A Node whose contents equals the vision input
-#             Action STM contains
-#             - A Node whose contents matches 50% of the action input
-#             - A Node whose contents matches 75% of the action input
-#             - A Node whose contents equals the action input
-#             
-# Scenario 11: Visual STM contains
-#             - A Node whose contents matches 50% of the vision input
-#             - A Node whose contents matches 75% of the vision input
-#             - A Node whose contents equals the vision input
-#             - A Node whose image matches 50% of the vision input
-#             Action STM contains
-#             - A Node whose contents matches 50% of the action input
-#             - A Node whose contents matches 75% of the action input
-#             - A Node whose contents equals the action input
-#             - A Node whose image matches 50% of the action input
-#             
-# Scenario 12: Visual STM contains
-#             - A Node whose contents matches 50% of the vision input
-#             - A Node whose contents matches 75% of the vision input
-#             - A Node whose contents equals the vision input
-#             - A Node whose image matches 50% of the vision input
-#             - A Node whose image matches 75% of the vision input
-#             Action STM contains
-#             - A Node whose contents matches 50% of the action input
-#             - A Node whose contents matches 75% of the action input
-#             - A Node whose contents equals the action input
-#             - A Node whose image matches 50% of the action input
-#             - A Node whose image matches 75% of the action input
-#             
-# Scenario 13: Visual STM contains
-#             - A Node whose contents matches 50% of the vision input
-#             - A Node whose contents matches 75% of the vision input
-#             - A Node whose contents equals the vision input
-#             - A Node whose image matches 50% of the vision input
-#             - A Node whose image matches 75% of the vision input
-#             - A Node whose image equals the vision input
-#             Action STM contains
-#             - A Node whose contents matches 50% of the action input
-#             - A Node whose contents matches 75% of the action input
-#             - A Node whose contents equals the action input
-#             - A Node whose image matches 50% of the action input
-#             - A Node whose image matches 75% of the action input
-#             - A Node whose image equals the action input
-#              
-# Tests Performed
-# ===============
-# 
-# - Method return value.
-# - Exception thrown?
-# - Model's cognition clock.
-# - Visual Node's productions.
-# 
-# Tests Expected But Not Performed
-# ================================
-# 
-# - Model's attention clock: this is altered by the "Chrest.searchStm()" method
-#   and is tested there.  Since this method does not alter it directly, it
-#   assumes it is set correctly so as to not duplicate tests.
-#   
-# Expected Output
-# ===============
-# 
-# See code.
+# Scenario 3: Visual Node not alive at time method invoked
+# Scenario 4: Visual Node specified doesn't have Visual modality
+# Scenario 5: Visual Node specified is the visual LTM root Node
+# Scenario 6: Action Node not alive at time method invoked
+# Scenario 7: Action Node specified doesn't have Action modality
+# Scenario 8: Action Node specified is the action LTM root Node
+# Scenario 9: Visual Node not present in visual STM
+# Scenario 10: Action Node not present in action STM
+# Scenario 11: Cognition not free after visual and action Nodes found
+# Scenario 12: Visual Node already has action Node as production
+# Scenario 13: All OK
 #
-process_test "learn_production" do
+process_test "learnProduction" do
   
   #######################################################
   ##### SET-UP ACCESS TO PRIVATE INSTANCE VARIABLES #####
@@ -1648,7 +1265,6 @@ process_test "learn_production" do
     :_visualStm,
     :_actionStm,
     :_timeToRetrieveItemFromStm,
-    :_nodeComparisonTime,
     :_addProductionTime
   }
   
@@ -1657,720 +1273,274 @@ process_test "learn_production" do
   stm_item_history_field.accessible = true
   
   # Set-up access to Node variables.
-  Node.class_eval{
-    field_accessor :_productionHistory
-  }
-  
   node_creation_time_field = Node.java_class.declared_field("_creationTime")
   node_creation_time_field.accessible = true
   
-  node_root_node_field = Node.java_class.declared_field("_rootNode")
-  node_root_node_field.accessible = true
-  
-  # Set-up access to ListPattern variables
-  ListPattern.class_eval{
-    field_accessor :_modality
-  }
+  node_production_history_field = Node.java_class.declared_field("_productionHistory")
+  node_production_history_field.accessible = true
   
   #########################
   ##### SCENARIO LOOP #####
   #########################
   
   for scenario in 1..13
-    for primitive_pattern in PrimitivePattern.subclasses
-      10.times do
+    20.times do
       
-        # First, set the time the method is to be invoked since a number of
-        # scenario caveats are based on this.
-        time_method_invoked = 0
-
-        ##################################
-        ##### CONSTRUCT CHREST MODEL #####
-        ##################################
-
-        chrest_model_creation_time = (scenario == 1 ? time_method_invoked + 1 : 0)
-        model = Chrest.new(chrest_model_creation_time, [true,false].sample)
-        
-        ############################################
-        ##### CONSTRUCT ListPattern PRIMITIVES #####
-        ############################################
-        
-        # Construct visual primitives
-        visual_primitive_1 = (
-          primitive_pattern == ItemSquarePattern ? ItemSquarePattern.new("T", 0, 1) :
-          primitive_pattern == NumberPattern ? NumberPattern.create(42) :
-          primitive_pattern == StringPattern ? StringPattern.create("foo") :
-          raise("PrimitivePattern " + primitive_pattern.java_class.to_s + " not supported")
-        )
-        
-        visual_primitive_2 = (
-          primitive_pattern == ItemSquarePattern ? ItemSquarePattern.new("H", 0, 2) :
-          primitive_pattern == NumberPattern ? NumberPattern.create(43) :
-          primitive_pattern == StringPattern ? StringPattern.create("bar") :
-          raise("PrimitivePattern " + primitive_pattern.java_class.to_s + " not supported")
-        )
-        
-        visual_primitive_3 = (
-          primitive_pattern == ItemSquarePattern ? ItemSquarePattern.new("O", 0, 3) :
-          primitive_pattern == NumberPattern ? NumberPattern.create(44) :
-          primitive_pattern == StringPattern ? StringPattern.create("baz") :
-          raise("PrimitivePattern " + primitive_pattern.java_class.to_s + " not supported")
-        )
-        
-        visual_primitive_4 = (
-          primitive_pattern == ItemSquarePattern ? ItemSquarePattern.new("R", 0, 4) :
-          primitive_pattern == NumberPattern ? NumberPattern.create(45) :
-          primitive_pattern == StringPattern ? StringPattern.create("gak") :
-          raise("PrimitivePattern " + primitive_pattern.java_class.to_s + " not supported")
-        )
-        
-        # Construct action primitives
-        action_primitive_1 = (
-          primitive_pattern == ItemSquarePattern ? ItemSquarePattern.new("PT", 0, 1) :
-          primitive_pattern == NumberPattern ? NumberPattern.create(0) :
-          primitive_pattern == StringPattern ? StringPattern.create("oof") :
-          raise("PrimitivePattern " + primitive_pattern.java_class.to_s + " not supported")
-        )
-        
-        action_primitive_2 = (
-          primitive_pattern == ItemSquarePattern ? ItemSquarePattern.new("MV", 90, 1) :
-          primitive_pattern == NumberPattern ? NumberPattern.create(1) :
-          primitive_pattern == StringPattern ? StringPattern.create("rab") :
-          raise("PrimitivePattern " + primitive_pattern.java_class.to_s + " not supported")
-        )
-        
-        action_primitive_3 = (
-          primitive_pattern == ItemSquarePattern ? ItemSquarePattern.new("MV", 0, 1) :
-          primitive_pattern == NumberPattern ? NumberPattern.create(2) :
-          primitive_pattern == StringPattern ? StringPattern.create("zab") :
-          raise("PrimitivePattern " + primitive_pattern.java_class.to_s + " not supported")
-        )
-        
-        action_primitive_4 = (
-          primitive_pattern == ItemSquarePattern ? ItemSquarePattern.new("MV", 180, 1) :
-          primitive_pattern == NumberPattern ? NumberPattern.create(3) :
-          primitive_pattern == StringPattern ? StringPattern.create("lat") :
-          raise("PrimitivePattern " + primitive_pattern.java_class.to_s + " not supported")
-        )
-
-        ########################################
-        ##### CONSTRUCT INPUT ListPatterns #####
-        ########################################
-
-        visual_list_pattern = ListPattern.new(Modality::VISUAL)
-        visual_list_pattern.add(visual_primitive_1)
-        visual_list_pattern.add(visual_primitive_2)
-        visual_list_pattern.add(visual_primitive_3)
-        visual_list_pattern.add(visual_primitive_4)
-         
-        action_list_pattern = ListPattern.new(Modality::ACTION)
-        action_list_pattern.add(action_primitive_1)
-        action_list_pattern.add(action_primitive_2)
-        action_list_pattern.add(action_primitive_3)
-        action_list_pattern.add(action_primitive_4)
-        
-        #######################################################
-        ##### CONSTRUCT NODE CONTENTS/IMAGE LIST PATTERNS #####
-        #######################################################
-        
-        # Construct the visual ListPatterns.
-        half_visual_match = ListPattern.new(Modality::VISUAL)
-        half_visual_match._list.add(visual_primitive_1)
-        half_visual_match._list.add(visual_primitive_2)
-        
-        three_quarter_visual_match = ListPattern.new(Modality::VISUAL)
-        three_quarter_visual_match._list.add(visual_primitive_1)
-        three_quarter_visual_match._list.add(visual_primitive_2)
-        three_quarter_visual_match._list.add(visual_primitive_3)
-        
-        full_visual_match = ListPattern.new(Modality::VISUAL)
-        full_visual_match._list.add(visual_primitive_1)
-        full_visual_match._list.add(visual_primitive_2)
-        full_visual_match._list.add(visual_primitive_3)
-        full_visual_match._list.add(visual_primitive_4)
-        
-        # Construct the action ListPatterns.
-        half_action_match = ListPattern.new(Modality::ACTION)
-        half_action_match._list.add(action_primitive_1)
-        half_action_match._list.add(action_primitive_2)
-        
-        three_quarter_action_match = ListPattern.new(Modality::ACTION)
-        three_quarter_action_match._list.add(action_primitive_1)
-        three_quarter_action_match._list.add(action_primitive_2)
-        three_quarter_action_match._list.add(action_primitive_3)
-        
-        full_action_match = ListPattern.new(Modality::ACTION)
-        full_action_match._list.add(action_primitive_1)
-        full_action_match._list.add(action_primitive_2)
-        full_action_match._list.add(action_primitive_3)
-        full_action_match._list.add(action_primitive_4)
-        
-        ###########################
-        ##### CONSTRUCT NODES #####
-        ###########################
-        
-        # Construct visual nodes
-        visual_node_1 = Node.new(model, half_visual_match, ListPattern.new(Modality::VISUAL), chrest_model_creation_time)
-        visual_node_2 = Node.new(model, three_quarter_visual_match, ListPattern.new(Modality::VISUAL), chrest_model_creation_time)
-        visual_node_3 = Node.new(model, full_visual_match, ListPattern.new(Modality::VISUAL), chrest_model_creation_time) 
-        visual_node_4 = Node.new(model, full_visual_match, half_visual_match, chrest_model_creation_time)
-        visual_node_5 = Node.new(model, full_visual_match, three_quarter_visual_match, chrest_model_creation_time)
-        visual_node_6 = Node.new(model, full_visual_match, full_visual_match, chrest_model_creation_time)
-        
-        # Construct action nodes
-        action_node_1 = Node.new(model, half_action_match, ListPattern.new(Modality::ACTION), chrest_model_creation_time)
-        action_node_2 = Node.new(model, three_quarter_action_match, ListPattern.new(Modality::ACTION), chrest_model_creation_time)
-        action_node_3 = Node.new(model, full_action_match, ListPattern.new(Modality::ACTION), chrest_model_creation_time) 
-        action_node_4 = Node.new(model, full_action_match, half_action_match, chrest_model_creation_time)
-        action_node_5 = Node.new(model, full_action_match, three_quarter_action_match, chrest_model_creation_time)
-        action_node_6 = Node.new(model, full_action_match, full_action_match, chrest_model_creation_time)
-        
-        nodes = [
-          visual_node_1, 
-          visual_node_2,
-          visual_node_3, 
-          visual_node_4,
-          visual_node_5, 
-          visual_node_6, 
-          action_node_1, 
-          action_node_2,
-          action_node_3, 
-          action_node_4,
-          action_node_5, 
-          action_node_6
-        ]
-
-        #############################
-        ##### CREATE SCENARIOS  #####
-        #############################
-
-        # Scenario 1 created when model constructed.
-        if scenario == 2 then model._attentionClock = time_method_invoked + 1 end
-        if scenario == 3 then visual_list_pattern._modality = (Modality.values().to_a - [Modality::VISUAL]).sample end
-        if scenario == 4 then action_list_pattern._modality = (Modality.values().to_a - [Modality::ACTION]).sample end
-        
-        # Populate visual STM
-        if scenario != 5
-          visual_stm_contents = ArrayList.new()
-          
-          visual_stm_contents.add(visual_node_1)
-          
-          if scenario >= 9 then visual_stm_contents.add(visual_node_2) end
-          if scenario >= 10 then visual_stm_contents.add(visual_node_3) end
-          if scenario >= 11 then visual_stm_contents.add(visual_node_4) end
-          if scenario >= 12 then visual_stm_contents.add(visual_node_5) end
-          if scenario >= 13 then visual_stm_contents.add(visual_node_6) end
-
-          visual_stm = HistoryTreeMap.new()
-          visual_stm.put(time_method_invoked.to_java(:int), visual_stm_contents)
-
-          stm_item_history_field.set_value(model._visualStm, visual_stm)
-        end
-        
-        # Populate action STM
-        if scenario != 6
-          action_stm_contents = ArrayList.new()
-          action_stm_contents.add(action_node_1)
-          
-          if scenario >= 9 then action_stm_contents.add(action_node_2) end
-          if scenario >= 10 then action_stm_contents.add(action_node_3) end
-          if scenario >= 11 then action_stm_contents.add(action_node_4) end
-          if scenario >= 12 then action_stm_contents.add(action_node_5) end
-          if scenario >= 13 then action_stm_contents.add(action_node_6) end
-
-          action_stm = HistoryTreeMap.new()
-          action_stm.put(time_method_invoked.to_java(:int), action_stm_contents)
-
-          stm_item_history_field.set_value(model._actionStm, action_stm)
-        end
-        
-        if scenario == 7 then node_root_node_field.set_value(visual_node_1, true) end
-
-        #########################
-        ##### INVOKE METHOD #####
-        #########################
-
-        return_value = nil
-        exception_thrown = false
-        begin
-          return_value = model.learnProduction(visual_list_pattern, action_list_pattern, time_method_invoked)
-        rescue
-          exception_thrown = true
-        end
-
-        ##################################
-        ##### SET EXPECTED VARIABLES #####
-        ##################################    
-
-        expected_return_value = (
-          scenario == 1 ? ChrestStatus::MODEL_DOES_NOT_EXIST_AT_TIME :
-          scenario == 2 ? ChrestStatus::ATTENTION_BUSY :
-          scenario == 3 ? nil :
-          scenario == 4 ? nil :
-          scenario == 5 ? ChrestStatus::VISION_NOT_IN_STM :
-          scenario == 6 ? ChrestStatus::ACTION_NOT_IN_STM :
-          scenario == 7 ? ChrestStatus::LEARN_PRODUCTION_FAILED :
-          scenario.between?(7, 12) ? ChrestStatus::OVERGENERALISED_PRODUCTION_LEARNED :
-          ChrestStatus::EXACT_PRODUCTION_LEARNED
-        )
+      # First, set the time the function is to be invoked since a number of
+      # scenario caveats are based on this.
+      time_function_invoked = 0
       
-        expected_exception_thrown = ([3,4].include?(scenario) ? true : false)
-
-        # The cognition clock should only be set if a production is learned, 
-        # otherwise it is set to its default.  Its default value is the time its
-        # associated model is created -1 so, in scenario 1, this is set to the
-        # time the method is invoked (since the model in this scenario is 
-        # created 1ms after the method is invoked) and in all other scenarios up
-        # to 7, it is set to -1ms since the associated model is created at 0ms.
-        # 
-        # From scenario 8 onwards, the cognition clock should be set to the time 
-        # the method is invoked plus the time taken to search and compare 2 
-        # Nodes in Visual and Action STM each, plus the time taken by the model 
-        # to add a production.
-        expected_cognition_clock = (
-          scenario == 1 ? time_method_invoked : 
-          scenario <= 7 ? -1 :
-          time_method_invoked + (
-            ((model._timeToRetrieveItemFromStm + model._nodeComparisonTime) * ((scenario - 8) + 1)) * 2) + model._addProductionTime
-        )
-        
-        expected_visual_node_1_productions = HistoryTreeMap.new()
-        expected_visual_node_1_productions.put(chrest_model_creation_time.to_java(:int), HashMap.new())
-        expected_visual_node_2_productions = HistoryTreeMap.new()
-        expected_visual_node_2_productions.put(chrest_model_creation_time.to_java(:int), HashMap.new())
-        expected_visual_node_3_productions = HistoryTreeMap.new()
-        expected_visual_node_3_productions.put(chrest_model_creation_time.to_java(:int), HashMap.new())
-        expected_visual_node_4_productions = HistoryTreeMap.new()
-        expected_visual_node_4_productions.put(chrest_model_creation_time.to_java(:int), HashMap.new())
-        expected_visual_node_5_productions = HistoryTreeMap.new()
-        expected_visual_node_5_productions.put(chrest_model_creation_time.to_java(:int), HashMap.new())
-        expected_visual_node_6_productions = HistoryTreeMap.new()
-        expected_visual_node_6_productions.put(chrest_model_creation_time.to_java(:int), HashMap.new())
-        
-        expected_action_node_1_productions = HistoryTreeMap.new()
-        expected_action_node_1_productions.put(chrest_model_creation_time.to_java(:int), HashMap.new())
-        expected_action_node_2_productions = HistoryTreeMap.new()
-        expected_action_node_2_productions.put(chrest_model_creation_time.to_java(:int), HashMap.new())
-        expected_action_node_3_productions = HistoryTreeMap.new()
-        expected_action_node_3_productions.put(chrest_model_creation_time.to_java(:int), HashMap.new())
-        expected_action_node_4_productions = HistoryTreeMap.new()
-        expected_action_node_4_productions.put(chrest_model_creation_time.to_java(:int), HashMap.new())
-        expected_action_node_5_productions = HistoryTreeMap.new()
-        expected_action_node_5_productions.put(chrest_model_creation_time.to_java(:int), HashMap.new())
-        expected_action_node_6_productions = HistoryTreeMap.new()
-        expected_action_node_6_productions.put(chrest_model_creation_time.to_java(:int), HashMap.new())
-        
-        expected_production = HashMap.new()
-        case scenario
-        when 8
-          expected_production.put(action_node_1, 1.0)
-          expected_visual_node_1_productions.put(expected_cognition_clock.to_java(:int), expected_production)
-        when 9
-          expected_production.put(action_node_2, 1.0)
-          expected_visual_node_2_productions.put(expected_cognition_clock.to_java(:int), expected_production)
-        when 10
-          expected_production.put(action_node_3, 1.0)
-          expected_visual_node_3_productions.put(expected_cognition_clock.to_java(:int), expected_production)
-        when 11
-          expected_production.put(action_node_4, 1.0)
-          expected_visual_node_4_productions.put(expected_cognition_clock.to_java(:int), expected_production)
-        when 12
-          expected_production.put(action_node_5, 1.0)
-          expected_visual_node_5_productions.put(expected_cognition_clock.to_java(:int), expected_production)
-        when 13
-          expected_production.put(action_node_6, 1.0)
-          expected_visual_node_6_productions.put(expected_cognition_clock.to_java(:int), expected_production)
-        end
-        
-        expected_node_production_histories = [
-          expected_visual_node_1_productions,
-          expected_visual_node_2_productions,
-          expected_visual_node_3_productions,
-          expected_visual_node_4_productions,
-          expected_visual_node_5_productions,
-          expected_visual_node_6_productions,
-          expected_action_node_1_productions,
-          expected_action_node_2_productions,
-          expected_action_node_3_productions,
-          expected_action_node_4_productions,
-          expected_action_node_5_productions,
-          expected_action_node_6_productions
-        ]
-
-        #################
-        ##### TESTS #####
-        #################
-        
-        assert_equal(expected_return_value, return_value, "occurred when checking the return value of the method in scenario " + scenario.to_s)
-        assert_equal(expected_exception_thrown, exception_thrown, "occurred when checking if an exception is thrown in scenario " + scenario.to_s)
-        assert_equal(expected_cognition_clock, model._cognitionClock, "occurred when checking the cognition clock in scenario " + scenario.to_s)
-        
-        # Check Node production states.
-        for n in 0...nodes.size()
-          node_production_history = nodes[n]._productionHistory.entrySet().toArray()
-          expected_production_history = expected_node_production_histories[n].entrySet().toArray()
-          
-          assert_equal(
-            expected_production_history.size(), 
-            node_production_history.size(), 
-            "occurred when checking the number of production history entries " +
-            "for node " + n.to_s  + " in scenario " + scenario.to_s
-          )
-          
-          for o in 0...node_production_history.length
-            node_production_entry = node_production_history[o]
-            expected_production_entry = expected_production_history[o]
-            
-            assert_equal(
-              expected_production_entry.getKey(),
-              node_production_entry.getKey(),
-              "occurred when checking the key for production history entry " + 
-              o.to_s + " for node " + n.to_s  + " in scenario " + scenario.to_s
-            )
-            
-            node_productions = node_production_entry.getValue().entrySet().toArray()
-            expected_node_productions = expected_production_entry.getValue().entrySet().toArray()
-            
-            assert_equal(
-              node_productions.length,
-              expected_node_productions.length,
-              "occurred when checking the number of productions for production " +
-              "history entry " + o.to_s + " for node " + n.to_s  + " in scenario " + 
-              scenario.to_s
-            )
-            
-            for p in 0...node_productions.length
-              node_production = node_productions[p]
-              expected_node_production = expected_node_productions[p]
-              
-              assert_equal(
-                expected_node_production.getKey(), 
-                node_production.getKey(),
-                "occurred when checking the key of production " + p.to_s + 
-                "in production history entry " + o.to_s + " for node " + n.to_s + 
-                " in scenario " + scenario.to_s
-              )
-              
-              assert_equal(
-                expected_node_production.getValue(), 
-                node_production.getValue(),
-                "occurred when checking the value of production " + p.to_s + 
-                "in production history entry " + o.to_s + " for node " + n.to_s + 
-                " in scenario " + scenario.to_s
-              )
-            end
-          end
-        end
+      ##################################
+      ##### CONSTRUCT CHREST MODEL #####
+      ##################################
+      
+      chrest_model_creation_time = (scenario == 1 ? time_function_invoked + 1 : 0)
+      model = Chrest.new(chrest_model_creation_time, [true,false].sample)
+      
+      #########################################################
+      ##### SET ATTENTION CLOCK (IF REQUIRED BY SCENARIO) #####
+      #########################################################
+      
+      if scenario == 2 then model._attentionClock = time_function_invoked + 1 end
+      
+      ###########################
+      ##### CONSTRUCT NODES #####
+      ###########################
+      
+      # Set visual Node details according to scenario.
+      time_visual_node_created = (scenario == 3 ? time_function_invoked + 1 : chrest_model_creation_time)
+      visual_node_contents = ListPattern.new((
+        scenario == 4 ? (Modality.values().to_a - [Modality::VISUAL]).sample : 
+        Modality::VISUAL
+      ))
+      
+      # Construct the visual Node.
+      visual_node = (
+        scenario == 5 ? model._visualLtm :
+        Node.new(model, visual_node_contents, visual_node_contents, time_visual_node_created)
+      )
+      
+      # Set action Node details according to scenario.
+      time_action_node_created = (scenario == 6 ? time_function_invoked + 1 : chrest_model_creation_time)
+      action_node_contents = ListPattern.new((
+        scenario == 7 ? (Modality.values().to_a - [Modality::ACTION]).sample : 
+        Modality::ACTION
+      ))
+      
+      # Construct the action Node.
+      action_node = (
+        scenario == 8 ? model._actionLtm :
+        Node.new(model, action_node_contents, action_node_contents, time_action_node_created)
+      )
+      
+      # Manually set the creation time for the visual and action Node in 
+      # scenario 1 since, if the Nodes are created before the CHREST model they
+      # are associated with, the Node constructor will throw a Runtime 
+      # Exception.  In scenario 1, the creation time of the Nodes will be equal
+      # to the creation time of the CHREST model so the CHREST model "alive" 
+      # check in "Chrest.learnProduction()" won't be isolated. To isolate it, 
+      # the creation times of the Nodes needs to be set manually.
+      if scenario == 1
+        node_creation_time_field.set_value(visual_node, time_function_invoked)
+        node_creation_time_field.set_value(action_node, time_function_invoked)
       end
+      
+      #########################################################
+      ##### POPULATE VISUAL STM (IF REQUIRED BY SCENARIO) #####
+      #########################################################
+      
+      if scenario != 9
+        visual_stm_contents = ArrayList.new()
+        visual_stm_contents.add(visual_node)
+        
+        visual_stm = HistoryTreeMap.new()
+        visual_stm.put(time_function_invoked, visual_stm_contents)
+        
+        stm_item_history_field.set_value(model._visualStm, visual_stm)
+      end
+      
+      ##########################################################
+      ##### POPULATE ACTION STM (IF REQUIRED BY SCENARIO)  #####
+      ##########################################################
+      
+      if scenario != 10
+        action_stm_contents = ArrayList.new()
+        action_stm_contents.add(action_node)
+        
+        action_stm = HistoryTreeMap.new()
+        action_stm.put(time_function_invoked, action_stm_contents)
+        
+        stm_item_history_field.set_value(model._actionStm, action_stm)
+      end
+      
+      #########################################################
+      ##### SET COGNITION CLOCK (IF REQUIRED BY SCENARIO) #####
+      #########################################################
+      
+      if scenario == 11 then model._cognitionClock = (time_function_invoked + (model._timeToRetrieveItemFromStm * 2) + 1) end
+      
+      ##########################################################
+      ##### CONSTRUCT PRODUCTION (IF REQUIRED BY SCENARIO) #####
+      ##########################################################
+      
+      if scenario == 12
+        visual_node_productions = HashMap.new()
+        visual_node_productions.put(action_node, 0.0)
+        
+        visual_node_production_history = HistoryTreeMap.new()
+        visual_node_production_history.put(time_function_invoked, visual_node_productions)
+        
+        node_production_history_field.set_value(visual_node, visual_node_production_history)
+      end
+      
+      #########################
+      ##### INVOKE METHOD #####
+      #########################
+      
+      return_value = model.learnProduction(visual_node, action_node, time_function_invoked)
+      
+      ##################################
+      ##### SET EXPECTED VARIABLES #####
+      ##################################
+      
+      expected_return_value = (scenario == 13 ? true : false)
+      expected_attention_clock = (
+        scenario == 1 ? 0 :
+        scenario == 2 ? time_function_invoked + 1 :
+        scenario.between?(3,8) ? -1 : 
+        scenario.between?(9,10) ? time_function_invoked + model._timeToRetrieveItemFromStm :
+        time_function_invoked + (model._timeToRetrieveItemFromStm * 2)
+      )
+      expected_cognition_clock = (
+        scenario == 1 ? 0 :
+        scenario == 11 ? model._attentionClock + 1 :
+        scenario != 13 ? -1 : 
+        expected_attention_clock + model._addProductionTime
+    )
+      
+      #################
+      ##### TESTS #####
+      #################
+      
+      assert_equal(expected_return_value, return_value, "occurred when checking the return value of the method in scenario " + scenario.to_s)
+      assert_equal(expected_attention_clock, model._attentionClock, "occurred when checking the attention clock in scenario " + scenario.to_s)
+      assert_equal(expected_cognition_clock, model._cognitionClock, "occurred when checking the cognition clock in scenario " + scenario.to_s)
     end
   end
 end
 
 ################################################################################
-# Tests the "Chrest.isNodeInStm()" method using all scenarios that it could 
-# possibly execute in context of.
-# 
-# Scenario Descriptions
-# =====================
-# 
-# Scenario 1: STM empty
-# Scenario 2: STM not empty, node not present
-# Scenario 3: STM not empty, node present
+# Tests the "Chrest.reinforceProduction()" function using a number of different
+# scenarios:
+#  
+# - Scenario 1
+#   ~ No action STM exists at time function invoked.
 #
-# Each scenario is repeated 10 times and the battery of scenarios is repeated 
-# for each permutation of the following variables:
+# - Scenario 2
+#   ~ Action STM exists at time function invoked.
+#   ~ No visual STM exists at time function invoked.
 #
-# 1. Second method parameter (false, true)
-# 2. Each modality
+# - Scenario 3
+#   ~ Action STM exists at time function invoked.
+#   ~ Visual STM exists at time function invoked.
+#   ~ Action node specified does not have Action modality.
 #
-# Tests Performed
-# ===============
+# - Scenario 4
+#   ~ Action STM exists at time function invoked.
+#   ~ Visual STM exists at time function invoked.
+#   ~ Action node specified has Action modality.
+#   ~ Visual node specified does not have Visual modality.
 #
-# For each repeat, the method return value is checked along with the CHREST
-# model's attention clock since the function can alter this.
+# - Scenario 5
+#   ~ Action STM exists at time function invoked.
+#   ~ Visual STM exists at time function invoked.
+#   ~ Action node specified has Action modality.
+#   ~ Visual node specified has Visual modality.
+#   ~ Attention is not free at time function invoked.
 #
-unit_test "isNodeInStm" do
-  
-  # Need to make method being tested accessible since its declared as private.
-  method = Chrest.java_class.declared_method(:isNodeInStm, Node, Java::int, Java::boolean)
-  method.accessible = true
-  
-  Chrest.class_eval{
-    field_accessor :_actionStm, 
-    :_verbalStm,
-    :_visualStm, 
-    :_attentionClock,
-    :_timeToRetrieveItemFromStm,
-    :_nodeComparisonTime
-  }
-  
-  stm_item_history_field = Stm.java_class.declared_field("_itemHistory")
-  stm_item_history_field.accessible = true
-  
-  for repeat in 1..2
-    for modality in Modality.values()
-      for scenario in 1..3
-        10.times do
-          
-          ########################
-          ##### CREATE MODEL #####
-          ########################
-          
-          chrest_model_creation_time = 0
-          model = Chrest.new(chrest_model_creation_time, [true, false].sample)
-          
-          ################################
-          ##### CREATE NODES FOR STM #####
-          ################################
-          
-          node_to_search_for = Node.new(model, ListPattern.new(modality), ListPattern.new(modality), chrest_model_creation_time)
-          node_1 = Node.new(model, ListPattern.new(modality), ListPattern.new(modality), chrest_model_creation_time)
-          node_2 = Node.new(model, ListPattern.new(modality), ListPattern.new(modality), chrest_model_creation_time)
-          node_3 = Node.new(model, ListPattern.new(modality), ListPattern.new(modality), chrest_model_creation_time)
-          
-          ############################
-          ##### CREATE SCENARIOS #####
-          ############################
-          
-          stm = (
-            modality == Modality::ACTION ? model._actionStm :
-            modality == Modality::VERBAL ? model._verbalStm :
-            modality == Modality::VISUAL ? model._visualStm :
-            raise("Modality " + modality.name() + " not supported")
-          )
-          
-          stm_contents = ArrayList.new()
-          if scenario > 1
-            stm_contents.add(node_1)
-            stm_contents.add(node_2)
-          end
-          
-          if scenario == 3 
-            stm_contents.add(node_to_search_for)
-            stm_contents.add(node_3) 
-          end
-          
-          stm_item_history = HistoryTreeMap.new()
-          stm_item_history.put(chrest_model_creation_time.to_java(:int), stm_contents)
-          stm_item_history_field.set_value(stm, stm_item_history)
-          
-          #########################
-          ##### INVOKE METHOD #####
-          #########################
-          
-          time_method_invoked = chrest_model_creation_time + 5
-          consume_attention = (repeat == 1 ? false : true)
-          result = method.invoke(model, node_to_search_for, time_method_invoked, consume_attention)
-          
-          ##############################################
-          ##### SET EXPECTED TEST RESULT VARIABLES #####
-          ##############################################
-          
-          # Method should always return false unless scenario is equal to 3
-          expected_result = (scenario == 3 ? true : false)
-          
-          # The attention clock should never be altered in repeat 1 and should
-          # only be altered in repeat 2 when STM is not empty.  It should then
-          # be set to the position of the node to search for in STM multiplied
-          # by the sum of the model's "time to retrieve STM item" and "node 
-          # comparison time" variables.  This is why node_3 is added in scenario
-          # 3 after the node to search for, i.e. it should not be searched.
-          expected_attention_clock = (
-            repeat == 2 && scenario == 2 ? time_method_invoked + (2 * (model._timeToRetrieveItemFromStm + model._nodeComparisonTime)) :
-            repeat == 2 && scenario == 3 ? time_method_invoked + (3 * (model._timeToRetrieveItemFromStm + model._nodeComparisonTime)) :
-            chrest_model_creation_time - 1 
-          )
-          
-          #################
-          ##### TESTS #####
-          #################
-          
-          assert_equal(expected_result, result, "occurred when checking the method result in scenario " + scenario.to_s)
-          assert_equal(expected_attention_clock, model._attentionClock, "occurred when checking the attention clock in scenario " + scenario.to_s)
-        end
-      end
-    end
-  end
-end
-
-################################################################################
-# Tests the "Chrest.reinforceProduction()" method using a number of different
-# scenarios that are intended to represent every possible scenario that this 
-# method may encounter.
-# 
-# Scenario Descriptions
-# =====================
-# 
-# Scenario 1: 
-#   ~ Model does not exist at time function invoked
+# - Scenario 6
+#   ~ Action STM exists at time function invoked.
+#   ~ Visual STM exists at time function invoked.
+#   ~ Action node specified has Action modality.
+#   ~ Visual node specified has Visual modality.
+#   ~ Attention is free at time function invoked.
+#   ~ Action node not present in action STM.
+#
+# - Scenario 7
+#   ~ Action STM exists at time function invoked.
+#   ~ Visual STM exists at time function invoked.
+#   ~ Action node specified has Action modality.
+#   ~ Visual node specified has Visual modality.
+#   ~ Attention is free at time function invoked.
+#   ~ Action node present in action STM.
+#   ~ Visual node not present in visual STM.
+#
+# - Scenario 8
+#   ~ Action STM exists at time function invoked.
+#   ~ Visual STM exists at time function invoked.
+#   ~ Action node specified has Action modality.
+#   ~ Visual node specified has Visual modality.
+#   ~ Attention is free at time function invoked.
+#   ~ Action node present in action STM.
+#   ~ Visual node present in visual STM.
+#   ~ Cognition isn't free at the time specified.
 #   
-# Scenario 2: 
-#   ~ Model exists at time function is invoked
-#   ~ Attention is not free at time function invoked
-#   
-# Scenario 3:
-#   ~ Model exists at time function is invoked
-#   ~ Attention is free at time function invoked
-#   ~ Vision specified does not have visual modality
-#   
-# Scenario 4: 
-#   ~ Model exists at time function is invoked
-#   ~ Attention is free at time function invoked
-#   ~ Vision specified has visual modality
-#   ~ Action specified does not have action modality
-#   
-# Scenario 5: 
-#   ~ Model exists at time function is invoked
-#   ~ Attention is free at time function invoked
-#   ~ Vision specified has visual modality
-#   ~ Action specified has action modality
-#   ~ Visual STM is empty at time function invoked
-#   
-# Scenario 6: 
-#   ~ Model exists at time function is invoked
-#   ~ Attention is free at time function invoked
-#   ~ Vision specified has visual modality
-#   ~ Action specified has action modality
-#   ~ Visual STM is not empty at time function invoked
-#   ~ No visual STM Nodes have images that equal/match vision passed
-#   
-# Scenario 7: 
-#   ~ Model exists at time function is invoked
-#   ~ Attention is free at time function invoked
-#   ~ Vision specified has visual modality
-#   ~ Action specified has action modality
-#   ~ Visual STM is not empty at time function invoked
-#   ~ Some visual STM Nodes, V, have images that equal/match vision passed
-#   ~ None of V have productions
-#   
-# Scenario 8:
-#   ~ Model exists at time function is invoked
-#   ~ Attention is free at time function invoked
-#   ~ Vision specified has visual modality
-#   ~ Action specified has action modality
-#   ~ Visual STM is not empty at time function invoked
-#   ~ Some visual STM Nodes, V, have images that equal/match vision passed
-#   ~ Some of V have productions 
-#   ~ Action STM is empty
-#   
-# Scenario 9:
-#   ~ Model exists at time function is invoked
-#   ~ Attention is free at time function invoked
-#   ~ Vision specified has visual modality
-#   ~ Action specified has action modality
-#   ~ Visual STM is not empty at time function invoked
-#   ~ Some visual STM Nodes, V, have images that equal/match vision passed
-#   ~ Some of V have productions
-#   ~ Action STM is not empty but no action STM nodes have images that 
-#     equal/match action passed
-#     
-# Scenario 10:
-#   ~ Model exists at time function is invoked
-#   ~ Attention is free at time function invoked
-#   ~ Vision specified has visual modality
-#   ~ Action specified has action modality
-#   ~ Visual STM is not empty at time function invoked
-#   ~ Some visual STM Nodes, V, have images that equal/match vision passed
-#   ~ Some of V have productions
-#   ~ Action STM is not empty, some action STM nodes, A, have images that 
-#     equal/match action passed
-#   ~ Cognition is free
-#   ~ V contains a Node whose image equals the vision input and an A whose
-#     image equals the action input
-#   
-# Scenario 11.
-#   ~ As 10 but cognition isn't free
-#   
-# Scenario 12.
-#   ~ As 10, cognition free but production reinforcement fails (reinforcement
-#     learning theory for model set to null)
-#   
-# Scenario 13.
-#   ~ Model exists at time function is invoked
-#   ~ Attention is free at time function invoked
-#   ~ Vision specified has visual modality
-#   ~ Action specified has action modality
-#   ~ Visual STM is not empty at time function invoked
-#   ~ Some visual STM Nodes, V, have images that equal/match vision passed
-#   ~ Some of V have productions
-#   ~ Action STM is not empty, some action STM nodes, A, have images that 
-#     equal/match action passed
-#   ~ Cognition is free
-#   ~ V contains a Node whose image equals the vision input and an A whose
-#     image matches the action input (no A equals the action input)
-# 
-# Scenario 14.
-#   ~ As 13 but cognition isn't free
-#   
-# Scenario 15.
-#   ~ As 13, cognition free but production reinforcement fails (reinforcement
-#     learning theory for model set to null)
-#     
-# Scenario 16.
-#   ~ Model exists at time function is invoked
-#   ~ Attention is free at time function invoked
-#   ~ Vision specified has visual modality
-#   ~ Action specified has action modality
-#   ~ Visual STM is not empty at time function invoked
-#   ~ Some visual STM Nodes, V, have images that equal/match vision passed
-#   ~ Some of V have productions
-#   ~ Action STM is not empty, some action STM nodes, A, have images that 
-#     equal/match action passed
-#   ~ Cognition is free
-#   ~ V contains a Node whose image matches the vision (no V equals the action 
-#     input) and an A whose image equals the action input.
-# 
-# Scenario 17.
-#   ~ As 16 but cognition isn't free
-#   
-# Scenario 18.
-#   ~ As 16, cognition free but production reinforcement fails (reinforcement
-#     learning theory for model set to null)
-#     
-# Scenario 19.
-#   ~ Model exists at time function is invoked
-#   ~ Attention is free at time function invoked
-#   ~ Vision specified has visual modality
-#   ~ Action specified has action modality
-#   ~ Visual STM is not empty at time function invoked
-#   ~ Some visual STM Nodes, V, have images that equal/match vision passed
-#   ~ Some of V have productions
-#   ~ Action STM is not empty, some action STM nodes, A, have images that 
-#     equal/match action passed
-#   ~ Cognition is free
-#   ~ V contains a Node whose image matches the vision (no V equals the action 
-#     input) and an A whose image matches the action input (no A equals the 
-#     action input)
-#     
-# Scenario 20.
-#   ~ As 19 but cognition isn't free
-#   
-# Scenario 21.
-#   ~ As 19, cognition free but production reinforcement fails (reinforcement
-#     learning theory for model set to null)
-# 
-# Variables Tested
-# ================
-# 
-# The method returns particular ChrestStatus' depending upon the scenario so 
-# this is always checked. The method also affects production values so the 
-# production history of each visual Node used in the test is checked to see if 
-# it is as expected at the conclusion of a scenario.
-# 
-# The method can also alter the attention and cognition clocks of the CHREST 
-# model it is invoked in context of (if certain scenarios occur) so these values
-# are checked too.
+# - Scenario 9
+#   ~ Action STM exists at time function invoked.
+#   ~ Visual STM exists at time function invoked.
+#   ~ Action node specified has Action modality.
+#   ~ Visual node specified has Visual modality.
+#   ~ Attention is free at time function invoked.
+#   ~ Action node present in action STM.
+#   ~ Visual node present in visual STM.
+#   ~ Cognition is free at the time specified.
+#   ~ Production reinforcement isn't successful (production doesn't exist)
+#
+# - Scenario 10
+#   ~ Action STM exists at time function invoked.
+#   ~ Visual STM exists at time function invoked.
+#   ~ Action node specified has Action modality.
+#   ~ Visual node specified has Visual modality.
+#   ~ Attention is free at time function invoked.
+#   ~ Action node present in action STM.
+#   ~ Visual node present in visual STM.
+#   ~ Cognition is free at the time specified.
+#   ~ Production reinforcement is successful.
+#
+# The function is expected to alter the attention and cognition clocks of the 
+# CHREST model it is invoked in context of (if certain scenarios occur) and the
+# return value of the function should differ depending on the scenario.  
+# Therefore, the attention clock and cognition clock of the CHREST model this
+# function is invoked in context of is checked after each scenario along with
+# the return value of the function itself.
 #
 # Expected Outcomes
 # =================
 # 
-# - See code.
+# - Attention clock
+#   ~ Scenarios 1-4: should not be altered from its initial value
+#   ~ Scenario 5: should be set to the time it is "manually" set to by the test
+#   ~ Scenario 6-10: should be set to the time taken to search through the 
+#                    contents of action and visual STM (time taken to retrieve a 
+#                    STM item multiplied by the number of Nodes in action and 
+#                    visual STM).
+#                    
+# - Cognition clock
+#   ~ Scenario 8: should be set to the time it is "manually" set to by the test
+#   ~ Scenarios 1-9 (excluding 8): should not be altered from its initial value
+#   ~ Scenario 10: should be set to the attention clock's value plus the time
+#                  taken to reinforce a production
+#                  
+# - Value returned by function
+#   ~ Scenarios 1-9: should return false
+#   ~ Scenario 10: should return true
 process_test "reinforce_production" do
   
   #######################################################
   ##### SET-UP ACEESS TO PRIVATE INSTANCE VARIABLES #####
   #######################################################
   
+  # Chrest model field access
   Chrest.class_eval{
     field_accessor :_reinforcementLearningTheory,
     :_actionStm, 
@@ -2381,1370 +1551,159 @@ process_test "reinforce_production" do
     :_reinforceProductionTime
   }
   
-  chrest_creation_time_field = Chrest.java_class.declared_field("_creationTime")
-  chrest_creation_time_field.accessible = true
-  
-  ListPattern.class_eval{
-    field_accessor :_list, :_modality
-  }
-  
+  ##### Stm field access
   stm_item_history_field = Stm.java_class.declared_field("_itemHistory")
   stm_item_history_field.accessible = true
   
+  ##### Node field access
   Node.class_eval{
-    field_accessor :_imageHistory, :_productionHistory
+    field_accessor :_productionHistory
   }
   
-  node_contents_field = Node.java_class.declared_field("_contents")
-  node_contents_field.accessible = true
+  node_modality_field = Node.java_class.declared_field("_modality")
+  node_modality_field.accessible = true
+  
+  node_reference_field = Node.java_class.declared_field("_reference")
+  node_reference_field.accessible = true
   
   #####################
   ##### TEST LOOP #####
   #####################
-  
-  for scenario in 1..21
-    1.times do
+  100.times do
+    for scenario in 1..10
       
       # Create CHREST model.
-      time_chrest_model_created = 0
-      model = Chrest.new(time_chrest_model_created, [true,false].sample)
+      time = 0
+      model = Chrest.new(time, false)
+      model._reinforcementLearningTheory = ReinforcementLearning::Theory::PROFIT_SHARING_WITH_DISCOUNT_RATE
       
       # Set the time the function is to be invoked (do this now since other 
       # times depend on this being set).
-      time_function_invoked = 50
+      time_function_invoked = time + 50
       
-      reinforcement_calculation_variables = [1.0, 0.5, 1.0, 1.0].to_java(:Double)
+      ###################################
+      ##### CREATE PRODUCTION Nodes #####
+      ###################################
       
-      ###########################################
-      ##### CREATE VISUAL/ACTION PRIMITIVES #####
-      ###########################################
-      
-      # Visual input primitives
-      tile_location = ItemSquarePattern.new("T", 0, 1)
-      hole_location = ItemSquarePattern.new("H", 1, 0)
-      opponent_location = ItemSquarePattern.new("O", 0, 2)
-      
-      # Action input primitives
-      move_east = ItemSquarePattern.new("Move", 90, 1)
-      move_north = ItemSquarePattern.new("Move", 0, 1)
-      push_west = ItemSquarePattern.new("Push", 270, 1)
-      
-      #####################################
-      ##### CREATE INPUT ListPatterns #####
-      #####################################
-      
-      vision = ListPattern.new(Modality::VISUAL)
-      vision._list.add(tile_location)
-      vision._list.add(hole_location)
-      vision._list.add(opponent_location)
-      
-      action = ListPattern.new(Modality::ACTION)
-      action._list.add(move_east)
-      action._list.add(move_north)
-      action._list.add(push_west)
+      # Set the time the Nodes are created to a random time between the time the
+      # CHREST model is created and the time the function is invoked - 2 since
+      # the production between the visual and action Nodes needs to be added.
+      # The time the production is created needs to be after the creation time 
+      # of the Nodes but before the time the production should be reinforced. 
+      # The subtraction of 2 from the time the function is invoked gives some 
+      # time for this.
+      time_nodes_created = rand(time...(time_function_invoked - 2))
+      action_node = Node.new(model, ListPattern.new(Modality::ACTION), ListPattern.new(Modality::ACTION), time_nodes_created)
+      visual_node = Node.new(model, ListPattern.new(Modality::VISUAL), ListPattern.new(Modality::VISUAL), time_nodes_created)
+      if scenario == 3 then node_modality_field.set_value(action_node, Modality::VISUAL) end
+      if scenario == 4 then node_modality_field.set_value(visual_node, Modality::ACTION) end
       
       ########################
-      ##### CREATE NODES #####
+      ##### POPULATE STM #####
       ########################
       
-      visual_node_1 = Node.new(model, ListPattern.new(Modality::VISUAL), ListPattern.new(Modality::VISUAL), time_chrest_model_created)
-      visual_node_2 = Node.new(model, ListPattern.new(Modality::VISUAL), ListPattern.new(Modality::VISUAL), time_chrest_model_created)
-      visual_node_3 = Node.new(model, ListPattern.new(Modality::VISUAL), ListPattern.new(Modality::VISUAL), time_chrest_model_created)
+      action_stm_item_history = stm_item_history_field.value(model._actionStm)
+      action_stm_items = ArrayList.new()
       
-      action_node_1 = Node.new(model, ListPattern.new(Modality::ACTION), ListPattern.new(Modality::ACTION), time_chrest_model_created)
-      action_node_2 = Node.new(model, ListPattern.new(Modality::ACTION), ListPattern.new(Modality::ACTION), time_chrest_model_created)
-      action_node_3 = Node.new(model, ListPattern.new(Modality::ACTION), ListPattern.new(Modality::ACTION), time_chrest_model_created)
-      action_node_4 = Node.new(model, ListPattern.new(Modality::ACTION), ListPattern.new(Modality::ACTION), time_chrest_model_created)
-      action_node_5 = Node.new(model, ListPattern.new(Modality::ACTION), ListPattern.new(Modality::ACTION), time_chrest_model_created)
-      action_node_6 = Node.new(model, ListPattern.new(Modality::ACTION), ListPattern.new(Modality::ACTION), time_chrest_model_created)
-      action_node_7 = Node.new(model, ListPattern.new(Modality::ACTION), ListPattern.new(Modality::ACTION), time_chrest_model_created)
-      action_node_8 = Node.new(model, ListPattern.new(Modality::ACTION), ListPattern.new(Modality::ACTION), time_chrest_model_created)
-      action_node_9 = Node.new(model, ListPattern.new(Modality::ACTION), ListPattern.new(Modality::ACTION), time_chrest_model_created)
+      visual_stm_item_history = stm_item_history_field.value(model._visualStm)
+      visual_stm_items = ArrayList.new()
       
-      ############################
-      ##### CREATE SCENARIOS #####
-      ############################
-      
-      if scenario == 1 then chrest_creation_time_field.set_value(model, time_function_invoked + 1) end
-      if scenario == 2 then model._attentionClock = time_function_invoked + 1 end
-      if scenario == 3 then vision._modality = (Modality.values().to_a - [Modality::VISUAL]).sample end
-      if scenario == 4 then action._modality = (Modality.values().to_a - [Modality::ACTION]).sample end
-      
-      visual_stm_contents = ArrayList.new()
-      action_stm_contents = ArrayList.new()
-      
-      # If scenario == 5 then visual_stm_contents should be empty
-      if scenario == 6
-      
-        # Add visual Nodes 1 and 2 to visual STM and populate their contents and
-        # images so they do not equal/match the vision; can't leave them empty 
-        # since this will cause a match with the vision.
-        visual_node_1_contents = node_contents_field.value(visual_node_1)
-        visual_node_1_contents._list.add(opponent_location)
-        visual_node_1_image_history = HistoryTreeMap.new()
-        visual_node_1_image_history.put(time_chrest_model_created.to_java(:int), visual_node_1_contents)
-        visual_node_1._imageHistory = visual_node_1_image_history
+      # Put 2 action/visual Nodes in action/visual STM before the action/visual 
+      # Node used in the production is added so the function has to cycle when 
+      # locating the action/visual Node used in the production.
+      for i in 1..4
         
-        visual_node_2_contents = node_contents_field.value(visual_node_2)
-        visual_node_2_contents._list.add(hole_location)
-        visual_node_2_image_history = HistoryTreeMap.new()
-        visual_node_2_image_history.put(time_chrest_model_created.to_java(:int), visual_node_2_contents)
-        visual_node_2._imageHistory = visual_node_2_image_history
+        # First 2 Nodes should have action modality, last 2 should have visual
+        # modality.
+        node = Node.new(
+          model, 
+          ListPattern.new( ((i == 1 || i == 2) ? Modality::ACTION : Modality::VISUAL) ), 
+          ListPattern.new( ((i == 1 || i == 2) ? Modality::ACTION : Modality::VISUAL) ), 
+          time_nodes_created
+        )
         
-        visual_stm_contents.add(visual_node_1)
-        visual_stm_contents.add(visual_node_2)
+        # Set the Node's reference so that it differs from the action/visual 
+        # Nodes to be used in the production. To do this, add the local "i" 
+        # variable to the visual Node's reference.  Since this was the last Node
+        # created, any subsequent references will not equal the action/visual 
+        # Node's references that are to be used in the production.
+        node_reference_field.set_value(
+          node, 
+          node_reference_field.value(visual_node) + i
+        )
+        
+        ((i == 1 || i == 2) ? action_stm_items.add(node) : visual_stm_items.add(node))
       end
       
-      if [7,8,9].include?(scenario)
-        
-        # Sometimes visual node should match vision, sometimes it should equal
-        # it. Since the test is repeated, a 50/50 random number generator is 
-        # used to determine if a third primitive is added to the visual Node's
-        # image thus making it equal to the vision.  Otherwise, the Node's
-        # contents will match.
-        visual_node_1_contents = node_contents_field.value(visual_node_1)
-        visual_node_1_contents._list.add(tile_location)
-        visual_node_1_contents._list.add(hole_location)
-        if rand(1..2) == 1 then visual_node_1_contents._list.add(opponent_location) end
-        node_contents_field.set_value(visual_node_1, visual_node_1_contents)
-        
-        visual_node_1_image_history = HistoryTreeMap.new()
-        visual_node_1_image_history.put(time_chrest_model_created.to_java(:int), visual_node_1_contents)
-        visual_node_1._imageHistory = visual_node_1_image_history
-        
-        visual_stm_contents.add(visual_node_1)
-        
-        # If scenario is 8, add a production to the visual Node that will be 
-        # selected.  The production should terminate with an action Node whose 
-        # image equals the action input so it *should* be selected if its 
-        # present in action STM, but it won't be.
-        if scenario == 8
-          action_node_1_contents = node_contents_field.value(action_node_1)
-          action_node_1_contents._list.add(move_east)
-          action_node_1_contents._list.add(move_north)
-          action_node_1_contents._list.add(push_west)
-          action_node_1_image_history = HistoryTreeMap.new()
-          action_node_1_image_history.put(time_chrest_model_created.to_java(:int), action_node_1_contents)
-          action_node_1._imageHistory = action_node_1_image_history
-          
-          visual_node_1_productions = LinkedHashMap.new()
-          visual_node_1_productions.put(action_node_1, 1.0)
-          visual_node_1._productionHistory.put(time_function_invoked.to_java(:int), visual_node_1_productions)
-        end
-        
-        # In scenario 9,  add a production to the visual Node that will be 
-        # selected.  The production should terminate with an action Node whose 
-        # image does not equal or match the action input so it won't be 
-        # selected even if its present in action STM, which it will be.
-        if scenario == 9
-          action_node_1_contents = node_contents_field.value(action_node_1)
-          action_node_1_contents._list.add(push_west)
-          action_node_1_contents._list.add(move_north)
-          action_node_1_contents._list.add(move_east)
-          action_node_1_image_history = HistoryTreeMap.new()
-          action_node_1_image_history.put(time_chrest_model_created.to_java(:int), action_node_1_contents)
-          action_node_1._imageHistory = action_node_1_image_history
-          
-          visual_node_1_productions = LinkedHashMap.new()
-          visual_node_1_productions.put(action_node_1, 1.0)
-          visual_node_1._productionHistory.put(time_function_invoked.to_java(:int), visual_node_1_productions)
-          action_stm_contents.add(action_node_1)
-        end
+      if scenario != 6 then action_stm_items.add(action_node) end
+      if scenario != 7 then visual_stm_items.add(visual_node) end
+      
+      action_stm_item_history.put(time_nodes_created, action_stm_items)
+      visual_stm_item_history.put(time_nodes_created, visual_stm_items)
+      
+      ##### Set action/visual STM item histories so they don't exist at the time
+      ##### the function is invoked (if the scenario specifies this).
+      stm_exists_after_function_invoked = HistoryTreeMap.new()
+      stm_exists_after_function_invoked.put(time_function_invoked + 10000, ArrayList.new())
+      
+      if scenario == 1 then stm_item_history_field.set_value(model._actionStm, stm_exists_after_function_invoked) end
+      if scenario == 2 then stm_item_history_field.set_value(model._visualStm, stm_exists_after_function_invoked) end
+      
+      # Set attention clock (if necessary)
+      unavailable_attention_time = time_function_invoked + 10000
+      if scenario == 5 then model._attentionClock = unavailable_attention_time end
+      
+      # Set cognition clock (if necessary)
+      unavailable_cognition_time = time_function_invoked + 10000
+      if scenario == 8 then model._cognitionClock = unavailable_cognition_time end
+      
+      #############################
+      ##### CREATE PRODUCTION #####
+      #############################
+      
+      if scenario != 9
+        visual_node_productions = HashMap.new()
+        visual_node_productions.put(action_node, (1.0).to_java(:Double))
+        visual_node._productionHistory.put(time_nodes_created + 1, visual_node_productions)
       end
-      
-      # In scenarios 10-12, the second visual node added to visual STM 
-      # (visual_node_2) should be selected since it is the first visual Node
-      # encountered in visual STM that contains a production and equals the 
-      # vision input to the method.  visual_node_1's image will match the 
-      # vision input but to a lesser extent and visual_node_3 will also equal
-      # the visual input but comes after visual_node_2 so will be disregarded.
-      # Note that this scenario shouldn't occur during normal CHREST model 
-      # operation (two Nodes with the *exact* same image) but, for the 
-      # purposes of fully testing the method, the scenario is created.
-      # 
-      # The action Node selected should be the second production of 
-      # visual_node_2 (action_node_5) since it is the first action Node 
-      # encountered in the productions of the visual Node selected that equals 
-      # the action input to the method.  visual_node_2 will also contain two
-      # other action Nodes as productions: action_node_4 whose image will 
-      # only match the action input so is disregarded and action_node_6 whose
-      # image also equals the action input but, since it comes after 
-      # action_node_5, it is disregarded.  Note that this scenario shouldn't 
-      # occur during normal CHREST model operation (two Nodes with the *exact* 
-      # same image) but, for the purposes of fully testing the method, the 
-      # scenario is created.
-      if scenario.between?(10,12)
-        
-        # Create visual nodes
-        visual_node_1_contents = node_contents_field.value(visual_node_1)
-        visual_node_1_contents._list.add(hole_location)
-        visual_node_1_contents._list.add(tile_location)
-        visual_node_1_image_history = HistoryTreeMap.new()
-        visual_node_1_image_history.put(time_chrest_model_created.to_java(:int), visual_node_1_contents)
-        visual_node_1._imageHistory = visual_node_1_image_history
-        
-        visual_node_2_contents = node_contents_field.value(visual_node_2)
-        visual_node_2_contents._list.add(tile_location)
-        visual_node_2_contents._list.add(hole_location)
-        visual_node_2_contents._list.add(opponent_location)
-        visual_node_2_image_history = HistoryTreeMap.new()
-        visual_node_2_image_history.put(time_chrest_model_created.to_java(:int), visual_node_2_contents)
-        visual_node_2._imageHistory = visual_node_2_image_history
-         
-        visual_node_3_contents = node_contents_field.value(visual_node_3)
-        visual_node_3_contents._list.add(tile_location)
-        visual_node_3_contents._list.add(hole_location)
-        visual_node_3_contents._list.add(opponent_location)
-        visual_node_3_image_history = HistoryTreeMap.new()
-        visual_node_3_image_history.put(time_chrest_model_created.to_java(:int), visual_node_3_contents)
-        visual_node_3._imageHistory = visual_node_3_image_history
-        
-        # Create visual_node_1 productions
-        action_node_1_contents = node_contents_field.value(action_node_1)
-        action_node_1_contents._list.add(push_west)
-        action_node_1_image_history = HistoryTreeMap.new()
-        action_node_1_image_history.put(time_chrest_model_created.to_java(:int), action_node_1_contents)
-        action_node_1._imageHistory = action_node_1_image_history
-        
-        action_node_2_contents = node_contents_field.value(action_node_2)
-        action_node_2_contents._list.add(move_east)
-        action_node_2_contents._list.add(move_north)
-        action_node_2_contents._list.add(push_west)
-        action_node_2_image_history = HistoryTreeMap.new()
-        action_node_2_image_history.put(time_chrest_model_created.to_java(:int), action_node_2_contents)
-        action_node_2._imageHistory = action_node_2_image_history
-        
-        action_node_3_contents = node_contents_field.value(action_node_3)
-        action_node_3_contents._list.add(move_east)
-        action_node_3_contents._list.add(move_north)
-        action_node_3_contents._list.add(push_west)
-        action_node_3_image_history = HistoryTreeMap.new()
-        action_node_3_image_history.put(time_chrest_model_created.to_java(:int), action_node_3_contents)
-        action_node_3._imageHistory = action_node_3_image_history
-        
-        visual_node_1_productions = LinkedHashMap.new()
-        visual_node_1_productions.put(action_node_1, 1.0)
-        visual_node_1_productions.put(action_node_2, 1.0)
-        visual_node_1_productions.put(action_node_3, 1.0)
-        visual_node_1._productionHistory.put(time_function_invoked.to_java(:int), visual_node_1_productions)
-        
-        # Create visual node 2 productions
-        action_node_4_contents = node_contents_field.value(action_node_4)
-        action_node_4_contents._list.add(move_east)
-        action_node_4_image_history = HistoryTreeMap.new()
-        action_node_4_image_history.put(time_chrest_model_created.to_java(:int), action_node_4_contents)
-        action_node_4._imageHistory = action_node_4_image_history
-        
-        action_node_5_contents = node_contents_field.value(action_node_5)
-        action_node_5_contents._list.add(move_east)
-        action_node_5_contents._list.add(move_north)
-        action_node_5_contents._list.add(push_west)
-        action_node_5_image_history = HistoryTreeMap.new()
-        action_node_5_image_history.put(time_chrest_model_created.to_java(:int), action_node_5_contents)
-        action_node_5._imageHistory = action_node_5_image_history
-        
-        action_node_6_contents = node_contents_field.value(action_node_6)
-        action_node_6_contents._list.add(move_east)
-        action_node_6_contents._list.add(move_north)
-        action_node_6_contents._list.add(push_west)
-        action_node_6_image_history = HistoryTreeMap.new()
-        action_node_6_image_history.put(time_chrest_model_created.to_java(:int), action_node_6_contents)
-        action_node_6._imageHistory = action_node_6_image_history
-        
-        visual_node_2_productions = LinkedHashMap.new()
-        visual_node_2_productions.put(action_node_4, 1.0)
-        visual_node_2_productions.put(action_node_5, 1.0)
-        visual_node_2_productions.put(action_node_6, 1.0)
-        visual_node_2._productionHistory.put(time_function_invoked.to_java(:int), visual_node_2_productions)
-        
-        # Create visual node 3 productions
-        action_node_7_contents = node_contents_field.value(action_node_7)
-        action_node_7_contents._list.add(push_west)
-        action_node_7_image_history = HistoryTreeMap.new()
-        action_node_7_image_history.put(time_chrest_model_created.to_java(:int), action_node_7_contents)
-        action_node_7._imageHistory = action_node_7_image_history
-        
-        action_node_8_contents = node_contents_field.value(action_node_8)
-        action_node_8_contents._list.add(move_east)
-        action_node_8_contents._list.add(move_north)
-        action_node_8_contents._list.add(push_west)
-        action_node_8_image_history = HistoryTreeMap.new()
-        action_node_8_image_history.put(time_chrest_model_created.to_java(:int), action_node_8_contents)
-        action_node_8._imageHistory = action_node_8_image_history
-        
-        action_node_9_contents = node_contents_field.value(action_node_9)
-        action_node_9_contents._list.add(move_east)
-        action_node_9_contents._list.add(move_north)
-        action_node_9_contents._list.add(push_west)
-        action_node_9_image_history = HistoryTreeMap.new()
-        action_node_9_image_history.put(time_chrest_model_created.to_java(:int), action_node_9_contents)
-        action_node_9._imageHistory = action_node_9_image_history
-        
-        visual_node_3_productions = LinkedHashMap.new()
-        visual_node_3_productions.put(action_node_7, 1.0)
-        visual_node_3_productions.put(action_node_8, 1.0)
-        visual_node_3_productions.put(action_node_9, 1.0)
-        visual_node_3._productionHistory.put(time_function_invoked.to_java(:int), visual_node_3_productions)
-        
-        # Add all visual and action Nodes to visual/action STM.
-        visual_stm_contents.add(visual_node_1)
-        visual_stm_contents.add(visual_node_2)
-        visual_stm_contents.add(visual_node_3)
-        
-        action_stm_contents.add(action_node_1)
-        action_stm_contents.add(action_node_2)
-        action_stm_contents.add(action_node_3)
-        action_stm_contents.add(action_node_4)
-        action_stm_contents.add(action_node_5)
-        action_stm_contents.add(action_node_6)
-        action_stm_contents.add(action_node_7)
-        action_stm_contents.add(action_node_8)
-        action_stm_contents.add(action_node_9)
-      end
-      
-      # In scenarios 13-15, the second visual node added to visual STM 
-      # (visual_node_2) should be selected since it is the first visual Node
-      # encountered in visual STM that contains a production and equals the 
-      # vision input to the method.  visual_node_1's image will match the 
-      # vision input but to a lesser extent and visual_node_3 will also equal
-      # the visual input but comes after visual_node_2 so will be disregarded.
-      # Note that this scenario shouldn't occur during normal CHREST model 
-      # operation (two Nodes with the *exact* same contents) but, for the 
-      # purposes of fully testing the method, the scenario is created.
-      #
-      # visual_node_2's productions will consist of 3 action Nodes whose 
-      # images all match the action input.  However, the productions 
-      # action Node image will match the action input to varying degrees: 
-      # production 1 < production 2 == production 3.  Thus, the second production 
-      # should be selected as the terminus of the production since it matches the
-      # action input the most and comes before production 3 (which also matches
-      # equally).
-      if scenario.between?(13,15)
-        
-        # Create visual nodes
-        visual_node_1_contents = node_contents_field.value(visual_node_1)
-        visual_node_1_contents._list.add(hole_location)
-        visual_node_1_contents._list.add(tile_location)
-        visual_node_1_image_history = HistoryTreeMap.new()
-        visual_node_1_image_history.put(time_chrest_model_created.to_java(:int), visual_node_1_contents)
-        visual_node_1._imageHistory = visual_node_1_image_history
-        
-        visual_node_2_contents = node_contents_field.value(visual_node_2)
-        visual_node_2_contents._list.add(tile_location)
-        visual_node_2_contents._list.add(hole_location)
-        visual_node_2_contents._list.add(opponent_location)
-        visual_node_2_image_history = HistoryTreeMap.new()
-        visual_node_2_image_history.put(time_chrest_model_created.to_java(:int), visual_node_2_contents)
-        visual_node_2._imageHistory = visual_node_2_image_history
-        
-        visual_node_3_contents = node_contents_field.value(visual_node_3)
-        visual_node_3_contents._list.add(tile_location)
-        visual_node_3_contents._list.add(hole_location)
-        visual_node_3_contents._list.add(opponent_location)
-        visual_node_3_image_history = HistoryTreeMap.new()
-        visual_node_3_image_history.put(time_chrest_model_created.to_java(:int), visual_node_3_contents)
-        visual_node_3._imageHistory = visual_node_3_image_history
-        
-        # Create visual node 1's productions
-        action_node_1_contents = node_contents_field.value(action_node_1)
-        action_node_1_contents._list.add(move_east)
-        action_node_1_image_history = HistoryTreeMap.new()
-        action_node_1_image_history.put(time_chrest_model_created.to_java(:int), action_node_1_contents)
-        action_node_1._imageHistory = action_node_1_image_history
-        
-        action_node_2_contents = node_contents_field.value(action_node_2)
-        action_node_2_contents._list.add(move_east)
-        action_node_2_contents._list.add(move_north)
-        action_node_2_contents._list.add(push_west)
-        action_node_2_image_history = HistoryTreeMap.new()
-        action_node_2_image_history.put(time_chrest_model_created.to_java(:int), action_node_2_contents)
-        action_node_2._imageHistory = action_node_2_image_history
-        
-        action_node_3_contents = node_contents_field.value(action_node_3)
-        action_node_3_contents._list.add(move_east)
-        action_node_3_contents._list.add(move_north)
-        action_node_3_contents._list.add(push_west)
-        action_node_3_image_history = HistoryTreeMap.new()
-        action_node_3_image_history.put(time_chrest_model_created.to_java(:int), action_node_3_contents)
-        action_node_3._imageHistory = action_node_3_image_history
-        
-        visual_node_1_productions = LinkedHashMap.new()
-        visual_node_1_productions.put(action_node_1, 1.0)
-        visual_node_1_productions.put(action_node_2, 1.0)
-        visual_node_1_productions.put(action_node_3, 1.0)
-        visual_node_1._productionHistory.put(time_function_invoked.to_java(:int), visual_node_1_productions)
-        
-        # Create visual node 2's productions
-        action_node_4_contents = node_contents_field.value(action_node_4)
-        action_node_4_contents._list.add(move_east)
-        action_node_4_image_history = HistoryTreeMap.new()
-        action_node_4_image_history.put(time_chrest_model_created.to_java(:int), action_node_4_contents)
-        action_node_4._imageHistory = action_node_4_image_history
-          
-        action_node_5_contents = node_contents_field.value(action_node_5)
-        action_node_5_contents._list.add(move_east)
-        action_node_5_contents._list.add(move_north)
-        action_node_5_image_history = HistoryTreeMap.new()
-        action_node_5_image_history.put(time_chrest_model_created.to_java(:int), action_node_5_contents)
-        action_node_5._imageHistory = action_node_5_image_history
-        
-        action_node_6_contents = node_contents_field.value(action_node_6)
-        action_node_6_contents._list.add(move_east)
-        action_node_6_contents._list.add(move_north)
-        action_node_6_image_history = HistoryTreeMap.new()
-        action_node_6_image_history.put(time_chrest_model_created.to_java(:int), action_node_6_contents)
-        action_node_6._imageHistory = action_node_6_image_history
-        
-        visual_node_2_productions = LinkedHashMap.new()
-        visual_node_2_productions.put(action_node_4, 1.0)
-        visual_node_2_productions.put(action_node_5, 1.0)
-        visual_node_2_productions.put(action_node_6, 1.0)
-        visual_node_2._productionHistory.put(time_function_invoked.to_java(:int), visual_node_2_productions)
-        
-        # Create visual node 3's productions
-        action_node_8_contents = node_contents_field.value(action_node_8)
-        action_node_8_contents._list.add(move_east)
-        action_node_8_contents._list.add(move_north)
-        action_node_8_image_history = HistoryTreeMap.new()
-        action_node_8_image_history.put(time_chrest_model_created.to_java(:int), action_node_8_contents)
-        action_node_8._imageHistory = action_node_8_image_history
-        
-        action_node_9_contents = node_contents_field.value(action_node_9)
-        action_node_9_contents._list.add(move_east)
-        action_node_9_image_history = HistoryTreeMap.new()
-        action_node_9_image_history.put(time_chrest_model_created.to_java(:int), action_node_9_contents)
-        action_node_9._imageHistory = action_node_9_image_history
-        
-        visual_node_3_productions = LinkedHashMap.new()
-        visual_node_3_productions.put(action_node_7, 1.0)
-        visual_node_3_productions.put(action_node_8, 1.0)
-        visual_node_3_productions.put(action_node_9, 1.0)
-        visual_node_3._productionHistory.put(time_function_invoked.to_java(:int), visual_node_3_productions)
-        
-        # Add all visual and action Nodes to visual/action STM.
-        visual_stm_contents.add(visual_node_1)
-        visual_stm_contents.add(visual_node_2)
-        visual_stm_contents.add(visual_node_3)
-        
-        action_stm_contents.add(action_node_1)
-        action_stm_contents.add(action_node_2)
-        action_stm_contents.add(action_node_3)
-        action_stm_contents.add(action_node_4)
-        action_stm_contents.add(action_node_5)
-        action_stm_contents.add(action_node_6)
-        action_stm_contents.add(action_node_7)
-        action_stm_contents.add(action_node_8)
-        action_stm_contents.add(action_node_9)
-      end
-      
-      # In scenarios 16-18, the second visual node added to visual STM 
-      # (visual_node_2) should be selected since its image matches the vision 
-      # input to the method most. visual_node_1's image will match the vision 
-      # input but less so than visual node 2's so, while visual_node_1 is 
-      # selected to be the source of the production to reinforce initially, 
-      # visual_node_2's greater image match will overwrite this. 
-      # visual_node_3's image will match as much as visual_node_2's but since
-      # it does not match more and visual_node_2 has already been selected, it
-      # won't be selected as the source of the production.
-      #
-      # visual_node_2's productions will consist of 3 action Nodes whose 
-      # images match, equal and equal the action input, respectively.  Thus,
-      # the second production should be selected as the terminus of the 
-      # production since it is the first production Node encountered in 
-      # visual_node_2 that equals the action input.  The first production should
-      # be skipped since its action Node's image only matches the action input
-      # and the third production's action Node should be ignored, despite its 
-      # image also equalling the action input, since it comes after the first
-      # action Node whose image equals the action input.
-      # 
-      if scenario.between?(16,18)
-        
-        #Construct visual Nodes.
-        visual_node_1_contents = node_contents_field.value(visual_node_1)
-        visual_node_1_contents._list.add(tile_location)
-        visual_node_1_image_history = HistoryTreeMap.new()
-        visual_node_1_image_history.put(time_chrest_model_created.to_java(:int), visual_node_1_contents)
-        visual_node_1._imageHistory = visual_node_1_image_history
-        
-        visual_node_2_contents = node_contents_field.value(visual_node_2)
-        visual_node_2_contents._list.add(tile_location)
-        visual_node_2_contents._list.add(hole_location)
-        visual_node_2_image_history = HistoryTreeMap.new()
-        visual_node_2_image_history.put(time_chrest_model_created.to_java(:int), visual_node_2_contents)
-        visual_node_2._imageHistory = visual_node_2_image_history
-        
-        visual_node_3_contents = node_contents_field.value(visual_node_3)
-        visual_node_3_contents._list.add(tile_location)
-        visual_node_3_contents._list.add(hole_location)
-        visual_node_3_image_history = HistoryTreeMap.new()
-        visual_node_3_image_history.put(time_chrest_model_created.to_java(:int), visual_node_3_contents)
-        visual_node_3._imageHistory = visual_node_3_image_history
-        
-        # Construct visual Node 1's productions.
-        action_node_1_contents = node_contents_field.value(action_node_1)
-        action_node_1_contents._list.add(move_east)
-        action_node_1_image_history = HistoryTreeMap.new()
-        action_node_1_image_history.put(time_chrest_model_created.to_java(:int), action_node_1_contents)
-        action_node_1._imageHistory = action_node_1_image_history
-        
-        action_node_2_contents = node_contents_field.value(action_node_2)
-        action_node_2_contents._list.add(move_east)
-        action_node_2_contents._list.add(move_north)
-        action_node_2_image_history = HistoryTreeMap.new()
-        action_node_2_image_history.put(time_chrest_model_created.to_java(:int), action_node_2_contents)
-        action_node_2._imageHistory = action_node_2_image_history
-        
-        action_node_3_contents = node_contents_field.value(action_node_3)
-        action_node_3_contents._list.add(move_east)
-        action_node_3_contents._list.add(move_north)
-        action_node_3_contents._list.add(push_west)
-        action_node_3_image_history = HistoryTreeMap.new()
-        action_node_3_image_history.put(time_chrest_model_created.to_java(:int), action_node_3_contents)
-        action_node_3._imageHistory = action_node_3_image_history
-        
-        visual_node_1_productions = LinkedHashMap.new()
-        visual_node_1_productions.put(action_node_1, 1.0)
-        visual_node_1_productions.put(action_node_2, 1.0)
-        visual_node_1_productions.put(action_node_3, 1.0)
-        visual_node_1._productionHistory.put(time_function_invoked.to_java(:int), visual_node_1_productions)
-        
-        # Construct visual Node 2's productions.
-        action_node_4_contents = node_contents_field.value(action_node_4)
-        action_node_4_contents._list.add(move_east)
-        action_node_4_image_history = HistoryTreeMap.new()
-        action_node_4_image_history.put(time_chrest_model_created.to_java(:int), action_node_4_contents)
-        action_node_4._imageHistory = action_node_4_image_history
-        
-        action_node_5_contents = node_contents_field.value(action_node_5)
-        action_node_5_contents._list.add(move_east)
-        action_node_5_contents._list.add(move_north)
-        action_node_5_contents._list.add(push_west)
-        action_node_5_image_history = HistoryTreeMap.new()
-        action_node_5_image_history.put(time_chrest_model_created.to_java(:int), action_node_5_contents)
-        action_node_5._imageHistory = action_node_5_image_history
-        
-        action_node_6_contents = node_contents_field.value(action_node_6)
-        action_node_6_contents._list.add(move_east)
-        action_node_6_contents._list.add(move_north)
-        action_node_6_contents._list.add(push_west)
-        action_node_6_image_history = HistoryTreeMap.new()
-        action_node_6_image_history.put(time_chrest_model_created.to_java(:int), action_node_6_contents)
-        action_node_6._imageHistory = action_node_6_image_history
-        
-        visual_node_2_productions = LinkedHashMap.new()
-        visual_node_2_productions.put(action_node_4, 1.0)
-        visual_node_2_productions.put(action_node_5, 1.0)
-        visual_node_2_productions.put(action_node_6, 1.0)
-        visual_node_2._productionHistory.put(time_function_invoked.to_java(:int), visual_node_2_productions)
-        
-        # Construct visual Node 3's productions.
-        action_node_8_contents = node_contents_field.value(action_node_8)
-        action_node_8_contents._list.add(move_east)
-        action_node_8_contents._list.add(move_north)
-        action_node_8_image_history = HistoryTreeMap.new()
-        action_node_8_image_history.put(time_chrest_model_created.to_java(:int), action_node_8_contents)
-        action_node_8._imageHistory = action_node_8_image_history
-        
-        action_node_9_contents = node_contents_field.value(action_node_9)
-        action_node_9_contents._list.add(move_east)
-        action_node_9_image_history = HistoryTreeMap.new()
-        action_node_9_image_history.put(time_chrest_model_created.to_java(:int), action_node_9_contents)
-        action_node_9._imageHistory = action_node_9_image_history
-        
-        visual_node_3_productions = LinkedHashMap.new()
-        visual_node_3_productions.put(action_node_7, 1.0)
-        visual_node_3_productions.put(action_node_8, 1.0)
-        visual_node_3_productions.put(action_node_9, 1.0)
-        visual_node_3._productionHistory.put(time_function_invoked.to_java(:int), visual_node_3_productions)
-        
-        # Add all visual and action Nodes to visual/action STM.
-        visual_stm_contents.add(visual_node_1)
-        visual_stm_contents.add(visual_node_2)
-        visual_stm_contents.add(visual_node_3)
-        
-        action_stm_contents.add(action_node_1)
-        action_stm_contents.add(action_node_2)
-        action_stm_contents.add(action_node_3)
-        action_stm_contents.add(action_node_4)
-        action_stm_contents.add(action_node_5)
-        action_stm_contents.add(action_node_6)
-        action_stm_contents.add(action_node_7)
-        action_stm_contents.add(action_node_8)
-        action_stm_contents.add(action_node_9)
-      end
-      
-      # In scenarios 19-21, the second visual node added to visual STM 
-      # (visual_node_2) should be selected since its image matches the vision 
-      # input to the method most. visual_node_1's image will match the vision 
-      # input but less so than visual node 2's so, while visual_node_1 is 
-      # selected to be the source of the production to reinforce initially, 
-      # visual_node_2's greater image match will overwrite this. 
-      # visual_node_3's image will match as much as visual_node_2's but since
-      # it does not match more and visual_node_2 has already been selected, it
-      # won't be selected as the source of the production.
-      #
-      # visual_node_2's productions will consist of 3 action Nodes whose 
-      # images all match the action input.  However, the productions 
-      # action Node images will match the action input to varying degrees: 
-      # production 1 < production 2 == production 3.  Thus, the second production 
-      # should be selected as the terminus of the production since it matches the
-      # action input the most and comes before production 3 (which also matches
-      # equally).
-      # 
-      if scenario.between?(19,21)
-      
-        #Construct visual Nodes.
-        visual_node_1_contents = node_contents_field.value(visual_node_1)
-        visual_node_1_contents._list.add(tile_location)
-        visual_node_1_image_history = HistoryTreeMap.new()
-        visual_node_1_image_history.put(time_chrest_model_created.to_java(:int), visual_node_1_contents)
-        visual_node_1._imageHistory = visual_node_1_image_history
-        
-        visual_node_2_contents = node_contents_field.value(visual_node_2)
-        visual_node_2_contents._list.add(tile_location)
-        visual_node_2_contents._list.add(hole_location)
-        visual_node_2_image_history = HistoryTreeMap.new()
-        visual_node_2_image_history.put(time_chrest_model_created.to_java(:int), visual_node_2_contents)
-        visual_node_2._imageHistory = visual_node_2_image_history
-
-        visual_node_3_contents = node_contents_field.value(visual_node_3)
-        visual_node_3_contents._list.add(tile_location)
-        visual_node_3_contents._list.add(hole_location)
-        visual_node_3_image_history = HistoryTreeMap.new()
-        visual_node_3_image_history.put(time_chrest_model_created.to_java(:int), visual_node_3_contents)
-        visual_node_3._imageHistory = visual_node_3_image_history
-        
-        # Create visual node 1's productions
-        action_node_1_contents = node_contents_field.value(action_node_1)
-        action_node_1_contents._list.add(move_east)
-        action_node_1_image_history = HistoryTreeMap.new()
-        action_node_1_image_history.put(time_chrest_model_created.to_java(:int), action_node_1_contents)
-        action_node_1._imageHistory = action_node_1_image_history
-        
-        action_node_2_contents = node_contents_field.value(action_node_2)
-        action_node_2_contents._list.add(move_north)
-        action_node_2_image_history = HistoryTreeMap.new()
-        action_node_2_image_history.put(time_chrest_model_created.to_java(:int), action_node_2_contents)
-        action_node_2._imageHistory = action_node_2_image_history
-        
-        action_node_3_contents = node_contents_field.value(action_node_3)
-        action_node_3_contents._list.add(push_west)
-        action_node_3_image_history = HistoryTreeMap.new()
-        action_node_3_image_history.put(time_chrest_model_created.to_java(:int), action_node_3_contents)
-        action_node_3._imageHistory = action_node_3_image_history
-        
-        visual_node_1_productions = LinkedHashMap.new()
-        visual_node_1_productions.put(action_node_1, 1.0)
-        visual_node_1_productions.put(action_node_2, 1.0)
-        visual_node_1_productions.put(action_node_3, 1.0)
-        visual_node_1._productionHistory.put(time_function_invoked.to_java(:int), visual_node_1_productions)
-        
-        # Create visual node 2's productions
-        action_node_4_contents = node_contents_field.value(action_node_4)
-        action_node_4_contents._list.add(move_east)
-        action_node_4_image_history = HistoryTreeMap.new()
-        action_node_4_image_history.put(time_chrest_model_created.to_java(:int), action_node_4_contents)
-        action_node_4._imageHistory = action_node_4_image_history
-          
-        action_node_5_contents = node_contents_field.value(action_node_5)
-        action_node_5_contents._list.add(move_east)
-        action_node_5_contents._list.add(move_north)
-        action_node_5_image_history = HistoryTreeMap.new()
-        action_node_5_image_history.put(time_chrest_model_created.to_java(:int), action_node_5_contents)
-        action_node_5._imageHistory = action_node_5_image_history
-        
-        action_node_6_contents = node_contents_field.value(action_node_6)
-        action_node_6_contents._list.add(move_east)
-        action_node_6_contents._list.add(move_north)
-        action_node_6_image_history = HistoryTreeMap.new()
-        action_node_6_image_history.put(time_chrest_model_created.to_java(:int), action_node_6_contents)
-        action_node_6._imageHistory = action_node_6_image_history
-        
-        visual_node_2_productions = LinkedHashMap.new()
-        visual_node_2_productions.put(action_node_4, 1.0)
-        visual_node_2_productions.put(action_node_5, 1.0)
-        visual_node_2_productions.put(action_node_6, 1.0)
-        visual_node_2._productionHistory.put(time_function_invoked.to_java(:int), visual_node_2_productions)
-        
-        # Create visual node 3's productions
-        action_node_8_contents = node_contents_field.value(action_node_8)
-        action_node_8_contents._list.add(move_east)
-        action_node_8_contents._list.add(move_north)
-        action_node_8_image_history = HistoryTreeMap.new()
-        action_node_8_image_history.put(time_chrest_model_created.to_java(:int), action_node_8_contents)
-        action_node_8._imageHistory = action_node_8_image_history
-        
-        action_node_9_contents = node_contents_field.value(action_node_9)
-        action_node_9_contents._list.add(move_east)
-        action_node_9_image_history = HistoryTreeMap.new()
-        action_node_9_image_history.put(time_chrest_model_created.to_java(:int), action_node_9_contents)
-        action_node_9._imageHistory = action_node_9_image_history
-        
-        visual_node_3_productions = LinkedHashMap.new()
-        visual_node_3_productions.put(action_node_7, 1.0)
-        visual_node_3_productions.put(action_node_8, 1.0)
-        visual_node_3_productions.put(action_node_9, 1.0)
-        visual_node_3._productionHistory.put(time_function_invoked.to_java(:int), visual_node_3_productions)
-        
-        # Add all visual and action Nodes to visual/action STM.
-        visual_stm_contents.add(visual_node_1)
-        visual_stm_contents.add(visual_node_2)
-        visual_stm_contents.add(visual_node_3)
-        
-        action_stm_contents.add(action_node_1)
-        action_stm_contents.add(action_node_2)
-        action_stm_contents.add(action_node_3)
-        action_stm_contents.add(action_node_4)
-        action_stm_contents.add(action_node_5)
-        action_stm_contents.add(action_node_6)
-        action_stm_contents.add(action_node_7)
-        action_stm_contents.add(action_node_8)
-        action_stm_contents.add(action_node_9)
-      end
-      
-      stm_item_history_field.value(model._visualStm).put(time_function_invoked.to_java(:int), visual_stm_contents)
-      stm_item_history_field.value(model._actionStm).put(time_function_invoked.to_java(:int), action_stm_contents)
-      
-      if [11,14,17,20].include?(scenario) then model._cognitionClock = 1.to_java(:int).class::MAX_VALUE end
-      
-      model._reinforcementLearningTheory = ([12,15,18,21].include?(scenario) ? 
-        nil :
-        ReinforcementLearning::Theory::PROFIT_SHARING_WITH_DISCOUNT_RATE
-      )
       
       ###########################
       ##### INVOKE FUNCTION #####
       ###########################
-
-      result = nil
-      exception_thrown = false
-      begin
-        result = model.reinforceProduction(vision, action, reinforcement_calculation_variables, time_function_invoked.to_java(:int))
-      rescue 
-        exception_thrown = true
-      end
+      
+      reinforcement_calculation_variables = [1.0, 0.5, 1.0, 1.0].to_java(:Double)
+      result = model.reinforceProduction(visual_node, action_node, reinforcement_calculation_variables, time_function_invoked)
       
       ##################################
       ##### SET EXPECTED VARIABLES #####
       ##################################
       
-      expected_result = (
-        scenario == 1 ? ChrestStatus::MODEL_DOES_NOT_EXIST_AT_TIME :
-        scenario == 2 ? ChrestStatus::ATTENTION_BUSY :
-        scenario == 3 ? nil :
-        scenario == 4 ? nil :
-        scenario.between?(5,9) ? ChrestStatus::NO_PRODUCTION_IDENTIFIED :
-        scenario == 10 ? ChrestStatus::EXACT_PRODUCTION_MATCH_REINFORCED :
-        scenario == 13 ? ChrestStatus::HIGH_PRODUCTION_MATCH_REINFORCED :
-        scenario == 16 ? ChrestStatus::MODERATE_PRODUCTION_MATCH_REINFORCED :
-        scenario == 19 ? ChrestStatus::LOW_PRODUCTION_MATCH_REINFORCED :
-        [11,14,17,20].include?(scenario) ? ChrestStatus::COGNITION_BUSY :
-        ChrestStatus::PRODUCTION_REINFORCEMENT_FAILED
-      )
+      # Set the expected return value.
+      expected_result = (scenario == 10 ? true : false)
       
-      expected_exception_thrown = ([3,4].include?(scenario) ? true : false)
-      
-      expected_attention_clock = (
-        [1,3,4,5].include?(scenario) ? time_chrest_model_created - 1 :
-        scenario == 2 ? time_function_invoked + 1 :
-        scenario == 6 ? time_function_invoked + ((model._timeToRetrieveItemFromStm + model._nodeComparisonTime) * 2) :
-        [7,8,9].include?(scenario) ? time_function_invoked + ((model._timeToRetrieveItemFromStm + model._nodeComparisonTime)) :
-        time_function_invoked + ((model._timeToRetrieveItemFromStm + model._nodeComparisonTime) * 3)
-      )
-      
-      expected_cognition_clock = (
-        [10,13,16,19].include?(scenario) ? expected_attention_clock + model._reinforceProductionTime :
-        [11,14,17,20].include?(scenario) ? 1.to_java(:int).class::MAX_VALUE :
-        time_chrest_model_created - 1
-      )
-      
-      expected_visual_node_1_production_history = HistoryTreeMap.new()
-      expected_visual_node_1_production_history.put(time_chrest_model_created.to_java(:int), LinkedHashMap.new())
-      expected_visual_node_2_production_history = HistoryTreeMap.new()
-      expected_visual_node_2_production_history.put(time_chrest_model_created.to_java(:int), LinkedHashMap.new())
-      expected_visual_node_3_production_history = HistoryTreeMap.new()
-      expected_visual_node_3_production_history.put(time_chrest_model_created.to_java(:int), LinkedHashMap.new())
-      
-      if [8,9].include?(scenario)
-        productions = LinkedHashMap.new()
-        productions.put(action_node_1, 1.0)
-        expected_visual_node_1_production_history.put(time_function_invoked.to_java(:int), productions)
-      elsif scenario >= 10
-        productions = LinkedHashMap.new()
-        productions.put(action_node_1, 1.0)
-        productions.put(action_node_2, 1.0)
-        productions.put(action_node_3, 1.0)
-        expected_visual_node_1_production_history.put(time_function_invoked.to_java(:int), productions)
-        
-        productions = LinkedHashMap.new()
-        productions.put(action_node_4, 1.0)
-        productions.put(action_node_5, 1.0)
-        productions.put(action_node_6, 1.0)
-        expected_visual_node_2_production_history.put(time_function_invoked.to_java(:int), productions)
-        
-        if[10,13,16,19].include?(scenario)
-          productions = LinkedHashMap.new()
-          productions.put(action_node_4, 1.0)
-          productions.put(action_node_5, 2.0)
-          productions.put(action_node_6, 1.0)
-          expected_visual_node_2_production_history.put(expected_cognition_clock.to_java(:int), productions)
-        end
-        
-        productions = LinkedHashMap.new()
-        productions.put(action_node_7, 1.0)
-        productions.put(action_node_8, 1.0)
-        productions.put(action_node_9, 1.0)
-        expected_visual_node_3_production_history.put(time_function_invoked.to_java(:int), productions)
+      # Set the expected attention clock value.
+      expected_attention_clock = (time_function_invoked + (model._timeToRetrieveItemFromStm * 6))
+      if scenario.between?(1,4)
+        expected_attention_clock = -1
+      elsif scenario == 5 
+        expected_attention_clock = unavailable_attention_time
+      elsif scenario == 6 || scenario == 7
+        expected_attention_clock = (time_function_invoked + (model._timeToRetrieveItemFromStm * 5))
       end
+      
+      # Set the expected cognition clock value.
+      expected_cognition_clock = -1
+      if scenario == 8 then expected_cognition_clock = unavailable_cognition_time end
+      if scenario == 10 then expected_cognition_clock = (expected_attention_clock + model._reinforceProductionTime) end
       
       #################
       ##### TESTS #####
       #################
       
       assert_equal(expected_result, result, "occurred when checking the result of invoking the function in scenario " + scenario.to_s)
-      assert_equal(expected_exception_thrown, exception_thrown, "occurred when checking if an exception is thrown in scenario " + scenario.to_s)
       assert_equal(expected_attention_clock, model._attentionClock, "occurred when checking the attention clock in scenario " + scenario.to_s)
       assert_equal(expected_cognition_clock, model._cognitionClock, "occurred when checking the cognition clock in scenario " + scenario.to_s)
-      
-      visual_node_1_production_history_array = visual_node_1._productionHistory.entrySet().toArray()
-      expected_visual_node_1_production_history_array = expected_visual_node_1_production_history.entrySet().toArray()
-      
-      visual_node_2_production_history_array = visual_node_2._productionHistory.entrySet().toArray()
-      expected_visual_node_2_production_history_array = expected_visual_node_2_production_history.entrySet().toArray()
-      
-      visual_node_3_production_history_array = visual_node_3._productionHistory.entrySet().toArray()
-      expected_visual_node_3_production_history_array = expected_visual_node_3_production_history.entrySet().toArray()
-      
-      # Check number of production history entries
-      assert_equal(
-        expected_visual_node_1_production_history_array.size(), 
-        visual_node_1_production_history_array.size(), 
-        "occurred when checking the number of production history entries for " +
-        "visual node 1 in scenario " + scenario.to_s
-      )
-      
-      assert_equal(
-        expected_visual_node_2_production_history_array.size(), 
-        visual_node_2_production_history_array.size(), 
-        "occurred when checking the number of production history entries for " +
-        "visual node 2 in scenario " + scenario.to_s
-      )
-      
-      
-      assert_equal(
-        expected_visual_node_3_production_history_array.size(), 
-        visual_node_3_production_history_array.size(), 
-        "occurred when checking the number of production history entries for " +
-        "visual node 3 in scenario " + scenario.to_s
-      )
-      
-      # Check times of production history entries for visual node 1
-      for p in 0...visual_node_1_production_history_array.size()
-        assert_equal(
-          expected_visual_node_1_production_history_array[p].getKey(),
-          visual_node_1_production_history_array[p].getKey(),
-          "occurred when checking the times of visual node 1's productions in " +
-          "scenario " + scenario.to_s
-        )
-        
-        # Check if there are the correct number of productions at a time.
-        visual_node_1_productions_array = visual_node_1_production_history_array[p].getValue().entrySet().toArray()
-        expected_visual_node_1_productions_array = expected_visual_node_1_production_history_array[p].getValue().entrySet().toArray()
-        assert_equal(
-          expected_visual_node_1_productions_array.size(),
-          visual_node_1_productions_array.size(),
-          "occurred when checking the number of productions for visual node 1's " + 
-          "production history entry at " + visual_node_1_production_history_array[p].getKey().to_s +
-          "in scenario " + scenario.to_s
-        )
-        
-        # Check the action nodes linked to and the values of productions at a 
-        # time
-        for production in 0...visual_node_1_productions_array.size()
-          assert_equal(
-            expected_visual_node_1_productions_array[production].getKey(),
-            visual_node_1_productions_array[production].getKey(),
-            "occurred when checking the node in production " + production.to_s +
-            "for visual node 1's production history entry at " + 
-            visual_node_1_production_history_array[p].getKey().to_s + "in " +
-            "scenario " + scenario.to_s
-          )
-            
-          assert_equal(
-            expected_visual_node_1_productions_array[production].getValue(),
-            visual_node_1_productions_array[production].getValue(),
-            "occurred when checking the value in production " + production.to_s +
-            "for visual node 1's production history entry at " + 
-            visual_node_1_production_history_array[p].getKey().to_s + "in " +
-            "scenario " + scenario.to_s
-          )
-        end
-      end
-      
-      # Check times of production history entries for visual node 2
-      for p in 0...visual_node_2_production_history_array.size()
-        assert_equal(
-          expected_visual_node_2_production_history_array[p].getKey(),
-          visual_node_2_production_history_array[p].getKey(),
-          "occurred when checking the times of visual node 2's productions in " +
-          "scenario " + scenario.to_s
-        )
-        
-        # Check if there are the correct number of productions at a time.
-        visual_node_2_productions_array = visual_node_2_production_history_array[p].getValue().entrySet().toArray()
-        expected_visual_node_2_productions_array = expected_visual_node_2_production_history_array[p].getValue().entrySet().toArray()
-        assert_equal(
-          expected_visual_node_2_productions_array.size(),
-          visual_node_2_productions_array.size(),
-          "occurred when checking the number of productions for visual node 2's " + 
-          "production history entry at " + visual_node_2_production_history_array[p].getKey().to_s +
-          "in scenario " + scenario.to_s
-        )
-        
-        # Check the action nodes linked to and the values of productions at a 
-        # time
-        for production in 0...visual_node_2_productions_array.size()
-          assert_equal(
-            expected_visual_node_2_productions_array[production].getKey(),
-            visual_node_2_productions_array[production].getKey(),
-            "occurred when checking the node in production " + production.to_s +
-            "for visual node 2's production history entry at " + 
-            visual_node_2_production_history_array[p].getKey().to_s + "in " +
-            "scenario " + scenario.to_s
-          )
-            
-          assert_equal(
-            expected_visual_node_2_productions_array[production].getValue(),
-            visual_node_2_productions_array[production].getValue(),
-            "occurred when checking the value in production " + production.to_s +
-            "for visual node 2's production history entry at " + 
-            visual_node_2_production_history_array[p].getKey().to_s + "in " +
-            "scenario " + scenario.to_s
-          )
-        end
-      end
-      
-      # Check times of production history entries for visual node 3
-      for p in 0...visual_node_3_production_history_array.size()
-        assert_equal(
-          expected_visual_node_3_production_history_array[p].getKey(),
-          visual_node_3_production_history_array[p].getKey(),
-          "occurred when checking the times of visual node 3's productions in " +
-          "scenario " + scenario.to_s
-        )
-        
-        # Check if there are the correct number of productions at a time.
-        visual_node_3_productions_array = visual_node_3_production_history_array[p].getValue().entrySet().toArray()
-        expected_visual_node_3_productions_array = expected_visual_node_3_production_history_array[p].getValue().entrySet().toArray()
-        assert_equal(
-          expected_visual_node_3_productions_array.size(),
-          visual_node_3_productions_array.size(),
-          "occurred when checking the number of productions for visual node 3's " + 
-          "production history entry at " + visual_node_3_production_history_array[p].getKey().to_s +
-          "in scenario " + scenario.to_s
-        )
-        
-        # Check the action nodes linked to and the values of productions at a 
-        # time
-        for production in 0...visual_node_3_productions_array.size()
-          assert_equal(
-            expected_visual_node_3_productions_array[production].getKey(),
-            visual_node_3_productions_array[production].getKey(),
-            "occurred when checking the node in production " + production.to_s +
-            "for visual node 3's production history entry at " + 
-            visual_node_3_production_history_array[p].getKey().to_s + "in " +
-            "scenario " + scenario.to_s
-          )
-            
-          assert_equal(
-            expected_visual_node_3_productions_array[production].getValue(),
-            visual_node_3_productions_array[production].getValue(),
-            "occurred when checking the value in production " + production.to_s +
-            "for visual node 3's production history entry at " + 
-            visual_node_3_production_history_array[p].getKey().to_s + "in " +
-            "scenario " + scenario.to_s
-          )
-        end
-      end
     end
-  end
-end
-
-################################################################################
-# Tests the "Chrest.generateActionUsingVisualPatternRecognition()" function
-# using all possible scenarios that can occur.  Each scenario is repeated 20 
-# times after all possible values have been returned by the method.
-# 
-# Scenario Descriptions
-# =====================
-# 
-# Scenario 1: No visual Nodes in visual STM so no visual Nodes selected
-# Scenario 2: Visual Nodes in visual STM but neither contain productions 
-# Scenario 3: Visual Nodes in visual STM, visual Node 1 has a production that is 
-#             guaranteed to be selected, visual Node 2 has no productions.
-# Scenario 4: Visual Nodes in visual STM, all visual Nodes have productions with
-#             equal weights.
-#
-# Tests Performed
-# ===============
-# - Method return value
-# - Cognition clock
-#
-unit_test "generate_action_using_visual_pattern_recognition" do
-  
-  Chrest.class_eval{
-    field_accessor :_visualStm, 
-    :_timeToRetrieveItemFromStm,
-    :_attentionClock
-  }
-  
-  ListPattern.class_eval{
-    field_accessor :_list
-  }
-  
-  stm_item_history_field = Stm.java_class.declared_field("_itemHistory")
-  stm_item_history_field.accessible = true
-  
-  Node.class_eval{
-    field_accessor :_productionHistory
-  }
-  
-  for scenario in 1..4
-    
-    # Initialise repeat control variables.  Each scenario should be repeated 
-    # 20 times after all expected return values from the method have been
-    # returned.  The counter keeps track of repeats, the array stores references
-    # of Nodes that have been returned.
-    counter = 0
-    results_encountered = [] 
-    
-    while counter < 20
-      chrest_model_creation_time = 0
-      model = Chrest.new(chrest_model_creation_time, [true, false].sample)
-      
-      ###############################
-      ##### CREATE VISUAL NODES #####
-      ###############################
-      
-      visual_node_1_contents = ListPattern.new(Modality::VISUAL);
-      visual_node_1_contents._list.add(ItemSquarePattern.new("T", 0, -1));
-      visual_node_1 = Node.new(model, visual_node_1_contents, ListPattern.new(Modality::VISUAL), chrest_model_creation_time);
-      
-      visual_node_2_contents = ListPattern.new(Modality::VISUAL);
-      visual_node_2_contents._list.add(ItemSquarePattern.new("H", 4, 2));
-      visual_node_2 = Node.new(model, visual_node_2_contents, ListPattern.new(Modality::VISUAL), chrest_model_creation_time);
-      
-      ###############################
-      ##### CREATE ACTION NODES #####
-      ###############################
-      
-      action_node_1_contents = ListPattern.new(Modality::ACTION);
-      action_node_1_contents._list.add(ItemSquarePattern.new("Push", 270, 1));
-      action_node_1 = Node.new(model, action_node_1_contents, ListPattern.new(Modality::ACTION), chrest_model_creation_time);
-      
-      action_node_2_contents = ListPattern.new(Modality::ACTION);
-      action_node_2_contents._list.add(ItemSquarePattern.new("Walk", 0, 1));
-      action_node_2 = Node.new(model, action_node_2_contents, ListPattern.new(Modality::ACTION), chrest_model_creation_time);
-      
-      action_node_3_contents = ListPattern.new(Modality::ACTION);
-      action_node_3_contents._list.add(ItemSquarePattern.new("Jump", 90, 2));
-      action_node_3 = Node.new(model, action_node_3_contents, ListPattern.new(Modality::ACTION), chrest_model_creation_time);
-      
-      action_node_4_contents = ListPattern.new(Modality::ACTION);
-      action_node_4_contents._list.add(ItemSquarePattern.new("Run", 180, 1));
-      action_node_4 = Node.new(model, action_node_4_contents, ListPattern.new(Modality::ACTION), chrest_model_creation_time);
-      
-      ############################
-      ##### CREATE SCENARIOS #####
-      ############################
-      visual_stm_history = ArrayList.new()
-      
-      if scenario != 1
-        visual_stm_history.add(visual_node_1)
-        visual_stm_history.add(visual_node_2)
-      end
-      
-      # Set-up productions, in scenario 2, nodes will have no productions
-      if [3,4].include?(scenario)
-        
-        visual_node_1_productions = LinkedHashMap.new()
-        visual_node_1_productions.put(action_node_1, (scenario == 3 ? 0.0 : 1.0))
-        visual_node_1_productions.put(action_node_2, 1.0)
-        visual_node_1_production_history = HistoryTreeMap.new()
-        visual_node_1_production_history.put(chrest_model_creation_time.to_java(:int), visual_node_1_productions)
-        visual_node_1._productionHistory = visual_node_1_production_history
-
-        if scenario == 4
-          visual_node_2_productions = LinkedHashMap.new()
-          visual_node_2_productions.put(action_node_3, 1.0)
-          visual_node_2_productions.put(action_node_4, 1.0)
-          visual_node_2_production_history = HistoryTreeMap.new()
-          visual_node_2_production_history.put(chrest_model_creation_time.to_java(:int), visual_node_2_productions)
-          visual_node_2._productionHistory = visual_node_2_production_history
-        end
-      end
-      
-      stm_item_history_field.value(model._visualStm).put(chrest_model_creation_time.to_java(:int), visual_stm_history)
-      
-      #########################
-      ##### INVOKE METHOD #####
-      #########################
-      
-      time_method_invoked = chrest_model_creation_time + 10
-      result = model.generateActionUsingVisualPatternRecognition(time_method_invoked)
-      result_visual_node = (result[0] == nil ? nil : result[0].getReference())
-      result_action_node = (result[1] == nil ? nil : result[1].getReference())
-      if !results_encountered.include?([result_visual_node, result_action_node]) 
-        results_encountered.push([result_visual_node, result_action_node]) 
-      end
-
-      ###############################
-      ##### SET EXPECTED VALUES #####
-      ###############################
-      
-      expected_result = []
-      if [1,2].include?(scenario) then expected_result.push([nil, nil]) end
-      if scenario == 3 then expected_result.push([visual_node_1, action_node_2]) end
-      if scenario == 4  
-        expected_result.push([visual_node_1, action_node_1])
-        expected_result.push([visual_node_1, action_node_2])
-        expected_result.push([visual_node_2, action_node_3])
-        expected_result.push([visual_node_2, action_node_4])
-      end
-      
-      expected_attention_clock = (
-        scenario == 1 ? chrest_model_creation_time - 1 :
-        scenario == 2 ? time_method_invoked + (model._timeToRetrieveItemFromStm * 2) :
-        scenario == 3 ? time_method_invoked + (model._timeToRetrieveItemFromStm * 2) :
-        time_method_invoked + (model._timeToRetrieveItemFromStm * 2)
-      )
-      
-      #################
-      ##### TESTS #####
-      #################
-      
-      # Check method return value
-      expected_result_in_results = false
-      
-      visual_node_returned = result[0]
-      action_node_returned = result[1]
-   
-      for ex_r in expected_result
-        expected_visual_node = ex_r[0]
-        expected_action_node = ex_r[1]
-        if 
-          expected_visual_node == visual_node_returned && 
-          expected_action_node == action_node_returned 
-        then 
-          expected_result_in_results = true
-        end
-      end
-
-      assert_true(expected_result_in_results, "occurred in scenario " + scenario.to_s)
-      
-      # Check attention clock
-      assert_equal(expected_attention_clock, model._attentionClock, "occurred in scenario " + scenario.to_s)
-      
-      #############################
-      ##### INCREMENT COUNTER #####
-      #############################
-      
-      if results_encountered.size() == (scenario == 4 ? 4 : 1) then counter += 1 end
-    end
-  end
-end
-
-################################################################################
-# 1: Invoke method when model not created
-# 2: Invoked method when attention isn't free
-# 3: Invoke method when STM is empty
-# 4: Invoke method when STM not empty but index too big
-# 5: Invoke method when STM is not empty, index is OK and bigger than 1 (checks 
-#    that multiplication of time-to-retrieve-stm-item is OK).
-unit_test "get_stm_item" do
-  Chrest.class_eval{
-    field_accessor :_attentionClock, 
-    :_actionStm,
-    :_verbalStm,
-    :_visualStm,
-    :_timeToRetrieveItemFromStm
-  }
-  
-  stm_item_history_field = Stm.java_class.declared_field("_itemHistory")
-  stm_item_history_field.accessible = true
-  
-  for scenario in 1..5
-    for modality in Modality.values()
-      chrest_model_creation_time = 0
-      model = Chrest.new(chrest_model_creation_time, [true, false].sample)
-
-      stm_index = 2
-      
-      ############################
-      ##### CREATE SCENARIOS #####
-      ############################
-      
-      # Time method invoked in scenario 1 should be before CHREST model creation
-      # time
-      time_method_invoked = (
-        scenario == 1 ? chrest_model_creation_time - 1 :
-        chrest_model_creation_time + 10
-      )
-      
-      # In scenario 2, the model's attention clock should be greater than the
-      # time the method is invoked.
-      if scenario == 2 then model._attentionClock = time_method_invoked + 1 end
-      
-      ##### POPULATE STM #####
-      
-      if scenario >= 3
-        node_1 = Node.new(model, ListPattern.new(modality), ListPattern.new(modality), chrest_model_creation_time)
-        node_2 = Node.new(model, ListPattern.new(modality), ListPattern.new(modality), chrest_model_creation_time)
-
-        stm = (
-          modality == Modality::ACTION ? model._actionStm :
-          modality == Modality::VERBAL ? model._verbalStm :
-          modality == Modality::VISUAL ? model._visualStm :
-          raise("Modality " + modality.name() + " not supported")
-        )
-
-        # In scenario 3, STM should be empty.  In scenario 4, add Node 1 only so 
-        # index is too big.  In scenario 5, add Nodes 1 and 2 so that index is OK 
-        # and greater than 1
-        stm_items = ArrayList.new()
-        if scenario == 4 then stm_items.add(node_1) end
-        if scenario == 5 then stm_items.add(node_1); stm_items.add(node_2); end
-
-        stm_item_history_field.value(stm).put(time_method_invoked.to_java(:int), stm_items)
-      end
-      
-      #########################
-      ##### INVOKE METHOD #####
-      #########################
-      
-      result = model.getStmItem(modality, stm_index, time_method_invoked)
-      
-      ##################################
-      ##### SET EXPECTED VARIABLES #####
-      ##################################
-      
-      expected_result = (scenario == 5 ? node_2 : nil)
-      expected_attention_clock = (
-        scenario == 2 ? time_method_invoked + 1 :
-        scenario == 5 ? time_method_invoked + (model._timeToRetrieveItemFromStm * 2):
-        chrest_model_creation_time - 1
-      )
-      
-      assert_equal(expected_result, result, "occurred when checking the method result in scenario " + scenario.to_s)
-      assert_equal(expected_attention_clock, model._attentionClock, "occurred when checking the attention clock in scenario " + scenario.to_s)
-    end
-  end
-end
-
-################################################################################
-# 1: Invoke method when model not created
-# 2: Invoked method when attention isn't free
-# 3: Invoke method when no Fixations have been performed is empty
-# 4: Invoke method when Fixations have been performed but index too big
-# 5: Invoke method when Fixations have been performed, index is OK and bigger 
-#    than 1 (checks that multiplication of time-to-retrieve-fixation-from-perceiver 
-#    is OK).
-unit_test "get_fixation_performed" do
-  Chrest.class_eval{
-    field_accessor :_attentionClock, 
-    :_actionStm,
-    :_verbalStm,
-    :_visualStm,
-    :_timeToRetrieveFixationFromPerceiver
-  }
-  
-  chrest_perceiver_field = Chrest.java_class.declared_field("_perceiver")
-  chrest_perceiver_field.accessible = true
-  
-  perceiver_fixation_history_field = Perceiver.java_class.declared_field("_fixations")
-  perceiver_fixation_history_field.accessible = true
-  
-  fixation_performed_field = Fixation.java_class.declared_field("_performed")
-  fixation_performed_field.accessible = true
-  
-  fixation_performance_time_field = Fixation.java_class.declared_field("_performanceTime")
-  fixation_performance_time_field.accessible = true
-  
-  for scenario in 1..5
-    chrest_model_creation_time = 0
-    model = Chrest.new(chrest_model_creation_time, [true, false].sample)
-
-    fixation_index = 2
-
-    ############################
-    ##### CREATE SCENARIOS #####
-    ############################
-
-    # Time method invoked in scenario 1 should be before CHREST model creation
-    # time
-    time_method_invoked = (
-      scenario == 1 ? chrest_model_creation_time - 1 :
-      chrest_model_creation_time + 30
-    )
-
-    # In scenario 2, the model's attention clock should be greater than the
-    # time the method is invoked.
-    if scenario == 2 then model._attentionClock = time_method_invoked + 1 end
-
-    ##### POPULATE PERCEIVER'S FIXATIONS #####
-
-    if scenario >= 3
-      # Fixations 1 and 3 will be performed, fixation 2 will not, this will 
-      # allow the test to verify that Fixations that aren't performed are not 
-      # considered
-      fixation_1 = CentralFixation.new(chrest_model_creation_time, 0)
-      fixation_performed_field.set_value(fixation_1, true)
-      fixation_performance_time_field.set_value(fixation_1, chrest_model_creation_time)
-
-      fixation_2 = CentralFixation.new(chrest_model_creation_time, 0)
-      fixation_performed_field.set_value(fixation_2, false)
-      fixation_performance_time_field.set_value(fixation_2, chrest_model_creation_time)
-
-      fixation_3 = CentralFixation.new(chrest_model_creation_time, 0)
-      fixation_performed_field.set_value(fixation_3, true)
-      fixation_performance_time_field.set_value(fixation_3, chrest_model_creation_time)
-
-      # In scenario 3, the Perceiver's Fixations should be empty.  In scenario 
-      # 4, add Fixations 1 and 2 only so index is too big (should only be 1 
-      # Fixation returned since 2 is not performed).  In scenario 5, add all 
-      # Fixations so that index is OK and greater than 1
-      perceiver_fixations = ArrayList.new()
-      if scenario == 4 
-        perceiver_fixations.add(fixation_1)
-        perceiver_fixations.add(fixation_2)
-      elsif scenario == 5 
-        perceiver_fixations.add(fixation_1) 
-        perceiver_fixations.add(fixation_2)
-        perceiver_fixations.add(fixation_3)
-      end
-
-      perceiver_fixation_history_field.value(chrest_perceiver_field.value(model)).put(time_method_invoked.to_java(:int), perceiver_fixations)
-    end
-      
-    #########################
-    ##### INVOKE METHOD #####
-    #########################
-
-    result = model.getFixationPerformed(fixation_index, time_method_invoked)
-
-    ##################################
-    ##### SET EXPECTED VARIABLES #####
-    ##################################
-
-    expected_result = (scenario == 5 ? fixation_1 : nil)
-    expected_attention_clock = (
-      scenario == 2 ? time_method_invoked + 1 :
-      scenario == 5 ? time_method_invoked + (model._timeToRetrieveFixationFromPerceiver * 2):
-      chrest_model_creation_time - 1
-    )
-
-    assert_equal(expected_result, result, "occurred when checking the method result in scenario " + scenario.to_s)
-    assert_equal(expected_attention_clock, model._attentionClock, "occurred when checking the attention clock in scenario " + scenario.to_s)
   end
 end
 
@@ -3858,13 +1817,13 @@ unit_test "get_initial_fixation" do
       # Create new Fixations and add to a list
       fixations = ArrayList.new()
       4.times do
-        fixations.add(PeripheralItemFixation.new(model, 3, time, 0))
+        fixations.add(PeripheralItemFixation.new(model, 3, time))
       end
       
       # Add list as value to map. Time last Fixation made should be before the
       # function is invoked.
       fixations_history = HistoryTreeMap.new()
-      fixations_history.put(time.to_java(:int), fixations)
+      fixations_history.put(time, fixations)
       
       # Set the map to be perceiver fixations
       perceiver_fixations_field.set_value(chrest_perceiver_field.value(model), fixations_history)
@@ -4343,7 +2302,7 @@ unit_test "perform_scheduled_fixations" do
       ###############################################
       
       time_fixation_1_decided_upon = time + 50
-      fixation_1 = CentralFixation.new(time_fixation_1_decided_upon, 0)
+      fixation_1 = CentralFixation.new(time_fixation_1_decided_upon)
       if scenario == 1
         fixation_1._performanceTime = nil
       elsif scenario == 2  
@@ -4408,7 +2367,7 @@ unit_test "perform_scheduled_fixations" do
       ############################################################
       
       # Construct previous Fixation
-      previous_fixation = CentralFixation.new(time, 10)
+      previous_fixation = CentralFixation.new(time + 10)
       previous_fixation._performanceTime = rand((previous_fixation._timeDecidedUpon + 1)...time_fixation_1_decided_upon)
       previous_fixation._performed = true
       previous_fixation._scene = previous_fixation_scene
@@ -4420,7 +2379,7 @@ unit_test "perform_scheduled_fixations" do
       previous_fixations = ArrayList.new()
       previous_fixations.add(previous_fixation)
       fixations_attempted_history = HistoryTreeMap.new()
-      fixations_attempted_history.put(previous_fixation._performanceTime.to_java(:int), previous_fixations)
+      fixations_attempted_history.put(previous_fixation._performanceTime, previous_fixations)
       perceiver_fixations_field.set_value(chrest_perceiver_field.value(model), fixations_attempted_history)
       
       ############################
@@ -4458,7 +2417,7 @@ unit_test "perform_scheduled_fixations" do
       time_fixation_2_decided_upon = nil
       if scenario > 8
         time_fixation_2_decided_upon = time_fixation_1_decided_upon + 10
-        fixation_2 = PeripheralSquareFixation.new(model, time_fixation_2_decided_upon, 0)
+        fixation_2 = PeripheralSquareFixation.new(model, time_fixation_2_decided_upon)
         fixation_2._performanceTime = time_method_invoked
         fixations_scheduled.add(fixation_2)
         
@@ -4559,7 +2518,7 @@ unit_test "perform_scheduled_fixations" do
       # Perceiver's attempted Fixations data structure at the time the 
       # method is invoked.
       if scenario > 3
-        expected_fixation = CentralFixation.new(0, 0)
+        expected_fixation = CentralFixation.new(0)
         fixation_reference_field.set_value(expected_fixation, fixation_reference_field.value(fixation_1))
         expected_fixation._timeDecidedUpon = time_fixation_1_decided_upon
         expected_fixation._performanceTime = time_method_invoked
@@ -4901,11 +2860,11 @@ unit_test "tag_visual_spatial_field_objects_fixated_on_as_recognised" do
         # template to do this since the test has access to the relevant private
         # Node instance variables).
         node_1_filled_item_slots_history = HistoryTreeMap.new()
-        node_1_filled_item_slots_history.put(time_node_1_created.to_java(:int), node_1_filled_item_slots)
+        node_1_filled_item_slots_history.put(time_node_1_created, node_1_filled_item_slots)
         node_1._filledItemSlotsHistory = node_1_filled_item_slots_history
         
         node_1_filled_position_slots_history = HistoryTreeMap.new()
-        node_1_filled_position_slots_history.put(time_node_1_created.to_java(:int), node_1_filled_position_slots)
+        node_1_filled_position_slots_history.put(time_node_1_created, node_1_filled_position_slots)
         node_1._filledPositionSlotsHistory = node_1_filled_position_slots_history
         
         ##### Construct node_2
@@ -4961,11 +2920,11 @@ unit_test "tag_visual_spatial_field_objects_fixated_on_as_recognised" do
         # template to do this since the test has access to the relevant private
         # Node instance variables).
         node_2_filled_item_slots_history = HistoryTreeMap.new()
-        node_2_filled_item_slots_history.put(time_node_2_created.to_java(:int), node_2_filled_item_slots)
+        node_2_filled_item_slots_history.put(time_node_2_created, node_2_filled_item_slots)
         node_2._filledItemSlotsHistory = node_2_filled_item_slots_history
         
         node_2_filled_position_slots_history = HistoryTreeMap.new()
-        node_2_filled_position_slots_history.put(time_node_2_created.to_java(:int), node_2_filled_position_slots)
+        node_2_filled_position_slots_history.put(time_node_2_created, node_2_filled_position_slots)
         node_2._filledPositionSlotsHistory = node_2_filled_position_slots_history
         
         ##############################################
@@ -5036,7 +2995,7 @@ unit_test "tag_visual_spatial_field_objects_fixated_on_as_recognised" do
           )
           
           # Add the VisualSpatialFieldObject to the coordinates
-          vsf_field.value(visual_spatial_field).get(col).get(row).lastEntry().getValue().add(vsfo)
+          vsf_field.value(visual_spatial_field).get(col).get(row).add(vsfo)
         end
         
         ##############################
@@ -5044,7 +3003,7 @@ unit_test "tag_visual_spatial_field_objects_fixated_on_as_recognised" do
         ##############################
         
         time_fixation_decided_upon = time_node_2_created + 5
-        fixation = CentralFixation.new(time_fixation_decided_upon, 0)
+        fixation = CentralFixation.new(time_fixation_decided_upon)
         fixation._performed = (scenario == 1 ? false : true) 
         fixation._performanceTime = time_fixation_decided_upon + 20
         fixation._scene = Scene.new(
@@ -5064,7 +3023,7 @@ unit_test "tag_visual_spatial_field_objects_fixated_on_as_recognised" do
         # for VisualSpatialFieldObjects that shouldn't be alive when recognition
         # occurs can be set.  Only VisualSpatialFieldObject with identifier "1"
         # should not be alive.
-        vsf_field.value(visual_spatial_field).get(1).get(1).lastEntry().getValue().get(0)._terminus = fixation._performanceTime - 1 
+        vsf_field.value(visual_spatial_field).get(1).get(1).get(0)._terminus = fixation._performanceTime - 1 
         
         ###############################
         ##### SET ATTENTION CLOCK #####
@@ -5087,7 +3046,7 @@ unit_test "tag_visual_spatial_field_objects_fixated_on_as_recognised" do
           # Add visual STM entry after Fixation performed, i.e. at time 
           # attention clock is set to.  At the time the Fixation is performed,
           # visual STM will be empty.
-          stm_item_history_field.value(model._visualStm).put(model._attentionClock.to_java(:int), visual_stm_nodes) 
+          stm_item_history_field.value(model._visualStm).put(model._attentionClock, visual_stm_nodes) 
           
         elsif scenario == 5
           visual_stm_nodes = ArrayList.new()
@@ -5096,7 +3055,7 @@ unit_test "tag_visual_spatial_field_objects_fixated_on_as_recognised" do
           
           # Add visual STM entry at time Fixation is performed.  At the time of
           # the attention clock, visual STM won't have changed.
-          stm_item_history_field.value(model._visualStm).put(fixation._performanceTime.to_java(:int), visual_stm_nodes) 
+          stm_item_history_field.value(model._visualStm).put(fixation._performanceTime, visual_stm_nodes) 
           
         elsif scenario == 6
           visual_stm_nodes = ArrayList.new()
@@ -5104,7 +3063,7 @@ unit_test "tag_visual_spatial_field_objects_fixated_on_as_recognised" do
           visual_stm_nodes.add(node_2)
           
           # Add visual STM entry at time Fixation is performed
-          stm_item_history_field.value(model._visualStm).put(fixation._performanceTime.to_java(:int), visual_stm_nodes) 
+          stm_item_history_field.value(model._visualStm).put(fixation._performanceTime, visual_stm_nodes) 
           
           visual_stm_nodes = ArrayList.new()
           visual_stm_nodes.add(visual_ltm_root_node)
@@ -5113,7 +3072,7 @@ unit_test "tag_visual_spatial_field_objects_fixated_on_as_recognised" do
           
           # Add visual STM entry after Fixation performed, i.e. at time 
           # attention clock is set to
-          stm_item_history_field.value(model._visualStm).put(model._attentionClock.to_java(:int), visual_stm_nodes)
+          stm_item_history_field.value(model._visualStm).put(model._attentionClock, visual_stm_nodes)
         end
         
         #########################
@@ -5205,7 +3164,7 @@ unit_test "tag_visual_spatial_field_objects_fixated_on_as_recognised" do
           if location != nil
             col = location[0]
             row = location[1]
-            vsfo = vsf_field.value(visual_spatial_field).get(col).get(row).lastEntry().getValue().get(0)
+            vsfo = vsf_field.value(visual_spatial_field).get(col).get(row).get(0)
             vsfo_recognised_history = vsfo_recognised_field.value(vsfo)
 
             assert_false(
@@ -5223,7 +3182,7 @@ unit_test "tag_visual_spatial_field_objects_fixated_on_as_recognised" do
           if location != nil
             col = location[0]
             row = location[1]
-            vsfo = vsf_field.value(visual_spatial_field).get(col).get(row).lastEntry().getValue().get(0)
+            vsfo = vsf_field.value(visual_spatial_field).get(col).get(row).get(0)
             vsfo_recognised_history = vsfo_recognised_field.value(vsfo)
 
             assert_true(
@@ -5492,7 +3451,7 @@ unit_test "tag_unrecognised_visual_spatial_field_objects_after_fixation_set_comp
         )
 
         # Add the VisualSpatialFieldObject to the coordinates
-        vsf_field.value(visual_spatial_field).get(col).get(row).lastEntry().getValue().add(vsfo)
+        vsf_field.value(visual_spatial_field).get(col).get(row).add(vsfo)
       end
 
       ##############################
@@ -5500,7 +3459,7 @@ unit_test "tag_unrecognised_visual_spatial_field_objects_after_fixation_set_comp
       ##############################
       
       time_fixation_decided_upon = vsfo_creation_time + 10
-      fixation = PeripheralSquareFixation.new(model, time_fixation_decided_upon, 0)
+      fixation = PeripheralSquareFixation.new(model, time_fixation_decided_upon)
       fixation._scene = Scene.new("", vsf_width, vsf_height, vsf_min_col, vsf_min_row, (scenario == 2 ? nil : visual_spatial_field))
       
       ##########################################################################
@@ -5529,8 +3488,8 @@ unit_test "tag_unrecognised_visual_spatial_field_objects_after_fixation_set_comp
       # Now that the latest time has been set, the terminus for particular
       # VisualSpatialFieldObjects can be set so that they aren't alive when 
       # processed by the method.
-      vsf_field.value(visual_spatial_field).get(0).get(0).lastEntry().getValue().get(0)._terminus = latest_time - 1 
-      vsf_field.value(visual_spatial_field).get(2).get(2).lastEntry().getValue().get(0)._terminus = latest_time - 1
+      vsf_field.value(visual_spatial_field).get(0).get(0).get(0)._terminus = latest_time - 1 
+      vsf_field.value(visual_spatial_field).get(2).get(2).get(0)._terminus = latest_time - 1
       
       ##################################################################
       ##### SET RECOGNISED VisualSpatialFieldObject DATA STRUCTURE #####
@@ -5636,7 +3595,7 @@ unit_test "tag_unrecognised_visual_spatial_field_objects_after_fixation_set_comp
         if location != nil
           col = location[0]
           row = location[1]
-          vsfo = vsf_field.value(visual_spatial_field).get(col).get(row).lastEntry().getValue().get(0)
+          vsfo = vsf_field.value(visual_spatial_field).get(col).get(row).get(0)
           vsfo_recognised_history = vsf_recognised_history_field.value(vsfo)
 
           assert_false(
@@ -5652,7 +3611,7 @@ unit_test "tag_unrecognised_visual_spatial_field_objects_after_fixation_set_comp
         if location != nil
           col = location[0]
           row = location[1]
-          vsfo = vsf_field.value(visual_spatial_field).get(col).get(row).lastEntry().getValue().get(0)
+          vsfo = vsf_field.value(visual_spatial_field).get(col).get(row).get(0)
           vsfo_recognised_history = vsf_recognised_history_field.value(vsfo)
 
           assert_true(
@@ -5844,7 +3803,7 @@ unit_test "schedule_fixations_for_performance" do
       ################################
       
       time_fixation_1_decided_upon = time_model_created + 10
-      fixation_1 = CentralFixation.new(time_fixation_1_decided_upon, 0)
+      fixation_1 = CentralFixation.new(time_fixation_1_decided_upon)
       
       if scenario == 1 then fixation_1._performanceTime = time_fixation_1_decided_upon + 20 end
       
@@ -5854,7 +3813,7 @@ unit_test "schedule_fixations_for_performance" do
       
       fixation_2 = nil
       if scenario == 6
-        fixation_2 = CentralFixation.new(time_fixation_1_decided_upon, 0)
+        fixation_2 = CentralFixation.new(time_fixation_1_decided_upon)
       end
       
       ############################################################
@@ -5969,7 +3928,7 @@ end
 # 
 # For each domain, the test is run until all Fixations that can be generated in
 # the domain have been performed and a VisualSpatialField has been constructed.
-# Following this, the test will be run a further 200 times using the current 
+# Following this, the test will be run a further 500 times using the current 
 # domain until moving on to test the next domain and repeating this whole 
 # process.  Doing this ensures a wide range of scenarios that the method should
 # be able to handle gracefully since there are a number of properties that are
@@ -5999,9 +3958,8 @@ end
 # problems).
 # 
 # A set of Fixations is then performed with a random assignment of the parameter 
-# stipulating whether a VisualSpatialField should be created upon completion of 
+# stipulating whether aVisualSpatialField should be created upon completion of 
 # the Fixation set being performed (as mentioned in the previous paragraph).  
-# When this first Fixation set is initialised, visual STM should not be cleared. 
 # Various checks are then performed:
 # 
 # - The CHREST model should no longer consider itself as performing a Fixation 
@@ -6014,16 +3972,12 @@ end
 # - The _fixationsAttemptedInSet variable has been reset to 0.
 # - The correct Fixations have been generated in the correct order.
 # - VisualSpatialField construction occurred/did not occur as expected.
-# - Visual STM should not be cleared at the time of invocation. 
 #
-# The method is then invoked until a new Fixation set is started.  At this 
-# point, the "clear visual STM when new Fixation Set started" function parameter 
-# is set to true.  The following checks are then performed:
+# The method is then invoked until a new Fixation set is started and the 
+# following checks are then performed:
 #
 # - The CHREST model now considers itself as performing a new Fixation set.
 # - The correct initial Fixation according to the domain has been scheduled.
-# - The visual STM associated with the CHREST model is cleared at the time the
-#   new Fixation set starts.
 # - The Fixation data structure of the Perceiver associated with the CHREST 
 #   model has been cleared.
 # - The Fixation to learn from according to the Perceiver has been reset to 0.
@@ -6068,7 +4022,7 @@ canonical_result_test "make_fixations_in_domains" do
   
   # Need to set the fixation field of view for reasons described above.
   Perceiver.class_eval{
-    field_accessor :_fixationFieldOfView, :_fixationToLearnFrom
+    field_accessor :_fixationFieldOfView
   }
   
   # Need to be able to check if the Perceiver's Fixation data structure is 
@@ -6288,9 +4242,9 @@ canonical_result_test "make_fixations_in_domains" do
         when GenericDomain.java_class
           GenericDomain.new(model, max_fixations_in_set, peripheral_item_fixation_max_attempts)
         when ChessDomain.java_class
-          ChessDomain.new(model, initial_fixation_threshold, peripheral_item_fixation_max_attempts, max_fixations_in_set, 150, 150)
+          ChessDomain.new(model, initial_fixation_threshold, peripheral_item_fixation_max_attempts, max_fixations_in_set)
         when TileworldDomain.java_class
-          TileworldDomain.new(model, max_fixations_in_set, initial_fixation_threshold, peripheral_item_fixation_max_attempts, 50, 50)
+          TileworldDomain.new(model, max_fixations_in_set, initial_fixation_threshold, peripheral_item_fixation_max_attempts)
         end
       )
 
@@ -6466,7 +4420,7 @@ canonical_result_test "make_fixations_in_domains" do
       depth_1_node_children.add(depth_2_link)
 
       time += 1
-      depth_1_node._childHistory.put(time.to_java(:int), depth_1_node_children)
+      depth_1_node._childHistory.put(time, depth_1_node_children)
       
       # Add identifier to Chrest._recognisedVisualSpatialFieldObjectIdentifiers
       model._recognisedVisualSpatialFieldObjectIdentifiers.add(identifier)
@@ -6475,7 +4429,7 @@ canonical_result_test "make_fixations_in_domains" do
       time += 1
       stm_items = ArrayList.new()
       stm_items.add(depth_1_node)
-      stm_item_history_field.value(model._visualStm).put(time.to_java(:int), stm_items)
+      stm_item_history_field.value(model._visualStm).put(time, stm_items)
 
       ##########################
       ##### MAKE FIXATIONS #####
@@ -6484,8 +4438,7 @@ canonical_result_test "make_fixations_in_domains" do
       # Randomly stipulate whether a VisualSpatialField should be constructed or
       # not when the number of Fixations attempted equals the maximum permitted.
       construct_visual_spatial_field = [true,false].sample
-      time_first_fixation_set_started = time
-      until model.scheduleOrMakeNextFixation(scene_to_fixate_on, false, construct_visual_spatial_field, time) == ChrestStatus::FIXATION_SET_COMPLETE
+      until !model.scheduleOrMakeNextFixation(scene_to_fixate_on, construct_visual_spatial_field, time)
         time += 1
       end
       
@@ -6621,13 +4574,6 @@ canonical_result_test "make_fixations_in_domains" do
           "set has completed" + err_msg_append
         )
       end
-      
-      # Check that visual STM was not cleared when the fixation set began.
-      assert_false(
-        stm_item_history_field.value(model._visualStm).get(time_first_fixation_set_started.to_java(:int)).isEmpty(),
-        "occurred when checking if visual STM is not empty when the first " +
-        "fixation set is started"
-      )
     
       ##############################################
       ##### MODIFY TEST LOOP CONTROL VARIABLES #####
@@ -6651,14 +4597,14 @@ canonical_result_test "make_fixations_in_domains" do
       ##### CHECK THAT THE METHOD WILL LOOP AFTER COMPLETION #####
       ############################################################
       
-      # Invoke the method until it starts a new Fixation set and stipulate that
-      # visual STM should be cleared.
+      # Invoke the method until it returns true, i.e. it has started a new 
+      # Fixation set.
       time += 1
-      until model.scheduleOrMakeNextFixation(scene_to_fixate_on, true, false, time) == ChrestStatus::FIXATION_SET_BEING_PERFORMED
+      until model.scheduleOrMakeNextFixation(scene_to_fixate_on, false, time)
         time += 1
       end
       
-      # Check that the model now considers itself as performing a new Fixation
+      # Check that the model now considers itself as performing a new Fixtaion
       # set
       assert_true(
         model._performingFixations, 
@@ -6693,19 +4639,6 @@ canonical_result_test "make_fixations_in_domains" do
         err_msg_append
       )
       
-      # Check that visual STM has been cleared at the current time
-      assert_false(
-        stm_item_history_field.value(model._visualStm).floorEntry((time - 1).to_java(:int)).getValue().isEmpty(),
-        "occurred when checking if the visual STM associated with the CHREST " +
-        "model is not empty before the second Fixation set starts"
-      )
-      
-      assert_true(
-        stm_item_history_field.value(model._visualStm).get(time.to_java(:int)).isEmpty(),
-        "occurred when checking if the visual STM associated with the CHREST " +
-        "model is empty when the second Fixation set starts"
-      )
-      
       # Check that Perceiver's Fixations data structure has been cleared.
       assert_true(
         perceiver_fixations_field.value(chrest_perceiver_field.value(model)).get(time.to_java(:int)).isEmpty(),
@@ -6725,8 +4658,8 @@ canonical_result_test "make_fixations_in_domains" do
       ########################################
       ##### PERFORM ANOTHER FIXATION SET #####
       ########################################
-      time += 1
-      until model.scheduleOrMakeNextFixation(scene_to_fixate_on, false, false, time) == ChrestStatus::FIXATION_SET_COMPLETE
+      
+      until !model.scheduleOrMakeNextFixation(scene_to_fixate_on, false, time)
         time += 1
       end
     end
@@ -7490,7 +5423,7 @@ process_test "construct_visual_spatial_field" do
     }
     
     for fixation_number in 1..9
-      fixation = CentralFixation.new(time, 0) #Sets Fixation's _timeDecidedUpon
+      fixation = CentralFixation.new(time) #Sets Fixation's _timeDecidedUpon
       
       if fixation_number == 1 then fixation._scene, fixation._colFixatedOn, fixation._rowFixatedOn = scene_7, 0, 0 end
       if fixation_number == 2 then fixation._scene, fixation._colFixatedOn, fixation._rowFixatedOn = scene_5, 2, 2 end
@@ -7511,7 +5444,7 @@ process_test "construct_visual_spatial_field" do
       new_fixations = ArrayList.new()
       new_fixations.addAll(current_fixations)
       new_fixations.add(fixation)
-      fixations_field.value(perceiver).put(fixation._performanceTime.to_java(:int), new_fixations)
+      fixations_field.value(perceiver).put(fixation._performanceTime, new_fixations)
 
       time = fixation._performanceTime
       fixation_number += 1
@@ -7577,7 +5510,7 @@ process_test "construct_visual_spatial_field" do
       new_stm_items = ArrayList.new()
       new_stm_items.add(node)
       new_stm_items.addAll(current_stm_items)
-      stm_item_history_field.value(model.getStm(Modality::VISUAL)).put((time += 10).to_java(:int), new_stm_items)
+      stm_item_history_field.value(model.getStm(Modality::VISUAL)).put(time += 10, new_stm_items)
     end
     
     ##############################################
@@ -7769,18 +5702,16 @@ process_test "construct_visual_spatial_field" do
     for col in 0...width_field.value(vsf)
       for row in 0...height_field.value(vsf)
         
-        coordinate_contents = vsf_field_value.get(col).get(row).lastEntry().getValue()
-        
         assert_equal(
           expected_visual_spatial_field_data[col][row].size(),
-          coordinate_contents.size(),
+          vsf_field_value.get(col).get(row).size(),
           "occurred when checking the number of VisualSpatialFieldObjects on " +
           "col " + col.to_s + ", row " + row.to_s + " in context of test " +
           "scenario " + scenario.to_s
         )
         
-        for object in 0...coordinate_contents.size()
-          vsf_object = coordinate_contents.get(object)
+        for object in 0...vsf_field_value.get(col).get(row).size()
+          vsf_object = vsf_field_value.get(col).get(row).get(object)
 
           error_msg_postpend = "VisualSpatialFieldObject " +
             (object + 1).to_s + " on col " + col.to_s + ", row " + row.to_s +
@@ -7823,11 +5754,6 @@ end
 # - A recognised VisualSpatialFieldObject that represents a non-empty square 
 # - An unrecognised VisualSpatialFieldObject that represents a non-empty square
 # - The creator of the VisualSpatialField
-# 
-# In all the scenarios listed above, an attentional time cost is incurred for
-# accessing the visual-spatial field, in the scenario immediately following 
-# these, two moves are performed, the first incurs an attentional time cost for
-# accessing the visual-spatial field, the second doesn't.
 # 
 # In the final 3 scenarios, the test also checks that exceptions are thrown and
 # handled correctly.
@@ -7887,7 +5813,7 @@ end
 #       0      1      2       3      4     COORDINATES
 #
 # =======================
-# === Scenarios 13-21 ===
+# === Scenarios 13-20 ===
 # =======================
 #
 # - VisualSpatialFieldObject with identifier "1" will be the creator and will
@@ -7910,7 +5836,7 @@ process_test "move_visual_spatial_field_object" do
   recognised_history_field = VisualSpatialFieldObject.java_class.declared_field("_recognisedHistory")
   recognised_history_field.accessible = true
   
-  for scenario in 1..21
+  for scenario in 1..20
     
     time = 0
     
@@ -8027,9 +5953,9 @@ process_test "move_visual_spatial_field_object" do
     visual_spatial_field_field.accessible = true
     vsf = visual_spatial_field_field.value(visual_spatial_field) #This is the "actual" visual-spatial field.
     
-    if visual_spatial_field_object_a != nil then vsf.get(1).get(1).lastEntry().getValue().add(visual_spatial_field_object_a) end
-    vsf.get(2).get(2).lastEntry().getValue().add(visual_spatial_field_object_b)
-    vsf.get(1).get(3).lastEntry().getValue().add(visual_spatial_field_object_c)
+    if visual_spatial_field_object_a != nil then vsf.get(1).get(1).add(visual_spatial_field_object_a) end
+    vsf.get(2).get(2).add(visual_spatial_field_object_b)
+    vsf.get(1).get(3).add(visual_spatial_field_object_c)
     
     # Add empty squares, in scenarios 11-14, coordinates (2, 2) will be empty
     # rather than occupied by the creator
@@ -8056,7 +5982,7 @@ process_test "move_visual_spatial_field_object" do
       if i == 9 then coordinates_to_add_empty_square_to = [2, 4] end
       if i == 10 then coordinates_to_add_empty_square_to = [2, 0] end
       
-      vsf.get(coordinates_to_add_empty_square_to[0]).get(coordinates_to_add_empty_square_to[1]).lastEntry().getValue().add(empty_visual_spatial_field_object)
+      vsf.get(coordinates_to_add_empty_square_to[0]).get(coordinates_to_add_empty_square_to[1]).add(empty_visual_spatial_field_object)
     end
     
     ####################################################################
@@ -8195,57 +6121,55 @@ process_test "move_visual_spatial_field_object" do
       
       # Set relevant timing parameters.
       time_move_requested = time
-      move_initiated_time = time_move_requested + model._timeToAccessVisualSpatialField
-      movement_time = move_initiated_time + model._timeToMoveVisualSpatialFieldObject
-      expected_attention_clock = movement_time
+      pickup_time = time_move_requested + model._timeToAccessVisualSpatialField
+      putdown_time = pickup_time + model._timeToMoveVisualSpatialFieldObject
+      expected_attention_clock = putdown_time
       
       # Set terminus for VisualSpatialFieldObject being moved
-      expected_visual_spatial_field_data[1][1][0][4] = movement_time
+      expected_visual_spatial_field_data[1][1][0][4] = pickup_time
       
       # New VisualSpatialFieldObject representing an empty square should be 
-      # added to (1, 1).
+      # added to (1, 1) when VisualSpatialFieldObject being moved is picked up.
       expected_visual_spatial_field_data[1][1].push([
         nil,
         Scene.getEmptySquareToken(),
         false,
-        movement_time,
-        movement_time + model._unrecognisedVisualSpatialFieldObjectLifespan
+        pickup_time,
+        pickup_time + model._unrecognisedVisualSpatialFieldObjectLifespan
       ])
     
       # Refresh termini of VisualSpatialField objects on coordinates around 
       # (1, 1) that fall within the fixation field of view.
-      if scenario == 13 then expected_visual_spatial_field_data[2][0][0][4] = move_initiated_time + model._unrecognisedVisualSpatialFieldObjectLifespan end
-      expected_visual_spatial_field_data[2][1][0][4] = move_initiated_time + model._unrecognisedVisualSpatialFieldObjectLifespan
-      expected_visual_spatial_field_data[0][2][0][4] = move_initiated_time + model._unrecognisedVisualSpatialFieldObjectLifespan
-      expected_visual_spatial_field_data[2][2][0][4] = move_initiated_time + model._recognisedVisualSpatialFieldObjectLifespan
+      if scenario == 13 then expected_visual_spatial_field_data[2][0][0][4] = pickup_time + model._unrecognisedVisualSpatialFieldObjectLifespan end
+      expected_visual_spatial_field_data[2][1][0][4] = pickup_time + model._unrecognisedVisualSpatialFieldObjectLifespan
+      expected_visual_spatial_field_data[0][2][0][4] = pickup_time + model._unrecognisedVisualSpatialFieldObjectLifespan
+      expected_visual_spatial_field_data[0][2][0][4] = pickup_time + model._unrecognisedVisualSpatialFieldObjectLifespan
+      expected_visual_spatial_field_data[2][2][0][4] = pickup_time + model._recognisedVisualSpatialFieldObjectLifespan
       
       # New VisualSpatialFieldObject representing the VisualSpatialFieldObject
       # being moved should be added to (0, 1).  If the VisualSpatialFieldObject 
-      # being moved was previously recognised it should now be unrecognised.  In
-      # scenario 13, since the creator is being moved, its terminus should not 
-      # be set.
+      # being moved was previously recognised it should now be unrecognised.
       expected_visual_spatial_field_data[0][1] = [[
         "1", 
         (scenario == 13 ? Scene.getCreatorToken() : "A"), 
         false, 
-        expected_visual_spatial_field_data[1][1][0][3], 
-        (scenario == 13 ? nil : movement_time + model._unrecognisedVisualSpatialFieldObjectLifespan)
+        putdown_time, 
+        putdown_time + model._unrecognisedVisualSpatialFieldObjectLifespan
       ]]
       
       # VisualSpatialFieldObjects in fixation field of view around (0, 1) should
       # have their termini refreshed.
-      expected_visual_spatial_field_data[1][1][1][4] = movement_time + model._unrecognisedVisualSpatialFieldObjectLifespan
-      expected_visual_spatial_field_data[0][2][0][4] = movement_time + model._unrecognisedVisualSpatialFieldObjectLifespan
-      expected_visual_spatial_field_data[1][2][0][4] = movement_time + model._unrecognisedVisualSpatialFieldObjectLifespan
+      expected_visual_spatial_field_data[1][1][1][4] = putdown_time + model._unrecognisedVisualSpatialFieldObjectLifespan
+      expected_visual_spatial_field_data[0][2][0][4] = putdown_time + model._unrecognisedVisualSpatialFieldObjectLifespan
+      expected_visual_spatial_field_data[1][2][0][4] = putdown_time + model._unrecognisedVisualSpatialFieldObjectLifespan
       
       move_visual_spatial_field_object_test(
         model,
         move_sequence,
         time_move_requested,
-        true,
         expected_visual_spatial_field_data,
         expected_attention_clock,
-        movement_time,
+        putdown_time,
         scenario
       )
     
@@ -8357,63 +6281,61 @@ process_test "move_visual_spatial_field_object" do
       
       # Set relevant timing parameters.
       time_move_requested = time
-      move_initiated_time = time_move_requested + model._timeToAccessVisualSpatialField
-      movement_time = move_initiated_time + model._timeToMoveVisualSpatialFieldObject
-      expected_attention_clock = movement_time
+      pickup_time = time_move_requested + model._timeToAccessVisualSpatialField
+      putdown_time = pickup_time + model._timeToMoveVisualSpatialFieldObject
+      expected_attention_clock = putdown_time
       
       # Set terminus for VisualSpatialFieldObject being moved on (1, 1)
-      expected_visual_spatial_field_data[1][1][0][4] = movement_time
+      expected_visual_spatial_field_data[1][1][0][4] = pickup_time
       
       # New VisualSpatialFieldObject representing an empty square should be 
-      # added to (1, 1) when VisualSpatialFieldObject is moved.
+      # added to (1, 1) when VisualSpatialFieldObject being moved is picked up.
       expected_visual_spatial_field_data[1][1].push([
         nil,
         Scene.getEmptySquareToken(),
         false,
-        movement_time,
-        movement_time + model._unrecognisedVisualSpatialFieldObjectLifespan
+        pickup_time,
+        pickup_time + model._unrecognisedVisualSpatialFieldObjectLifespan
       ])
     
       # VisualSpatialFieldObjects in fixation field of view around (1, 1) should
       # have their termini refreshed.
-      if scenario == 14 then expected_visual_spatial_field_data[2][0][0][4] = move_initiated_time + model._unrecognisedVisualSpatialFieldObjectLifespan end
-      expected_visual_spatial_field_data[2][1][0][4] = move_initiated_time + model._unrecognisedVisualSpatialFieldObjectLifespan
-      expected_visual_spatial_field_data[0][2][0][4] = move_initiated_time + model._unrecognisedVisualSpatialFieldObjectLifespan
-      expected_visual_spatial_field_data[1][2][0][4] = move_initiated_time + model._unrecognisedVisualSpatialFieldObjectLifespan
-      expected_visual_spatial_field_data[2][2][0][4] = move_initiated_time + model._recognisedVisualSpatialFieldObjectLifespan
+      if scenario == 14 then expected_visual_spatial_field_data[2][0][0][4] = pickup_time + model._unrecognisedVisualSpatialFieldObjectLifespan end
+      expected_visual_spatial_field_data[2][1][0][4] = pickup_time + model._unrecognisedVisualSpatialFieldObjectLifespan
+      expected_visual_spatial_field_data[0][2][0][4] = pickup_time + model._unrecognisedVisualSpatialFieldObjectLifespan
+      expected_visual_spatial_field_data[1][2][0][4] = pickup_time + model._unrecognisedVisualSpatialFieldObjectLifespan
+      expected_visual_spatial_field_data[2][2][0][4] = pickup_time + model._recognisedVisualSpatialFieldObjectLifespan
     
       # Set terminus for empty square on (1, 2)
-      expected_visual_spatial_field_data[1][2][0][4] = movement_time
+      expected_visual_spatial_field_data[1][2][0][4] = putdown_time
       
-      # VisualSpatialFieldObject being moved should be added to (1, 2) at 
-      # movement time.  If the VisualSpatialFieldObject being moved was 
-      # previously recognised it should now be unrecognised.  If the creator is 
-      # being moved, its terminus should not be set.
+      # VisualSpatialFieldObject being moved should be added to (1, 2) at put 
+      # down time.  If the VisualSpatialFieldObject being moved was previously
+      # recognised it should now be unrecognised.
       expected_visual_spatial_field_data[1][2].push([
         "1",
         (scenario == 14 ? Scene.getCreatorToken() : "A"),
         false,
-        expected_visual_spatial_field_data[1][1][0][3],
-        (scenario == 14 ? nil : movement_time + model._unrecognisedVisualSpatialFieldObjectLifespan)
+        putdown_time,
+        putdown_time + model._unrecognisedVisualSpatialFieldObjectLifespan
       ])
     
       # VisualSpatialFieldObjects in fixation field of view around (1, 2) should
       # have their termini refreshed.
-      expected_visual_spatial_field_data[1][1][1][4] = movement_time + model._unrecognisedVisualSpatialFieldObjectLifespan
-      expected_visual_spatial_field_data[2][1][0][4] = movement_time + model._unrecognisedVisualSpatialFieldObjectLifespan
-      expected_visual_spatial_field_data[0][2][0][4] = movement_time + model._unrecognisedVisualSpatialFieldObjectLifespan
-      expected_visual_spatial_field_data[2][2][0][4] = movement_time + model._recognisedVisualSpatialFieldObjectLifespan
-      expected_visual_spatial_field_data[1][3][0][4] = movement_time + model._unrecognisedVisualSpatialFieldObjectLifespan
-      expected_visual_spatial_field_data[2][3][0][4] = movement_time + model._unrecognisedVisualSpatialFieldObjectLifespan
+      expected_visual_spatial_field_data[1][1][1][4] = putdown_time + model._unrecognisedVisualSpatialFieldObjectLifespan
+      expected_visual_spatial_field_data[2][1][0][4] = putdown_time + model._unrecognisedVisualSpatialFieldObjectLifespan
+      expected_visual_spatial_field_data[0][2][0][4] = putdown_time + model._unrecognisedVisualSpatialFieldObjectLifespan
+      expected_visual_spatial_field_data[2][2][0][4] = putdown_time + model._recognisedVisualSpatialFieldObjectLifespan
+      expected_visual_spatial_field_data[1][3][0][4] = putdown_time + model._unrecognisedVisualSpatialFieldObjectLifespan
+      expected_visual_spatial_field_data[2][3][0][4] = putdown_time + model._unrecognisedVisualSpatialFieldObjectLifespan
       
       move_visual_spatial_field_object_test(
         model,
         move_sequence,
         time_move_requested,
-        true,
         expected_visual_spatial_field_data,
         expected_attention_clock,
-        movement_time,
+        putdown_time,
         scenario.to_s + ".1"
       )
       
@@ -8425,12 +6347,12 @@ process_test "move_visual_spatial_field_object" do
         # Make VisualSpatialFieldObject with identifier "1" recognised again.  
         # Since the recognised history of a VisualSpatialFieldObject is a 
         # HistoryTreeMap and VisualSpatialFieldObject with identifier "1"s 
-        # recognised status is updated at the current value of "movement_time", its
+        # recognised status is updated at the current value of "putdown_time", its
         # not possible to overwrite this entry.  Best solution currently is to add
         # an entry just after the previous one stating that the 
         # VisualSpatialFieldObject is recognised.
-        rec_history = recognised_history_field.value(vsf.get(1).get(2).lastEntry().getValue().get(1))
-        rec_history.put((movement_time + 1).to_java(:int), true)
+        rec_history = recognised_history_field.value(vsf.get(1).get(2).get(1))
+        rec_history.put(putdown_time + 1, true)
 
         # Set expected recognised status and terminus of VisualSpatialFieldObject 
         # with identifier 0
@@ -8446,13 +6368,13 @@ process_test "move_visual_spatial_field_object" do
       move_sequence.add(move)
       
       # Set relevant timing parameters
-      time_move_requested = movement_time + 1
-      move_initiated_time = time_move_requested + model._timeToAccessVisualSpatialField
-      movement_time = move_initiated_time + model._timeToMoveVisualSpatialFieldObject
-      expected_attention_clock = movement_time
+      time_move_requested = putdown_time + 1
+      pickup_time = time_move_requested + model._timeToAccessVisualSpatialField
+      putdown_time = pickup_time + model._timeToMoveVisualSpatialFieldObject
+      expected_attention_clock = putdown_time
       
       # Set terminus for VisualSpatialFieldObject being moved on (1, 2)
-      expected_visual_spatial_field_data[1][2][1][4] = movement_time
+      expected_visual_spatial_field_data[1][2][1][4] = pickup_time
       
       # New VisualSpatialFieldObject representing an empty square should be 
       # added to (1, 2) when VisualSpatialFieldObject being moved is picked up.
@@ -8460,49 +6382,47 @@ process_test "move_visual_spatial_field_object" do
         nil,
         Scene.getEmptySquareToken(),
         false,
-        movement_time,
-        movement_time + model._unrecognisedVisualSpatialFieldObjectLifespan
+        pickup_time,
+        pickup_time + model._unrecognisedVisualSpatialFieldObjectLifespan
       ])
     
       # VisualSpatialFieldObjects in fixation field of view around (1, 2) should
       # have their termini refreshed.
-      expected_visual_spatial_field_data[1][1][1][4] = move_initiated_time + model._unrecognisedVisualSpatialFieldObjectLifespan
-      expected_visual_spatial_field_data[2][1][0][4] = move_initiated_time + model._unrecognisedVisualSpatialFieldObjectLifespan
-      expected_visual_spatial_field_data[0][2][0][4] = move_initiated_time + model._unrecognisedVisualSpatialFieldObjectLifespan
-      expected_visual_spatial_field_data[2][2][0][4] = move_initiated_time + model._recognisedVisualSpatialFieldObjectLifespan
-      expected_visual_spatial_field_data[1][3][0][4] = move_initiated_time + model._unrecognisedVisualSpatialFieldObjectLifespan
-      expected_visual_spatial_field_data[2][3][0][4] = move_initiated_time + model._unrecognisedVisualSpatialFieldObjectLifespan
+      expected_visual_spatial_field_data[1][1][1][4] = pickup_time + model._unrecognisedVisualSpatialFieldObjectLifespan
+      expected_visual_spatial_field_data[2][1][0][4] = pickup_time + model._unrecognisedVisualSpatialFieldObjectLifespan
+      expected_visual_spatial_field_data[0][2][0][4] = pickup_time + model._unrecognisedVisualSpatialFieldObjectLifespan
+      expected_visual_spatial_field_data[2][2][0][4] = pickup_time + model._recognisedVisualSpatialFieldObjectLifespan
+      expected_visual_spatial_field_data[1][3][0][4] = pickup_time + model._unrecognisedVisualSpatialFieldObjectLifespan
+      expected_visual_spatial_field_data[2][3][0][4] = pickup_time + model._unrecognisedVisualSpatialFieldObjectLifespan
     
       # Set terminus for empty square on (3, 2)
-      expected_visual_spatial_field_data[3][2][0][4] = movement_time
+      expected_visual_spatial_field_data[3][2][0][4] = putdown_time
       
-      # Add VisualSpatialFieldObject being moved to (3, 2).  Again, if the 
-      # creator is being moved, its terminus should not be set.
+      # Add VisualSpatialFieldObject being moved to (3, 2)
       expected_visual_spatial_field_data[3][2].push([
         "1",
         (scenario == 14 ? Scene.getCreatorToken() : "A"),
         false,
-        expected_visual_spatial_field_data[1][2][1][3],
-        (scenario == 14 ? nil : movement_time + model._unrecognisedVisualSpatialFieldObjectLifespan)
+        putdown_time,
+        putdown_time + model._unrecognisedVisualSpatialFieldObjectLifespan
       ])
     
       # VisualSpatialFieldObjects in fixation field of view around (3, 2) should
       # have their termini refreshed.
-      expected_visual_spatial_field_data[2][1][0][4] = movement_time + model._unrecognisedVisualSpatialFieldObjectLifespan
-      expected_visual_spatial_field_data[3][1][0][4] = movement_time + model._unrecognisedVisualSpatialFieldObjectLifespan
-      expected_visual_spatial_field_data[2][2][0][4] = movement_time + model._recognisedVisualSpatialFieldObjectLifespan
-      expected_visual_spatial_field_data[4][2][0][4] = movement_time + model._unrecognisedVisualSpatialFieldObjectLifespan
-      expected_visual_spatial_field_data[2][3][0][4] = movement_time + model._unrecognisedVisualSpatialFieldObjectLifespan
-      expected_visual_spatial_field_data[3][3][0][4] = movement_time + model._unrecognisedVisualSpatialFieldObjectLifespan
+      expected_visual_spatial_field_data[2][1][0][4] = putdown_time + model._unrecognisedVisualSpatialFieldObjectLifespan
+      expected_visual_spatial_field_data[3][1][0][4] = putdown_time + model._unrecognisedVisualSpatialFieldObjectLifespan
+      expected_visual_spatial_field_data[2][2][0][4] = putdown_time + model._recognisedVisualSpatialFieldObjectLifespan
+      expected_visual_spatial_field_data[4][2][0][4] = putdown_time + model._unrecognisedVisualSpatialFieldObjectLifespan
+      expected_visual_spatial_field_data[2][3][0][4] = putdown_time + model._unrecognisedVisualSpatialFieldObjectLifespan
+      expected_visual_spatial_field_data[3][3][0][4] = putdown_time + model._unrecognisedVisualSpatialFieldObjectLifespan
       
       move_visual_spatial_field_object_test(
         model,
         move_sequence,
         time_move_requested,
-        true,
         expected_visual_spatial_field_data,
         expected_attention_clock,
-        movement_time,
+        putdown_time,
         scenario.to_s + ".2"
       )
       
@@ -8577,56 +6497,55 @@ process_test "move_visual_spatial_field_object" do
       
       # Set relevant timing parameters.
       time_move_requested = time
-      move_initiated_time = time_move_requested + model._timeToAccessVisualSpatialField
-      movement_time = move_initiated_time + model._timeToMoveVisualSpatialFieldObject
-      expected_attention_clock = movement_time
+      pickup_time = time_move_requested + model._timeToAccessVisualSpatialField
+      putdown_time = pickup_time + model._timeToMoveVisualSpatialFieldObject
+      expected_attention_clock = putdown_time
       
       # Set terminus for VisualSpatialFieldObject with identifier "1" on (1, 1)
-      expected_visual_spatial_field_data[1][1][0][4] = movement_time
+      expected_visual_spatial_field_data[1][1][0][4] = pickup_time
       
       # New VisualSpatialFieldObject representing an empty square should be 
       # added to (1, 1) when VisualSpatialFieldObject with identifier "1" is 
-      # moved.
+      # picked up.
       expected_visual_spatial_field_data[1][1].push([
         nil,
         Scene.getEmptySquareToken(),
         false,
-        movement_time,
-        movement_time + model._unrecognisedVisualSpatialFieldObjectLifespan
+        pickup_time,
+        pickup_time + model._unrecognisedVisualSpatialFieldObjectLifespan
       ])
     
       # Termini of VisualSpatialFieldObjects on coordinates around (1, 1) within
       # fixation field of view should be refreshed.
-      expected_visual_spatial_field_data[2][1][0][4] = move_initiated_time + model._unrecognisedVisualSpatialFieldObjectLifespan 
-      expected_visual_spatial_field_data[0][2][0][4] = move_initiated_time + model._unrecognisedVisualSpatialFieldObjectLifespan 
-      expected_visual_spatial_field_data[1][2][0][4] = move_initiated_time + model._unrecognisedVisualSpatialFieldObjectLifespan 
-      expected_visual_spatial_field_data[2][2][0][4] = move_initiated_time + model._recognisedVisualSpatialFieldObjectLifespan 
+      expected_visual_spatial_field_data[2][1][0][4] = pickup_time + model._unrecognisedVisualSpatialFieldObjectLifespan 
+      expected_visual_spatial_field_data[0][2][0][4] = pickup_time + model._unrecognisedVisualSpatialFieldObjectLifespan 
+      expected_visual_spatial_field_data[1][2][0][4] = pickup_time + model._unrecognisedVisualSpatialFieldObjectLifespan 
+      expected_visual_spatial_field_data[2][2][0][4] = pickup_time + model._recognisedVisualSpatialFieldObjectLifespan 
       
       # VisualSpatialFieldObject with identifier "1" should be added to (2, 0) 
-      # at movement time.  Should no longer be recognised.
+      # at first putdown time.  Should no longer be recognised.
       expected_visual_spatial_field_data[2][0].push([
         "1",
         "A",
         false,
-        expected_visual_spatial_field_data[1][1][0][3],
-        movement_time + model._unrecognisedVisualSpatialFieldObjectLifespan 
+        putdown_time,
+        putdown_time + model._unrecognisedVisualSpatialFieldObjectLifespan 
       ])
     
       # VisualSpatialFieldObject representing the creator should not be modified
       # in any way.  Just refresh the termini of VisualSpatialFieldObjects 
       # around (2, 0) within fixation field of view.
-      expected_visual_spatial_field_data[1][1][1][4] = movement_time + model._unrecognisedVisualSpatialFieldObjectLifespan
-      expected_visual_spatial_field_data[2][1][0][4] = movement_time + model._unrecognisedVisualSpatialFieldObjectLifespan
-      expected_visual_spatial_field_data[3][1][0][4] = movement_time + model._unrecognisedVisualSpatialFieldObjectLifespan
+      expected_visual_spatial_field_data[1][1][1][4] = putdown_time + model._unrecognisedVisualSpatialFieldObjectLifespan
+      expected_visual_spatial_field_data[2][1][0][4] = putdown_time + model._unrecognisedVisualSpatialFieldObjectLifespan
+      expected_visual_spatial_field_data[3][1][0][4] = putdown_time + model._unrecognisedVisualSpatialFieldObjectLifespan
     
       move_visual_spatial_field_object_test(
         model,
         move_sequence,
         time_move_requested,
-        true,
         expected_visual_spatial_field_data,
         expected_attention_clock,
-        movement_time,
+        putdown_time,
         scenario.to_s + ".1"
       )
       
@@ -8638,12 +6557,12 @@ process_test "move_visual_spatial_field_object" do
         # Make VisualSpatialFieldObject with identifier "1" recognised again.  
         # Since the recognised history of a VisualSpatialFieldObject is a 
         # HistoryTreeMap and VisualSpatialFieldObject with identifier "1"s 
-        # recognised status is updated at the current value of "movement_time", its
+        # recognised status is updated at the current value of "putdown_time", its
         # not possible to overwrite this entry.  Best solution currently is to add
         # an entry just after the previous one stating that the 
         # VisualSpatialFieldObject is recognised.
-        rec_history = recognised_history_field.value(vsf.get(2).get(0).lastEntry().getValue().get(1))
-        rec_history.put((movement_time + 1).to_java(:int), true)
+        rec_history = recognised_history_field.value(vsf.get(2).get(0).get(1))
+        rec_history.put(putdown_time + 1, true)
 
         # Set expected recognised status and terminus of VisualSpatialFieldObject 
         # with identifier 0
@@ -8659,51 +6578,50 @@ process_test "move_visual_spatial_field_object" do
       move_sequence.add(move)
       
       # Set relevant time parameters.
-      time_move_requested = movement_time + 1
-      move_initiated_time = time_move_requested + model._timeToAccessVisualSpatialField
-      movement_time = move_initiated_time + model._timeToMoveVisualSpatialFieldObject
-      expected_attention_clock = movement_time
+      time_move_requested = putdown_time + 1
+      pickup_time = time_move_requested + model._timeToAccessVisualSpatialField
+      putdown_time = pickup_time + model._timeToMoveVisualSpatialFieldObject
+      expected_attention_clock = putdown_time
       
       # Set terminus for VisualSpatialObject with identifier "1" on (2, 0)
-      expected_visual_spatial_field_data[2][0][1][4] = movement_time
+      expected_visual_spatial_field_data[2][0][1][4] = pickup_time
       
       # VisualSpatialFieldObject representing the creator should not be modified
       # in any way.  Just refresh the termini of VisualSpatialFieldObjects 
       # around (2, 0) within fixation field of view.
-      expected_visual_spatial_field_data[1][1][1][4] = move_initiated_time + model._unrecognisedVisualSpatialFieldObjectLifespan
-      expected_visual_spatial_field_data[2][1][0][4] = move_initiated_time + model._unrecognisedVisualSpatialFieldObjectLifespan
-      expected_visual_spatial_field_data[3][1][0][4] = move_initiated_time + model._unrecognisedVisualSpatialFieldObjectLifespan
+      expected_visual_spatial_field_data[1][1][1][4] = pickup_time + model._unrecognisedVisualSpatialFieldObjectLifespan
+      expected_visual_spatial_field_data[2][1][0][4] = pickup_time + model._unrecognisedVisualSpatialFieldObjectLifespan
+      expected_visual_spatial_field_data[3][1][0][4] = pickup_time + model._unrecognisedVisualSpatialFieldObjectLifespan
       
       # Set terminus for VisualSpatialFieldObject representing an empty square 
       # on (3, 2)
-      expected_visual_spatial_field_data[3][2][0][4] = movement_time
+      expected_visual_spatial_field_data[3][2][0][4] = putdown_time
       
       # Add VisualSpatialFieldObject with identifier "1" to (3, 2)
       expected_visual_spatial_field_data[3][2].push([
         "1",
         "A",
         false,
-        expected_visual_spatial_field_data[2][0][1][3],
-        movement_time + model._unrecognisedVisualSpatialFieldObjectLifespan
+        putdown_time,
+        putdown_time + model._unrecognisedVisualSpatialFieldObjectLifespan
       ])
     
       # Termini of VisualSpatialFieldObjects on coordinates around (3, 2) within
       # fixation field of view should be refreshed.
-      expected_visual_spatial_field_data[2][1][0][4] = movement_time + model._unrecognisedVisualSpatialFieldObjectLifespan 
-      expected_visual_spatial_field_data[3][1][0][4] = movement_time + model._unrecognisedVisualSpatialFieldObjectLifespan 
-      expected_visual_spatial_field_data[2][2][0][4] = movement_time + model._recognisedVisualSpatialFieldObjectLifespan 
-      expected_visual_spatial_field_data[4][2][0][4] = movement_time + model._unrecognisedVisualSpatialFieldObjectLifespan
-      expected_visual_spatial_field_data[2][3][0][4] = movement_time + model._unrecognisedVisualSpatialFieldObjectLifespan
-      expected_visual_spatial_field_data[3][3][0][4] = movement_time + model._unrecognisedVisualSpatialFieldObjectLifespan
+      expected_visual_spatial_field_data[2][1][0][4] = putdown_time + model._unrecognisedVisualSpatialFieldObjectLifespan 
+      expected_visual_spatial_field_data[3][1][0][4] = putdown_time + model._unrecognisedVisualSpatialFieldObjectLifespan 
+      expected_visual_spatial_field_data[2][2][0][4] = putdown_time + model._recognisedVisualSpatialFieldObjectLifespan 
+      expected_visual_spatial_field_data[4][2][0][4] = putdown_time + model._unrecognisedVisualSpatialFieldObjectLifespan
+      expected_visual_spatial_field_data[2][3][0][4] = putdown_time + model._unrecognisedVisualSpatialFieldObjectLifespan
+      expected_visual_spatial_field_data[3][3][0][4] = putdown_time + model._unrecognisedVisualSpatialFieldObjectLifespan
     
       move_visual_spatial_field_object_test(
         model,
         move_sequence,
         time_move_requested,
-        true,
         expected_visual_spatial_field_data,
         expected_attention_clock,
-        movement_time,
+        putdown_time,
         scenario.to_s + ".2"
       )
       
@@ -8814,68 +6732,66 @@ process_test "move_visual_spatial_field_object" do
       
       # Set relevant time parameters
       time_move_requested = time
-      move_initiated_time = time_move_requested + model._timeToAccessVisualSpatialField
-      movement_time = move_initiated_time + model._timeToMoveVisualSpatialFieldObject
-      expected_attention_clock = movement_time
+      pickup_time = time_move_requested + model._timeToAccessVisualSpatialField
+      putdown_time = pickup_time + model._timeToMoveVisualSpatialFieldObject
+      expected_attention_clock = putdown_time
       
       # Set terminus for VisualSpatialFieldObject being moved on (1, 1)
-      expected_visual_spatial_field_data[1][1][0][4] = movement_time
+      expected_visual_spatial_field_data[1][1][0][4] = pickup_time
       
       # New VisualSpatialFieldObject representing an empty square should be 
-      # added to (1, 1) when VisualSpatialFieldObject being moved is moved.
+      # added to (1, 1) when VisualSpatialFieldObject being moved is picked up.
       expected_visual_spatial_field_data[1][1].push([
         nil,
         Scene.getEmptySquareToken(),
         false,
-        movement_time,
-        movement_time + model._unrecognisedVisualSpatialFieldObjectLifespan
+        pickup_time,
+        pickup_time + model._unrecognisedVisualSpatialFieldObjectLifespan
       ])
     
       # Refresh termini of VisualSpatialFieldObjects around (1, 1) that fall 
       # within fixation field of view.
-      if scenario == 15 then expected_visual_spatial_field_data[2][0][0][4] = move_initiated_time + model._unrecognisedVisualSpatialFieldObjectLifespan end
-      expected_visual_spatial_field_data[2][1][0][4] = move_initiated_time + model._unrecognisedVisualSpatialFieldObjectLifespan
-      expected_visual_spatial_field_data[0][2][0][4] = move_initiated_time + model._unrecognisedVisualSpatialFieldObjectLifespan
-      expected_visual_spatial_field_data[1][2][0][4] = move_initiated_time + model._unrecognisedVisualSpatialFieldObjectLifespan
-      expected_visual_spatial_field_data[2][2][0][4] = move_initiated_time + model._recognisedVisualSpatialFieldObjectLifespan
+      if scenario == 15 then expected_visual_spatial_field_data[2][0][0][4] = pickup_time + model._unrecognisedVisualSpatialFieldObjectLifespan end
+      expected_visual_spatial_field_data[2][1][0][4] = pickup_time + model._unrecognisedVisualSpatialFieldObjectLifespan
+      expected_visual_spatial_field_data[0][2][0][4] = pickup_time + model._unrecognisedVisualSpatialFieldObjectLifespan
+      expected_visual_spatial_field_data[1][2][0][4] = pickup_time + model._unrecognisedVisualSpatialFieldObjectLifespan
+      expected_visual_spatial_field_data[2][2][0][4] = pickup_time + model._recognisedVisualSpatialFieldObjectLifespan
       
-      # VisualSpatialFieldObject being moved should be added to (2, 2).  If the 
-      # VisualSpatialFieldObject being moved was previously recognised it will 
-      # now be unrecognised.  If the creator is being moved, its terminus should 
-      # not be set.
+      # VisualSpatialFieldObject being moved should be added to (2, 2)  at first 
+      # put down time.  If the VisualSpatialFieldObject being moved was 
+      # previously recognised it will now be unrecognised.
       expected_visual_spatial_field_data[2][2].push([
         "1",
         (scenario == 15 ? Scene.getCreatorToken() : "A"),
         false,
-        expected_visual_spatial_field_data[1][1][0][3],
-        (scenario == 15 ? nil : movement_time + model._unrecognisedVisualSpatialFieldObjectLifespan)
+        putdown_time,
+        putdown_time + model._unrecognisedVisualSpatialFieldObjectLifespan
       ])
     
       # Update terminus for VisualSpatialFieldObject with identifier "2" on 
       # (2, 2) since the coordinates have had attention focused on them and the 
       # VisualSpatialFieldObject is alive when the VisualSpatialFieldObject 
       # being moved is put down.
-      expected_visual_spatial_field_data[2][2][0][4] = movement_time + model._recognisedVisualSpatialFieldObjectLifespan
+      expected_visual_spatial_field_data[2][2][0][4] = putdown_time + model._recognisedVisualSpatialFieldObjectLifespan
       
       # Refresh termini of VisualSpatialFieldObjects around (2, 2) that fall 
       # within fixation field of view.
-      expected_visual_spatial_field_data[1][1][1][4] = movement_time + model._unrecognisedVisualSpatialFieldObjectLifespan
-      expected_visual_spatial_field_data[2][1][0][4] = movement_time + model._unrecognisedVisualSpatialFieldObjectLifespan
-      expected_visual_spatial_field_data[3][1][0][4] = movement_time + model._unrecognisedVisualSpatialFieldObjectLifespan
-      expected_visual_spatial_field_data[1][2][0][4] = movement_time + model._unrecognisedVisualSpatialFieldObjectLifespan
-      expected_visual_spatial_field_data[3][2][0][4] = movement_time + model._unrecognisedVisualSpatialFieldObjectLifespan
-      expected_visual_spatial_field_data[1][3][0][4] = movement_time + model._unrecognisedVisualSpatialFieldObjectLifespan
-      expected_visual_spatial_field_data[2][3][0][4] = movement_time + model._unrecognisedVisualSpatialFieldObjectLifespan
-      expected_visual_spatial_field_data[3][3][0][4] = movement_time + model._unrecognisedVisualSpatialFieldObjectLifespan
+      expected_visual_spatial_field_data[1][1][1][4] = putdown_time + model._unrecognisedVisualSpatialFieldObjectLifespan
+      expected_visual_spatial_field_data[2][1][0][4] = putdown_time + model._unrecognisedVisualSpatialFieldObjectLifespan
+      expected_visual_spatial_field_data[3][1][0][4] = putdown_time + model._unrecognisedVisualSpatialFieldObjectLifespan
+      expected_visual_spatial_field_data[1][2][0][4] = putdown_time + model._unrecognisedVisualSpatialFieldObjectLifespan
+      expected_visual_spatial_field_data[3][2][0][4] = putdown_time + model._unrecognisedVisualSpatialFieldObjectLifespan
+      expected_visual_spatial_field_data[1][3][0][4] = putdown_time + model._unrecognisedVisualSpatialFieldObjectLifespan
+      expected_visual_spatial_field_data[2][3][0][4] = putdown_time + model._unrecognisedVisualSpatialFieldObjectLifespan
+      expected_visual_spatial_field_data[3][3][0][4] = putdown_time + model._unrecognisedVisualSpatialFieldObjectLifespan
       
       move_visual_spatial_field_object_test(
         model,
         move_sequence,
         time_move_requested,
-        true,
         expected_visual_spatial_field_data,
         expected_attention_clock,
-        movement_time,
+        putdown_time,
         scenario.to_s + ".1"
       )
       
@@ -8887,17 +6803,17 @@ process_test "move_visual_spatial_field_object" do
         # Make VisualSpatialFieldObject with identifier "1" recognised again.  
         # Since the recognised history of a VisualSpatialFieldObject is a 
         # HistoryTreeMap and VisualSpatialFieldObject with identifier "1"s 
-        # recognised status is updated at the current value of "movement_time", its
+        # recognised status is updated at the current value of "putdown_time", its
         # not possible to overwrite this entry.  Best solution currently is to add
         # an entry just after the previous one stating that the 
         # VisualSpatialFieldObject is recognised.
-        rec_history = recognised_history_field.value(vsf.get(2).get(2).lastEntry().getValue().get(1))
-        rec_history.put((movement_time + 1).to_java(:int), true)
+        rec_history = recognised_history_field.value(vsf.get(2).get(2).get(1))
+        rec_history.put(putdown_time + 1, true)
       
         # Update recognised status and terminus of VisualSpatialFieldObject with 
         # identifier "1" on (2, 2)
         expected_visual_spatial_field_data[2][2][1][2] = true
-        expected_visual_spatial_field_data[2][2][1][4] = movement_time + model._recognisedVisualSpatialFieldObjectLifespan
+        expected_visual_spatial_field_data[2][2][1][4] = putdown_time + model._recognisedVisualSpatialFieldObjectLifespan
       end
       
       # Construct move
@@ -8908,60 +6824,58 @@ process_test "move_visual_spatial_field_object" do
       move_sequence.add(move)
       
       # Set relevant timing parameters
-      time_move_requested = movement_time + 1
-      move_initiated_time = time_move_requested + model._timeToAccessVisualSpatialField
-      movement_time = move_initiated_time + model._timeToMoveVisualSpatialFieldObject
-      expected_attention_clock = movement_time
+      time_move_requested = putdown_time + 1
+      pickup_time = time_move_requested + model._timeToAccessVisualSpatialField
+      putdown_time = pickup_time + model._timeToMoveVisualSpatialFieldObject
+      expected_attention_clock = putdown_time
       
       # Set terminus for VisualSpatialFieldObject being moved on (2, 2)
-      expected_visual_spatial_field_data[2][2][1][4] = movement_time
+      expected_visual_spatial_field_data[2][2][1][4] = pickup_time
       
       # Refresh terminus for VisualSpatialFieldObject with identifier "2" on 
       # (2, 2)
-      expected_visual_spatial_field_data[2][2][0][4] = move_initiated_time + model._recognisedVisualSpatialFieldObjectLifespan
+      expected_visual_spatial_field_data[2][2][0][4] = pickup_time + model._recognisedVisualSpatialFieldObjectLifespan
       
       # Refresh termini of VisualSpatialFieldObjects around (2, 2) that fall 
       # within fixation field of view.
-      expected_visual_spatial_field_data[1][1][1][4] = move_initiated_time + model._unrecognisedVisualSpatialFieldObjectLifespan
-      expected_visual_spatial_field_data[2][1][0][4] = move_initiated_time + model._unrecognisedVisualSpatialFieldObjectLifespan
-      expected_visual_spatial_field_data[3][1][0][4] = move_initiated_time + model._unrecognisedVisualSpatialFieldObjectLifespan
-      expected_visual_spatial_field_data[1][2][0][4] = move_initiated_time + model._unrecognisedVisualSpatialFieldObjectLifespan
-      expected_visual_spatial_field_data[3][2][0][4] = move_initiated_time + model._unrecognisedVisualSpatialFieldObjectLifespan
-      expected_visual_spatial_field_data[1][3][0][4] = move_initiated_time + model._unrecognisedVisualSpatialFieldObjectLifespan
-      expected_visual_spatial_field_data[2][3][0][4] = move_initiated_time + model._unrecognisedVisualSpatialFieldObjectLifespan
-      expected_visual_spatial_field_data[3][3][0][4] = move_initiated_time + model._unrecognisedVisualSpatialFieldObjectLifespan
+      expected_visual_spatial_field_data[1][1][1][4] = pickup_time + model._unrecognisedVisualSpatialFieldObjectLifespan
+      expected_visual_spatial_field_data[2][1][0][4] = pickup_time + model._unrecognisedVisualSpatialFieldObjectLifespan
+      expected_visual_spatial_field_data[3][1][0][4] = pickup_time + model._unrecognisedVisualSpatialFieldObjectLifespan
+      expected_visual_spatial_field_data[1][2][0][4] = pickup_time + model._unrecognisedVisualSpatialFieldObjectLifespan
+      expected_visual_spatial_field_data[3][2][0][4] = pickup_time + model._unrecognisedVisualSpatialFieldObjectLifespan
+      expected_visual_spatial_field_data[1][3][0][4] = pickup_time + model._unrecognisedVisualSpatialFieldObjectLifespan
+      expected_visual_spatial_field_data[2][3][0][4] = pickup_time + model._unrecognisedVisualSpatialFieldObjectLifespan
+      expected_visual_spatial_field_data[3][3][0][4] = pickup_time + model._unrecognisedVisualSpatialFieldObjectLifespan
       
       # Set terminus for VisualSpatialFieldObject representing an empty square 
       # on (3, 2)
-      expected_visual_spatial_field_data[3][2][0][4] = movement_time
+      expected_visual_spatial_field_data[3][2][0][4] = putdown_time
       
-      # Add VisualSpatialFieldObject being moved to (3, 2).  If the creator is
-      # being moved, its terminus should not be set.
+      # Add VisualSpatialFieldObject being moved to (3, 2)
       expected_visual_spatial_field_data[3][2].push([
         "1",
         (scenario == 15 ? Scene.getCreatorToken() : "A"),
         false,
-        expected_visual_spatial_field_data[2][2][1][3],
-        (scenario == 15 ? nil : movement_time + model._unrecognisedVisualSpatialFieldObjectLifespan)
+        putdown_time,
+        putdown_time + model._unrecognisedVisualSpatialFieldObjectLifespan
       ])
     
       # Refresh termini of VisualSpatialFieldObjects around (3, 2) that fall 
       # within fixation field of view.
-      expected_visual_spatial_field_data[2][1][0][4] = movement_time + model._unrecognisedVisualSpatialFieldObjectLifespan
-      expected_visual_spatial_field_data[3][1][0][4] = movement_time + model._unrecognisedVisualSpatialFieldObjectLifespan
-      expected_visual_spatial_field_data[2][2][0][4] = movement_time + model._recognisedVisualSpatialFieldObjectLifespan
-      expected_visual_spatial_field_data[4][2][0][4] = movement_time + model._unrecognisedVisualSpatialFieldObjectLifespan
-      expected_visual_spatial_field_data[2][3][0][4] = movement_time + model._unrecognisedVisualSpatialFieldObjectLifespan
-      expected_visual_spatial_field_data[3][3][0][4] = movement_time + model._unrecognisedVisualSpatialFieldObjectLifespan
+      expected_visual_spatial_field_data[2][1][0][4] = putdown_time + model._unrecognisedVisualSpatialFieldObjectLifespan
+      expected_visual_spatial_field_data[3][1][0][4] = putdown_time + model._unrecognisedVisualSpatialFieldObjectLifespan
+      expected_visual_spatial_field_data[2][2][0][4] = putdown_time + model._recognisedVisualSpatialFieldObjectLifespan
+      expected_visual_spatial_field_data[4][2][0][4] = putdown_time + model._unrecognisedVisualSpatialFieldObjectLifespan
+      expected_visual_spatial_field_data[2][3][0][4] = putdown_time + model._unrecognisedVisualSpatialFieldObjectLifespan
+      expected_visual_spatial_field_data[3][3][0][4] = putdown_time + model._unrecognisedVisualSpatialFieldObjectLifespan
       
       move_visual_spatial_field_object_test(
         model,
         move_sequence,
         time_move_requested,
-        true,
         expected_visual_spatial_field_data,
         expected_attention_clock,
-        movement_time,
+        putdown_time,
         scenario.to_s + ".2"
       )
     
@@ -9072,65 +6986,63 @@ process_test "move_visual_spatial_field_object" do
       
       # Set relevant time parameters
       time_move_requested = time
-      move_initiated_time = time_move_requested + model._timeToAccessVisualSpatialField
-      movement_time = move_initiated_time + model._timeToMoveVisualSpatialFieldObject
-      expected_attention_clock = movement_time
+      pickup_time = time_move_requested + model._timeToAccessVisualSpatialField
+      putdown_time = pickup_time + model._timeToMoveVisualSpatialFieldObject
+      expected_attention_clock = putdown_time
       
       # Set terminus for VisualSpatialFieldObject being moved on (1, 1)
-      expected_visual_spatial_field_data[1][1][0][4] = movement_time
+      expected_visual_spatial_field_data[1][1][0][4] = pickup_time
       
       # New VisualSpatialFieldObject representing an empty square should be 
-      # added to (1, 1) when VisualSpatialFieldObject being moved is moved.
+      # added to (1, 1) when VisualSpatialFieldObject being moved is picked up.
       expected_visual_spatial_field_data[1][1].push([
         nil,
         Scene.getEmptySquareToken(),
         false,
-        movement_time,
-        movement_time + model._unrecognisedVisualSpatialFieldObjectLifespan
+        pickup_time,
+        pickup_time + model._unrecognisedVisualSpatialFieldObjectLifespan
       ])
     
       # Refresh termini of VisualSpatialFieldObjects on coordinates around 
       # (1, 1) that fall within the fixation field of view.
-      if scenario == 16 then expected_visual_spatial_field_data[2][0][0][4] = move_initiated_time + model._unrecognisedVisualSpatialFieldObjectLifespan end
-      expected_visual_spatial_field_data[2][1][0][4] = move_initiated_time + model._unrecognisedVisualSpatialFieldObjectLifespan
-      expected_visual_spatial_field_data[0][2][0][4] = move_initiated_time + model._unrecognisedVisualSpatialFieldObjectLifespan
-      expected_visual_spatial_field_data[1][2][0][4] = move_initiated_time + model._unrecognisedVisualSpatialFieldObjectLifespan
-      expected_visual_spatial_field_data[2][2][0][4] = move_initiated_time + model._recognisedVisualSpatialFieldObjectLifespan
+      if scenario == 16 then expected_visual_spatial_field_data[2][0][0][4] = pickup_time + model._unrecognisedVisualSpatialFieldObjectLifespan end
+      expected_visual_spatial_field_data[2][1][0][4] = pickup_time + model._unrecognisedVisualSpatialFieldObjectLifespan
+      expected_visual_spatial_field_data[0][2][0][4] = pickup_time + model._unrecognisedVisualSpatialFieldObjectLifespan
+      expected_visual_spatial_field_data[1][2][0][4] = pickup_time + model._unrecognisedVisualSpatialFieldObjectLifespan
+      expected_visual_spatial_field_data[2][2][0][4] = pickup_time + model._recognisedVisualSpatialFieldObjectLifespan
       
       # VisualSpatialFieldObject being moved should be added to (1, 3) at first 
       # put down time.  If the VisualSpatialFieldObject being moved was 
-      # previously recognised, it should now be unrecognised.  If the creator is
-      # being moved, its terminus should not be set.
+      # previously recognised, it should now be unrecognised.
       expected_visual_spatial_field_data[1][3].push([
         "1",
         (scenario == 16 ? Scene.getCreatorToken() : "A"),
         false,
-        expected_visual_spatial_field_data[1][1][0][3],
-        (scenario == 16 ? nil : movement_time + model._unrecognisedVisualSpatialFieldObjectLifespan)
+        putdown_time,
+        putdown_time + model._unrecognisedVisualSpatialFieldObjectLifespan
       ])
     
       # Update terminus for VisualSpatialFieldObject with identifier "3" on 
       # (1, 3) since the coordinates have had attention focused on them and the 
       # VisualSpatialFieldObject is alive when the VisualSpatialFieldObject 
       # being moved is put down.
-      expected_visual_spatial_field_data[1][3][0][4] = movement_time + model._unrecognisedVisualSpatialFieldObjectLifespan
+      expected_visual_spatial_field_data[1][3][0][4] = putdown_time + model._unrecognisedVisualSpatialFieldObjectLifespan
       
       # Refresh termini of VisualSpatialFieldObjects on coordinates around 
       # (1, 3) that fall within the fixation field of view.
-      expected_visual_spatial_field_data[0][2][0][4] = movement_time + model._unrecognisedVisualSpatialFieldObjectLifespan
-      expected_visual_spatial_field_data[1][2][0][4] = movement_time + model._unrecognisedVisualSpatialFieldObjectLifespan
-      expected_visual_spatial_field_data[2][2][0][4] = movement_time + model._recognisedVisualSpatialFieldObjectLifespan
-      expected_visual_spatial_field_data[2][3][0][4] = movement_time + model._unrecognisedVisualSpatialFieldObjectLifespan
-      expected_visual_spatial_field_data[2][4][0][4] = movement_time + model._unrecognisedVisualSpatialFieldObjectLifespan
+      expected_visual_spatial_field_data[0][2][0][4] = putdown_time + model._unrecognisedVisualSpatialFieldObjectLifespan
+      expected_visual_spatial_field_data[1][2][0][4] = putdown_time + model._unrecognisedVisualSpatialFieldObjectLifespan
+      expected_visual_spatial_field_data[2][2][0][4] = putdown_time + model._recognisedVisualSpatialFieldObjectLifespan
+      expected_visual_spatial_field_data[2][3][0][4] = putdown_time + model._unrecognisedVisualSpatialFieldObjectLifespan
+      expected_visual_spatial_field_data[2][4][0][4] = putdown_time + model._unrecognisedVisualSpatialFieldObjectLifespan
       
       move_visual_spatial_field_object_test(
         model,
         move_sequence,
         time_move_requested,
-        true,
         expected_visual_spatial_field_data,
         expected_attention_clock,
-        movement_time,
+        putdown_time,
         scenario.to_s + ".1"
       )
       
@@ -9142,17 +7054,17 @@ process_test "move_visual_spatial_field_object" do
         # Make VisualSpatialFieldObject with identifier "1" recognised again.  
         # Since the recognised history of a VisualSpatialFieldObject is a 
         # HistoryTreeMap and VisualSpatialFieldObject with identifier "1"s 
-        # recognised status is updated at the current value of "movement_time", its
+        # recognised status is updated at the current value of "putdown_time", its
         # not possible to overwrite this entry.  Best solution currently is to add
         # an entry just after the previous one stating that the 
         # VisualSpatialFieldObject is recognised.
-        rec_history = recognised_history_field.value(vsf.get(1).get(3).lastEntry().getValue().get(1))
-        rec_history.put((movement_time + 1).to_java(:int), true)
+        rec_history = recognised_history_field.value(vsf.get(1).get(3).get(1))
+        rec_history.put(putdown_time + 1, true)
 
         # Update recognised status and terminus of VisualSpatialFieldObject with 
         # identifier "1" on (1, 3)
         expected_visual_spatial_field_data[1][3][1][2] = true
-        expected_visual_spatial_field_data[1][3][1][4] = movement_time + model._recognisedVisualSpatialFieldObjectLifespan
+        expected_visual_spatial_field_data[1][3][1][4] = putdown_time + model._recognisedVisualSpatialFieldObjectLifespan
       end
       
       # Construct move
@@ -9163,57 +7075,55 @@ process_test "move_visual_spatial_field_object" do
       move_sequence.add(move)
       
       # Set relevant timing parameters
-      time_move_requested = movement_time + 1
-      move_initiated_time = time_move_requested + model._timeToAccessVisualSpatialField
-      movement_time = move_initiated_time + model._timeToMoveVisualSpatialFieldObject
-      expected_attention_clock = movement_time
+      time_move_requested = putdown_time + 1
+      pickup_time = time_move_requested + model._timeToAccessVisualSpatialField
+      putdown_time = pickup_time + model._timeToMoveVisualSpatialFieldObject
+      expected_attention_clock = putdown_time
       
       # Set terminus for VisualSpatialFieldObject being moved on (1, 3)
-      expected_visual_spatial_field_data[1][3][1][4] = movement_time
+      expected_visual_spatial_field_data[1][3][1][4] = pickup_time
       
       # Refresh terminus for VisualSpatialFieldObject with identifier "3" on 
       # (1, 3)
-      expected_visual_spatial_field_data[1][3][0][4] = move_initiated_time + model._unrecognisedVisualSpatialFieldObjectLifespan
+      expected_visual_spatial_field_data[1][3][0][4] = pickup_time + model._unrecognisedVisualSpatialFieldObjectLifespan
       
       # Refresh termini of VisualSpatialFieldObjects on coordinates around 
       # (1, 3) that fall within the fixation field of view.
-      expected_visual_spatial_field_data[0][2][0][4] = move_initiated_time + model._unrecognisedVisualSpatialFieldObjectLifespan
-      expected_visual_spatial_field_data[1][2][0][4] = move_initiated_time + model._unrecognisedVisualSpatialFieldObjectLifespan
-      expected_visual_spatial_field_data[2][2][0][4] = move_initiated_time + model._recognisedVisualSpatialFieldObjectLifespan
-      expected_visual_spatial_field_data[2][3][0][4] = move_initiated_time + model._unrecognisedVisualSpatialFieldObjectLifespan
-      expected_visual_spatial_field_data[2][4][0][4] = move_initiated_time + model._unrecognisedVisualSpatialFieldObjectLifespan
+      expected_visual_spatial_field_data[0][2][0][4] = pickup_time + model._unrecognisedVisualSpatialFieldObjectLifespan
+      expected_visual_spatial_field_data[1][2][0][4] = pickup_time + model._unrecognisedVisualSpatialFieldObjectLifespan
+      expected_visual_spatial_field_data[2][2][0][4] = pickup_time + model._recognisedVisualSpatialFieldObjectLifespan
+      expected_visual_spatial_field_data[2][3][0][4] = pickup_time + model._unrecognisedVisualSpatialFieldObjectLifespan
+      expected_visual_spatial_field_data[2][4][0][4] = pickup_time + model._unrecognisedVisualSpatialFieldObjectLifespan
       
       # Set terminus for VisualSpatialFieldObject that represents an empty 
       # square object on (3, 2)
-      expected_visual_spatial_field_data[3][2][0][4] = movement_time
+      expected_visual_spatial_field_data[3][2][0][4] = putdown_time
       
-      # Add VisualSpatialFieldObject being moved to (3, 2).  If the creator is
-      # being moved, its terminus should not be set.
+      # Add VisualSpatialFieldObject being moved to (3, 2)
       expected_visual_spatial_field_data[3][2].push([
         "1",
         (scenario == 16 ? Scene.getCreatorToken() : "A"),
         false,
-        expected_visual_spatial_field_data[1][3][1][3],
-        (scenario == 16 ? nil : movement_time + model._unrecognisedVisualSpatialFieldObjectLifespan)
+        putdown_time,
+        putdown_time + model._unrecognisedVisualSpatialFieldObjectLifespan
       ])
     
       # Refresh termini of VisualSpatialFieldObjects on coordinates around 
       # (3, 2) that fall within the fixation field of view.
-      expected_visual_spatial_field_data[2][1][0][4] = movement_time + model._unrecognisedVisualSpatialFieldObjectLifespan
-      expected_visual_spatial_field_data[3][1][0][4] = movement_time + model._unrecognisedVisualSpatialFieldObjectLifespan
-      expected_visual_spatial_field_data[2][2][0][4] = movement_time + model._recognisedVisualSpatialFieldObjectLifespan
-      expected_visual_spatial_field_data[4][2][0][4] = movement_time + model._unrecognisedVisualSpatialFieldObjectLifespan
-      expected_visual_spatial_field_data[2][3][0][4] = movement_time + model._unrecognisedVisualSpatialFieldObjectLifespan
-      expected_visual_spatial_field_data[3][3][0][4] = movement_time + model._unrecognisedVisualSpatialFieldObjectLifespan
+      expected_visual_spatial_field_data[2][1][0][4] = putdown_time + model._unrecognisedVisualSpatialFieldObjectLifespan
+      expected_visual_spatial_field_data[3][1][0][4] = putdown_time + model._unrecognisedVisualSpatialFieldObjectLifespan
+      expected_visual_spatial_field_data[2][2][0][4] = putdown_time + model._recognisedVisualSpatialFieldObjectLifespan
+      expected_visual_spatial_field_data[4][2][0][4] = putdown_time + model._unrecognisedVisualSpatialFieldObjectLifespan
+      expected_visual_spatial_field_data[2][3][0][4] = putdown_time + model._unrecognisedVisualSpatialFieldObjectLifespan
+      expected_visual_spatial_field_data[3][3][0][4] = putdown_time + model._unrecognisedVisualSpatialFieldObjectLifespan
       
       move_visual_spatial_field_object_test(
         model,
         move_sequence,
         time_move_requested,
-        true,
         expected_visual_spatial_field_data,
         expected_attention_clock,
-        movement_time,
+        putdown_time,
         scenario.to_s + ".2"
       )
       
@@ -9291,11 +7201,11 @@ process_test "move_visual_spatial_field_object" do
       
       # Set relevant time parameters
       time_move_requested = time
-      move_initiated_time = time_move_requested + model._timeToAccessVisualSpatialField
-      movement_time = move_initiated_time + model._timeToMoveVisualSpatialFieldObject
+      pickup_time = time_move_requested + model._timeToAccessVisualSpatialField
+      putdown_time = pickup_time + model._timeToMoveVisualSpatialFieldObject
       
       # Set terminus for VisualSpatialFieldObject being moved on (1, 1)
-      expected_visual_spatial_field_data[1][1][0][4] = movement_time
+      expected_visual_spatial_field_data[1][1][0][4] = pickup_time
       
       # New VisualSpatialFieldObject representing an empty square should be 
       # added to (1, 1) when VisualSpatialFieldObject being moved is picked up.
@@ -9303,31 +7213,31 @@ process_test "move_visual_spatial_field_object" do
         nil,
         Scene.getEmptySquareToken(),
         false,
-        movement_time,
-        movement_time + model._unrecognisedVisualSpatialFieldObjectLifespan
+        pickup_time,
+        pickup_time + model._unrecognisedVisualSpatialFieldObjectLifespan
       ])
     
       # Refresh termini of VisualSpatialFieldObjects on coordinates around 
       # (1, 1) that fall within the fixation field of view.
-      if scenario == 17 then expected_visual_spatial_field_data[2][0][0][4] = move_initiated_time + model._unrecognisedVisualSpatialFieldObjectLifespan end
-      expected_visual_spatial_field_data[2][1][0][4] = move_initiated_time + model._unrecognisedVisualSpatialFieldObjectLifespan
-      expected_visual_spatial_field_data[0][2][0][4] = move_initiated_time + model._unrecognisedVisualSpatialFieldObjectLifespan
-      expected_visual_spatial_field_data[1][2][0][4] = move_initiated_time + model._unrecognisedVisualSpatialFieldObjectLifespan
-      expected_visual_spatial_field_data[2][2][0][4] = move_initiated_time + model._recognisedVisualSpatialFieldObjectLifespan
+      if scenario == 17 then expected_visual_spatial_field_data[2][0][0][4] = pickup_time + model._unrecognisedVisualSpatialFieldObjectLifespan end
+      expected_visual_spatial_field_data[2][1][0][4] = pickup_time + model._unrecognisedVisualSpatialFieldObjectLifespan
+      expected_visual_spatial_field_data[0][2][0][4] = pickup_time + model._unrecognisedVisualSpatialFieldObjectLifespan
+      expected_visual_spatial_field_data[1][2][0][4] = pickup_time + model._unrecognisedVisualSpatialFieldObjectLifespan
+      expected_visual_spatial_field_data[2][2][0][4] = pickup_time + model._recognisedVisualSpatialFieldObjectLifespan
       
       # Nothing should happen now since the coordinates moved to are outside of
-      # the coordinates represented by the VisualSpatialField.  
+      # the coordinates represented by the VisualSpatialField.
     
       #########################################################
       ### VisualSpatialFieldObject WITH IDENTIFIER "2" MOVE ###
       #########################################################
       
-      move_initiated_time = movement_time
-      movement_time = move_initiated_time + model._timeToMoveVisualSpatialFieldObject
-      expected_attention_clock = movement_time
+      pickup_time = putdown_time
+      putdown_time = pickup_time + model._timeToMoveVisualSpatialFieldObject
+      expected_attention_clock = putdown_time
       
       # Set terminus for VisualSpatialFieldObject being moved on (2, 2)
-      expected_visual_spatial_field_data[2][2][0][4] = movement_time
+      expected_visual_spatial_field_data[2][2][0][4] = pickup_time
       
       # VisualSpatialFieldObject representing empty square should be placed on
       # (2, 2) when VisualSpatialFieldObject being moved is picked up.
@@ -9335,20 +7245,20 @@ process_test "move_visual_spatial_field_object" do
         nil,
         Scene.getEmptySquareToken,
         false,
-        movement_time,
-        movement_time + model._unrecognisedVisualSpatialFieldObjectLifespan
+        pickup_time,
+        pickup_time + model._unrecognisedVisualSpatialFieldObjectLifespan
       ])
       
       # Refresh termini of VisualSpatialFieldObjects on coordinates around 
       # (2, 2) that fall within the fixation field of view.
-      expected_visual_spatial_field_data[1][1][1][4] = move_initiated_time + model._unrecognisedVisualSpatialFieldObjectLifespan
-      expected_visual_spatial_field_data[2][1][0][4] = move_initiated_time + model._unrecognisedVisualSpatialFieldObjectLifespan
-      expected_visual_spatial_field_data[3][1][0][4] = move_initiated_time + model._unrecognisedVisualSpatialFieldObjectLifespan
-      expected_visual_spatial_field_data[1][2][0][4] = move_initiated_time + model._unrecognisedVisualSpatialFieldObjectLifespan
-      expected_visual_spatial_field_data[3][2][0][4] = move_initiated_time + model._unrecognisedVisualSpatialFieldObjectLifespan
-      expected_visual_spatial_field_data[1][3][0][4] = move_initiated_time + model._unrecognisedVisualSpatialFieldObjectLifespan
-      expected_visual_spatial_field_data[2][3][0][4] = move_initiated_time + model._unrecognisedVisualSpatialFieldObjectLifespan
-      expected_visual_spatial_field_data[3][3][0][4] = move_initiated_time + model._unrecognisedVisualSpatialFieldObjectLifespan
+      expected_visual_spatial_field_data[1][1][1][4] = pickup_time + model._unrecognisedVisualSpatialFieldObjectLifespan
+      expected_visual_spatial_field_data[2][1][0][4] = pickup_time + model._unrecognisedVisualSpatialFieldObjectLifespan
+      expected_visual_spatial_field_data[3][1][0][4] = pickup_time + model._unrecognisedVisualSpatialFieldObjectLifespan
+      expected_visual_spatial_field_data[1][2][0][4] = pickup_time + model._unrecognisedVisualSpatialFieldObjectLifespan
+      expected_visual_spatial_field_data[3][2][0][4] = pickup_time + model._unrecognisedVisualSpatialFieldObjectLifespan
+      expected_visual_spatial_field_data[1][3][0][4] = pickup_time + model._unrecognisedVisualSpatialFieldObjectLifespan
+      expected_visual_spatial_field_data[2][3][0][4] = pickup_time + model._unrecognisedVisualSpatialFieldObjectLifespan
+      expected_visual_spatial_field_data[3][3][0][4] = pickup_time + model._unrecognisedVisualSpatialFieldObjectLifespan
       
       # Add the VisualSpatialFieldObject being moved to (3, 2).  It will now be
       # unrecognised.
@@ -9356,176 +7266,33 @@ process_test "move_visual_spatial_field_object" do
         "2",
         "B",
         false,
-        expected_visual_spatial_field_data[2][2][0][3],
-        movement_time + model._unrecognisedVisualSpatialFieldObjectLifespan
+        putdown_time,
+        putdown_time + model._unrecognisedVisualSpatialFieldObjectLifespan
       ])
     
       # Terminus of VisualSpatialFieldObject representing an empty square on
       # (3, 2) will be set.
-      expected_visual_spatial_field_data[3][2][0][4] = movement_time
+      expected_visual_spatial_field_data[3][2][0][4] = putdown_time
       
       # Refresh termini of VisualSpatialFieldObjects on coordinates around 
       # (3, 2) that fall within the fixation field of view.
-      expected_visual_spatial_field_data[2][1][0][4] = movement_time + model._unrecognisedVisualSpatialFieldObjectLifespan
-      expected_visual_spatial_field_data[3][1][0][4] = movement_time + model._unrecognisedVisualSpatialFieldObjectLifespan
-      expected_visual_spatial_field_data[2][2][1][4] = movement_time + model._unrecognisedVisualSpatialFieldObjectLifespan
-      expected_visual_spatial_field_data[4][2][0][4] = movement_time + model._unrecognisedVisualSpatialFieldObjectLifespan
-      expected_visual_spatial_field_data[2][3][0][4] = movement_time + model._unrecognisedVisualSpatialFieldObjectLifespan
-      expected_visual_spatial_field_data[3][3][0][4] = movement_time + model._unrecognisedVisualSpatialFieldObjectLifespan
+      expected_visual_spatial_field_data[2][1][0][4] = putdown_time + model._unrecognisedVisualSpatialFieldObjectLifespan
+      expected_visual_spatial_field_data[3][1][0][4] = putdown_time + model._unrecognisedVisualSpatialFieldObjectLifespan
+      expected_visual_spatial_field_data[2][2][1][4] = putdown_time + model._unrecognisedVisualSpatialFieldObjectLifespan
+      expected_visual_spatial_field_data[4][2][0][4] = putdown_time + model._unrecognisedVisualSpatialFieldObjectLifespan
+      expected_visual_spatial_field_data[2][3][0][4] = putdown_time + model._unrecognisedVisualSpatialFieldObjectLifespan
+      expected_visual_spatial_field_data[3][3][0][4] = putdown_time + model._unrecognisedVisualSpatialFieldObjectLifespan
       
       move_visual_spatial_field_object_test(
         model,
         move_sequence,
         time_move_requested,
-        true,
         expected_visual_spatial_field_data,
         expected_attention_clock,
-        movement_time,
-        scenario.to_s
-      )
-      
-    ############################################################################
-    # Tests that the time cost associated with accessing the visual-spatial 
-    # field is not incurred if specified.  Two moves are performed with the 
-    # creator from (1, 1) to (1, 2) and back again.  For the first move, the 
-    # time cost associated with accessing the visual-spatial field is incurred
-    # but is not for the second.  
-    elsif scenario == 18
-      
-      ####################################################
-      ##### CONSTRUCT AND PERFORM FIRST PART OF MOVE #####
-      ####################################################
-      
-      object_with_id_1_moves = ArrayList.new
-      object_with_id_1_moves.add(ItemSquarePattern.new("1", 1, 1))
-      object_with_id_1_moves.add(ItemSquarePattern.new("1", 1, 2))
-      
-      move_sequence = ArrayList.new
-      move_sequence.add(object_with_id_1_moves)
-      
-      # Set relevant time parameters
-      time_move_requested = time
-      move_initiated_time = time_move_requested + model._timeToAccessVisualSpatialField
-      movement_time = move_initiated_time + model._timeToMoveVisualSpatialFieldObject
-      expected_attention_clock = movement_time
-      
-      # Set terminus for VisualSpatialFieldObject being moved on (1, 1)
-      expected_visual_spatial_field_data[1][1][0][4] = movement_time
-      
-      # New VisualSpatialFieldObject representing an empty square should be 
-      # added to (1, 1) when VisualSpatialFieldObject being moved is picked up.
-      expected_visual_spatial_field_data[1][1].push([
-        nil,
-        Scene.getEmptySquareToken(),
-        false,
-        movement_time,
-        movement_time + model._unrecognisedVisualSpatialFieldObjectLifespan
-      ])
-    
-      # Refresh termini of VisualSpatialFieldObjects on coordinates around 
-      # (1, 1) that fall within the fixation field of view.
-      expected_visual_spatial_field_data[2][0][0][4] = move_initiated_time + model._unrecognisedVisualSpatialFieldObjectLifespan
-      expected_visual_spatial_field_data[2][1][0][4] = move_initiated_time + model._unrecognisedVisualSpatialFieldObjectLifespan
-      expected_visual_spatial_field_data[0][2][0][4] = move_initiated_time + model._unrecognisedVisualSpatialFieldObjectLifespan
-      expected_visual_spatial_field_data[1][2][0][4] = move_initiated_time + model._unrecognisedVisualSpatialFieldObjectLifespan
-      expected_visual_spatial_field_data[2][2][0][4] = move_initiated_time + model._recognisedVisualSpatialFieldObjectLifespan
-      
-      # VisualSpatialFieldObject being moved should be added to (1, 2)
-      expected_visual_spatial_field_data[1][2][0][4] = movement_time
-      
-      expected_visual_spatial_field_data[1][2].push([
-        "1",
-        Scene.getCreatorToken(),
-        false,
-        expected_visual_spatial_field_data[1][1][0][3],
-        nil
-      ])
-      
-      # Refresh termini of VisualSpatialFieldObjects on coordinates around 
-      # (1, 2) that fall within the fixation field of view.
-      expected_visual_spatial_field_data[2][1][0][4] = movement_time + model._unrecognisedVisualSpatialFieldObjectLifespan
-      expected_visual_spatial_field_data[0][2][0][4] = movement_time + model._unrecognisedVisualSpatialFieldObjectLifespan
-      expected_visual_spatial_field_data[2][2][0][4] = movement_time + model._recognisedVisualSpatialFieldObjectLifespan
-      expected_visual_spatial_field_data[1][3][0][4] = movement_time + model._unrecognisedVisualSpatialFieldObjectLifespan
-      expected_visual_spatial_field_data[2][3][0][4] = movement_time + model._unrecognisedVisualSpatialFieldObjectLifespan
-      
-      move_visual_spatial_field_object_test(
-        model,
-        move_sequence,
-        time_move_requested,
-        true,
-        expected_visual_spatial_field_data,
-        expected_attention_clock,
-        movement_time,
+        putdown_time,
         scenario.to_s + ".1"
       )
     
-      #################################################
-      ### CONSTRUCT AND PERFORM SECOND PART OF MOVE ###
-      #################################################
-      
-      object_with_id_2_moves = ArrayList.new
-      object_with_id_2_moves.add(ItemSquarePattern.new("1", 1, 2))
-      object_with_id_2_moves.add(ItemSquarePattern.new("1", 1, 1))
-      
-      move_sequence = ArrayList.new
-      move_sequence.add(object_with_id_2_moves)
-      
-      time_move_requested = movement_time
-      move_initiated_time = time_move_requested
-      movement_time = move_initiated_time + model._timeToMoveVisualSpatialFieldObject
-      expected_attention_clock = movement_time
-      
-      # Set terminus for VisualSpatialFieldObject being moved on (1, 2)
-      expected_visual_spatial_field_data[1][2][1][4] = movement_time
-      
-      # New VisualSpatialFieldObject representing an empty square should be 
-      # added to (1, 2) when VisualSpatialFieldObject being moved is picked up.
-      expected_visual_spatial_field_data[1][2].push([
-        nil,
-        Scene.getEmptySquareToken(),
-        false,
-        movement_time,
-        movement_time + model._unrecognisedVisualSpatialFieldObjectLifespan
-      ])
-
-      # Refresh termini of VisualSpatialFieldObjects on coordinates around 
-      # (1, 2) that fall within the fixation field of view.
-      expected_visual_spatial_field_data[2][1][0][4] = move_initiated_time + model._unrecognisedVisualSpatialFieldObjectLifespan
-      expected_visual_spatial_field_data[0][2][0][4] = move_initiated_time + model._unrecognisedVisualSpatialFieldObjectLifespan
-      expected_visual_spatial_field_data[2][2][0][4] = move_initiated_time + model._recognisedVisualSpatialFieldObjectLifespan
-      expected_visual_spatial_field_data[1][3][0][4] = move_initiated_time + model._unrecognisedVisualSpatialFieldObjectLifespan
-      expected_visual_spatial_field_data[2][3][0][4] = move_initiated_time + model._unrecognisedVisualSpatialFieldObjectLifespan
-      
-      # VisualSpatialFieldObject being moved should be added to (1, 1).
-      expected_visual_spatial_field_data[1][1][1][4] = movement_time
-      
-      expected_visual_spatial_field_data[1][1].push([
-        "1",
-        Scene.getCreatorToken(),
-        false,
-        expected_visual_spatial_field_data[1][2][1][3],
-        nil
-      ])
-      
-      # Refresh termini of VisualSpatialFieldObjects on coordinates around 
-      # (1, 1) that fall within the fixation field of view.
-      expected_visual_spatial_field_data[2][0][0][4] = movement_time + model._unrecognisedVisualSpatialFieldObjectLifespan
-      expected_visual_spatial_field_data[2][1][0][4] = movement_time + model._unrecognisedVisualSpatialFieldObjectLifespan
-      expected_visual_spatial_field_data[0][2][0][4] = movement_time + model._unrecognisedVisualSpatialFieldObjectLifespan
-      expected_visual_spatial_field_data[2][2][0][4] = movement_time + model._recognisedVisualSpatialFieldObjectLifespan
-      
-      move_visual_spatial_field_object_test(
-        model,
-        move_sequence,
-        time_move_requested,
-        false,
-        expected_visual_spatial_field_data,
-        expected_attention_clock,
-        movement_time,
-        scenario.to_s + ".2"
-      )
-      
     ############################################################################
     # Checks that an exception is thrown and the VisualSpatialField is reset 
     # correctly if a VisualSpatialFieldObject move sequence contains moves for 
@@ -9535,7 +7302,7 @@ process_test "move_visual_spatial_field_object" do
     # movement for the first VisualSpatialFieldObject will allow the test to
     # check that the VisualSpatialField is reverted to its state before any
     # moves were applied correctly.
-    elsif scenario == 19
+    elsif scenario == 18
       
       # Construct move
       object_with_id_1_moves = ArrayList.new
@@ -9585,7 +7352,7 @@ process_test "move_visual_spatial_field_object" do
     # for the first VisualSpatialFieldObject will allow the test to check that 
     # the VisualSpatialField is reverted to its state before any moves were 
     # applied correctly.
-    elsif scenario == 20
+    elsif scenario == 19
       
       # Construct move
       object_with_id_1_moves = ArrayList.new
@@ -9636,7 +7403,7 @@ process_test "move_visual_spatial_field_object" do
     # movement for the first VisualSpatialFieldObject will allow the test to
     # check that the VisualSpatialField is reverted to its state before any
     # moves were applied correctly.
-    elsif scenario == 21
+    elsif scenario == 20
       
       # Construct move
       object_with_id_1_moves = ArrayList.new
@@ -9689,21 +7456,12 @@ end
 ################################################################################
 ################################################################################
 
-def move_visual_spatial_field_object_test(
-  model, 
-  move_sequence, 
-  time_move_should_be_performed, 
-  incur_access_time_cost, 
-  expected_visual_spatial_field_data, 
-  expected_attention_clock, 
-  time_to_check_visual_spatial_field_at, 
-  scenario
-)
+def move_visual_spatial_field_object_test(model, move_sequence, time_move_should_be_performed, expected_visual_spatial_field_data, expected_attention_clock, time_to_check_visual_spatial_field_at, scenario)
   
   chrest_visual_spatial_fields_history = Chrest.java_class.declared_field("_visualSpatialFields")
   chrest_visual_spatial_fields_history.accessible = true
   
-  model.moveObjectsInVisualSpatialField(move_sequence, time_move_should_be_performed, incur_access_time_cost)
+  model.moveObjectsInVisualSpatialField(move_sequence, time_move_should_be_performed)
       
   check_visual_spatial_field_against_expected(
     chrest_visual_spatial_fields_history.value(model).floorEntry(time_to_check_visual_spatial_field_at.to_java(:int)).getValue(),

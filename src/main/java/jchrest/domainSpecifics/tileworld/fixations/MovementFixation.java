@@ -25,14 +25,11 @@ public class MovementFixation extends Fixation{
    * 
    * @param associatedModel The {@link jchrest.architecture.Chrest} model 
    * making {@link #this}.
-   * @param timeThatDecidingUponThisStarts The time (in milliseconds) that it 
-   * will be in the domain when {@link #this} starts to be decided upon.
-   * @param timeTakenToDecideUponThis The time (in milliseconds) that it takes 
-   * to decide upon the {@link jchrest.lib.Square} that {@link #this} will 
-   * fixate on after starting deliberation on it.
+   * @param timeDecidedUpon The time {@link #this} will be decided upon (in
+   * milliseconds).
    */
-  public MovementFixation(Chrest associatedModel, int timeThatDecidingUponThisStarts, int timeTakenToDecideUponThis) {
-    super(timeThatDecidingUponThisStarts, timeTakenToDecideUponThis);
+  public MovementFixation(Chrest associatedModel, int timeDecidedUpon) {
+    super(timeDecidedUpon);
     this._associatedModel = associatedModel;
   }
   
@@ -167,20 +164,16 @@ public class MovementFixation extends Fixation{
           }
           this._associatedModel.printDebugStatement("- Potential Fixations represented in Scene:\n" + potentialFixations);
 
-          //Remove any potential fixations on coordinates that are blind or the
-          //creator.
+          //Remove any potential fixations on coordinates that are blind.
           Iterator<Square> potentialFixationsIterator = potentialFixations.iterator();
           while(potentialFixationsIterator.hasNext()){
             Square potentialFixation = potentialFixationsIterator.next();
             String objectType = scene.getSquareContents(potentialFixation.getColumn(), potentialFixation.getRow()).getObjectType();
-            if(objectType.equals(Scene.getBlindSquareToken()) || objectType.equals(Scene.CREATOR_TOKEN)){
+            if(objectType.equals(Scene.getBlindSquareToken())){
               potentialFixationsIterator.remove();
             }
           }
-          this._associatedModel.printDebugStatement(
-            "- Potential Fixations after removing fixations on blind squares " +
-            "and squares containing the creator:\n" + potentialFixations
-          );
+          this._associatedModel.printDebugStatement("- Potential Fixations after removing blind squares:\n" + potentialFixations);
 
           //Check if there any potential fixations, if there are, select one at
           //random with equal probability.

@@ -13,7 +13,6 @@ java_import "java.awt.Color"
 java_import "java.util.List"
 java_import "java.util.ArrayList"
 java_import "java.util.HashMap"
-java_import "java.util.LinkedHashMap"
 java_import "java.util.TreeMap"
 
 # Import all CHREST package classes.
@@ -92,7 +91,7 @@ end
   "PrimitivePattern",
   "ReinforcementLearning",
   "Square",
-  "ChrestStatus",
+  "Status",
   "StringPattern",
   "VisualSpatialFieldObject"
 ].each do |klass|

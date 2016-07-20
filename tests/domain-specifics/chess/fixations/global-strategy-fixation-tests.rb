@@ -14,7 +14,7 @@ unit_test "constructor" do
   model = Chrest.new(time += 50, false)
   
   time + 50
-  fixation = GlobalStrategyFixation.new(model, time, 150)
+  fixation = GlobalStrategyFixation.new(model, time)
   
   #################
   ##### TESTS #####
@@ -223,7 +223,7 @@ unit_test "make" do
 
         #Add fixations to add to relevant array
         for square_to_fixate_on in squares_to_fixate_on
-          fixation = CentralFixation.new(time += 10, 0)
+          fixation = CentralFixation.new(time += 10)
           fixation.setPerformanceTime(fixation.getTimeDecidedUpon() + 10)
           time = fixation.getPerformanceTime
 
@@ -238,7 +238,7 @@ unit_test "make" do
       ############################################
       ##### CONSTRUCT GlobalStrategyFixation #####
       ############################################
-      global_strategy_fixation = GlobalStrategyFixation.new(model, time, 150)
+      global_strategy_fixation = GlobalStrategyFixation.new(model, time)
       global_strategy_fixation.setPerformanceTime(global_strategy_fixation.getTimeDecidedUpon() + 50)
       time = global_strategy_fixation.getPerformanceTime()
       

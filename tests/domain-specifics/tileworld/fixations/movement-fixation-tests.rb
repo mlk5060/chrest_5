@@ -5,7 +5,7 @@ unit_test "constructor" do
   time = 0
   model = Chrest.new(time, true)
   time_decided_upon = (time += 100)
-  fixation = MovementFixation.new(model, time_decided_upon, 0)
+  fixation = MovementFixation.new(model, time_decided_upon)
   
   assert_equal(model, fixation._associatedModel)
   assert_equal(time_decided_upon, fixation._timeDecidedUpon)
@@ -99,8 +99,7 @@ end
 #   ~ SceneObject on coordinates previously fixated on contains a moveable 
 #     SceneObject.
 #     + Should only be able to move to 1 Square, other squares occupied by 
-#       blind Squares (tests that blind Squares and squares containing the 
-#       creator are not proposed as Fixations).
+#       blind Squares (tests that blind Squares are not proposed as Fixations).
 #       
 # - Scenario n + 1
 #   ~ Fixation made at time when Fixation is to be performed
@@ -402,14 +401,14 @@ unit_test "make" do
       if scenario != 2
         perceiver_fixations = ArrayList.new()
         perceiver_fixations.add(previous_fixation)
-        perceiver_fixations_field.value(chrest_perceiver_field.value(model)).put(previous_fixation._performanceTime.to_java(:int), perceiver_fixations)
+        perceiver_fixations_field.value(chrest_perceiver_field.value(model)).put(previous_fixation._performanceTime, perceiver_fixations)
       end
 
       ######################################
       ##### CONSTRUCT MovementFixation #####
       ######################################
 
-      fixation = MovementFixation.new(model, time, 0)
+      fixation = MovementFixation.new(model, time)
       fixation._performanceTime = fixation._timeDecidedUpon + model._saccadeTime
 
       #########################################################
@@ -429,7 +428,7 @@ unit_test "make" do
       ###############################
 
       expected_result = nil
-      if [19].include?(scenario)
+      if [9,14,19].include?(scenario)
         expected_result = [Square.new(1,0)]
       elsif [10,15,20].include?(scenario)
         expected_result = [Square.new(1,2), Square.new(2,1)]

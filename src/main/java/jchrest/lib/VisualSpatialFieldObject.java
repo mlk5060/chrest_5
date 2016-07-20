@@ -2,7 +2,6 @@ package jchrest.lib;
 
 import jchrest.architecture.VisualSpatialField;
 import java.util.Map.Entry;
-import java.util.TreeMap;
 import jchrest.architecture.Chrest;
 import jchrest.domainSpecifics.Scene;
 import jchrest.domainSpecifics.SceneObject;
@@ -29,7 +28,7 @@ public class VisualSpatialFieldObject extends SceneObject{
   
   //Maintains a history of the object's "recognised state" so that its 
   //recognised status at any time can be determined.
-  private final TreeMap<Integer, Boolean> _recognisedHistory = new TreeMap<>();
+  private final HistoryTreeMap _recognisedHistory = new HistoryTreeMap();
   
   private Integer _terminus;
   private int _timeCreated;
@@ -201,17 +200,15 @@ public class VisualSpatialFieldObject extends SceneObject{
       this._associatedModel,
       this._associatedVisualSpatialField, 
       this._timeCreated, 
-      this._recognisedHistory.get(this._timeCreated),
+      (boolean)this._recognisedHistory.get(this._timeCreated),
       false
     );
     
     clone._terminus = this._terminus;
     
     //Build the clone's "Recognised Status" history.
-    for(Entry<Integer, Boolean> history : this._recognisedHistory.entrySet()){
-      if(!clone._recognisedHistory.containsKey(history.getKey())){
-        clone._recognisedHistory.put(history.getKey(), history.getValue());
-      }
+    for(Entry<Integer, Object> history : this._recognisedHistory.entrySet()){
+      clone._recognisedHistory.put(history.getKey(), (boolean)history.getValue());
     }
     
     return clone;

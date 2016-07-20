@@ -1,7 +1,7 @@
 unit_test "constructor" do
   AheadOfAgentFixation.class_eval{ field_accessor :_timeDecidedUpon }
   time_decided_upon = 200
-  fixation = AheadOfAgentFixation.new(time_decided_upon, 0)
+  fixation = AheadOfAgentFixation.new(time_decided_upon)
   
   assert_equal(fixation._timeDecidedUpon, time_decided_upon)
 end
@@ -68,7 +68,7 @@ unit_test "make" do
     ###################################################################
     
     time = 0
-    fixation = AheadOfAgentFixation.new(time, 0)
+    fixation = AheadOfAgentFixation.new(time)
     fixation._performanceTime = (time += 50)
     
     ####################################################

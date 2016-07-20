@@ -11,14 +11,9 @@ JSOUP = 'org.jsoup:jsoup:jar:1.8.2'
 REFLECTIONS = transitive('org.reflections:reflections:jar:0.9.10')
 STATISTICS = 'org.apache.commons:commons-math:jar:2.2'
 
-# Contains genetic algorithms like the "Roulette Wheel Selection" algorithm
-# that is used when CHREST is asked to generate an action using visual
-# pattern recognition.
-WATCHMAKER_FRAMEWORK = 'org.uncommons.watchmaker:watchmaker-framework:jar:0.7.1' 
-
 define 'chrest' do
   project.version = VERSION
-  compile.with(H2DATABASE, JCOMMON, JFREECHART, JSOUP, REFLECTIONS, STATISTICS, WATCHMAKER_FRAMEWORK)
+  compile.with(H2DATABASE, JCOMMON, JFREECHART, JSOUP, REFLECTIONS, STATISTICS)
   package(:jar).with(
     :manifest=>{'Main-Class'=>'jchrest.gui.Shell'}
   ).merge(

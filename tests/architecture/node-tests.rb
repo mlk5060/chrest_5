@@ -722,6 +722,18 @@ process_test "image functionality" do
     ])
   end
   
+  # Try to rewrite the image history of the node by passing Node.setImage() and 
+  # Node.extendImage() a valid image, but invoking the functions at a time after 
+  # the node was created but before and on the time the image was set and 
+  # extended above.
+  another_valid_image = Pattern.makeVisualList(["another_valid_image"].to_java(:String))
+  
+  set_image.invoke(node, another_valid_image, new_image_set_at_time - 1)
+  set_image.invoke(node, another_valid_image, new_image_set_at_time)
+  
+  rewrite_history_1 = node.extendImage(another_valid_image, extend_image_at_valid_time - 1)
+  rewrite_history_2 = node.extendImage(another_valid_image, extend_image_at_valid_time)
+  
   #############
   ### TESTS ###
   #############
@@ -761,6 +773,8 @@ process_test "image functionality" do
   assert_false(invalid_image_extension_invalid_time_result, "occurred when attempting to extend a Node's image with an invalid ListPattern at an invalid time")
   assert_false(invalid_image_extension_valid_time_result, "occurred when attempting to extend a Node's image with an invalid ListPattern at a valid time")
   assert_false(valid_image_extension_invalid_time_result, "occurred when attempting to extend a Node's image with a valid ListPattern at an invalid time")
+  assert_false(rewrite_history_1, "occurred when attempting to extend a Node's image with a valid ListPattern at a time that would have rewrote the Node's image history (1)")
+  assert_false(rewrite_history_2, "occurred when attempting to extend a Node's image with a valid ListPattern at a time that would have rewrote the Node's image history (2)")
   assert_true(valid_image_extension_valid_time_result, "occurred when attempting to extend a Node's image with an valid ListPattern at a valid time")
   
   # Check that the root node images haven't been changed
@@ -853,51 +867,16 @@ process_test "production functionality" do
   # Test that each of the sub-conditions of the major conditional in the 
   # "Node.addProduction" function evaluate to false and block production 
   # creation correctly.
-  assert_equal(
-    ChrestStatus::LEARN_PRODUCTION_FAILED,
-    visual_node_1.addProduction(action_node_1, time_visual_node_1_created - 1), 
-    "occurred when attempting to add a production to the visual node before the visual node exists"
-  )
-  
-  assert_equal(
-    ChrestStatus::LEARN_PRODUCTION_FAILED,
-    visual_node_1.addProduction(action_node_1, time_action_node_1_created - 1), 
-    "occurred when attempting to add a production to the visual node before the action node exists"
-  )
-  
-  assert_equal(
-    ChrestStatus::LEARN_PRODUCTION_FAILED,
-    action_node_1.addProduction(visual_node_1, time_action_node_1_created), 
-    "occurred when attempting to add a visual node as a production to an action node"
-  )
-  
+  assert_false(visual_node_1.addProduction(action_node_1, 0.0, time_visual_node_1_created - 1), "occurred when attempting to add a production to the visual node before the visual node exists")
+  assert_false(visual_node_1.addProduction(action_node_1, 0.0, time_action_node_1_created - 1), "occurred when attempting to add a production to the visual node before the action node exists")
+  assert_false(action_node_1.addProduction(visual_node_1, 0.0, time_action_node_1_created), "occurred when attempting to add a visual node as a production to an action node")
   Modality.values().each do |modality|
-    if modality != Modality::VISUAL
-      non_visual_node = Node.new(model, ListPattern.new(modality), ListPattern.new(modality), time_action_node_1_created)
-      assert_equal(
-        ChrestStatus::LEARN_PRODUCTION_FAILED,
-        non_visual_node.addProduction(action_node_1, time_action_node_1_created), 
-        "occurred when attempting to add a production and the source Node is not a visual Node"
-      )
-    end
-    
-    if modality != Modality::ACTION
-      non_action_node = Node.new(model, ListPattern.new(modality), ListPattern.new(modality), time_action_node_1_created)
-      assert_equal(
-        ChrestStatus::LEARN_PRODUCTION_FAILED,
-        visual_node_1.addProduction(non_action_node, time_action_node_1_created), 
-        "occurred when attempting to add a production and the terminal Node is not an action Node"
-      )
-    end
-    
-    assert_equal(
-      ChrestStatus::LEARN_PRODUCTION_FAILED,
-      model.getLtmModalityRootNode(modality).addProduction(action_node_1, time_action_node_1_created),
+    assert_false(
+      model.getLtmModalityRootNode(modality).addProduction(action_node_1, 0.0, time_action_node_1_created),
       "occurred when attempting to add a production whose source is the " + modality.toString() + " root node"
     )
-    assert_equal(
-      ChrestStatus::LEARN_PRODUCTION_FAILED,
-      visual_node_1.addProduction(model.getLtmModalityRootNode(modality), time_action_node_1_created),
+    assert_false(
+      visual_node_1.addProduction(model.getLtmModalityRootNode(modality), 0.0, time_action_node_1_created),
       "occurred when attempting to add a production whose terminus is the " + modality.toString() + " root node"
     )
   end
@@ -906,34 +885,12 @@ process_test "production functionality" do
   # the "Node.addProduction" function should evaluate to false.
   time_first_production_added = time_action_node_2_created + 10
   time_second_production_added = time_first_production_added + 10
+  assert_true(visual_node_1.addProduction(action_node_1, 0.0, time_first_production_added), "occurred when checking the result of adding the first production")
+  assert_true(visual_node_1.addProduction(action_node_2, 0.0, time_second_production_added), "occurred when checking the result of adding the second production")
   
-  assert_equal(
-    ChrestStatus::LEARN_PRODUCTION_SUCCESSFUL,
-    visual_node_1.addProduction(action_node_1, time_first_production_added), 
-    "occurred when checking the result of adding the first production"
-  )
-  
-  assert_equal(
-    ChrestStatus::LEARN_PRODUCTION_SUCCESSFUL,
-    visual_node_1.addProduction(action_node_2, time_second_production_added), 
-    "occurred when checking the result of adding the second production"
-  )
-  
-  # Try to add the same productions again
-  time_first_production_added_again = time_second_production_added + 10
-  time_second_production_added_again = time_first_production_added_again + 10
-  
-  assert_equal(
-    ChrestStatus::PRODUCTION_ALREADY_LEARNED,
-    visual_node_1.addProduction(action_node_1, time_first_production_added_again), 
-    "occurred when checking the result of attempting to add the first production when it already exists"
-  )
-  
-  assert_equal(
-    ChrestStatus::PRODUCTION_ALREADY_LEARNED,
-    visual_node_1.addProduction(action_node_2, time_second_production_added_again), 
-    "occurred when checking the result of attempting to add the second production when it already exists"
-  )
+  # Try to rewrite production history.
+  assert_false(visual_node_1.addProduction(action_node_1, 0.0, time_first_production_added - 1), "occurred when trying to rewrite the node's production history (1)")
+  assert_false(visual_node_1.addProduction(action_node_1, 0.0, time_first_production_added), "occurred when trying to rewrite the node's production history (2)")
   
   #######################################
   ### "reinforceProduction()" TESTING ###
@@ -966,6 +923,11 @@ process_test "production functionality" do
   # true.
   assert_true(visual_node_1.reinforceProduction(action_node_2, variables_to_calculate_reinforcement_value, time_first_production_reinforced), "occurred when checking the result of calling 'reinforceProduction' and the reinforcement should occur.")
   
+  # Now, check that reinforcement is blocked if an attempt is made to rewrite
+  # history.
+  assert_false(visual_node_1.reinforceProduction(action_node_2, variables_to_calculate_reinforcement_value, time_first_production_reinforced - 1), "occurred when checking the result of calling 'reinforceProduction' at a time that would rewrite the production history of the node (1)")
+  assert_false(visual_node_1.reinforceProduction(action_node_2, variables_to_calculate_reinforcement_value, time_first_production_reinforced), "occurred when checking the result of calling 'reinforceProduction' at a time that would rewrite the production history of the node (2)")
+  
   ##################################
   ### "getProductions()" TESTING ###
   ##################################
@@ -981,7 +943,7 @@ process_test "production functionality" do
   values = productions_after_first_production_added_but_before_second.values()
   assert_equal(1, productions_after_first_production_added_but_before_second.size(), "occurred when checking the number of productions after adding one production")
   assert_true(productions.contains(action_node_1), "occurred when checking if the first action node is present in the set of productions returned after adding one production")
-  assert_true(values[0] == 1.0, "occurred when checking the value in the set of productions after adding one production")
+  assert_true(values[0] == 0.0, "occurred when checking the value in the set of productions after adding one production")
   
   productions_after_second_production_added = visual_node_1.getProductions(time_second_production_added)
   productions = productions_after_second_production_added.keySet()
@@ -989,13 +951,13 @@ process_test "production functionality" do
   assert_equal(2, visual_node_1.getProductions(time_second_production_added).size(), "occurred when checking the number of productions after adding two productions")
   assert_true(productions.contains(action_node_1), "occurred when checking if the first action node is present in the set of productions returned after adding two productions")
   assert_true(productions.contains(action_node_2), "occurred when checking if the second action node is present in the set of productions returned after adding two productions")
-  assert_true(values[0] == 1.0, "occurred when checking the first value in the set of productions returned after adding two productions")
-  assert_true(values[1] == 1.0, "occurred when checking the second value in the set of productions returned after adding two productions")
+  assert_true(values[0] == 0.0, "occurred when checking the first value in the set of productions returned after adding two productions")
+  assert_true(values[1] == 0.0, "occurred when checking the second value in the set of productions returned after adding two productions")
   
   productions_and_values_before_reinforcement = visual_node_1.getProductions(time_first_production_reinforced - 1)
   productions_and_values_after_reinforcement = visual_node_1.getProductions(time_first_production_reinforced + 1)
-  assert_equal(1.0, productions_and_values_before_reinforcement.get(action_node_2), "occurred when checking the value of the production that is reinforced before the reinforcement occurs")
-  assert_equal(2.0, productions_and_values_after_reinforcement.get(action_node_2), "occurred when checking the value of the production that is reinforced after the reinforcement occurs")
+  assert_equal(0.0, productions_and_values_before_reinforcement.get(action_node_2), "occurred when checking the value of the production that is reinforced before the reinforcement occurs")
+  assert_equal(1.0, productions_and_values_after_reinforcement.get(action_node_2), "occurred when checking the value of the production that is reinforced after the reinforcement occurs")
 end
 
 ################################################################################
@@ -1152,6 +1114,18 @@ process_test "semantic link functionality" do
   node_1_to_node_3_semantic_link_creation_time = node_3_creation_time + 25
   node_1.addSemanticLink(node_2, node_1_to_node_2_semantic_link_creation_time)
   node_1.addSemanticLink(node_3, node_1_to_node_3_semantic_link_creation_time)
+  
+  # Try to rewrite the semantic link history of the node
+  assert_false(
+    node_1.addSemanticLink(node_3, node_1_to_node_2_semantic_link_creation_time - 1),
+    "occurred when checking the result of trying to add a semantic link when " +
+    "the semantic link history of the node would be re-written (1)"
+  )
+  assert_false(
+    node_1.addSemanticLink(node_3, node_1_to_node_2_semantic_link_creation_time),
+    "occurred when checking the result of trying to add a semantic link when " +
+    "the semantic link history of the node would be re-written (2)"
+  )
   
   # Try to add an existing semantic link again after it was originally added
   final_time = node_1_to_node_3_semantic_link_creation_time + 10
@@ -1310,6 +1284,18 @@ process_test "associated node functionality" do
     node_1.setAssociatedNode(node_2, node_1_associate_with_node_2_time),
     "occurred when attempting to associate node_1 with node_2 and association " + 
     "should be successful"
+  )
+  
+  # Attempt to rewrite history (attempt to associate node_2 with node_1 before the association between 1 and 3 was created and on the time it was created. 
+  assert_false(
+    node_1.setAssociatedNode(node_2, 19),
+    "occurred when attempting to associate node_1 with node_2 but the " +
+    "association would rewrite node_1's associated node history (1)"
+  )
+  assert_false(
+    node_1.setAssociatedNode(node_2, 20),
+    "occurred when attempting to associate node_1 with node_2 but the " +
+    "association would rewrite node_1's associated node history (2)"
   )
   
   # Check that "getAssociatedNodes" returns what is expected.
@@ -1490,6 +1476,20 @@ process_test "named by functionality" do
     node_1.setNamedBy(node_3, node_1_named_by_node_3_at_time),
     "occurred when checking the result of attempting to set that node_1 is " + 
     "named by node_3"
+  )
+  
+  # now try to rewrite node_1's named by history by attempting to set node_3 as the node that node_1 is named by before node_4 was set as the named by node (both before and on the association time)
+  assert_false(
+    node_1.setNamedBy(node_3, node_1_named_by_node_4_at_time - 1),
+    "occurred when checking the result of attempting to set that node_1 is " + 
+    "named by node_3 at a time that would cause a rewriting of node_1's " +
+    "named by history (1)"
+  )
+  assert_false(
+    node_1.setNamedBy(node_3, node_1_named_by_node_4_at_time),
+    "occurred when checking the result of attempting to set that node_1 is " + 
+    "named by node_3 at a time that would cause a rewriting of node_1's " +
+    "named by history (2)"
   )
   
   # Finally, check the named by history of node_1
@@ -1766,6 +1766,16 @@ process_test "template functionality" do
     node_3.canBeTemplate(time_node_3_becomes_template + 5),
     error_msg + "(6)"
   )
+  
+  # Try to rewrite the template history of node 3
+  assert_false(
+    node_3.makeTemplate(time_node_3_becomes_template- 1),
+    error_msg + "(7)"
+  )
+  assert_false(
+    node_3.makeTemplate(time_node_3_becomes_template),
+    error_msg + "(8)"
+  )
     
   #############################
   ### Node.fillSlots() TEST ###
@@ -1820,11 +1830,41 @@ process_test "template functionality" do
     error_msg + "(3)"
   )
   
+  #Attempt to rewrite filled slot history
+  assert_equal(
+    nil,
+    node_3.fillSlots(
+      list_pattern_to_fill_slots_with,
+      time_node_3_slots_filled - 1
+    ),
+    error_msg + "(4)"
+  )
+  
+  assert_false(
+    node_3.fillSlots(
+      list_pattern_to_fill_slots_with,
+      time_node_3_slots_filled
+    ),
+    error_msg + "(5)"
+  )
+  
   ###############################
   ### Node.clearFilledSlots() ###
   ###############################
   
   error_msg = "occurred during Node.clearFilledSlots() tests "
+  
+  # Assert that Node.clearFilledSlots() will not clear filled slots and return
+  # true up until the point in time that a node's slots are filled (also ensures
+  # that Node.clearFilledSlots() will not re-write a node's template history 
+  # since at every time point after node_3 becomes a template here, clearing the 
+  # filled slots would rewrite node_3's template history).
+  for time in model_creation_time..time_node_3_slots_filled
+    assert_false(
+      node_3.clearFilledSlots(time),
+      error_msg + "(1) at time " + time.to_s
+    )
+  end
   
   # Assert that Node.clearFilledSlots() will only return true when invoked on
   # a node at a time when the node is a template and won't rewrite the node's
@@ -1850,11 +1890,49 @@ process_test "template functionality" do
     error_msg + "(1)"
   )
   
+  #Any attempt to make node 3 a non-template before or when the latest slot data 
+  #structure entry is inserted should be blocked since this would rewrite the 
+  #template history of node 3.
+  for time in model_creation_time..time_node_3_slots_filled_again
+    assert_false(
+      node_3.makeNonTemplate(time),
+      error_msg + "(2) at time " + time.to_s
+    )
+  end
+  
   time_node_3_made_non_template_again = time_node_3_slots_filled_again + 5
   assert_true(
     node_3.makeNonTemplate(time_node_3_made_non_template_again),
     error_msg + "(3)"
   )
+  
+  #############################################################################
+  ### DOUBLE-CHECK THAT FUNCTIONS WHICH MODIFY TEMPLATE HISTORY ARE BLOCKED ###
+  ### FROM RE-WRITING THE HISTORY OF NODE 3                                 ###
+  #############################################################################
+  
+  error_msg = "occurred when checking that template history is not rewritten " +
+              "when invoking "
+  
+  for time in model_creation_time..time_node_3_made_non_template_again
+    assert_false(
+      node_3.makeTemplate(time),
+      error_msg + "Node.makeTemplate() at time " + time.to_s
+    )
+    assert_false(
+      node_3.makeNonTemplate(time),
+      error_msg + "Node.makeNonTemplate() at time " + time.to_s
+    )
+    assert_equal(
+      nil,
+      node_3.fillSlots(list_pattern_to_fill_slots_with, time),
+      error_msg + "Node.fillSlots() at time " + time.to_s
+    )
+    assert_false(
+      node_3.clearFilledSlots(time),
+      error_msg + "Node.clearFilledSlots() at time " + time.to_s
+    )
+  end
   
   ###############################################
   ### SET FINAL TEST TIME FOR QUERY FUNCTIONS ###
@@ -2245,7 +2323,7 @@ unit_test "get_all_information" do
     end
     new_image._list.add(ItemSquarePattern.new("B", 5, 5))
     time_image_updated = time_node_created + 5
-    node._imageHistory.put(time_image_updated.to_java(:int), new_image)
+    node._imageHistory.put(time_image_updated, new_image)
 
     # Construct and fill node's filled item/position slots (the Node doesn't have 
     # to actually be a template to do this since the test has access to the 
@@ -2254,7 +2332,7 @@ unit_test "get_all_information" do
     node_filled_item_slots.add(ItemSquarePattern.new("C", 5, 3))
     node_filled_item_slots_history = HistoryTreeMap.new()
     time_item_slots_filled = time_image_updated + 5
-    node_filled_item_slots_history.put(time_item_slots_filled.to_java(:int), node_filled_item_slots)
+    node_filled_item_slots_history.put(time_item_slots_filled, node_filled_item_slots)
     node._filledItemSlotsHistory = node_filled_item_slots_history
 
     # Construct node filled position slots
@@ -2262,7 +2340,7 @@ unit_test "get_all_information" do
     node_filled_position_slots.add(ItemSquarePattern.new("D", 3, 5))
     node_filled_position_slots_history = HistoryTreeMap.new()
     time_position_slots_filled = time_item_slots_filled + 5
-    node_filled_position_slots_history.put(time_position_slots_filled.to_java(:int), node_filled_position_slots)
+    node_filled_position_slots_history.put(time_position_slots_filled, node_filled_position_slots)
     node._filledPositionSlotsHistory = node_filled_position_slots_history
 
     ################

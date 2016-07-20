@@ -2,14 +2,12 @@ package jchrest.architecture;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import java.util.Random;
 import java.util.TreeMap;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import jchrest.domainSpecifics.Scene;
 import jchrest.domainSpecifics.SceneObject;
-import jchrest.lib.HistoryTreeMap;
 import jchrest.lib.VisualSpatialFieldObject;
 import jchrest.lib.Square;
 import jchrest.lib.VisualSpatialFieldException;
@@ -45,7 +43,7 @@ import jchrest.lib.VisualSpatialFieldException;
 //       object encoding to become unreliable and subject to error).
 public class VisualSpatialField {
   
-  private final ArrayList<ArrayList<TreeMap<Integer, ArrayList<VisualSpatialFieldObject>>>> _visualSpatialField = new ArrayList<>();
+  private final ArrayList<ArrayList<ArrayList<VisualSpatialFieldObject>>> _visualSpatialField = new ArrayList<>();
   private final int _creationTime;
   private final String _name;
   private final int _width;
@@ -121,10 +119,7 @@ public class VisualSpatialField {
     for(int col = 0; col < width; col++){
       this._visualSpatialField.add(new ArrayList());
       for(int row = 0; row < height; row++){
-        ArrayList<VisualSpatialFieldObject> coordinateContents = new ArrayList();
-        TreeMap<Integer, ArrayList<VisualSpatialFieldObject>> coordinateContentsHistory = new TreeMap();
-        coordinateContentsHistory.put(time, coordinateContents);
-        this._visualSpatialField.get(col).add(coordinateContentsHistory);
+        this._visualSpatialField.get(col).add(new ArrayList());
       }
     }
     
@@ -250,7 +245,7 @@ public class VisualSpatialField {
 
         for(int colToCheck = 0; colToCheck < this._width; colToCheck++){
           for(int rowToCheck = 0; rowToCheck < this._height; rowToCheck++){
-            for(VisualSpatialFieldObject vsfo : this._visualSpatialField.get(colToCheck).get(rowToCheck).floorEntry(time).getValue()){
+            for(VisualSpatialFieldObject vsfo : this._visualSpatialField.get(colToCheck).get(rowToCheck)){
               if(vsfo.isAlive(time)){
 
                 //Check if the creator is being added when another creator is 
@@ -288,8 +283,7 @@ public class VisualSpatialField {
         //Overwrite empty squares or non-empty squares if the 
         //VisualSpatialFieldObject being added is a non-empty square or an empty
         //square, respectively.
-        ArrayList<VisualSpatialFieldObject> currentCoordinateContents = this._visualSpatialField.get(col).get(row).floorEntry(time).getValue();
-        for(VisualSpatialFieldObject vsfo : currentCoordinateContents){
+        for(VisualSpatialFieldObject vsfo : this._visualSpatialField.get(col).get(row)){
           if(
             (vsfo.getObjectType().equals(Scene.getEmptySquareToken()) && vsfo.isAlive(time)) ||
             (object.getObjectType().equals(Scene.getEmptySquareToken()) && vsfo.isAlive(time))
@@ -298,11 +292,7 @@ public class VisualSpatialField {
           }
         }
         
-        ArrayList<VisualSpatialFieldObject> newCoordinateContents = new ArrayList();
-        newCoordinateContents.addAll(currentCoordinateContents);
-        newCoordinateContents.add(object);
-        this._visualSpatialField.get(col).get(row).put(time, newCoordinateContents);
-        return true;
+        return this._visualSpatialField.get(col).get(row).add(object);
       }
       else{
         throw new IllegalArgumentException(
@@ -470,7 +460,7 @@ public class VisualSpatialField {
     
     if(col >= 0 && col < this.getWidth() && row >= 0 && row < this.getHeight()){
       coordinateContents = new ArrayList<>();
-      ArrayList<VisualSpatialFieldObject> contents = this._visualSpatialField.get(col).get(row).floorEntry(time).getValue();
+      ArrayList<VisualSpatialFieldObject> contents = this._visualSpatialField.get(col).get(row);
       for(VisualSpatialFieldObject object : contents){
         if(object.isAlive(time)){
           coordinateContents.add(object);
@@ -510,8 +500,9 @@ public class VisualSpatialField {
     
     if(col >= 0 && col < this.getWidth() && row >= 0 && row < this.getHeight()){
       coordinateContents = new ArrayList<>();
-      for(Map.Entry<Integer, ArrayList<VisualSpatialFieldObject>> coordinateContentsEntry : this._visualSpatialField.get(col).get(row).entrySet()){
-        coordinateContents.addAll(coordinateContentsEntry.getValue());
+      ArrayList<VisualSpatialFieldObject> contents = this._visualSpatialField.get(col).get(row);
+      for(VisualSpatialFieldObject object : contents){
+        coordinateContents.add(object);
       }
     }
     
@@ -537,7 +528,7 @@ public class VisualSpatialField {
     List<Object> creatorDetails = null;
     for(int col = 0; col < this.getWidth(); col++){
       for(int row = 0; row < this.getHeight(); row++){
-        List<VisualSpatialFieldObject> coordinateContents = this._visualSpatialField.get(col).get(row).floorEntry(time).getValue();
+        List<VisualSpatialFieldObject> coordinateContents = this._visualSpatialField.get(col).get(row);
         for(VisualSpatialFieldObject visualSpatialFieldObject : coordinateContents){
           if(
             visualSpatialFieldObject.getObjectType().equals(Scene.getCreatorToken()) &&
@@ -558,34 +549,12 @@ public class VisualSpatialField {
   /**
    * 
    * @param col
-   * @param row
-   * @return 
-   */
-  public final boolean areDomainSpecificCoordinatesRepresented(int col, int row){
-    return col >= this._minDomainSpecificCol && 
-      col < (this._minDomainSpecificCol + this._width) &&
-      row >= this._minDomainSpecificRow && 
-      row < (this._minDomainSpecificRow + this._height)
-    ;
-  }
-  
-  /**
-   * 
-   * @param col
    * @return The domain-specific column coordinate represented by the 
    * visual-spatial field coordinate specified ({@code col}) or {@code null} if 
    * {@code col} is not represented by {@link #this}.
    */
-  public final int getDomainSpecificColFromVisualSpatialFieldCol(int col){
-    if(col >= 0 && col < this._width){
-      return this._minDomainSpecificCol + col;
-    }
-    else{
-      throw new IllegalArgumentException(
-        "The column specified (" + col + ") is either < 0 or is greater than " +
-        "the maximum width of the visual-spatial field (" + this._width + ")"
-      );
-    }
+  public final Integer getDomainSpecificColFromVisualSpatialFieldCol(int col){
+    return col >= 0 && col < this._width ? this._minDomainSpecificCol + col : null;
   }
   
   /**
@@ -595,16 +564,8 @@ public class VisualSpatialField {
    * visual-spatial field coordinate specified ({@code row}) or {@code null} if 
    * {@code row} is not represented by {@link #this}.
    */
-  public final int getDomainSpecificRowFromVisualSpatialFieldRow(int row){
-    if(row >= 0 && row < this._height){
-      return this._minDomainSpecificRow + row;
-    }
-    else{
-      throw new IllegalArgumentException(
-        "The row specified (" + row + ") is either < 0 or is greater than " +
-        "the maximum height of the visual-spatial field (" + this._height + ")"
-      );
-    }
+  public final Integer getDomainSpecificRowFromVisualSpatialFieldRow(int row){
+    return row >= 0 && row < this._height ? this._minDomainSpecificRow + row : null;
   }
   
   /**
@@ -614,18 +575,10 @@ public class VisualSpatialField {
    * domain-specific coordinate specified ({@code col}) or {@code null} if 
    * {@code col} is not represented by {@link #this}.
    */
-  public final int getVisualSpatialFieldColFromDomainSpecificCol(int col){
-    if(col >= this._minDomainSpecificCol && col < (this._minDomainSpecificCol + this._width)){ 
-      return col - this._minDomainSpecificCol;
-    }
-    else{
-      throw new IllegalArgumentException(
-        "The column specified (" + col + ") is either < the minimum domain-specific " +
-        "column represented in the visual-spatial field (" + this._minDomainSpecificCol +
-        ") or is greater than the maximum domain-specific col represented in the " +
-        "visual-spatial field (" + (this._minDomainSpecificCol + this._width + ")")
-      );
-    }
+  public final Integer getVisualSpatialFieldColFromDomainSpecificCol(int col){
+    return col >= this._minDomainSpecificCol && col <= ((this._minDomainSpecificCol + this._width) - 1) ? 
+      col - this._minDomainSpecificCol :
+      null;
   }
   
   /**
@@ -635,17 +588,9 @@ public class VisualSpatialField {
    * domain-specific coordinate specified ({@code row}) or {@code null} if 
    * {@code row} is not represented by {@link #this}.
    */
-  public final int getVisualSpatialFieldRowFromDomainSpecificRow(int row){
-    if(row >= this._minDomainSpecificRow && row < (this._minDomainSpecificRow + this._height)){
-      return row - this._minDomainSpecificRow;
-    }
-    else{
-      throw new IllegalArgumentException(
-        "The row specified (" + row + ") is either < the minimum domain-specific " +
-        "row represented in the visual-spatial field (" + this._minDomainSpecificRow +
-        ") or is greater than the maximum domain-specific row represented in the " +
-        "visual-spatial field (" + (this._minDomainSpecificRow + this._height) + ")"
-      );
-    }
+  public final Integer getVisualSpatialFieldRowFromDomainSpecificRow(int row){
+    return row >= this._minDomainSpecificRow && row <= ((this._minDomainSpecificRow + this._height) - 1) ? 
+      row - this._minDomainSpecificRow :
+      null;
   }
 }

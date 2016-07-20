@@ -1,6 +1,6 @@
 ################################################################################
-# Tests the TileworldDomain constructor using a number of scenarios that focus 
-# on various constructor parameter settings:
+# Tests the TileworldDomain constructor using 7 scenarios that focus on various
+# constructor parameter settings:
 #
 # - Scenario 1
 #   ~ Chrest model specified as a parameter is not learning object locations
@@ -37,43 +37,21 @@
 #     maximum number of fixations specified.
 #   ~ Maximum attempts to use a peripheral item fixation specified as a 
 #     parameter is equal to 0
-#     
-# - Scenario 7
-#   ~ Chrest model specified as a parameter is learning object locations 
-#     relative to the agent equipped with it. 
-#   ~ Initial fixation threshold specified as a parameter is less than the
-#     maximum number of fixations specified.
-#   ~ Maximum attempts to use a peripheral item fixation specified as a 
-#     parameter is greater than 0 
-#   ~ Time taken to decide upon movement fixations is less than 0
-#   
-# - Scenario 8
-#   ~ Chrest model specified as a parameter is learning object locations 
-#     relative to the agent equipped with it. 
-#   ~ Initial fixation threshold specified as a parameter is less than the
-#     maximum number of fixations specified.
-#   ~ Maximum attempts to use a peripheral item fixation specified as a 
-#     parameter is greater than 0 
-#   ~ Time taken to decide upon movement fixations is greater than/equal to 0
-#   ~ Time taken to decide upon salient object fixations is less than 0
 #
-#- Scenario 9
+#- Scenario 7
 #   ~ Chrest model specified as a parameter is learning object locations 
 #     relative to the agent equipped with it. 
 #   ~ Initial fixation threshold specified as a parameter is less than the
 #     maximum number of fixations specified.
 #   ~ Maximum attempts to use a peripheral item fixation specified as a 
-#     parameter is greater than 0 
-#   ~ Time taken to decide upon movement fixations is greater than/equal to 0
-#   ~ Time taken to decide upon salient object fixations is greater than/equal 
-#     to 0
+#     parameter is greater than 0
 #
 # Expected Output
 # ===============
 #
-# In all scenarios except scenario 9, an exception should be thrown by the
+# In all scenarios except scenario 7, an exception should be thrown by the
 # constructor due to invalid constructor parameters being provided.  In scenario
-# 9 the relevant instance variables of the TileworldDomain instance constructed
+# 7 the relevant instance variables of the TileworldDomain instance constructed
 # should be set as specified.
 unit_test "constructor" do
 
@@ -93,13 +71,10 @@ unit_test "constructor" do
   tileworld_domain_peripheral_item_fixation_max_attempts_field = TileworldDomain.java_class.declared_field("_peripheralItemFixationMaxAttempts")
   tileworld_domain_peripheral_item_fixation_max_attempts_field.accessible = true
   
-  TileworldDomain.class_eval{
-    field_accessor :_timeTakenToDecideUponMovementFixations, :_timeTakenToDecideUponSalientObjectFixations
-  }
   #########################
   ##### SCENARIO LOOP #####
   #########################
-  for scenario in 1..9
+  for scenario in 1..7
     50.times do
      
       #########################################################
@@ -110,8 +85,6 @@ unit_test "constructor" do
       max_fixations_in_set = 10
       initial_fixation_threshold = (scenario == 2 ? -1 : scenario == 3 ? 0 : scenario == 4 ? max_fixations_in_set + 1 : 3)
       max_peripheral_item_fixation_attempts =  (scenario == 5 ? -1 : scenario == 6 ?  0 : 3)
-      time_taken_to_decide_on_movement_fixation = (scenario == 7 ? -1 : [0, 1].sample)
-      time_taken_to_decide_on_salient_object_fixation = (scenario == 8 ? -1 : [0, 1].sample)
       
       ##############################
       ##### INVOKE CONSTRUCTOR #####
@@ -120,14 +93,7 @@ unit_test "constructor" do
       exception_thrown = false
       tileworld_domain = nil
       begin
-        tileworld_domain = TileworldDomain.new(
-          model, 
-          max_fixations_in_set, 
-          initial_fixation_threshold, 
-          max_peripheral_item_fixation_attempts,
-          time_taken_to_decide_on_movement_fixation,
-          time_taken_to_decide_on_salient_object_fixation
-        )
+        tileworld_domain = TileworldDomain.new(model, max_fixations_in_set, initial_fixation_threshold, max_peripheral_item_fixation_attempts)
       rescue
         exception_thrown = true
       end
@@ -137,7 +103,7 @@ unit_test "constructor" do
       #################
       
       # Test if exception was thrown as expected.
-      expected_exception_thrown = (scenario == 9 ? false : true)
+      expected_exception_thrown = (scenario == 7 ? false : true)
       assert_equal(
         expected_exception_thrown,
         exception_thrown,
@@ -172,20 +138,6 @@ unit_test "constructor" do
           "occurred when checking the maximum number of peripheral item " +
           "fixation attempts set in a set in scenario " + scenario.to_s
         )
-        
-        assert_equal(
-          tileworld_domain._timeTakenToDecideUponMovementFixations,
-          time_taken_to_decide_on_movement_fixation,
-          "occurred when checking the time taken to decide on a movement " +
-          "fixation in scenario " + scenario.to_s
-        )
-        
-        assert_equal(
-          tileworld_domain._timeTakenToDecideUponSalientObjectFixations,
-          time_taken_to_decide_on_salient_object_fixation,
-          "occurred when checking the time taken to decide on a salient " +
-          "object fixation in scenario " + scenario.to_s
-        )
       end
     end
   end
@@ -199,83 +151,74 @@ unit_test "normalise" do
   
   for scenario in 1..2
     50.times do
-      for modality in Modality.values()
-        
-        ##############################################
-        ##### CONSTRUCT ListPattern TO NORMALISE #####
-        ##############################################
       
-        list_pattern = ListPattern.new(modality)
-        list_pattern._list.add(ItemSquarePattern.new(Scene.getBlindSquareToken(), 0, 0))
-        list_pattern._list.add(ItemSquarePattern.new(Scene.getEmptySquareToken(), 1, 1))
-        list_pattern._list.add(ItemSquarePattern.new(Scene.getCreatorToken(), 2, 2))
-        list_pattern._list.add(ItemSquarePattern.new(TileworldDomain::HOLE_SCENE_OBJECT_TYPE_TOKEN, 3, 3))
-        list_pattern._list.add(ItemSquarePattern.new(TileworldDomain::HOLE_SCENE_OBJECT_TYPE_TOKEN, 3, 3))
-        list_pattern._list.add(ItemSquarePattern.new(TileworldDomain::TILE_SCENE_OBJECT_TYPE_TOKEN, 4, 4))
-        list_pattern._list.add(ItemSquarePattern.new(TileworldDomain::TILE_SCENE_OBJECT_TYPE_TOKEN, 4, 4))
-        list_pattern._list.add(ItemSquarePattern.new(TileworldDomain::OPPONENT_SCENE_OBJECT_TYPE_TOKEN, 5, 5))
-        list_pattern._list.add(ItemSquarePattern.new(TileworldDomain::OPPONENT_SCENE_OBJECT_TYPE_TOKEN, 5, 5))
-        list_pattern._finished = (scenario == 1 ? true : false)
+      ##############################################
+      ##### CONSTRUCT ListPattern TO NORMALISE #####
+      ##############################################
       
-        ##############################################################
-        ##### CONSTRUCT EXPECTED ListPattern AFTER NORMALISATION #####
-        ##############################################################
-
-        expected_normalised_list_pattern = ListPattern.new(modality)
-        expected_normalised_list_pattern._list.add(ItemSquarePattern.new(TileworldDomain::HOLE_SCENE_OBJECT_TYPE_TOKEN, 3, 3))
-        if(modality != Modality::VISUAL)
-          expected_normalised_list_pattern._list.add(ItemSquarePattern.new(TileworldDomain::HOLE_SCENE_OBJECT_TYPE_TOKEN, 3, 3))
-          expected_normalised_list_pattern._list.add(ItemSquarePattern.new(TileworldDomain::TILE_SCENE_OBJECT_TYPE_TOKEN, 4, 4))
-        end
-        expected_normalised_list_pattern._list.add(ItemSquarePattern.new(TileworldDomain::TILE_SCENE_OBJECT_TYPE_TOKEN, 4, 4))
-        expected_normalised_list_pattern._list.add(ItemSquarePattern.new(TileworldDomain::OPPONENT_SCENE_OBJECT_TYPE_TOKEN, 5, 5))
-        if(modality != Modality::VISUAL)
-          expected_normalised_list_pattern._list.add(ItemSquarePattern.new(TileworldDomain::OPPONENT_SCENE_OBJECT_TYPE_TOKEN, 5, 5))
-        end
-        expected_normalised_list_pattern._finished = (scenario == 1 ? true : false)
-
-        ##############################
-        ##### INVOKE "normalise" #####
-        ##############################
-
-        normalised_list_pattern = TileworldDomain.new(Chrest.new(0, true), 10, 3, 3, 0, 0).normalise(list_pattern)
-
-        #################
-        ##### TESTS #####
-        #################
-
-        # Check number of patterns in ListPattern and the actual contents
+      list_pattern = ListPattern.new(Modality::VISUAL)
+      list_pattern._list.add(ItemSquarePattern.new(Scene.getBlindSquareToken(), 0, 0))
+      list_pattern._list.add(ItemSquarePattern.new(Scene.getEmptySquareToken(), 1, 1))
+      list_pattern._list.add(ItemSquarePattern.new(Scene.getCreatorToken(), 2, 2))
+      list_pattern._list.add(ItemSquarePattern.new(TileworldDomain::HOLE_SCENE_OBJECT_TYPE_TOKEN, 3, 3))
+      list_pattern._list.add(ItemSquarePattern.new(TileworldDomain::HOLE_SCENE_OBJECT_TYPE_TOKEN, 3, 3))
+      list_pattern._list.add(ItemSquarePattern.new(TileworldDomain::TILE_SCENE_OBJECT_TYPE_TOKEN, 4, 4))
+      list_pattern._list.add(ItemSquarePattern.new(TileworldDomain::TILE_SCENE_OBJECT_TYPE_TOKEN, 4, 4))
+      list_pattern._list.add(ItemSquarePattern.new(TileworldDomain::OPPONENT_SCENE_OBJECT_TYPE_TOKEN, 5, 5))
+      list_pattern._list.add(ItemSquarePattern.new(TileworldDomain::OPPONENT_SCENE_OBJECT_TYPE_TOKEN, 5, 5))
+      list_pattern._finished = (scenario == 1 ? true : false)
+      
+      ##############################################################
+      ##### CONSTRUCT EXPECTED ListPattern AFTER NORMALISATION #####
+      ##############################################################
+      
+      expected_normalised_list_pattern = ListPattern.new(Modality::VISUAL)
+      expected_normalised_list_pattern._list.add(ItemSquarePattern.new(TileworldDomain::HOLE_SCENE_OBJECT_TYPE_TOKEN, 3, 3))
+      expected_normalised_list_pattern._list.add(ItemSquarePattern.new(TileworldDomain::TILE_SCENE_OBJECT_TYPE_TOKEN, 4, 4))
+      expected_normalised_list_pattern._list.add(ItemSquarePattern.new(TileworldDomain::OPPONENT_SCENE_OBJECT_TYPE_TOKEN, 5, 5))
+      expected_normalised_list_pattern._finished = (scenario == 1 ? true : false)
+      
+      ##############################
+      ##### INVOKE "normalise" #####
+      ##############################
+      
+      normalised_list_pattern = TileworldDomain.new(Chrest.new(0, true), 10, 3, 3).normalise(list_pattern)
+      
+      #################
+      ##### TESTS #####
+      #################
+      
+      # Check number of patterns in ListPattern and the actual contents
+      assert_equal(
+        expected_normalised_list_pattern._list.size(), 
+        normalised_list_pattern._list.size(), 
+        "occurred when checking the size of the normalised ListPattern in " +
+        "scenario " + scenario.to_s
+      )
+      
+      for p in 0...normalised_list_pattern._list.size()
         assert_equal(
-          expected_normalised_list_pattern._list.size(), 
-          normalised_list_pattern._list.size(), 
-          "occurred when checking the size of the normalised ListPattern in " +
-          "scenario " + scenario.to_s
-        )
-
-        for p in 0...normalised_list_pattern._list.size()
-          assert_equal(
-            expected_normalised_list_pattern._list.get(p), 
-            normalised_list_pattern._list.get(p),
-            "occurred when checking pattern " + p.to_s + " in the normalised " +
-            "ListPattern in scenario " + scenario.to_s
-          )
-        end
-
-        # Check modality and finished properties
-        assert_equal(
-          expected_normalised_list_pattern._modality, 
-          normalised_list_pattern._modality,
-          "occurred when checking the modality of the normalised ListPattern " +
-          "in scenario " + scenario.to_s
-        )
-
-        assert_equal(
-          expected_normalised_list_pattern._finished, 
-          normalised_list_pattern._finished,
-          "occurred when checking the 'finished' property of the normalised " +
+          expected_normalised_list_pattern._list.get(p), 
+          normalised_list_pattern._list.get(p),
+          "occurred when checking pattern " + p.to_s + " in the normalised " +
           "ListPattern in scenario " + scenario.to_s
         )
       end
+      
+      # Check modality and finished properties
+      assert_equal(
+        expected_normalised_list_pattern._modality, 
+        normalised_list_pattern._modality,
+        "occurred when checking the modality of the normalised ListPattern " +
+        "in scenario " + scenario.to_s
+      )
+      
+      assert_equal(
+        expected_normalised_list_pattern._finished, 
+        normalised_list_pattern._finished,
+        "occurred when checking the 'finished' property of the normalised " +
+        "ListPattern in scenario " + scenario.to_s
+      )
     end
   end
 end
@@ -287,8 +230,8 @@ end
 unit_test "get_initial_fixation_in_set" do
   50.times do
     assert_equal(
-      AheadOfAgentFixation.new(150, 0).java_class,
-      TileworldDomain.new(Chrest.new(0, true), 10, 3, 3, 0, 0).getInitialFixationInSet(0).java_class
+      AheadOfAgentFixation.new(150).java_class,
+      TileworldDomain.new(Chrest.new(0, true), 10, 3, 3).getInitialFixationInSet(0).java_class
     )
   end
 end
@@ -354,7 +297,7 @@ unit_test "get_non_initial_fixation_in_set" do
     #########################
 
     intial_fixation_threshold = 3
-    tileworld_domain = TileworldDomain.new(model, intial_fixation_threshold, 3, 8, 0, 0)
+    tileworld_domain = TileworldDomain.new(model, intial_fixation_threshold, 3, 8)
 
     ########################
     ##### SCENE SET-UP #####
@@ -391,7 +334,7 @@ unit_test "get_non_initial_fixation_in_set" do
       # Add Fixation to CHREST model's "_fixationsScheduled" data structure.
       fixations_scheduled = ArrayList.new()
       fixations_scheduled.add(fixation)
-      model._fixationsScheduled.put(time.to_java(:int), fixations_scheduled)
+      model._fixationsScheduled.put(time, fixations_scheduled)
       
       # Set Fixation variables so it has been "performed"
       fixation._performed = true
@@ -413,9 +356,9 @@ unit_test "get_non_initial_fixation_in_set" do
       # Remove/add the Fixation from/to the CHREST model's/Perceiver's Fixation 
       # data structure
       fixations_scheduled = ArrayList.new()
-      model._fixationsScheduled.put(fixation._performanceTime.to_java(:int), fixations_scheduled)
+      model._fixationsScheduled.put(fixation._performanceTime, fixations_scheduled)
       fixations_attempted.add(fixation)
-      perceiver_fixations_field.value(model.getPerceiver()).put(fixation._performanceTime.to_java(:int), fixations_attempted)
+      perceiver_fixations_field.value(model.getPerceiver()).put(fixation._performanceTime, fixations_attempted)
       
       # Advance time
       time = fixation._performanceTime + 300
@@ -490,7 +433,7 @@ unit_test "get_non_initial_fixation_in_set" do
       # Add the Fixation to the CHREST model's Fixation to make data structure.
       fixations_scheduled = ArrayList.new()
       fixations_scheduled.add(fixation)
-      model._fixationsScheduled.put(time.to_java(:int), fixations_scheduled)
+      model._fixationsScheduled.put(time, fixations_scheduled)
       
       # Set Fixation variables that would be set if the Fixation were performed
       # "properly"
@@ -500,9 +443,9 @@ unit_test "get_non_initial_fixation_in_set" do
       # Remove/add the last, unperformed, HypothesisDiscriminationFixation 
       # instance from/to the CHREST model's/Perceiver's Fixation data structure
       fixations_scheduled = ArrayList.new()
-      model._fixationsScheduled.put(fixation._performanceTime.to_java(:int), fixations_scheduled)
+      model._fixationsScheduled.put(fixation._performanceTime, fixations_scheduled)
       fixations_attempted.add(fixation)
-      perceiver_fixations_field.value(model.getPerceiver()).put(fixation._performanceTime.to_java(:int), fixations_attempted)
+      perceiver_fixations_field.value(model.getPerceiver()).put(fixation._performanceTime, fixations_attempted)
       
       ##########################################################################
       ##### GET FIXATION BEFORE HypothesisDiscriminationFixation PERFORMED #####
@@ -579,7 +522,7 @@ unit_test "get_non_initial_fixation_in_set" do
       # Add the Fixation to the CHREST model's Fixation to make data structure.
       fixations_scheduled = ArrayList.new()
       fixations_scheduled.add(fixation)
-      model._fixationsScheduled.put(time.to_java(:int), fixations_scheduled)
+      model._fixationsScheduled.put(time, fixations_scheduled)
 
       # "Perform" the fixation.  Note that the coordinates fixated on are 
       # randomly generated, this is because some Fixations returned when a 
@@ -608,9 +551,9 @@ unit_test "get_non_initial_fixation_in_set" do
       # Remove/add the last Fixation from/to the CHREST model's/Perceiver's 
       # Fixation data structure
       fixations_scheduled = ArrayList.new()
-      model._fixationsScheduled.put(fixation._performanceTime.to_java(:int), fixations_scheduled)
+      model._fixationsScheduled.put(fixation._performanceTime, fixations_scheduled)
       fixations_attempted.add(fixation)
-      perceiver_fixations_field.value(model.getPerceiver()).put(fixation._performanceTime.to_java(:int), fixations_attempted)
+      perceiver_fixations_field.value(model.getPerceiver()).put(fixation._performanceTime, fixations_attempted)
       
       # Advance time
       time = fixation._performanceTime + 300

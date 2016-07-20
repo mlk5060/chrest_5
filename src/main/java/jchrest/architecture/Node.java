@@ -7,12 +7,11 @@ import java.io.IOException;
 import java.io.Writer;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.LinkedHashMap;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Observable;
-import jchrest.lib.ChrestStatus;
 import jchrest.lib.HistoryTreeMap;
 import jchrest.lib.ItemSquarePattern;
 import jchrest.lib.ListPattern;
@@ -122,13 +121,13 @@ public class Node extends Observable {
   
   //The variables listed below do not stay consistent throughout the Node's
   //life-cycle.
-  private HistoryTreeMap<Integer, List<Link>> _childHistory = new HistoryTreeMap();
-  private HistoryTreeMap<Integer, LinkedHashMap<Node, Double>> _productionHistory = new HistoryTreeMap();
-  private HistoryTreeMap<Integer, Node> _associatedNodeHistory = new HistoryTreeMap();
-  private HistoryTreeMap<Integer, Node> _namedByHistory = new HistoryTreeMap();
-  private HistoryTreeMap<Integer, List<Node>> _semanticLinksHistory = new HistoryTreeMap();
-  private HistoryTreeMap<Integer, ListPattern> _imageHistory = new HistoryTreeMap();
-  private HistoryTreeMap<Integer, Boolean> _templateHistory = new HistoryTreeMap();
+  private HistoryTreeMap _childHistory = new HistoryTreeMap();
+  private HistoryTreeMap _productionHistory = new HistoryTreeMap();
+  private HistoryTreeMap _associatedNodeHistory = new HistoryTreeMap();
+  private HistoryTreeMap _namedByHistory = new HistoryTreeMap();
+  private HistoryTreeMap _semanticLinksHistory = new HistoryTreeMap();
+  private HistoryTreeMap _imageHistory = new HistoryTreeMap();
+  private HistoryTreeMap _templateHistory = new HistoryTreeMap();
   
   // Template slot history variables: only instantiated when needed since most 
   // Node instances will never become templates so they don't need to waste the 
@@ -192,11 +191,11 @@ public class Node extends Observable {
       this._contents = contents.clone();
       this._modality = image.getModality();
       
-      this._childHistory.put(creationTime, new ArrayList());
-      this._productionHistory.put(creationTime, new LinkedHashMap());
+      this._childHistory.put(creationTime, new ArrayList<Link>());
+      this._productionHistory.put(creationTime, new HashMap<Node, Double>());
       this._associatedNodeHistory.put(creationTime, null);
       this._namedByHistory.put(creationTime, null);
-      this._semanticLinksHistory.put(creationTime, new ArrayList());
+      this._semanticLinksHistory.put(creationTime, new ArrayList<Node>());
       this._imageHistory.put(creationTime, image);
       this._templateHistory.put(creationTime, false);
       
@@ -432,12 +431,20 @@ public class Node extends Observable {
         List<Link> testLinksToAdd = new ArrayList<>();
         testLinksToAdd.add(new Link (test, childToAdd, time, currentExperimentName));
         if(children != null) testLinksToAdd.addAll(children);
-        this._childHistory.put(time, testLinksToAdd);
+        boolean updateChildHistorySuccessful = (boolean)this._childHistory.put(time, testLinksToAdd);
 
-        this._model.printDebugStatement("- Addition of child to parent successful");
-        childAdded = true;
-        this.setChanged();
-        this.notifyObservers();
+        if(updateChildHistorySuccessful){
+          this._model.printDebugStatement("- Addition of child to parent successful");
+          childAdded = true;
+          this.setChanged();
+          this.notifyObservers();
+        }
+        else{
+          this._model.printDebugStatement(
+            "- An attempt to re-write the child history of the parent Node has " +
+            "been detected, exiting"
+          );
+        }
       }
       else{
         this._model.printDebugStatement(
@@ -473,7 +480,7 @@ public class Node extends Observable {
    * jchrest.lib.ListPattern, jchrest.architecture.Node, int, java.lang.String)}. 
    */
   boolean addChild (ListPattern pattern, int time) {
-    
+
     Node child = new Node (
       _model, 
       ( (_reference == 0) ? pattern : _model.getDomainSpecifics().normalise (_contents.append(pattern))), // don't append to 'Root'
@@ -543,14 +550,20 @@ public class Node extends Observable {
       !this.isRootNode() &&
       image.getModality() == this.getModality()
     ){
-      this._imageHistory.put(time, image);
-      this.setChanged();
-      this.notifyObservers();
-
-      this._model.printDebugStatement(func + "Set image successful, returning true");
-      this._model.printDebugStatement(func + "RETURN");
-
-      return true;
+      boolean updateImageHistoryResult = (boolean)this._imageHistory.put(time, image);
+      
+      if(updateImageHistoryResult){
+        this.setChanged();
+        this.notifyObservers();
+        
+        this._model.printDebugStatement(func + "Set image successful, returning true");
+        this._model.printDebugStatement(func + "RETURN");
+        
+        return true;
+      }
+      else{
+        this._model.printDebugStatement(func + "Set image unsuccessful, returning false");
+      }
     }
     else{
       this._model.printDebugStatement(func + "Checks failed, returning false");
@@ -633,87 +646,58 @@ public class Node extends Observable {
    * specified.  If this {@link #this} did not exist at the time specified, 
    * null is returned.
    */
-  public LinkedHashMap<Node, Double> getProductions(int time){
-    Entry<Integer, LinkedHashMap<Node, Double>> entry = this._productionHistory.floorEntry(time);
-    return entry == null ? null : entry.getValue();
+  public HashMap<Node, Double> getProductions(int time){
+    Entry entry = this._productionHistory.floorEntry(time);
+    return entry == null ? null : (HashMap<Node, Double>)entry.getValue();
   }
   
   /**
-   * Attempts to add the {@code node} specified to the productions of {@link 
-   * #this} with the {@code productionValue} specified at the {@code time}
-   * specified.
-   * 
-   * A production will be created if the following conditions all evaluate to 
-   * {@link java.lang.Boolean#TRUE}:
+   * Add the new production specified to this {@link #this}'s productions at the 
+   * time specified so long as the following conditions all evaluate to true:
    * 
    * <ul>
    *  <li>
-   *    Invoking {@link jchrest.architecture.Node#getCreationTime()} on {@link 
-   *    #this} and the {@code node} specified is less than or equal to the 
-   *    {@code time} specified.
+   *    This {@link #this}'s creation time is less than or equal to the time 
+   *    specified
    *  </li>
    *  <li>
-   *    Invoking {@link jchrest.architecture.Node#getModality()} on {@link 
-   *    #this} and the {@code node} specified returns {@link 
-   *    jchrest.lib.Modality#VISUAL} and {@link jchrest.lib.Modality##ACTION},
-   *    respectively.
+   *    The creation time of the action {@link jchrest.architecture.Node} to add
+   *    as a production is less than or equal to the time specified
    *  </li>
    *  <li>
-   *    Invoking {@link jchrest.architecture.Node#isRootNode()} on both {@link 
-   *    #this} and the {@code node} specified returns {@link 
-   *    java.lang.Boolean#FALSE}.
+   *    This {@link #this}'s {@link jchrest.lib.Modality} is {@link 
+   *    jchrest.lib.Modality#VISUAL}
    *  </li>
    *  <li>
-   *    A production between {@link #this} and the {@code node} specified does
-   *    not already exist at the {@code time} specified.  This is checked by
-   *    comparing the result of invoking {@link 
-   *    jchrest.architecture.Node#getImage(int)} at the {@code time} specified
-   *    in context of {@link #this} and the {@code node} specified using {@link
-   *    jchrest.lib.ListPattern#equals(java.lang.Object)}.
+   *    The {@link jchrest.lib.Modality} of the {@link 
+   *    jchrest.architecture.Node} to add as a production is {@link 
+   *    jchrest.lib.Modality#ACTION}
    *  </li>
    *  <li>
-   *    Adding the production will not rewrite the production history of {@link 
-   *    #this}.
+   *    This {@link #this} is not a root {@link jchrest.architecture.Node}
+   *  </li>
+   *  <li>
+   *    The {@link jchrest.architecture.Node} to add as a production is not a 
+   *    root {@link jchrest.architecture.Node}
+   *  </li>
+   *  <li>
+   *    This function is not attempting to rewrite the production history of 
+   *    this {@link #this}
    *  </li>
    * </ul>
    * 
-   * If a production is successfully created, its initial value will equal 1.0 
-   * so that it has a chance of being selected via roulette wheel selection 
-   * (see {@link jchrest.architecture.Chrest#generateActionUsingVisualPatternRecognition(int)}.
-   * 
-   * @param node The {@link jchrest.architecture.Node} that the production 
-   * should terminate with.
-   * @param time The time the production should be added.
-   * 
-   * @return If a production is added, {@link 
-   * jchrest.lib.ChrestStatus#LEARN_PRODUCTION_SUCCESSFUL} will be returned. 
-   * Otherwise, if the production already exists, {@link 
-   * jchrest.lib.ChrestStatus#PRODUCTION_ALREADY_LEARNED} will be returned or,
-   * if this is not the case, {@link 
-   * jchrest.lib.ChrestStatus#LEARN_PRODUCTION_FAILED} is returned.
+   * @param time The time the production should be created.
+   * @param node
+   * @param productionValue
+   * @return True if a production was added, false if not.
    */
-  ChrestStatus addProduction(Node node, int time){
-    this._model.printDebugStatement("===== Node.addProduction() =====");
-    this._model.printDebugStatement(
-      "- Attempting to add a production between Node " + this.getReference() +
-      " and Node " + node.getReference() + " at time " + time
-    );
-    ChrestStatus result = ChrestStatus.LEARN_PRODUCTION_FAILED;
+  boolean addProduction(Node node, Double productionValue, int time){
     
     //No need to check if this node and the node to create a production between
     //are the same since they must have different modalities.  The implication
     //is that the same node cannot belong to two modalities and since the 
     //modality of the nodes to create a production between are checked below, 
-    //this will ensure that this node cannot creation a production to itself.
-    this._model.printDebugStatement(
-      "- Checking if the following statements all evaluate to true: " +
-      "\n  ~ Was Node " + this.getReference() + " created on/before the time specified: " + (this.getCreationTime() <= time) +
-      "\n  ~ Was Node " + node.getReference() + " created on/before the time specified: " + (node.getCreationTime() <= time) +
-      "\n  ~ Does Node " + this.getReference() + " have visual modality: " + (this.getModality() == Modality.VISUAL) +
-      "\n  ~ Does Node " + node.getReference() + " have action modality: " + (node.getModality() == Modality.ACTION) +
-      "\n  ~ Is Node " + this.getReference() + " not a root Node: " + (!this.isRootNode()) +
-      "\n  ~ Is Node " + node.getReference() + " not a root Node: " + (!node.isRootNode())
-    );
+    //this will ensure that this node cannot creation a production to itself. 
     if(
       this.getCreationTime() <= time &&
       node.getCreationTime() <= time &&
@@ -722,45 +706,24 @@ public class Node extends Observable {
       !this.isRootNode() &&
       !node.isRootNode()
     ){
-      this._model.printDebugStatement("    + All OK");
-      
-      this._model.printDebugStatement("- Checking if production already exists for Node " + this.getReference());
-      LinkedHashMap<Node, Double> currentProductions = this.getProductions(time);
-      if(currentProductions != null){
-        
-        boolean productionAlreadyExists = false;
-        for(Node currentProduction: currentProductions.keySet()){
-          if(currentProduction.getImage(time).equals(node.getImage(time))){
-            productionAlreadyExists = true;
-          }
-        }
-        
-        if(!productionAlreadyExists){
-          this._model.printDebugStatement("  ~ Production does not already exist");
+      HashMap<Node, Double> currentProductions = this.getProductions(time);
+      if(currentProductions != null && !currentProductions.containsKey(node)){
+        HashMap<Node, Double> newProductions = new HashMap();
+        newProductions.put(node, productionValue);
+        newProductions.putAll(currentProductions);
 
-          this._model.printDebugStatement("- Attempting to add production");
-          LinkedHashMap<Node, Double> newProductions = new LinkedHashMap();
-          newProductions.put(node, 1.0);
-          newProductions.putAll(currentProductions);
-          this._productionHistory.put(time, newProductions);
+        boolean addProductionSuccessful = (boolean)this._productionHistory.put(time, newProductions);
 
-          this._model.printDebugStatement("  ~ Production added successfully");
+        if(addProductionSuccessful){
           this.setChanged();
           this.notifyObservers();
-          result = ChrestStatus.LEARN_PRODUCTION_SUCCESSFUL;
-        }
-        else{
-          this._model.printDebugStatement("  ~ Production already exists, exiting");
-          result = ChrestStatus.PRODUCTION_ALREADY_LEARNED;
+
+          return true;
         }
       }
     }
-    else{
-      this._model.printDebugStatement("    + A statement evaluated to false, exiting");
-    }
     
-    this._model.printDebugStatement("===== RETURN Node.addProduction() =====");
-    return result;
+    return false;
   }
   
   /**
@@ -820,7 +783,7 @@ public class Node extends Observable {
     this._model.printDebugStatement("- Time reinforcment should occur: " + time);
     
     boolean reinforceProductionSuccessful = false;
-    Entry<Integer, LinkedHashMap<Node, Double>> productionsAtTime = this._productionHistory.floorEntry(time);
+    Entry<Integer, Object> productionsAtTime = this._productionHistory.floorEntry(time);
     Theory reinforcementLearningTheory = this._model.getReinforcementLearningTheory();
     
     this._model.printDebugStatement("Checking if the following all evaluate to true:");
@@ -830,8 +793,8 @@ public class Node extends Observable {
       this._model.printDebugStatement("  ~ Visual Node has Visual modality: " + (this.getModality() == Modality.VISUAL));
       this._model.printDebugStatement("  ~ Action Node has Action modality: " + (node.getModality() == Modality.ACTION));
       this._model.printDebugStatement("  ~ Visual Node has productions at time reinforcement should occur: " + (productionsAtTime != null));
-      this._model.printDebugStatement("  ~ Visual Node is engaged in a production with the Action Node: " + (((LinkedHashMap)productionsAtTime.getValue()).containsKey(node)));
-      this._model.printDebugStatement("  ~ The reinforcement learning theory of the model associated with the Visual Node has been set: " + (reinforcementLearningTheory != null));
+      this._model.printDebugStatement("  ~ Visual Node is engaged in a production with the Action Node: " + (((HashMap)productionsAtTime.getValue()).containsKey(node)));
+      this._model.printDebugStatement("  ~ The reinforcement learning theory of the model associated with the Visual Node has been set" + (reinforcementLearningTheory != null));
     }
     
     if(
@@ -840,14 +803,14 @@ public class Node extends Observable {
       this.getModality() == Modality.VISUAL &&
       node.getModality() == Modality.ACTION &&
       productionsAtTime != null &&
-      productionsAtTime.getValue().containsKey(node) &&
+      ((HashMap)productionsAtTime.getValue()).containsKey(node) &&
       reinforcementLearningTheory != null
     ){
       this._model.printDebugStatement("- All checks evaluate to true, attempting to reinforce production");
-      LinkedHashMap<Node, Double> currentProductions = (LinkedHashMap)productionsAtTime.getValue();
+      HashMap<Node, Double> currentProductions = (HashMap)productionsAtTime.getValue();
       double reinforcedValue = currentProductions.get(node) + reinforcementLearningTheory.calculateReinforcementValue(variables);
       
-      LinkedHashMap<Node, Double> newProductions = new LinkedHashMap();
+      HashMap<Node, Double> newProductions = new HashMap();
       for(Entry<Node, Double> currentProduction : currentProductions.entrySet()){
         if(currentProduction.getKey().equals(node)){
           newProductions.put(node, reinforcedValue);
@@ -857,8 +820,7 @@ public class Node extends Observable {
         }
       }
       
-      this._productionHistory.put(time, newProductions);
-      reinforceProductionSuccessful = true;
+      reinforceProductionSuccessful = (boolean)this._productionHistory.put(time, newProductions);
     }
     
     if(reinforceProductionSuccessful){
@@ -867,7 +829,7 @@ public class Node extends Observable {
     }
     
     this._model.printDebugStatement("- Returning " + reinforceProductionSuccessful);
-    this._model.printDebugStatement("===== RETURN Node.reinforceProduction() =====");
+    this._model.printDebugStatement("===== RETURN =====");
     return reinforceProductionSuccessful;
   }
   
@@ -937,13 +899,16 @@ public class Node extends Observable {
       List<Node> semanticLinks = this.getSemanticLinks(time);
       if(semanticLinks != null && !semanticLinks.contains(node)){
         
-        ArrayList<Node> semanticLinksToAdd = new ArrayList();
+        List<Node> semanticLinksToAdd = new ArrayList();
         semanticLinksToAdd.add(node);
         semanticLinksToAdd.addAll(semanticLinks);
-        this._semanticLinksHistory.put(time, semanticLinksToAdd);
-        this.setChanged();
-        this.notifyObservers();
-        return true;
+        boolean updateSemanticLinksResult = (boolean)this._semanticLinksHistory.put(time, semanticLinksToAdd);
+
+        if(updateSemanticLinksResult){
+          this.setChanged();
+          this.notifyObservers();
+          return true;
+        }
       }
     }
     
@@ -1019,10 +984,13 @@ public class Node extends Observable {
       !node.isRootNode() &&
       this.getAssociatedNode(time) != node
     ){
-      this._associatedNodeHistory.put(time, node);
-      setChanged ();
-      notifyObservers ();
-      return true;
+      boolean updateAssociatedNodeResult = (boolean)this._associatedNodeHistory.put(time, node);
+      
+      if(updateAssociatedNodeResult){
+        setChanged ();
+        notifyObservers ();
+        return true;
+      }
     }
     
     return false;
@@ -1040,8 +1008,8 @@ public class Node extends Observable {
    * this {@link #this} at the time specified.
    */
   public Node getNamedBy(int time){
-    Entry<Integer, Node> mostRecentlyNamedBy = this._namedByHistory.floorEntry(time);
-    return mostRecentlyNamedBy == null ? null : mostRecentlyNamedBy.getValue();
+    Entry entry = this._namedByHistory.floorEntry(time);
+    return entry == null ? null : (Node)entry.getValue();
   }
   
   /**
@@ -1066,10 +1034,13 @@ public class Node extends Observable {
       this.getModality() == Modality.VISUAL &&
       node.getModality() == Modality.VERBAL
     ){
-      this._namedByHistory.put(time, node);
-      setChanged ();
-      notifyObservers ();
-      return true;
+      boolean updateNamedByResult = (boolean)this._namedByHistory.put(time, node);
+      
+      if(updateNamedByResult){
+        setChanged ();
+        notifyObservers ();
+        return true;
+      }
     }
     
     return false;
@@ -1085,8 +1056,8 @@ public class Node extends Observable {
    * the time specified otherwise, {@link java.lang.Boolean#FALSE}.
    */
   public boolean isTemplate(int time){
-    Entry<Integer, Boolean> result = this._templateHistory.floorEntry(time);
-    return result == null ? false : result.getValue();
+    Entry<Integer, Object> result = this._templateHistory.floorEntry(time);
+    return result == null ? false : (boolean)result.getValue();
   }
   
   /** 
@@ -1163,8 +1134,8 @@ public class Node extends Observable {
 
       //Create a hashmap of occurrences of items and positions in the cumulative
       //image.
-      Map<String,Integer> itemCount = new LinkedHashMap<String, Integer> ();
-      Map<Integer,Integer> positionCount = new LinkedHashMap<Integer, Integer> ();
+      Map<String,Integer> itemCount = new HashMap<String, Integer> ();
+      Map<Integer,Integer> positionCount = new HashMap<Integer, Integer> ();
       for (ListPattern cumulativeImagePattern : cumulativeImage) {
         for (PrimitivePattern cumulativeImagePatternPrimitive : cumulativeImagePattern) {
           if (cumulativeImagePatternPrimitive instanceof ItemSquarePattern) {
@@ -1259,8 +1230,8 @@ public class Node extends Observable {
 
         //Create a hashmap of occurrences of items and positions in the cumulative
         //image.
-        Map<String,Integer> itemCount = new LinkedHashMap<String, Integer> ();
-        Map<Integer,Integer> positionCount = new LinkedHashMap<Integer, Integer> ();
+        Map<String,Integer> itemCount = new HashMap<String, Integer> ();
+        Map<Integer,Integer> positionCount = new HashMap<Integer, Integer> ();
         for (ListPattern cumulativeImagePattern : cumulativeImage) {
           for (PrimitivePattern cumulativeImagePatternPrimitive : cumulativeImagePattern) {
             if (cumulativeImagePatternPrimitive instanceof ItemSquarePattern) {
@@ -1450,9 +1421,11 @@ public class Node extends Observable {
    * {@link java.lang.Boolean#FALSE} otherwise.
    */
   boolean clearFilledSlots(int time){
-    if(this.isTemplate(time)){
-      this._filledItemSlotsHistory.put(time, new ArrayList());
-      this._filledPositionSlotsHistory.put(time, new ArrayList());
+    if(
+      this.isTemplate(time) &&
+      (boolean)this._filledItemSlotsHistory.put(time, new ArrayList()) &&
+      (boolean)this._filledPositionSlotsHistory.put(time, new ArrayList())
+    ){
       return true;
     }
     

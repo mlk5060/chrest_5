@@ -65,7 +65,7 @@ import java.util.function.BiFunction;
  * 
  * @author Martyn Lloyd-Kelly <martynlk@liverpool.ac.uk>
  */
-public class HistoryTreeMap<Integer, V> extends TreeMap<Integer, V>{
+public class HistoryTreeMap extends TreeMap<Integer, Object>{
   
   /**
    * Determines if adding the specified key to {@link #this} would rewrite its
@@ -75,12 +75,7 @@ public class HistoryTreeMap<Integer, V> extends TreeMap<Integer, V>{
    * @return 
    */
   public boolean rewritingHistory(Integer time){
-    if(this.containsKey(time) || this.ceilingKey(time) != null){
-      throw new IllegalStateException(
-        "History rewrite attempted at time " + time + " for HistoryTreeMap with " +
-        "entries:" + this.toString());
-    }
-    return false;
+    return this.containsKey(time) || this.ceilingKey(time) != null;
   }
   
   /**
@@ -93,11 +88,11 @@ public class HistoryTreeMap<Integer, V> extends TreeMap<Integer, V>{
    * rewrite the history of {@link #this} by merging.
    */
   @Override
-  public V merge(
+  public Object merge(
     Integer key, 
-    V value,
-    BiFunction<? super V, ? super V, ? extends V> func
-  ) throws UnsupportedOperationException {
+    Object value,
+    BiFunction<? super Object, ? super Object, ? extends Object> func
+  ) throws UnsupportedOperationException{
     throw new UnsupportedOperationException();
   }
   
@@ -134,7 +129,7 @@ public class HistoryTreeMap<Integer, V> extends TreeMap<Integer, V>{
    * {@link jchrest.lib.HistoryTreeMap#putAll(java.util.Map)}.
    */
   @Override
-  public V putIfAbsent(Integer time, V value) throws UnsupportedOperationException{
+  public Object putIfAbsent(Integer time, Object value) throws UnsupportedOperationException{
     throw new UnsupportedOperationException();
   }
   
@@ -143,29 +138,29 @@ public class HistoryTreeMap<Integer, V> extends TreeMap<Integer, V>{
    * @param time
    * @param value
    * @return The result of {@link java.util.TreeMap#put(java.lang.Object, 
-   * java.lang.Object)} if adding a new {@link java.util.Map.Entry} 
+   * java.lang.Object) if adding a new {@link java.util.Map.Entry} 
    * consisting of the time and value specified will not rewrite the history of
-   * {@link #this}, {@code null} if it will or if {@link 
-   * java.util.TreeMap#put(java.lang.Object, java.lang.Object)} fails.
+   * {@link #this}, null if it will.
    */
   @Override
-  public V put(Integer time, V value) {
+  public Object put(Integer time, Object value) {
     if(!this.rewritingHistory(time)){
-      return super.put(time, value);
+      super.put(time, value);
+      return true;
     }
     
-    return null;
+    return false;
   }
   
   /**
    * @param map
    */
   @Override
-  public void putAll(Map <? extends Integer, ? extends V> map) {
+  public void putAll(Map <? extends Integer, ? extends Object> map) {
     HistoryTreeMap mapSpecified = (HistoryTreeMap)map;
-    Integer earliestTimeInMapSpecified = (Integer)mapSpecified.firstKey();
+    int earliestTimeInMapSpecified = mapSpecified.firstKey();
     
-    if(earliestTimeInMapSpecified != null && !this.rewritingHistory(earliestTimeInMapSpecified)){
+    if(!this.rewritingHistory(earliestTimeInMapSpecified)){
       super.putAll(mapSpecified);
     }
   }
@@ -177,7 +172,7 @@ public class HistoryTreeMap<Integer, V> extends TreeMap<Integer, V>{
    * rewrite the history of {@link #this} by removing entries.
    */
   @Override
-  public V remove(Object time) throws UnsupportedOperationException{
+  public Object remove(java.lang.Object time) throws UnsupportedOperationException{
     throw new UnsupportedOperationException();
   }
   
@@ -189,7 +184,7 @@ public class HistoryTreeMap<Integer, V> extends TreeMap<Integer, V>{
    * rewrite the history of {@link #this} by removing entries.
    */
   @Override
-  public boolean remove(Object time, Object value) throws UnsupportedOperationException{
+  public boolean remove(java.lang.Object time, java.lang.Object value) throws UnsupportedOperationException{
     throw new UnsupportedOperationException();
   }
   
@@ -201,7 +196,7 @@ public class HistoryTreeMap<Integer, V> extends TreeMap<Integer, V>{
    * rewrite the history of {@link #this} by replacing entries.
    */
   @Override
-  public V replace(Integer time, V value) throws UnsupportedOperationException{
+  public Object replace(Integer time, Object value) throws UnsupportedOperationException{
     throw new UnsupportedOperationException();
   }
   
@@ -214,7 +209,7 @@ public class HistoryTreeMap<Integer, V> extends TreeMap<Integer, V>{
    * rewrite the history of {@link #this} by replacing entries.
    */
   @Override
-  public boolean replace(Integer time, V oldValue, V newValue) throws UnsupportedOperationException{
+  public boolean replace(Integer time, Object oldValue, Object newValue) throws UnsupportedOperationException{
     throw new UnsupportedOperationException();
   }
   
@@ -224,18 +219,7 @@ public class HistoryTreeMap<Integer, V> extends TreeMap<Integer, V>{
    * rewrite the history of {@link #this} by replacing entries.
    */
   @Override
-  public void replaceAll(BiFunction<? super Integer, ? super V, ? extends V> func) throws UnsupportedOperationException{
+  public void replaceAll(BiFunction<? super Integer, ? super Object, ? extends Object> func) throws UnsupportedOperationException{
     throw new UnsupportedOperationException();
-  }
-  
-  @Override
-  public String toString(){
-    String contents = "";
-    
-    for(Entry<Integer, V> entry : this.entrySet()){
-      contents += "\n - Key: " + entry.getKey() + ", Value: " + entry.getValue().toString();
-    }
-    
-    return contents;
   }
 }

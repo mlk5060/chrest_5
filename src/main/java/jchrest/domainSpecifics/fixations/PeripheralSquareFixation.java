@@ -44,14 +44,11 @@ public class PeripheralSquareFixation extends Fixation{
   /**
    * @param model The {@link jchrest.architecture.Chrest} model constructing 
    * {@link #this}.
-   * @param timeThatDecidingUponThisStarts The time (in milliseconds) that it 
-   * will be in the domain when {@link #this} starts to be decided upon.
-   * @param timeTakenToDecideUponThis The time (in milliseconds) that it takes 
-   * to decide upon the {@link jchrest.lib.Square} that {@link #this} will 
-   * fixate on after starting deliberation on it.
+   * @param timeDecidedUpon The time {@link #this} is scheduled to be decided
+   * upon in context of the external domain, in milliseconds.
    */
-  public PeripheralSquareFixation(Chrest model, int timeThatDecidingUponThisStarts, int timeTakenToDecideUponThis){
-    super(timeThatDecidingUponThisStarts, timeTakenToDecideUponThis);
+  public PeripheralSquareFixation(Chrest model, int timeDecidedUpon){
+    super(timeDecidedUpon);
     this._model = model;
   }
 

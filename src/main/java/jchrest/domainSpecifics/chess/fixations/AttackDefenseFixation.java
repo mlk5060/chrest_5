@@ -46,13 +46,11 @@ public class AttackDefenseFixation extends Fixation{
    * {@link #this} on in context of the {@code board} specified, one is randomly 
    * selected and assigned to be the {@link jchrest.lib.Square} to return when 
    * {@link #this#make(jchrest.lib.Scene, int)} is invoked and the time {@link 
-   * #this} is decided upon is updated to the {@code time} specified plus the 
-   * value of the {@code model} specified's {@link 
-   * jchrest.architecture.Chrest#getTimeToAccessVisualSpatialField()} value
-   * plus the value of the {@code model} specified's {@link 
-   * jchrest.architecture.Chrest#getTimeToMoveVisualSpatialFieldObject()} 
-   * multiplied by the number of {@link jchrest.lib.Square Squares} considered 
-   * for movement to by the chess piece fixated on.
+   * #this} is decided upon is updated to the {@code time} specified plus 100ms
+   * plus either 50ms or 100ms multiplied by the number of {@link 
+   * jchrest.lib.Square Squares} considered for movement to by the chess piece 
+   * fixated on (50ms if the {@code model} specified is experienced, 100ms if 
+   * not).  
    * 
    * Thus, the constructor sets the time {@link #this} is decided upon according
    * to the values for the "Base time to generate a move" and "Time to traverse
@@ -61,18 +59,17 @@ public class AttackDefenseFixation extends Fixation{
    * 
    * @param model
    * @param board
-   * @param timeThatDecidingUponThisStarts The time (in milliseconds) that it 
-   * will be in the domain when {@link #this} starts to be decided upon.
+   * @param time
    */
-  public AttackDefenseFixation(Chrest model, ChessBoard board, int timeThatDecidingUponThisStarts){
-
-    super(timeThatDecidingUponThisStarts, model.getTimeToAccessVisualSpatialField());
+  public AttackDefenseFixation(Chrest model, ChessBoard board, int time){
+    //Add 100 to the time: the base movement cost.
+    super(time + 100);
     
-    if(timeThatDecidingUponThisStarts < model.getCreationTime()){
+    if(time < model.getCreationTime()){
       throw new IllegalArgumentException(
         "The time that the AttackDefenseFixation constructor was invoked (" + 
-        timeThatDecidingUponThisStarts + ") is earlier than the time the " +
-        "associated CHREST model was created (" + model.getCreationTime() + ")"
+        time + ") is earlier than the time the associated CHREST model was " +
+        "created (" + model.getCreationTime() + ")"
        );
     }
     
@@ -92,7 +89,7 @@ public class AttackDefenseFixation extends Fixation{
       //null.  Otherwise, it can be reasonably assumed that the performance time
       //for this Fixation is AFTER the model has been created and made previous
       //Fixations.
-      Fixation mostRecentFixationPerformed = model.getPerceiver().getMostRecentFixationPerformed(timeThatDecidingUponThisStarts);
+      Fixation mostRecentFixationPerformed = model.getPerceiver().getMostRecentFixationPerformed(time);
       if(mostRecentFixationPerformed != null){
         
         //Get most recent fixation performed info and check that its all OK.
@@ -132,7 +129,7 @@ public class AttackDefenseFixation extends Fixation{
             //Set time decided upon, irrespective of whether a suitable Square was
             //found to make this fixation on.
             this.setTimeDecidedUpon(
-              this.getTimeDecidedUpon() + model.getTimeToMoveVisualSpatialFieldObject() * (int)potentialFixationsAndSquaresConsidered[1]
+              this.getTimeDecidedUpon() + (model.isExperienced(time) ? 50 : 100) * (int)potentialFixationsAndSquaresConsidered[1]
             );
 
             //Set the Square to fixate on when this Fixation is made, if there are

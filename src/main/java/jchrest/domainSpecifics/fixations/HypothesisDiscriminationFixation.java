@@ -48,11 +48,10 @@ public class HypothesisDiscriminationFixation extends Fixation{
    * 
    * @param model The {@link jchrest.architecture.Chrest} model constructing 
    * {@link #this}.
-   * @param timeThatDecidingUponThisStarts The time (in milliseconds) that it 
-   * will be in the domain when {@link #this} starts to be decided upon.
+   * @param time The current time in the domain (in milliseconds).
    */
-  public HypothesisDiscriminationFixation(Chrest model, int timeThatDecidingUponThisStarts){
-    super(timeThatDecidingUponThisStarts, model.getTimeToRetrieveItemFromStm());
+  public HypothesisDiscriminationFixation(Chrest model, int time){
+    super(time + model.getTimeToRetrieveItemFromStm());
     this._model = model;
   }
 

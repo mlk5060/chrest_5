@@ -238,28 +238,6 @@ process_test "getter and setters" do
   assert_true(stm.add(node_8, time_node_8_added_to_stm), "see test 16")
   assert_true(stm.add(node_2, time_node_2_added_to_stm_again), "see test 17")
   
-  # Attempt a history re-write using a time that's an entry in the STM item's
-  # history.
-  exception_thrown = false
-  begin
-    stm.add(node_8, time_node_8_created)
-  rescue
-    exception_thrown = true
-  end
-  
-  assert_true(exception_thrown, "see test 18")
-  
-  #Attempt a history re-write using a time that's not an entry in the STM item's
-  #history
-  exception_thrown = false
-  begin
-    stm.add(node_8, time_node_1_added_to_stm - 1)
-  rescue
-    exception_thrown = true
-  end
-  
-  assert_true(exception_thrown, "see test 19")
-  
   #####################################
   ### Stm.replaceHypothesis() TESTS ###
   #####################################
@@ -273,19 +251,14 @@ process_test "getter and setters" do
   # STM item 2: node 2
   # STM item 3: node 8
   time_hypothesis_replaced = time_node_2_added_to_stm_again + 5
-  assert_true(stm.replaceHypothesis(node_7, time_hypothesis_replaced), "see test 20")
+  assert_true(stm.replaceHypothesis(node_7, time_hypothesis_replaced), "see test 18")
   
   #########################
   ### Stm.clear() TESTS ###
   #########################
   
-  stm.add(node_1, time_hypothesis_replaced + 1)
-  stm.add(node_2, time_hypothesis_replaced + 2)
-  time_stm_cleared = time_hypothesis_replaced + 1
-  assert_true(stm.clear(time_stm_cleared), "see test 21")
-  
-  #The actual contents of STM (and whether the "clear" works correctly) is 
-  #tested by getter methods below.
+  time_stm_cleared = time_hypothesis_replaced + 5
+  assert_true(stm.clear(time_stm_cleared), "see test 19")
 
   ######################
   ### Stm.iterator() ###
@@ -296,8 +269,8 @@ process_test "getter and setters" do
   # the iterator returns the most recent state of STM).
   time_node_3_added_again = time_stm_cleared + 5
   time_node_7_added_again = time_node_3_added_again + 5
-  assert_true(stm.add(node_3, time_node_3_added_again), "see test 22")
-  assert_true(stm.add(node_7, time_node_7_added_again), "see test 23")
+  assert_true(stm.add(node_3, time_node_3_added_again), "see test 20")
+  assert_true(stm.add(node_7, time_node_7_added_again), "see test 21")
   stm_it = stm.iterator()
   
   i = 0
@@ -306,7 +279,7 @@ process_test "getter and setters" do
     
     i == 0 ? expected_node = node_7 : expected_node = node_3
     
-    assert_equal(expected_node, stm_it.next(), "see test 24")
+    assert_equal(expected_node, stm_it.next(), "see test 22")
     i+=1
   end
   
@@ -316,8 +289,21 @@ process_test "getter and setters" do
   
   time_stm_capacity_modified_first = time_node_7_added_again + 5
   time_stm_capacity_modified_second = time_stm_capacity_modified_first + 5
-  assert_true(stm.setCapacity(1, time_stm_capacity_modified_first), "see test 25")
-  assert_true(stm.setCapacity(6, time_stm_capacity_modified_second), "see test 26")
+  assert_true(stm.setCapacity(1, time_stm_capacity_modified_first), "see test 23")
+  assert_true(stm.setCapacity(6, time_stm_capacity_modified_second), "see test 24")
+  
+  #####################################################################
+  ### TEST THAT REWRITING HISTORY WITH ALL METHODS ABOVE IS BLOCKED ###
+  #####################################################################
+  
+  # Go from the time node 1 was created so that checks on STM and node creation 
+  # times are not triggered.
+  for time in time_node_1_created..time_stm_capacity_modified_second
+    assert_false(stm.add(node_1, time), "see test 25 at time " + time.to_s)
+    assert_false(stm.replace_hypothesis(node_1, time), "see test 26 at time " + time.to_s)
+    assert_false(stm.clear(time), "see test 27 at time " + time.to_s)
+    assert_false(stm.setCapacity(5, time), "see test 28 at time " + time.to_s)
+  end
   
   #===============================#
   #==== GETTER FUNCTION TESTS ====#
@@ -409,7 +395,7 @@ process_test "getter and setters" do
       time_description = "after STM capacity is modified"
     end
     
-    assert_equal(expected_stm_contents, stm.getContents(time), "see test 27 at time " + time.to_s + " (" + time_description + ")")
+    assert_equal(expected_stm_contents, stm.getContents(time), "see test 29 at time " + time.to_s + " (" + time_description + ")")
   end
   
   ######################
@@ -455,7 +441,7 @@ process_test "getter and setters" do
       time_description = "after STM capacity is modified"
     end
     
-    assert_equal(expected_stm_count, stm.getCount(time), "see test 28 at time " + time.to_s + "(" + time_description + ")")
+    assert_equal(expected_stm_count, stm.getCount(time), "see test 30 at time " + time.to_s + "(" + time_description + ")")
   end
   
   ######################
@@ -519,13 +505,13 @@ process_test "getter and setters" do
     stm_items_at_time = stm.getContents(time)
     
     if stm_items_at_time == nil
-      assert_equal(expected_stm_items, stm_items_at_time, "see test 29 at time " + time.to_s + "(" + time_description +")")
+      assert_equal(expected_stm_items, stm_items_at_time, "see test 31 at time " + time.to_s + "(" + time_description +")")
     else
       #This should throw a null pointer type error if the arrays returned are not 
       #of an equal size (desired behaviour since this will indicate that something
       #is wrong: either too many or too little expected items).
       for i in 0...[stm_items_at_time.size(), expected_stm_items.size()].max
-        assert_equal(expected_stm_items[i], stm_items_at_time.get(i), "see test 30 at time " + time.to_s + "(" + time_description +")")
+        assert_equal(expected_stm_items[i], stm_items_at_time.get(i), "see test 32 at time " + time.to_s + "(" + time_description +")")
       end
     end
   end

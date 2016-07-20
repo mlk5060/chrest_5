@@ -178,10 +178,8 @@ end
 #   the Fixation.
 unit_test "add_fixation" do
   
-  Chrest.class_eval{
-    field_accessor :_recognisedVisualSpatialFieldObjectLifespan, 
-      :_unrecognisedVisualSpatialFieldObjectLifespan,
-      :_timeTakenToDecideUponCentralFixations
+  Chrest.java_class{
+    field_accessor :_recognisedVisualSpatialFieldObjectLifespan, :_unrecognisedVisualSpatialFieldObjectLifespan
   }
   
   vsf_field = VisualSpatialField.java_class.declared_field("_visualSpatialField")
@@ -256,10 +254,10 @@ unit_test "add_fixation" do
         
         #Populate VisualSpatialField with remaining VisualSpatialFieldObjects.
         vsf = vsf_field.value(visual_spatial_field)
-        vsf.get(2).get(3).lastEntry().getValue().add(VisualSpatialFieldObject.new("1", "P", model, visual_spatial_field, time, true, true))
-        vsf.get(4).get(3).lastEntry().getValue().add(VisualSpatialFieldObject.new("2", "K", model, visual_spatial_field, time, false, true))
-        vsf.get(0).get(2).lastEntry().getValue().add(VisualSpatialFieldObject.new("3", "G", model, visual_spatial_field, time, true, true))
-        vsf.get(3).get(1).lastEntry().getValue().add(VisualSpatialFieldObject.new("4", "H", model, visual_spatial_field, time, false, true))
+        vsf.get(2).get(3).add(VisualSpatialFieldObject.new("1", "P", model, visual_spatial_field, time, true, true))
+        vsf.get(4).get(3).add(VisualSpatialFieldObject.new("2", "K", model, visual_spatial_field, time, false, true))
+        vsf.get(0).get(2).add(VisualSpatialFieldObject.new("3", "G", model, visual_spatial_field, time, true, true))
+        vsf.get(3).get(1).add(VisualSpatialFieldObject.new("4", "H", model, visual_spatial_field, time, false, true))
       end
 
       # Minimum domain column and row coordinates should not be zero-indexed so
@@ -277,8 +275,8 @@ unit_test "add_fixation" do
       ##### CONSTRUCT FIXATION #####
       ##############################
 
-      fixation = CentralFixation.new(time, model._timeTakenToDecideUponCentralFixations)
-      fixation._performanceTime = (time + 10).to_java(:int)
+      fixation = CentralFixation.new(time)
+      fixation._performanceTime = time + 10
       fixation._performed = true
       fixation._scene = scene
       fixation._colFixatedOn = 2
@@ -286,7 +284,7 @@ unit_test "add_fixation" do
 
       if [1, 13].include?(scenario) then fixation = nil end
       if [2, 14].include?(scenario) then fixation._performanceTime = nil end
-      if [3, 15].include?(scenario) then fixation._performanceTime = (time - 10).to_java(:int) end
+      if [3, 15].include?(scenario) then fixation._performanceTime = time - 10 end
       if [4, 16].include?(scenario) then fixation._performed = false end
       if [5, 17].include?(scenario) then fixation._scene = nil end
       if [6, 18].include?(scenario) then fixation._colFixatedOn = nil end
@@ -348,11 +346,11 @@ unit_test "add_fixation" do
         template_node._filledPositionSlotsHistory = HistoryTreeMap.new()
 
         # Set template variables for the node.
-        template_node._templateHistory.put((time - 1).to_java(:int), true)
-        template_node._itemSlotsHistory.put((time - 1).to_java(:int), itemSlots)
-        template_node._positionSlotsHistory.put((time - 1).to_java(:int), positionSlots)
-        template_node._filledItemSlotsHistory.put((time - 1).to_java(:int), ArrayList.new())
-        template_node._filledPositionSlotsHistory.put((time - 1).to_java(:int), ArrayList.new())
+        template_node._templateHistory.put(time - 1, true)
+        template_node._itemSlotsHistory.put(time - 1, itemSlots)
+        template_node._positionSlotsHistory.put(time - 1, positionSlots)
+        template_node._filledItemSlotsHistory.put(time - 1, ArrayList.new())
+        template_node._filledPositionSlotsHistory.put(time - 1, ArrayList.new())
 
         # Construct a child history for the visual LTM root node (don't want to 
         # rely on methods since, if they're changed, this test may break).
@@ -362,7 +360,7 @@ unit_test "add_fixation" do
 
         # Set the visual root Node's child history to that created above.
         visual_ltm_root_node_child_history = HistoryTreeMap.new()
-        visual_ltm_root_node_child_history.put(time.to_java(:int), links)
+        visual_ltm_root_node_child_history.put(time, links)
         model.getLtmModalityRootNode(Modality::VISUAL)._childHistory = visual_ltm_root_node_child_history
       end
       
@@ -548,7 +546,7 @@ unit_test "add_fixation" do
       # the maximum value: cognition/attention (also ensures that a second bout
       # of learning will occur as well as slot filling).
       if [9,12,21,24].include?(scenario)
-        fixation._performanceTime = ([model.getAttentionClock(), model.getCognitionClock()].max).to_java(:int)
+        fixation._performanceTime = [model.getAttentionClock(), model.getCognitionClock()].max
         
         # Invoke function
         list_pattern_returned = nil
@@ -716,12 +714,12 @@ unit_test "clear_fixations" do
     fixations_field.accessible = true
     perceiver_fixations = fixations_field.value(perceiver)
 
-    # Create an ArrayList of 10 Fixations and put this in the Perceiver's 
+    # Create an ArrayList of 10 Fixations and set put this in the Perceiver's 
     # Fixation data structure and set the "_fixationToLearnFrom" instance variable
     # to 10.
     fixations = ArrayList.new()
-    10.times do fixations.add(CentralFixation.new(time, 10)) end
-    perceiver_fixations.put(time.to_java(:int), fixations)
+    10.times do fixations.add(CentralFixation.new(time += 10)) end
+    perceiver_fixations.put(time, fixations)
     perceiver._fixationToLearnFrom = 10
 
     # Invoke "clearFixations" after Fixations have been put in the Perceiver's 
@@ -789,10 +787,9 @@ unit_test "get_fixations" do
 
       new_fixations = ArrayList.new()
       new_fixations.addAll(current_fixations)
-      new_fixations.add(CentralFixation.new(time, time_increment))
-      time += time_increment
-      
-      fixations_field.value(perceiver).put(time.to_java(:int), new_fixations)
+      new_fixations.add(CentralFixation.new(time += time_increment))
+
+      fixations_field.value(perceiver).put(time, new_fixations)
     end
 
     ###################
@@ -811,15 +808,15 @@ unit_test "get_fixations" do
           assert_equal(
             nil, 
             fixations, 
-            "occurred when getting Fixations from the Perceiver at a time " + 
-            "before the Perceiver was created"
+            "occurred when getting Fixations from the Perceiever at a time " + 
+            "before the Perceiever was created"
           )
         else 
           assert_equal(
             ms/time_increment,
             fixations.size(),
             "occurred when getting Fixations from the Perceiever at a time " + 
-            "when/after the Perceiver was created (" + ms.to_s + "ms)"
+            "when/after the Perceiever was created (" + ms.to_s + "ms)"
           )
         end
 
@@ -864,12 +861,11 @@ unit_test "get_fixations_performed" do
       new_fixations = ArrayList.new()
       new_fixations.addAll(current_fixations)
       
-      fixation_to_add = CentralFixation.new(time, time_increment)
-      time += time_increment
+      fixation_to_add = CentralFixation.new(time += time_increment)
       if fixation % 2 == 0 then fixation_to_add._performed = true end
       new_fixations.add(fixation_to_add)
 
-      fixations_field.value(perceiver).put(time.to_java(:int), new_fixations)
+      fixations_field.value(perceiver).put(time, new_fixations)
     end
 
     ###################
@@ -935,15 +931,14 @@ unit_test "get_most_recent_fixation_performed" do
       new_fixations = ArrayList.new()
       new_fixations.addAll(current_fixations)
       
-      fixation_to_add = CentralFixation.new(time, time_increment)
-      time += time_increment
+      fixation_to_add = CentralFixation.new(time += time_increment)
       if fixation % 2 == 0 
         fixation_to_add._performed = true
         fixations_performed_references.push(fixation_to_add.getReference())
       end
       new_fixations.add(fixation_to_add)
 
-      fixations_field.value(perceiver).put(time.to_java(:int), new_fixations)
+      fixations_field.value(perceiver).put(time, new_fixations)
     end
 
     ###################
@@ -1225,8 +1220,7 @@ unit_test "learn_from_new_fixatons" do
 
       # Add 10 Fixations to the first set.
       for fixation in 1..10
-        f = CentralFixation.new(time, 10)
-        time += 10
+        f = CentralFixation.new(time += 10)
         f._performanceTime = (f.getTimeDecidedUpon + 50)
 
         f._performed = 
@@ -1286,7 +1280,7 @@ unit_test "learn_from_new_fixatons" do
         new_fixations = ArrayList.new()
         new_fixations.addAll(prev_fixations_in_perceiver)
         new_fixations.add(f)
-        fixations_field.value(perceiver).put(f.getPerformanceTime().to_java(:int), new_fixations)
+        fixations_field.value(perceiver).put(f.getPerformanceTime(), new_fixations)
         time = f.getPerformanceTime()
       end
 
@@ -1303,8 +1297,7 @@ unit_test "learn_from_new_fixatons" do
 
       # Add 10 Fixations to the second set.
       for fixation in 1..10
-        f = CentralFixation.new(time, 10)
-        time += 10
+        f = CentralFixation.new(time += 10)
         f._performanceTime = (f.getTimeDecidedUpon + 50)
 
         f._performed = 
@@ -1326,7 +1319,7 @@ unit_test "learn_from_new_fixatons" do
         new_fixations = ArrayList.new()
         new_fixations.addAll(prev_fixations_in_perceiver)
         new_fixations.add(f)
-        fixations_field.value(perceiver).put(f.getPerformanceTime().to_java(:int), new_fixations)
+        fixations_field.value(perceiver).put(f.getPerformanceTime(), new_fixations)
         time = f.getPerformanceTime()
       end
 

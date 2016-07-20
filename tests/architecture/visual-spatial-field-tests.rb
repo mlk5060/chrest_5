@@ -256,13 +256,7 @@ unit_test "add_object_to_coordinates" do
         true
       )
       existing_object._terminus = time + 10000
-      
-      coordinate_contents_history = visual_spatial_field_field.value(visual_spatial_field).get(1).get(0)
-      current_coordinate_contents = coordinate_contents_history.lastEntry().getValue
-      new_coordinate_contents = ArrayList.new()
-      new_coordinate_contents.addAll(current_coordinate_contents)
-      new_coordinate_contents.add(existing_object)
-      coordinate_contents_history.put(existing_object._timeCreated.to_java(:int), new_coordinate_contents)
+      visual_spatial_field_field.value(visual_spatial_field).get(1).get(0).add(existing_object)
     end
     
     # Add the agent equipped with CHREST to the 
@@ -316,7 +310,7 @@ unit_test "add_object_to_coordinates" do
     # Before setting the time to add, special considerations need to be made for
     # the existing object if its the agent equipped with CHREST
     if [9, 10, 16, 17, 23, 24].include?(scenario)
-      creator = visual_spatial_field_field.value(visual_spatial_field).get(1).get(0).lastEntry().getValue().get(0)
+      creator = visual_spatial_field_field.value(visual_spatial_field).get(1).get(0).get(0)
       if [10, 17, 24].include?(scenario) then creator._terminus = time + 9000 end
       existing_object = creator
     end
@@ -580,8 +574,8 @@ unit_test "get_as_scene" do
     empty_square_1._terminus = time + 20
     empty_square_2._terminus = time + 200
     
-    vsf.get(1).get(0).lastEntry().getValue().add(empty_square_1)
-    vsf.get(1).get(0).lastEntry().getValue().add(empty_square_2)
+    vsf.get(1).get(0).add(empty_square_1)
+    vsf.get(1).get(0).add(empty_square_2)
 
     # Add non-empty squares
     non_empty_square_1 = VisualSpatialFieldObject.new("non_emp_1", "A", model, visual_spatial_field, time + 10, false, false)
@@ -593,10 +587,10 @@ unit_test "get_as_scene" do
     non_empty_square_3._terminus = time + 20
     non_empty_square_4._terminus = time + 200
     
-    vsf.get(2).get(0).lastEntry().getValue().add(non_empty_square_1)
-    vsf.get(2).get(0).lastEntry().getValue().add(non_empty_square_2)
-    vsf.get(2).get(0).lastEntry().getValue().add(non_empty_square_3)
-    vsf.get(2).get(0).lastEntry().getValue().add(non_empty_square_4)
+    vsf.get(2).get(0).add(non_empty_square_1)
+    vsf.get(2).get(0).add(non_empty_square_2)
+    vsf.get(2).get(0).add(non_empty_square_3)
+    vsf.get(2).get(0).add(non_empty_square_4)
 
     #######################################################
     ##### SET-UP UNKNOWN PROBABILITIES DATA STRUCTURE #####
@@ -798,8 +792,8 @@ unit_test "get_coordinate_contents" do
       empty_square_1._terminus = time + 100
       empty_square_2._terminus = time + 200
       
-      vsf.get(0).get(0).lastEntry().getValue().add(empty_square_1)
-      vsf.get(0).get(0).lastEntry().getValue().add(empty_square_2)
+      vsf.get(0).get(0).add(empty_square_1)
+      vsf.get(0).get(0).add(empty_square_2)
     elsif scenario == 4
       obj_1 = VisualSpatialFieldObject.new("obj_1", "A", model, visual_spatial_field, time, false, false)
       obj_2 = VisualSpatialFieldObject.new("obj_2", "B", model, visual_spatial_field, time, false, false)
@@ -810,10 +804,10 @@ unit_test "get_coordinate_contents" do
       obj_3._terminus = time + 100
       obj_4._terminus = time + 200
       
-      vsf.get(0).get(0).lastEntry().getValue().add(obj_1)
-      vsf.get(0).get(0).lastEntry().getValue().add(obj_2)
-      vsf.get(0).get(0).lastEntry().getValue().add(obj_3)
-      vsf.get(0).get(0).lastEntry().getValue().add(obj_4)
+      vsf.get(0).get(0).add(obj_1)
+      vsf.get(0).get(0).add(obj_2)
+      vsf.get(0).get(0).add(obj_3)
+      vsf.get(0).get(0).add(obj_4)
     end
     
     ##############################################
@@ -941,17 +935,17 @@ unit_test "get_creator_details" do
       # be earlier than the creation time of the second VisualSpatialFieldObject
       # representing the agent equipped with CHREST.
       vsf = visual_spatial_field_field.value(visual_spatial_field)
-      vsf.get(0).get(0).lastEntry().getValue().get(0)._terminus = (time + 100)
+      vsf.get(0).get(0).get(0)._terminus = (time + 100)
       
       # Adding second VisualSpatialFieldObject representing the agent equipped 
       # with CHREST to VisualSpatialField in a different location to the first
       # (1, 1) instead of (0, 0).
-      vsf.get(1).get(1).lastEntry().getValue().add(VisualSpatialFieldObject.new(
+      vsf.get(1).get(1).add(VisualSpatialFieldObject.new(
         "00", 
         Scene.getCreatorToken(), 
         model, 
         visual_spatial_field, 
-        vsf.get(0).get(0).lastEntry().getValue().get(0)._terminus + 10, 
+        vsf.get(0).get(0).get(0)._terminus + 10, 
         false, 
         false
       ))
@@ -960,7 +954,7 @@ unit_test "get_creator_details" do
     # Invoke function
     creator_details = visual_spatial_field.getCreatorDetails(
       (scenario == 3 ? 
-        vsf.get(1).get(1).lastEntry().getValue().get(0)._timeCreated :
+        vsf.get(1).get(1).get(0)._timeCreated :
         time + 10
       )
     )
@@ -1018,58 +1012,20 @@ unit_test "get_domain_specific_col_and_row" do
   visual_spatial_field = VisualSpatialField.new("", 2, 2, 4, 6, Chrest.new(0, false), nil, 0)
   
   for scenario in 1..3
-    
-    #############################
-    ### SET INPUT COORDINATES ###
-    #############################
-    
     coordinate = 0
     if scenario == 2 then coordinate = 1 end
     if scenario == 3 then coordinate = 2 end
     
-    ######################
-    ### INVOKE METHODS ###
-    ######################
+    col = visual_spatial_field.getDomainSpecificColFromVisualSpatialFieldCol(coordinate)
+    row = visual_spatial_field.getDomainSpecificRowFromVisualSpatialFieldRow(coordinate)
     
-    exception_thrown_for_col = false
-    begin
-      col = visual_spatial_field.getDomainSpecificColFromVisualSpatialFieldCol(coordinate)
-    rescue
-      exception_thrown_for_col = true
-    end
-    
-    exception_thrown_for_row = false
-    begin
-      row = visual_spatial_field.getDomainSpecificRowFromVisualSpatialFieldRow(coordinate)
-    rescue
-      exception_thrown_for_row = true
-    end
-    
-    ##############################
-    ### SET EXPECTED VARIABLES ###
-    ##############################
-    
-    expected_exception_thrown_for_col = (scenario == 3)
-    expected_exception_thrown_for_row = (scenario == 3)
-    
-    expected_col = expected_row = nil
-    if scenario == 2 then expected_col, expected_row = 4, 6 end
+    expected_col = 4
+    expected_row = 6
     if scenario == 2 then expected_col, expected_row = 5, 7 end
+    if scenario == 3 then expected_col, expected_row = nil, nil end
     
-    #############
-    ### TESTS ###
-    #############
-    
-    assert_equal(expected_exception_thrown_for_col, exception_thrown_for_col, "occurred when checking if an exception was thrown for the col in scenario " + scenario.to_s)
-    assert_equal(expected_exception_thrown_for_row, exception_thrown_for_row, "occurred when checking if an exception was thrown for the row in scenario " + scenario.to_s)
-    
-    if expected_col != nil 
-      assert_equal(expected_col, col, "occurred when checking col in scenario " + scenario.to_s)
-    end
-    
-    if expected_row != nil
-      assert_equal(expected_row, row, "occurred when checking row in scenario " + scenario.to_s)
-    end
+    assert_equal(expected_col, col)
+    assert_equal(expected_row, row)
   end
 end
 
@@ -1107,60 +1063,20 @@ unit_test "get_visual_spatial_field_col_and_row" do
   visual_spatial_field = VisualSpatialField.new("", 2, 2, 4, 6, Chrest.new(0, false), nil, 0)
   
   for scenario in 1..3
-    
-    #############################
-    ### SET INPUT COORDINATES ###
-    #############################
-    
     domain_col = 4
     domain_row = 6
     if scenario == 2 then domain_col, domain_row = 5, 7 end
     if scenario == 3 then domain_col, domain_row = 6, 8 end
     
-    ######################
-    ### INVOKE METHODS ###
-    ######################
+    col = visual_spatial_field.getVisualSpatialFieldColFromDomainSpecificCol(domain_col)
+    row = visual_spatial_field.getVisualSpatialFieldRowFromDomainSpecificRow(domain_row)
     
-    exception_thrown_for_col = false
-    begin
-      col = visual_spatial_field.getVisualSpatialFieldColFromDomainSpecificCol(domain_col)
-    rescue
-      exception_thrown_for_col = true
-    end
-    
-    exception_thrown_for_row = false
-    begin
-      row = visual_spatial_field.getVisualSpatialFieldRowFromDomainSpecificRow(domain_row)
-    rescue
-      exception_thrown_for_row = true
-    end
-    
-    ##############################
-    ### SET EXPECTED VARIABLES ###
-    ##############################
-    
-    expected_exception_thrown_for_col = (scenario == 3)
-    expected_exception_thrown_for_row = (scenario == 3)
-    
-    expected_col = expected_row = nil
-    if scenario == 1 then expected_col = expected_row = 0 end
+    expected_col = expected_row = 0
     if scenario == 2 then expected_col = expected_row = 1 end
+    if scenario == 3 then expected_col = expected_row = nil end
     
-    #############
-    ### TESTS ###
-    #############
-    
-    assert_equal(expected_exception_thrown_for_col, exception_thrown_for_col, "occurred when checking if an exception was thrown for the col in scenario " + scenario.to_s)
-    assert_equal(expected_exception_thrown_for_row, exception_thrown_for_row, "occurred when checking if an exception was thrown for the row in scenario " + scenario.to_s)
-    
-    if expected_col != nil 
-      assert_equal(expected_col, col, "occurred when checking col in scenario " + scenario.to_s)
-    end
-    
-    if expected_row != nil
-      assert_equal(expected_row, row, "occurred when checking row in scenario " + scenario.to_s)
-    end
-    
+    assert_equal(expected_col, col)
+    assert_equal(expected_row, row)
   end
 end
 
@@ -1205,20 +1121,18 @@ def check_visual_spatial_field_against_expected(visual_spatial_field, expected_v
   for col in 0...width_field.value(visual_spatial_field)
     for row in 0...height_field.value(visual_spatial_field)
 
-      coordinate_contents = vsf.get(col).get(row).floorEntry(time_to_check_at.to_java(:int)).getValue()
-      
       assert_equal(
         expected_visual_spatial_field_data[col][row].size(),
-        coordinate_contents.size(),
+        vsf.get(col).get(row).size(),
         "occurred when checking the number of VisualSpatialFieldObjects on " +
         "col " + col.to_s + ", row " + row.to_s + " " + error_msg_postpend
       )
       
 #      puts "===== Col " + col.to_s + ", row " + row.to_s + " ====="
 
-      for object in 0...coordinate_contents.size()
+      for object in 0...vsf.get(col).get(row).size()
 #        puts "+++ Object " + object.to_s + " +++"
-        vsf_object = coordinate_contents.get(object)
+        vsf_object = vsf.get(col).get(row).get(object)
 #        puts vsf_object.toString()
         
 

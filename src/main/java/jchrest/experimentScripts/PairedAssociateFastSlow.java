@@ -1603,17 +1603,13 @@ public class PairedAssociateFastSlow {
           case PairedAssociateFastSlow.LETTERS_CONDITION:
             for(ListPattern letter : PairedAssociateFastSlow.this._letters){
               PairedAssociateFastSlow.this._model.recogniseAndLearn(letter, PairedAssociateFastSlow.this._model.getCognitionClock());
-              List<Node> matchingNodesInStm = PairedAssociateFastSlow.this._model.searchStm(letter, PairedAssociateFastSlow.this._model.getCognitionClock());
-              boolean letterLearnedCompletely = false;
-              for(Node node : matchingNodesInStm){
-                if(node.getImage(PairedAssociateFastSlow.this._model.getCognitionClock()).equals(letter)) letterLearnedCompletely = true;
-              }
-              while(!letterLearnedCompletely){
+              while(
+                !PairedAssociateFastSlow.this._model.presentInStm(
+                  letter, 
+                  PairedAssociateFastSlow.this._model.getCognitionClock()
+                )
+              ){
                 PairedAssociateFastSlow.this._model.recogniseAndLearn(letter, PairedAssociateFastSlow.this._model.getCognitionClock());
-                matchingNodesInStm = PairedAssociateFastSlow.this._model.searchStm(letter, PairedAssociateFastSlow.this._model.getCognitionClock());
-                for(Node node : matchingNodesInStm){
-                  if(node.getImage(PairedAssociateFastSlow.this._model.getCognitionClock()).equals(letter)) letterLearnedCompletely = true;
-                }
               }
             }
             break;

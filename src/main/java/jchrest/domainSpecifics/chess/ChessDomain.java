@@ -54,9 +54,6 @@ public class ChessDomain extends DomainSpecifics {
   private int _initialFixationThreshold = 4;
   private final int _fixationPeripheryMaxAttempts;
   
-  private int _timeTakenToDecideOnGlobalStrategyFixations;
-  private int _timeTakenToDecideOnSalientManFixations;
-  
   /**
    * @param definition Should be the definition of a full chess board in <a 
    * href="https://en.wikipedia.org/wiki/Forsyth%E2%80%93Edwards_Notation">FEN
@@ -713,18 +710,8 @@ public class ChessDomain extends DomainSpecifics {
    * jchrest.domainSpecifics.Fixation Fixations}, this parameter defines how 
    * many can be attempted in total before a new set is initialised (see {@link 
    * #this#shouldClearFixations(int)}.
-   * 
-   * @param timeTakenToDecideOnGlobalStrategyFixations
-   * @param timeTakenToDecideOnSalientManFixations
    */
-  public ChessDomain(
-    Chrest model, 
-    Integer initialFixationThreshold, 
-    int fixationPeripheryMaxAttempts, 
-    int maxFixationsInSet,
-    int timeTakenToDecideOnGlobalStrategyFixations,
-    int timeTakenToDecideOnSalientManFixations
-  ) {
+  public ChessDomain(Chrest model, Integer initialFixationThreshold, int fixationPeripheryMaxAttempts, int maxFixationsInSet) {
     super(model, maxFixationsInSet);
     
     if(initialFixationThreshold != null){
@@ -762,21 +749,6 @@ public class ChessDomain extends DomainSpecifics {
         "constructor (" + maxFixationsInSet + ") is < the initial fixation " +
         "threshold specified (" + this._initialFixationThreshold + ")."
       );
-    }
-    
-    //Set time taken to decide upon global strategy/salient man fixations
-    if(timeTakenToDecideOnGlobalStrategyFixations < 0 || timeTakenToDecideOnSalientManFixations < 0){
-      throw new IllegalArgumentException(
-        "One or both of the times taken to decide on global strategy or salient " +
-        "man fixations is < 0 (time specified to decide on global strategy fixations: " +
-        timeTakenToDecideOnGlobalStrategyFixations + ", time specified to decide on " +
-        "salient man fixations: " + timeTakenToDecideOnSalientManFixations +
-        ")."
-      );
-    }
-    else{
-      this._timeTakenToDecideOnGlobalStrategyFixations = timeTakenToDecideOnGlobalStrategyFixations;
-      this._timeTakenToDecideOnSalientManFixations = timeTakenToDecideOnSalientManFixations;
     }
   }
 
@@ -834,13 +806,13 @@ public class ChessDomain extends DomainSpecifics {
    * 
    * @return A {@link jchrest.domainSpecifics.fixations.CentralFixation} whose
    * {@link jchrest.domainSpecifics.Fixation#getTimeDecidedUpon()} will return
-   * the {@code time} specified plus the value returned by invoking {@link j
-   * chrest.architecture.Chrest#getTimeTakenToDecideUponCentralFixation()} in 
-   * context of {@link #this#_associatedModel}.
+   * the {@code time} specified plus 150ms (the value for the "Time to select a 
+   * starting square row" entry in table 8.2 found in "Perception and Memory in 
+   * Chess" by de Groot and Gobet).
    */
   @Override
   public Fixation getInitialFixationInSet(int time){
-    return new CentralFixation(time, this._associatedModel.getTimeTakenToDecideUponCentralFixations());
+    return new CentralFixation(time + 150);
   }
   
   /**
@@ -917,7 +889,7 @@ public class ChessDomain extends DomainSpecifics {
     int numberFixationsAttempted = (fixationsAttempted == null ? 0 : fixationsAttempted.size());
     
     if((numberFixationsToMake + numberFixationsAttempted) < this._initialFixationThreshold){
-      return new SalientManFixation(this._associatedModel, time, this._timeTakenToDecideOnSalientManFixations);
+      return new SalientManFixation(this._associatedModel, time);
     }
     else{
       
@@ -986,14 +958,14 @@ public class ChessDomain extends DomainSpecifics {
           }
           else if(r >= 0.3333 && r < 0.6667) {
             if(this._associatedModel.isExperienced(time)){
-              fixation = new GlobalStrategyFixation(this._associatedModel, time, this._timeTakenToDecideOnGlobalStrategyFixations);
+              fixation = new GlobalStrategyFixation(this._associatedModel, time + 150);
             }
             else{
-              fixation = new PeripheralItemFixation(this._associatedModel, this._fixationPeripheryMaxAttempts, time, this._associatedModel.getTimeTakenToDecideUponPeripheralItemFixations());
+              fixation = new PeripheralItemFixation(this._associatedModel, this._fixationPeripheryMaxAttempts, time + 150);
             }
           }
           else{
-            fixation = new PeripheralSquareFixation(this._associatedModel, time, this._associatedModel.getTimeTakenToDecideUponPeripheralSquareFixations());
+            fixation = new PeripheralSquareFixation(this._associatedModel, time + 150);
           }
         }
         
@@ -1089,44 +1061,6 @@ public class ChessDomain extends DomainSpecifics {
     }
     
     return false;
-  }
-  
-  public int getTimeTakenToDecideOnGlobalStrategyFixations(){
-    return this._timeTakenToDecideOnGlobalStrategyFixations;
-  }
-  
-  public int getTimeTakenToDecideOnSalientManFixations(){
-    return this._timeTakenToDecideOnSalientManFixations;
-  }
-  
-  /**
-   * 
-   * @param time Should be >= 0
-   */
-  public void setTimeTakenToDecideOnGlobalStrategyFixations(int time){
-    if(time < 0){
-      throw new IllegalArgumentException(
-        "The time specified to decide on a global strategy fixation is < 0 (" + time + ")."
-      );
-    }
-    else{
-      this._timeTakenToDecideOnGlobalStrategyFixations = time;
-    }
-  }
-  
-  /**
-   * 
-   * @param time Should be >= 0
-   */
-  public void setTimeTakenToDecideOnSalientManFixations(int time){
-    if(time < 0){
-      throw new IllegalArgumentException(
-        "The time specified to decide on a salient man fixation is < 0 (" + time + ")."
-      );
-    }
-    else{
-      this._timeTakenToDecideOnSalientManFixations = time;
-    }
   }
 }
 

@@ -7,7 +7,7 @@ unit_test "constructor" do
   
   exception_thrown = false
   begin
-    PeripheralItemFixation.new(model, 0, time, 2)
+    PeripheralItemFixation.new(model, 0, time += 2)
   rescue
     exception_thrown = true
   end
@@ -33,7 +33,7 @@ unit_test "constructor" do
     fixation = nil
     maximum_attempts_parameter = (i == 1 ? 1 : 5)
     begin
-      fixation = PeripheralItemFixation.new(model, maximum_attempts_parameter, time, 0)
+      fixation = PeripheralItemFixation.new(model, maximum_attempts_parameter, time)
     rescue
       exception_thrown = true
     end
@@ -302,8 +302,7 @@ unit_test "make" do
 
       # Construct and add a Fixation that has been performed successfully to the
       # Perceiver associated with "model" if the scenario stipulates this.
-      first_fixation = CentralFixation.new(time, 100)
-      time += 100
+      first_fixation = CentralFixation.new(time += 100)
       first_fixation._performanceTime = (time += 50)
       first_fixation._scene = first_fixation_scene
       first_fixation._performed = true
@@ -341,8 +340,7 @@ unit_test "make" do
       # PeripheralItemFixation (if the scenario ensures that the while loop that 
       # generates a possible Square to fixate on is reached) is due to the 
       # condition(s) being checked by the scenario.
-      fixation_to_make = PeripheralItemFixation.new(model, 200, time, 50)
-      time += 50
+      fixation_to_make = PeripheralItemFixation.new(model, 200, time += 50)
       fixation_to_make._performanceTime = (time += 100)
 
       # Set time to invoke PeripheralItemFixation.make()
