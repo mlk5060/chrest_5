@@ -9,7 +9,6 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 import jchrest.domainSpecifics.Scene;
 import jchrest.domainSpecifics.SceneObject;
-import jchrest.lib.HistoryTreeMap;
 import jchrest.lib.VisualSpatialFieldObject;
 import jchrest.lib.Square;
 import jchrest.lib.VisualSpatialFieldException;
@@ -185,7 +184,7 @@ public class VisualSpatialField {
   
   /**
    * Adds {@code object} to the {@code col} and {@code row} specified in {@link 
-   * #this}.
+   * #this} if it doesn't already exist on this field.
    * <p>
    * If the coordinates specified represents an empty {@link jchrest.lib.Square}
    * at the {@code time} specified and the {@code object} specified represents 
@@ -230,24 +229,17 @@ public class VisualSpatialField {
    *    jchrest.lib.VisualSpatialFieldObject} that represents this agent on 
    *    {@link #this} at the {@code time} specified.
    *  </li>
-   *  <li>
-   *    The {@code object} specified represents a {@link 
-   *    jchrest.lib.VisualSpatialFieldObject} that is already encoded on {@link 
-   *    #this} at the {@code time} specified, i.e. the result of invoking {@link 
-   *    jchrest.lib.VisualSpatialFieldObject#getIdentifier()} on a {@link 
-   *    jchrest.lib.VisualSpatialFieldObject} currently alive on {@link #this}
-   *    equals the result of invoking {@link 
-   *    jchrest.lib.VisualSpatialFieldObject#getIdentifier()} on the {@code 
-   *    object} specified.  This prevents issues when {@link 
-   *    jchrest.architecture.Chrest#moveObjectsInVisualSpatialField(
-   *    java.util.ArrayList, int)} is invoked in context of {@link #this}.
-   *  </li>
    * </ol>
    */
   public final boolean addObjectToCoordinates(int col, int row, VisualSpatialFieldObject object, int time) throws VisualSpatialFieldException{
     if(!object.getObjectType().equals(Scene.getBlindSquareToken())){
       if(col >= 0 && col < this._width && row >= 0 && row < this._height){
 
+        //////////////////////////////////////////////////////////////////
+        ///// CHECK IF OBJECT ALREADY EXISTS ON VISUAL-SPATIAL FIELD /////
+        //////////////////////////////////////////////////////////////////
+        
+        boolean objectAlreadyExists = false;
         for(int colToCheck = 0; colToCheck < this._width; colToCheck++){
           for(int rowToCheck = 0; rowToCheck < this._height; rowToCheck++){
             for(VisualSpatialFieldObject vsfo : this._visualSpatialField.get(colToCheck).get(rowToCheck).floorEntry(time).getValue()){
@@ -270,39 +262,49 @@ public class VisualSpatialField {
 
                 //Check if a duplicate VisualSpatialFieldObject is being added.
                 if(vsfo.getIdentifier().equals(object.getIdentifier())){
-                  throw new VisualSpatialFieldException(
-                    "A VisualSpatialFieldObject representing the " +
-                    "VisualSpatialFieldObject requested to be added to " + 
-                    "VisualSpatialField coordinates (" + col + ", " + row + ") " +
-                    "currently exists on the same VisualSpatialField at " +
-                    "coordinates (" + colToCheck + ", " + rowToCheck + ").  " +
-                    "VisualSpatialFieldObject to add details:" + object.toString() +
-                    "\nVisualSpatialFieldObject found details:" + vsfo.toString()
-                  );
+//                  throw new VisualSpatialFieldException(
+//                    "A VisualSpatialFieldObject representing the " +
+//                    "VisualSpatialFieldObject requested to be added to " + 
+//                    "VisualSpatialField coordinates (" + col + ", " + row + ") " +
+//                    "currently exists on the same VisualSpatialField at " +
+//                    "coordinates (" + colToCheck + ", " + rowToCheck + ").  " +
+//                    "VisualSpatialFieldObject to add details:" + object.toString() +
+//                    "\nVisualSpatialFieldObject found details:" + vsfo.toString()
+//                  );
+                  objectAlreadyExists = true;
                 }
               }
             }
           }
         }
+        
+        //////////////////////////////////////////////////////
+        ///// ADD NEW OBJECT AND HANDLE EXISTING OBJECTS /////
+        //////////////////////////////////////////////////////
 
-        //Overwrite empty squares or non-empty squares if the 
-        //VisualSpatialFieldObject being added is a non-empty square or an empty
-        //square, respectively.
-        ArrayList<VisualSpatialFieldObject> currentCoordinateContents = this._visualSpatialField.get(col).get(row).floorEntry(time).getValue();
-        for(VisualSpatialFieldObject vsfo : currentCoordinateContents){
-          if(
-            (vsfo.getObjectType().equals(Scene.getEmptySquareToken()) && vsfo.isAlive(time)) ||
-            (object.getObjectType().equals(Scene.getEmptySquareToken()) && vsfo.isAlive(time))
-          ){
-            vsfo.setTerminus(time, true);
+        if(!objectAlreadyExists){
+          
+          //Overwrite empty squares or non-empty squares if the 
+          //VisualSpatialFieldObject being added is a non-empty square or an empty
+          //square, respectively.
+          ArrayList<VisualSpatialFieldObject> currentCoordinateContents = this._visualSpatialField.get(col).get(row).floorEntry(time).getValue();
+          for(VisualSpatialFieldObject vsfo : currentCoordinateContents){
+            if(
+              (vsfo.getObjectType().equals(Scene.getEmptySquareToken()) && vsfo.isAlive(time)) ||
+              (object.getObjectType().equals(Scene.getEmptySquareToken()) && vsfo.isAlive(time))
+            ){
+              vsfo.setTerminus(time, true);
+            }
           }
+
+          ArrayList<VisualSpatialFieldObject> newCoordinateContents = new ArrayList();
+          newCoordinateContents.addAll(currentCoordinateContents);
+          newCoordinateContents.add(object);
+          this._visualSpatialField.get(col).get(row).put(time, newCoordinateContents);
+          return true;
         }
         
-        ArrayList<VisualSpatialFieldObject> newCoordinateContents = new ArrayList();
-        newCoordinateContents.addAll(currentCoordinateContents);
-        newCoordinateContents.add(object);
-        this._visualSpatialField.get(col).get(row).put(time, newCoordinateContents);
-        return true;
+        return false;
       }
       else{
         throw new IllegalArgumentException(

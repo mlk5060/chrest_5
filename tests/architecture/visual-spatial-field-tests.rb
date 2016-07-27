@@ -130,8 +130,8 @@ unit_test "simple_getters" do
 end
 
 ################################################################################
-# Tests "addObjectToCoordinates()" using 24 scenarios that encompass all 
-# possible combinations of additions:
+# Tests "addObjectToCoordinates()" using a number of scenarios that encompass 
+# all possible combinations of additions:
 # 
 # Scenario Descriptions
 # =====================
@@ -141,7 +141,6 @@ end
 # 1. Add a VisualSpatialFieldObject that represents a blind square.
 # 2. Add a VisualSpatialFieldObject that doesn't represent a blind square to 
 #    coordinates that are not represented in a VisualSpatialField.
-# 3. Add a VisualSpatialFieldObject that already exists on a VisualSpatialField.
 # 
 # For all but one of the remaining scenarios, no exception should be thrown. In
 # these scenarios, a particular type of VisualSpatialFieldObject, v, is added to 
@@ -150,43 +149,53 @@ end
 # 
 # v is set to the following in the scenarios indicated:
 # 
-# 4-10. A VisualSpatialFieldObject representing the agent equipped with CHREST 
-# 11-17. A VisualSpatialFieldObject that represents an empty square
-# 18-24. A VisualSpatialFieldObject that is not the agent equipped with CHREST 
+# 3-9. A VisualSpatialFieldObject representing the agent equipped with CHREST 
+# 10-16. A VisualSpatialFieldObject that represents an empty square
+# 17-23. A VisualSpatialFieldObject that is not the agent equipped with CHREST 
 #        or an empty square
-# 
+#
 # w and t are set to the following in the scenarios indicated:
 # 
-#  4/11/18. w = None (coordinates do not contain any VisualSpatialFieldObjects)
+#  3/10/17. w = None (coordinates do not contain any VisualSpatialFieldObjects)
 #           t = N/A
-#  5/12/19. w = A VisualSpatialFieldObject representing an empty square
+#  4/11/18. w = A VisualSpatialFieldObject representing an empty square
 #           t = Before w's terminus (the coordinates are an empty square)
-#  6/13/20. w = A VisualSpatialFieldObject representing an empty square
+#  5/12/19. w = A VisualSpatialFieldObject representing an empty square
 #           t = After w's terminus (the coordinates were an empty square but now
 #               have an unknown VisualSpatialFieldObject status) 
-#  7/14/21. w = Two VisualSpatialFieldObjects representing non-empty squares 
+#  6/13/20. w = Two VisualSpatialFieldObjects representing non-empty squares 
 #               and not the agent equipped with CHREST (two 
 #               VisualSpatialFieldObjects are used to test whether *all* such 
 #               VisualSpatialFieldObjects have their terminus set correctly when
 #               a VisualSpatialFieldObject representing an empty square is added
 #               to coordinates they occupy).
 #           t = Before w's terminus
-#  8/15/22. w = Two VisualSpatialFieldObjects representing non-empty squares 
+#  7/14/21. w = Two VisualSpatialFieldObjects representing non-empty squares 
 #               and not the agent equipped with CHREST (two 
 #               VisualSpatialFieldObjects are used for the same reasons as in
 #               scenarios 7/14/21).
 #           t = After w's terminus
-#  9/16/23. t = A VisualSpatialFieldObject representing the agent equipped with 
+#  8/15/22. w = A VisualSpatialFieldObject representing the agent equipped with 
 #               CHREST
-#           w = Before t's terminus
-#  10/17/24. t = A VisualSpatialFieldObject representing the agent equipped with 
+#           t = Before w's terminus
+#  9/16/23. w = A VisualSpatialFieldObject representing the agent equipped with 
 #               CHREST
-#            w = After t's terminus
-#
-# NOTE: scenario 9 should throw an exception since w represents an agent 
+#            t= After w's terminus
+#            
+# NOTE: scenario 8 should throw an exception since w represents an agent 
 #       equipped with CHREST and is alive when v, which also represents the same 
 #       agent as w, is added.  All exception-throwing conditions should now have
 #       been triggered.
+#
+# The final four scenarios set v and w to be a VisualSpatialFieldObject that is 
+# not the agent equipped with CHREST or an empty square but their identifier is
+# the same.  This checks that a request to add a VisualSpatialFieldObject that 
+# already exists on the VisualSpatialField is ignored (if appropriate).
+# 
+# 24. Add v to a Square that w doesn't exist on before w's terminus.
+# 25. Add v to a Square that w doesn't exist on after w's terminus.
+# 26. Add v to a Square that w exists on before w's terminus.
+# 27. Add v to a Square that w exists on after w's terminus.
 unit_test "add_object_to_coordinates" do
   
   #######################################################
@@ -212,7 +221,7 @@ unit_test "add_object_to_coordinates" do
   #########################
   ##### SCENARIO LOOP #####
   #########################
-  for scenario in 1..24
+  for scenario in 1..27
     time = 0
     model = Chrest.new(time, false)
     
@@ -227,7 +236,7 @@ unit_test "add_object_to_coordinates" do
     
     # Add creator details, if the scenario deems it necessary.
     creator_details = nil
-    if [9, 10, 16, 17, 23, 24].include?(scenario)
+    if [8, 9, 15, 16, 22, 23].include?(scenario)
       creator_details = ArrayList.new()
       creator_details.add("00")
       creator_details.add(Square.new(1, 0))
@@ -236,14 +245,14 @@ unit_test "add_object_to_coordinates" do
     # Construct the visual-spatial field
     visual_spatial_field = VisualSpatialField.new("", vsf_width, vsf_height, 0, 0, model, creator_details, visual_spatial_field_creation_time)
     
-    ###########################################################################
-    ##### ADD EXISTING OBJECTS TO SQUARE THAT NEW OBJECT WILL BE ADDED TO #####
-    ###########################################################################
+    ################################
+    ##### ADD EXISTING OBJECTS #####
+    ################################
     
     existing_object_identifiers_and_types = []
-    if scenario == 3 then existing_object_identifiers_and_types.push(["45", "AA"]) end
-    if [5, 6, 12, 13, 19, 20].include?(scenario) then existing_object_identifiers_and_types.push(["34", Scene.getEmptySquareToken()]) end
-    if [7, 8, 14, 15, 21, 22].include?(scenario) then existing_object_identifiers_and_types = [["34", "P"], ["35", "Q"]] end
+    if [4, 5, 11, 12, 18, 19].include?(scenario) then existing_object_identifiers_and_types.push(["34", Scene.getEmptySquareToken()]) end
+    if [6, 7, 13, 14, 20, 21].include?(scenario) then existing_object_identifiers_and_types = [["34", "P"], ["35", "Q"]] end
+    if scenario >= 24  then existing_object_identifiers_and_types.push(["45", "AA"]) end
     
     for existing_object_identifier_and_type in existing_object_identifiers_and_types
       existing_object = VisualSpatialFieldObject.new(
@@ -257,6 +266,7 @@ unit_test "add_object_to_coordinates" do
       )
       existing_object._terminus = time + 10000
       
+      # Add every pre-existing VisualSpatialFieldObject to square [1, 0]
       coordinate_contents_history = visual_spatial_field_field.value(visual_spatial_field).get(1).get(0)
       current_coordinate_contents = coordinate_contents_history.lastEntry().getValue
       new_coordinate_contents = ArrayList.new()
@@ -270,16 +280,21 @@ unit_test "add_object_to_coordinates" do
     # been added above. Doing this before the addition would mean that the agent
     # equipped with CHREST will be added twice since it is added when the
     # VisualSpatialField is created.
-    if [9, 10, 16, 17, 23, 24].include?(scenario) then existing_object_identifiers_and_types.push(["00", Scene.getCreatorToken()]) end
+    if [8, 9, 15, 16, 22, 23].include?(scenario) then existing_object_identifiers_and_types.push(["00", Scene.getCreatorToken()]) end
     
     ################################
     ##### CREATE OBJECT TO ADD #####
     ################################
     
     object_to_add_identifier_and_type = ["100", "Z"]
-    if scenario == 3 then object_to_add_identifier_and_type = [existing_object_identifier_and_type[0], "D"] end #Same object (id same but diff. class, tests that id only checked)
-    if scenario.between?(4, 10) then object_to_add_identifier_and_type = ["100", Scene.getCreatorToken()] end
-    if scenario.between?(11, 17) then object_to_add_identifier_and_type = ["100", Scene.getEmptySquareToken()] end
+    if scenario.between?(3, 9) then object_to_add_identifier_and_type[1] = Scene.getCreatorToken() end
+    if scenario.between?(10, 16) then object_to_add_identifier_and_type[1] = Scene.getEmptySquareToken() end
+    
+    # In Scenarios >= 24, the VisualSpatialFieldObject to add should be the same
+    # as the pre-existing object (same identifier).  Note however, that the 
+    # class is different: tests that it is only the identifier that is checked 
+    # when determining VisualSpatialFieldObject equivalence.
+    if scenario >= 24 then object_to_add_identifier_and_type = ["45", "D"] end 
     
     object_to_add = VisualSpatialFieldObject.new( 
       object_to_add_identifier_and_type[0], 
@@ -287,7 +302,7 @@ unit_test "add_object_to_coordinates" do
       model,
       visual_spatial_field, 
       time + 9000, 
-      ([9, 10, 16, 17, 23, 24].include?(scenario) ? false : true),
+      ([8, 9, 15, 16, 22, 23].include?(scenario) ? false : true),
       true
     )
     
@@ -304,9 +319,10 @@ unit_test "add_object_to_coordinates" do
     ############################################
     
     coordinates_to_add_object_to = 
-      (scenario == 2 ? 
-        [vsf_width, vsf_height] : 
-        [1, 0]
+      (
+        scenario == 2 ? [vsf_width, vsf_height] : 
+        [24, 25].include?(scenario) ? [0, 1] :
+        [1, 0] # Add w to v's location
       )
       
     #####################################
@@ -315,14 +331,14 @@ unit_test "add_object_to_coordinates" do
       
     # Before setting the time to add, special considerations need to be made for
     # the existing object if its the agent equipped with CHREST
-    if [9, 10, 16, 17, 23, 24].include?(scenario)
+    if [8, 9, 15, 16, 22, 23].include?(scenario)
       creator = visual_spatial_field_field.value(visual_spatial_field).get(1).get(0).lastEntry().getValue().get(0)
-      if [10, 17, 24].include?(scenario) then creator._terminus = time + 9000 end
+      if [9, 16, 23].include?(scenario) then creator._terminus = time + 9000 end
       existing_object = creator
     end
       
     time_to_add_object_at = object_to_add._timeCreated + 5 # By default, just after the object to add has been created (existing object won't have decayed if present)
-    if [6, 8, 10, 13, 15, 17, 20, 22, 24].include?(scenario) then time_to_add_object_at = (existing_object._terminus + 100) end # Otherwise, after the existing object has decayed.
+    if [5, 7, 9, 12, 14, 16, 19, 21, 23, 25, 27].include?(scenario) then time_to_add_object_at = (existing_object._terminus + 100) end # Otherwise, after the existing object has decayed.
       
     ###########################
     ##### INVOKE FUNCTION #####
@@ -344,37 +360,29 @@ unit_test "add_object_to_coordinates" do
     ##################################
     ##### SET EXPECTED VARIABLES #####
     ##################################
-    expected_exception_thrown = (scenario.between?(1, 3) || scenario == 9 ? true : false)
-    expected_result = (scenario.between?(1, 3) || scenario == 9 ? false : true)
+    expected_exception_thrown = ([1, 2, 8].include?(scenario) ? true : false)
+    expected_result = ([1, 2, 8, 24, 26].include?(scenario) ? false : true)
     
     assert_equal(expected_exception_thrown, exception_thrown, "checking exception in scenario " + scenario.to_s)
     assert_equal(expected_result, result, "checking result in scenario " + scenario.to_s)
     
-    if scenario > 4 && scenario != 9
+    if scenario > 3 && scenario != 8
       
       # Create and populate the data structure containing the expected state of 
       # the visual-spatial field after adding the object.
       expected_visual_spatial_field_data = Array.new(2){ Array.new(2) { Array.new } }
       expected_visual_spatial_field_data[coordinates_to_add_object_to[0]][coordinates_to_add_object_to[1]] = []
-      
-      object_to_add_data = [
-        identifier_field.value(object_to_add),
-        type_field.value(object_to_add),
-        [10, 16, 17, 23, 24].include?(scenario) ? false : true,
-        object_to_add._timeCreated,
-        object_to_add._terminus
-      ]
 
-      # Existing objects should always be present if scenario is not 4, 11 or 
-      # 18 (these scenarios have no pre-existing objects on the coordinates the
+      # Existing objects should always be present if scenario is not 3, 10 or 
+      # 17 (these scenarios have no pre-existing objects on the coordinates the
       # new object is added to).
       existing_object_data = []
-      if ![4, 11, 18].include?(scenario)
+      if ![3, 10, 17].include?(scenario)
         for existing_object_identifier_and_type in existing_object_identifiers_and_types
           existing_object_data.push([
             existing_object_identifier_and_type[0],
             existing_object_identifier_and_type[1],
-            ([9, 10, 16, 17, 23, 24].include?(scenario) ? false : true),
+            ([8, 9, 15, 16, 22, 23].include?(scenario) ? false : true),
             existing_object._timeCreated,
             existing_object._terminus
           ])
@@ -407,17 +415,37 @@ unit_test "add_object_to_coordinates" do
       #   agent equipped with CHREST is being added to coordinates that contain 
       #   a VisualSpatialFieldObject represention of an empty square whose 
       #   terminus has not been reached when the addition occurs. 
-      if [5, 12, 14, 16, 19].include?(scenario) 
+      if [4, 11, 13, 15, 18].include?(scenario) 
         for object_data in existing_object_data
           object_data[4] = time_to_add_object_at
         end
       end
       
+      # The pre-existing VisualSpatialFieldObject data should be added to the
+      # relevant array index in the "expected_visual_spatial_field_data" array.
+      # In all scenarios, this should be square [1, 0]
       for object_data in existing_object_data
-          expected_visual_spatial_field_data[coordinates_to_add_object_to[0]][coordinates_to_add_object_to[1]].push(object_data)
-        end
+        expected_visual_spatial_field_data[1][0].push(object_data)
+      end
       
-      expected_visual_spatial_field_data[coordinates_to_add_object_to[0]][coordinates_to_add_object_to[1]].push(object_to_add_data)
+      # Include the data for the VisualSpatialFieldObject added unless the 
+      # scenario is 24 or 26 in which case, the VisualSpatialFieldObject 
+      # requested to be added should not have been.
+      # Construct data concerning the VisualSpatialFieldObject whose addition to
+      # the VisualSpatialField was requested.  This may/may not be included in
+      # the data structure used to check if the VisualSpatialField's state is
+      # expected after the addition.
+      unless [24, 26].include?(scenario)
+        object_to_add_data = [
+          identifier_field.value(object_to_add),
+          type_field.value(object_to_add),
+          [9, 15, 16, 22, 23].include?(scenario) ? false : true,
+          object_to_add._timeCreated,
+          object_to_add._terminus
+        ]
+        
+        expected_visual_spatial_field_data[coordinates_to_add_object_to[0]][coordinates_to_add_object_to[1]].push(object_to_add_data)
+      end
       
       check_visual_spatial_field_against_expected(
         visual_spatial_field, 
@@ -1213,14 +1241,9 @@ def check_visual_spatial_field_against_expected(visual_spatial_field, expected_v
         "occurred when checking the number of VisualSpatialFieldObjects on " +
         "col " + col.to_s + ", row " + row.to_s + " " + error_msg_postpend
       )
-      
-#      puts "===== Col " + col.to_s + ", row " + row.to_s + " ====="
 
       for object in 0...coordinate_contents.size()
-#        puts "+++ Object " + object.to_s + " +++"
         vsf_object = coordinate_contents.get(object)
-#        puts vsf_object.toString()
-        
 
         error_msg = "VisualSpatialFieldObject " + (object + 1).to_s + " on col " +
         col.to_s + ", row " + row.to_s + " " + error_msg_postpend
