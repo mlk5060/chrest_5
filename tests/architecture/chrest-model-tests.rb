@@ -1129,8 +1129,7 @@ canonical_result_test "recognise_and_learn" do
         end
       end
     end
-  end
-end
+
     if scenario == 1 then model._cognitionClock = time + 5 end
     
     ############################
@@ -1225,7 +1224,6 @@ end
     assert_equal(expected_result, result, "occurred when checking the result in scenario " + scenario.to_s)
     assert_equal(expected_cognition_clock, model._cognitionClock, "occurred when checking the cognition clock in scenario " + scenario.to_s)
   end
-  
 end
 
 ################################################################################
