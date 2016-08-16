@@ -8000,7 +8000,13 @@ public class Chrest extends Observable implements Serializable {
   public void saveLtmState(String absolutePathToSaveFile, int time){
     try {
       File file = new File(absolutePathToSaveFile);
-      if(file.exists()) file.delete();
+      if(file.exists()){
+        file.delete();
+      }
+      else{
+        file.getParentFile().mkdirs();
+        file.createNewFile();
+      }
       
       ObjectOutputStream output = new ObjectOutputStream( new FileOutputStream(absolutePathToSaveFile) );
       output.writeObject(this);
