@@ -4,11 +4,9 @@
 package jchrest.domainSpecifics.generic;
 
 import jchrest.domainSpecifics.DomainSpecifics;
-import java.util.HashMap;
 import java.util.List;
 import jchrest.architecture.Chrest;
 import jchrest.domainSpecifics.Fixation;
-import jchrest.lib.ExecutionHistoryOperations;
 import jchrest.lib.ItemSquarePattern;
 import jchrest.lib.ListPattern;
 import jchrest.lib.PrimitivePattern;
@@ -82,23 +80,6 @@ public class GenericDomain extends DomainSpecifics {
       else{
         result.add(prim);
       }
-    }
-    
-    if(this._associatedModel != null){
-      HashMap<String, Object> historyRowToInsert = new HashMap<>();
-      
-      //Generic operation name setter for current method.  Ensures for the row to 
-      //be added that, if this method's name is changed, the entry for the 
-      //"Operation" column in the execution history table will be updated without 
-      //manual intervention and "Filter By Operation" queries run on the execution 
-      //history DB table will still work.
-      class Local{};
-      historyRowToInsert.put(Chrest._executionHistoryTableOperationColumnName, 
-        ExecutionHistoryOperations.getOperationString(this.getClass(), Local.class.getEnclosingMethod())
-      );
-      historyRowToInsert.put(Chrest._executionHistoryTableInputColumnName, pattern.toString() + "(" + pattern.getModalityString() + ")");
-      historyRowToInsert.put(Chrest._executionHistoryTableOutputColumnName, result.toString() + "(" + result.getModalityString() + ")");
-      this._associatedModel.addEpisodeToExecutionHistory(historyRowToInsert);
     }
     
     return result;

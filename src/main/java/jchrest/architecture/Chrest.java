@@ -233,39 +233,9 @@ public class Chrest extends Observable implements Serializable {
   /***** Execution history variables *****/
   /***************************************/
   
-  private transient final DatabaseInterface _databaseInterface;
-  
   //The model should not record its execution history by default since it can
   //slow down its operation significantly.
   private transient boolean _executionHistoryRecordingEnabled = false;
-  
-  //Save names of important database variables so consistency with operations is 
-  //ensured.
-  public final static String _executionHistoryTableName = "history";
-  public final static String _executionHistoryTableRowIdColumnName = "ID";
-  public final static String _executionHistoryTableTimeColumnName = "TIME";
-  public final static String _executionHistoryTableOperationColumnName = "OPERATION";
-  public final static String _executionHistoryTableInputColumnName = "INPUT";
-  public final static String _executionHistoryTableDescriptionColumnName = "DESCRIPTION";
-  public final static String _executionHistoryTableOutputColumnName = "OUTPUT";
-  private final static String _executionHistoryUniqueRowIndexName = "execution_row_unique";
-  
-  //Stores execution history table column metadata. This negates querying the 
-  //database for such information (possibly slowing performance) and allows for 
-  //consistency of operations on information from the execution history database
-  //table.  Each ArrayList element denotes a table column and the ordering 
-  //imposed by the ArrayList reflects the order of columns in the execution 
-  //history database table itself.  The length of each array contained in each 
-  //ArrayList element is 2: the first element is the column's name, the second 
-  //element is the column's datatype.
-  private transient final ArrayList<String[]> _executionHistoryTableColumnMetadata = new ArrayList<>();
-  
-  //Set-up a data structure to hold the values set for the columns in the last 
-  //history row inserted.  The keys are column names, the values are the column 
-  //values for the last row. This will be used to "fill-in" data for execution
-  //history rows inserted that do not have all column values specified (values 
-  //for the "TIME" column, for instance).
-  private transient final HashMap<String, Object> _lastHistoryRowInserted = new HashMap<>();
   
   /*************************/
   /***** GUI variables *****/
@@ -372,30 +342,6 @@ public class Chrest extends Observable implements Serializable {
     //this CHREST model is created, the HistoryTreeMap can be updated correctly.
     this._fixationsScheduled.put(time - 1, new ArrayList());
     
-    /*********************************************/
-    /***** Execution history DB table set-up *****/
-    /*********************************************/
-    
-    this._databaseInterface = new DatabaseInterface(null);
-    
-    //Set-up the execution history table column metadata. The first column will 
-    //be specified as the primary key for the table when the table is created. 
-    String[] idColumnNameAndType = {Chrest._executionHistoryTableRowIdColumnName, "INT"};
-    String[] timeColumnNameAndType = {Chrest._executionHistoryTableTimeColumnName, "INT"};
-    String[] operationColumnNameAndType = {Chrest._executionHistoryTableOperationColumnName, "VARCHAR(255)"};
-    String[] inputColumnNameAndType = {Chrest._executionHistoryTableInputColumnName, "VARCHAR(255)"};
-    String[] descriptionColumnNameAndType = {Chrest._executionHistoryTableDescriptionColumnName, "LONGVARCHAR"};
-    String[] outputColumnNameAndType = {Chrest._executionHistoryTableOutputColumnName, "VARCHAR(255)"};
-    
-    this._executionHistoryTableColumnMetadata.add(idColumnNameAndType);
-    this._executionHistoryTableColumnMetadata.add(timeColumnNameAndType);
-    this._executionHistoryTableColumnMetadata.add(operationColumnNameAndType);
-    this._executionHistoryTableColumnMetadata.add(inputColumnNameAndType);
-    this._executionHistoryTableColumnMetadata.add(descriptionColumnNameAndType);
-    this._executionHistoryTableColumnMetadata.add(outputColumnNameAndType);
-    
-    this.createExecutionHistoryTable();
-    
     //Initialise total node counters to 0 for all modalities. 
     for(Modality modality : Modality.values()){
       String modalityString = modality.toString();
@@ -454,19 +400,6 @@ public class Chrest extends Observable implements Serializable {
     this._perceiver = new Perceiver(this, time);
     this._visualSpatialFields.put(time - 1, null);
     this._fixationsScheduled.put(time - 1, new ArrayList());
-    this._databaseInterface = new DatabaseInterface(null);
-    String[] idColumnNameAndType = {Chrest._executionHistoryTableRowIdColumnName, "INT"};
-    String[] timeColumnNameAndType = {Chrest._executionHistoryTableTimeColumnName, "INT"};
-    String[] operationColumnNameAndType = {Chrest._executionHistoryTableOperationColumnName, "VARCHAR(255)"};
-    String[] inputColumnNameAndType = {Chrest._executionHistoryTableInputColumnName, "VARCHAR(255)"};
-    String[] descriptionColumnNameAndType = {Chrest._executionHistoryTableDescriptionColumnName, "LONGVARCHAR"};
-    String[] outputColumnNameAndType = {Chrest._executionHistoryTableOutputColumnName, "VARCHAR(255)"};
-    this._executionHistoryTableColumnMetadata.add(idColumnNameAndType);
-    this._executionHistoryTableColumnMetadata.add(timeColumnNameAndType);
-    this._executionHistoryTableColumnMetadata.add(operationColumnNameAndType);
-    this._executionHistoryTableColumnMetadata.add(inputColumnNameAndType);
-    this._executionHistoryTableColumnMetadata.add(descriptionColumnNameAndType);
-    this._executionHistoryTableColumnMetadata.add(outputColumnNameAndType);
     
     //Set instance variables that need to be set to satisfy the compiler but 
     //will be overwritten during deserialization.
@@ -1931,298 +1864,12 @@ public class Chrest extends Observable implements Serializable {
     }
   }
   
-  /*************************************/
-  /**** EXECUTION HISTORY FUNCTIONS ****/
-  /*************************************/
-  
-  /**
-   * Returns the metadata stored in the relevant data structure in this model
-   * instance for the execution history table.  Note that this function doesn't
-   * actually query the execution history database table for this metadata.
-   * 
-   * @return First element of each array in each ArrayList element contains the 
-   * column's name and its datatype, in that order.
-   */
-  public ArrayList<String[]> getExecutionHistoryTableColumnMetadata(){
-    return this._executionHistoryTableColumnMetadata;
-  }
-  
-  /**
-   * Returns all operations present in the execution history database table.
-   */
-  public void getExecutionHistoryOperations(){
-    String sql = "SELECT " + Chrest._executionHistoryTableOperationColumnName + " FROM " + Chrest._executionHistoryTableName;
-    try {
-      this._databaseInterface.executeSqliteQuery(sql, null);
-    } catch (SQLException ex) {
-      Logger.getLogger(Chrest.class.getName()).log(Level.SEVERE, null, ex);
-    }
-  }
-  
-  /**
-   * Creates a new execution history table in this model's database connection.
-   */
-  private void createExecutionHistoryTable(){
-            
-    String createTableSqlStatement = "CREATE TABLE " + Chrest._executionHistoryTableName + " (";
-    
-    //Since the CHREST GUI is multi-threaded it may, in some cases, try to add 
-    //duplicate rows to the execution history table.  To prevent this, a unique
-    //key index is set with all columns except the primary key column (since 
-    //this will always be different due to auto-increment functionality) forming
-    //the index.
-    String createUniqueRowIndex = "CREATE UNIQUE INDEX " + Chrest._executionHistoryUniqueRowIndexName + ""
-      + " ON " + Chrest._executionHistoryTableName + " (";
-
-    //Specify column names and metadata for SQL queries that have partly been
-    //constructed above.
-    for(int col = 0; col < Chrest.this._executionHistoryTableColumnMetadata.size(); col++){
-      String[] colNameAndType = Chrest.this._executionHistoryTableColumnMetadata.get(col);
-      String colName = colNameAndType[0];
-      createTableSqlStatement += colName + " ";
-      
-      if(col == 0){
-        createTableSqlStatement += colNameAndType[1] + " NOT NULL AUTO_INCREMENT PRIMARY KEY, ";
-      }
-      else{
-        createTableSqlStatement += colNameAndType[1] + ", ";
-        createUniqueRowIndex += colName + ", ";
-      }
-    }
-    createTableSqlStatement = createTableSqlStatement.replaceFirst(", $", ");");
-    createUniqueRowIndex = createUniqueRowIndex.replaceFirst(", $", ");");
-    
-    try {
-      this._databaseInterface.executeSqliteQuery(createTableSqlStatement, null);
-      this._databaseInterface.executeSqliteQuery(createUniqueRowIndex, null);
-    } catch (SQLException ex) {
-      Logger.getLogger(Chrest.class.getName()).log(Level.SEVERE, null, ex);
-    }
-  }
-  
-  /**
-   * Adds an episode to the execution history table of this model's database 
-   * connection.  This function performs the following operations:
-   * 
-   * <ol>
-   *  <li>
-   *    If a value for the "TIME" column has not been specified, its value for 
-   *    this row is set to the value of the "TIME" column in the last row 
-   *    inserted.
-   *  </li>
-   *  <li>
-   *    Creates and executes the SQLite statement that performs the insert. 
-   *  </li>
-   *  <li>
-   *    Updates the last inserted row structure for this model instance.
-   *  </li>
-   * </ol>
-   * 
-   * @param columnNamesAndValues The column names and values that should be 
-   * added to this model's execution history.  Any columns whose values have not 
-   * been specified will have blank values inserted automatically.  To ensure 
-   * consistency of operation, specify column names (keys) using this class' 
-   * relevant class members (static variables whose names start with 
-   * "_historyTable" and end with "ColumnName").
-   */
-  public void addEpisodeToExecutionHistory(HashMap<String, Object> columnNamesAndValues) {
-    
-    if(this.canRecordExecutionHistory()){
-
-      /*********************************/
-      /***** Set time column value *****/
-      /*********************************/
-      if(columnNamesAndValues.get(Chrest._executionHistoryTableTimeColumnName) == null){
-        int time = 0;
-        if(!Chrest.this._lastHistoryRowInserted.isEmpty()){
-          time = (int)Chrest.this._lastHistoryRowInserted.get(Chrest._executionHistoryTableTimeColumnName);
-        }
-        columnNamesAndValues.put(Chrest._executionHistoryTableTimeColumnName, time);
-      }
-
-      /*************************************/
-      /***** Create insert new row SQL *****/
-      /*************************************/
-      String insertSqlStatementString = "INSERT INTO " + Chrest._executionHistoryTableName + " (";
-
-      //Primary key column will be auto-incremented so specify columns
-      //to insert into from the column after the primary key column.
-      for(int col = 1; col < Chrest.this._executionHistoryTableColumnMetadata.size(); col++){
-        Object[] colNameAndTypeIterator = Chrest.this._executionHistoryTableColumnMetadata.get(col);
-        insertSqlStatementString += (String)colNameAndTypeIterator[0] + ", ";
-      }
-      insertSqlStatementString = insertSqlStatementString.replaceFirst(", $", ") VALUES (");
-      
-      for(int colIndex = 1; colIndex < Chrest.this._executionHistoryTableColumnMetadata.size(); colIndex++){
-        insertSqlStatementString += "?, ";
-      }
-      insertSqlStatementString = insertSqlStatementString.replaceFirst(", $", ")");
-
-      /*****************************************/
-      /***** Create SQL statement bindings *****/
-      /*****************************************/
-
-      //Initialise the bindings array.  Note that there are n bindings created
-      //where n = the number of history table columns - 1.  This is because the
-      //ID column should be auto-incremented so a value is never bound to this
-      //column.
-      ArrayList<Object> bindings = new ArrayList();
-      for(int i = 0; i < this._executionHistoryTableColumnMetadata.size() - 1; i++){
-        bindings.add(null);
-      }
-
-      //Set bindings for declared columns in the correct order.
-      for(Entry<String, Object> columnNameAndValueToInsert : columnNamesAndValues.entrySet()){
-        String nameOfColumnToInsertValueInto = columnNameAndValueToInsert.getKey();
-
-        //Skip over the primary key column.
-        for(int col = 1; col < Chrest.this._executionHistoryTableColumnMetadata.size(); col++){
-          String[] columnNameAndType = Chrest.this._executionHistoryTableColumnMetadata.get(col);
-          if(nameOfColumnToInsertValueInto.equals( columnNameAndType[0] )){
-            bindings.set(col - 1, columnNameAndValueToInsert.getValue());
-          }
-        }
-      }
-
-      //Fill in any missing column values with empties.
-      for(int colIndex = 0; colIndex < bindings.size(); colIndex++){
-        if(bindings.get(colIndex) == null){
-          bindings.set(colIndex, "");
-        }
-      } 
-
-      /**************************/
-      /***** Execute insert *****/
-      /**************************/
-      try {
-        this._databaseInterface.executeSqliteQuery(insertSqlStatementString, bindings);
-      } catch (SQLException ex) {
-        Logger.getLogger(Chrest.class.getName()).log(Level.SEVERE, null, ex);
-      }
-
-      /***************************************************/
-      /***** Update last row inserted data structure *****/
-      /***************************************************/
-      this.updateLastExecutionHistoryRowInserted();
-    }
-  }
-  
-  /**
-   * Populates the data structure that stores column values for the last row
-   * inserted into the model's execution history table with relevant data.
-   */
-  private void updateLastExecutionHistoryRowInserted(){
-    if(this.canRecordExecutionHistory()){
-      String getLastRowInsertedSql = "SELECT * FROM " + Chrest._executionHistoryTableName + " WHERE " + Chrest._executionHistoryTableRowIdColumnName + " = "
-        + "(SELECT MAX(" + Chrest._executionHistoryTableRowIdColumnName + ") FROM " + Chrest._executionHistoryTableName + ")";
-
-      try {
-        ArrayList<ArrayList<Object[]>> lastRowInserted = this._databaseInterface.executeSqliteQuery(getLastRowInsertedSql, null);
-
-        if(lastRowInserted != null){
-          lastRowInserted.stream().forEach((rowData) -> {
-            for(int col = 0; col < rowData.size(); col++){
-              Object[] colData = rowData.get(col);
-              Chrest.this._lastHistoryRowInserted.put((String)colData[0], colData[1]);
-            }
-          });
-
-        }
-      } catch (SQLException ex) {
-        Logger.getLogger(Chrest.class.getName()).log(Level.SEVERE, null, ex);
-      }
-    }
-  }
-  
   public void setExecutionHistoryRecording(boolean value){
     this._executionHistoryRecordingEnabled = value;
   }
   
   public boolean canRecordExecutionHistory(){
     return this._executionHistoryRecordingEnabled;
-  }
-  
-  /**
-   * Retrieves entire execution history with no filters.
-   * 
-   * @return See return value for {@link jchrest.database.DatabaseInterface#executeSqliteQuery(java.lang.String, java.util.ArrayList)}.
-   */
-  public ArrayList<ArrayList<Object[]>> getExecutionHistory(){
-    ArrayList<ArrayList<Object[]>> executionHistory = null;
-    String sql = "SELECT * FROM " + Chrest._executionHistoryTableName;
-    
-    try {
-      executionHistory = this._databaseInterface.executeSqliteQuery(sql, null);
-    } catch (SQLException ex) {
-      Logger.getLogger(Chrest.class.getName()).log(Level.SEVERE, null, ex);
-    }
-    
-    return executionHistory;
-  }
-  
-  /**
-   * Retrieves the model's execution history from the time specified to the time 
-   * specified.
-   * 
-   * @param from Domain-time to return model's execution history from.
-   * @param to Domain-time to return model's execution history to.
-   * 
-   * @return See return value for {@link jchrest.database.DatabaseInterface#executeSqliteQuery(java.lang.String, java.util.ArrayList)}.
-   */
-  public ArrayList<ArrayList<Object[]>> getHistory(int from, int to){
-    ArrayList<ArrayList<Object[]>> executionHistory = null;
-    
-    String sql = "SELECT * FROM " + Chrest._executionHistoryTableName + " WHERE time >= ? AND time <= ?";
-    ArrayList bindings = new ArrayList();
-    bindings.add(from);
-    bindings.add(to);
-    
-    try {
-      executionHistory = this._databaseInterface.executeSqliteQuery(sql, bindings);
-    } catch (SQLException ex) {
-      Logger.getLogger(Chrest.class.getName()).log(Level.SEVERE, null, ex);
-    }
-    
-    return executionHistory;
-  }
-  
-  /**
-   * Returns the model's execution history filtered by the operation, from time 
-   * and to time specified.
-   * 
-   * @param operation The operation to filter execution history by.
-   * @param from Domain-time to return model's execution history from.
-   * @param to Domain-time to return model's execution history to.
-   * 
-   * @return See return value for {@link jchrest.database.DatabaseInterface#executeSqliteQuery(java.lang.String, java.util.ArrayList)}.
-   */
-  public ArrayList<ArrayList<Object[]>> getHistory(String operation, int from, int to) {
-    ArrayList<ArrayList<Object[]>> executionHistory = null;
-    
-    String sql = "SELECT * FROM " + Chrest._executionHistoryTableName + " WHERE operation = ? AND time >= ? AND time <= ?;";
-    ArrayList bindings = new ArrayList();
-    bindings.add(operation);
-    bindings.add(from);
-    bindings.add(to);
-    try {
-      executionHistory = this._databaseInterface.executeSqliteQuery(sql, bindings);
-    } catch (SQLException ex) {
-      Logger.getLogger(Chrest.class.getName()).log(Level.SEVERE, null, ex);
-    }
-    
-    return executionHistory;
-  }
-  
-  /**
-   * Clears the model's current execution history.
-   */
-  public void clearHistory() {
-    String sql = "TRUNCATE TABLE " + Chrest._executionHistoryTableName;
-    try {
-      this._databaseInterface.executeSqliteQuery(sql, null);
-    } catch (SQLException ex) {
-      Logger.getLogger(Chrest.class.getName()).log(Level.SEVERE, null, ex);
-    }
   }
   
   /**
@@ -7771,7 +7418,6 @@ public class Chrest extends Observable implements Serializable {
    * the {@code time} specified.
    */
   public void clearShortAndLongTermMemory(int time) {
-    this.clearHistory(); 
     this.setClocks(0);
     
     for(Modality modality : Modality.values()){

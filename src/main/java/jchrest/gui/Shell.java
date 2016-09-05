@@ -11,9 +11,6 @@ import jchrest.lib.PairedPattern;
 import jchrest.lib.Scenes;
 
 import java.awt.BorderLayout;
-import java.awt.Color;
-import java.awt.Component;
-import java.awt.Graphics;
 import java.awt.GridLayout;
 import java.awt.event.*;
 import java.io.*;
@@ -21,8 +18,6 @@ import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 import java.text.DecimalFormat;
 import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Observable;
@@ -31,12 +26,6 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.regex.Pattern;
 import javax.swing.*;
-import javax.swing.border.TitledBorder;
-import javax.swing.event.ChangeEvent;
-import javax.swing.event.ChangeListener;
-import javax.swing.table.AbstractTableModel;
-import javax.swing.table.TableModel;
-import javax.swing.text.DefaultFormatter;
 import jchrest.lib.InputOutput;
 import jchrest.lib.Modality;
 import jchrest.lib.PairedAssociateExperiment;
@@ -53,12 +42,6 @@ import org.jfree.data.statistics.*;
 public class Shell extends JFrame implements Observer {
   private Chrest _model;
   private JMenu _dataMenu; //Required so that "Data" menu options can be disabled if the model is engaged in an experiment.
-  private final List<List<String>> _executionHistory = new ArrayList<>();
-  private ArrayList<String> _executionHistoryOperations = new ArrayList<>();
-  private JComboBox _executionHistoryOperationsComboBox;
-  private JSpinner _executionHistoryTimeFrom;
-  private JSpinner _executionHistoryTimeTo;
-  private JTable _executionHistoryTable;
   
   public Shell(){
     this(new Chrest(0, false));
@@ -97,7 +80,6 @@ public class Shell extends JFrame implements Observer {
     //_model.setNotLoadedIntoExperiment();
     //_model.setNotEngagedInExperiment();
     
-    this._executionHistoryOperations.add("");
     _model.addObserver(this);
   }
 
@@ -123,69 +105,6 @@ public class Shell extends JFrame implements Observer {
     else {
       for(int menuItem = 0; menuItem < this._dataMenu.getItemCount(); menuItem++){
         this._dataMenu.getItem(menuItem).setEnabled(true);
-      }
-    }
-  }
-  
-  /**
-   * Updates the data structure that stores the current execution history of the 
-   * model associated with this Shell instance. Whilst performing this update, 
-   * the function can also update the data structure that stores the operations
-   * currently present in the execution history of the model.
-   * 
-   * @param executionHistory 
-   * @param updateOperations Set to true to update the data structure containing 
-   * execution history operations for this Shell instance.  If this isn't
-   * required, set to false.
-   */
-  private void updateExecutionHistoryAndOperations(ArrayList<ArrayList<Object[]>> executionHistory, boolean updateOperations){
-    
-    //Start with nothing.
-    this._executionHistory.clear();
-    if(executionHistory != null){
-      
-      //Get the metadata for the execution history table.
-      ArrayList<String[]> executionHistoryColumnMetadata = this._model.getExecutionHistoryTableColumnMetadata();
-      
-      //Get a row of data from the execution history passed.
-      for(ArrayList<Object[]> rowOfExecutionHistoryDataPassed : executionHistory){
-        
-        //Create a new data structure to hold a row of data from the execution
-        //history passed.
-        ArrayList rowData = new ArrayList();
-        
-        //Process each column from the CHREST model.
-        for(String[] columnMetadata : executionHistoryColumnMetadata){
-          
-          //Get the column's name, c. 
-          String columnName = columnMetadata[0];
-          
-          //Get the matching column value from the execution history data passed
-          //and add it to the row.  Thus, the column order specified in the
-          //execution history table will be maintained in this instance's data
-          //structure that stores the model's current execution history.
-          for(Object[] columnNameAndValuePassed : rowOfExecutionHistoryDataPassed){
-            String columnNamePassed = (String)columnNameAndValuePassed[0];
-            Object columnValuePassed = columnNameAndValuePassed[1];
-            if(columnNamePassed.equals(columnName)){
-              rowData.add(columnValuePassed);
-            }
-            
-            //Update execution history operations.
-            if(updateOperations){
-              if(columnNamePassed.equals(Chrest._executionHistoryTableOperationColumnName)){
-                String operation = (String)columnValuePassed;
-                if(!this._executionHistoryOperations.contains(operation)){
-                  this._executionHistoryOperations.add(operation);
-                }
-              }
-            }
-          }
-        }
-        
-        //Add the row data to the data structure that will be used to populate 
-        //the visible execution history table in the model information panel.
-        _executionHistory.add(rowData);
       }
     }
   }
@@ -672,11 +591,6 @@ public class Shell extends JFrame implements Observer {
 
     public void actionPerformed (ActionEvent e) {
       
-      //Update the execution history data structures for this Shell instance 
-      //first since the mode information panel requires execution history 
-      //information from the CHREST model associated with this Shell instance 
-      //so it can be displayed.
-      Shell.this.updateExecutionHistoryAndOperations(Shell.this._model.getExecutionHistory(), true);
       JPanel base = new JPanel ();
       base.setLayout (new GridLayout(1,1));
 
@@ -685,7 +599,6 @@ public class Shell extends JFrame implements Observer {
       jtb.addTab ("Contents", getHistogramPane (_model.getContentSizeCounts(_time), "contents", "Histogram of Contents Sizes", "Contents size"));
       jtb.addTab ("Images", getHistogramPane (_model.getImageSizeCounts(_time), "images", "Histogram of Image Sizes", "Image size"));
       jtb.addTab ("Semantic links", getHistogramPane (_model.getSemanticLinkCountsAndFrequencies(_time), "semantic", "Histogram of Number of Semantic Links", "Number of semantic links"));
-      jtb.addTab("Exec. History", getExecutionHistoryPanel());
       base.add (jtb);
 
       JOptionPane pane = new JOptionPane (base, JOptionPane.INFORMATION_MESSAGE);
@@ -742,236 +655,6 @@ public class Shell extends JFrame implements Observer {
     saveButton.addActionListener ( new SaveHistogramActionListener (this, contentSizes));
     panel.add (saveButton, BorderLayout.SOUTH);
     return panel;
-  }
-  
-  /**
-   * Builds and returns the execution history panel.
-   * @return 
-   */
-  public JPanel getExecutionHistoryPanel(){
-    JPanel executionHistoryPanel = new JPanel();
-    
-    if(_executionHistory.isEmpty()){
-      String emptyMessage = "No execution history recorded yet.<br><hr><br>";
-
-      if(this._model.canRecordExecutionHistory()){
-        emptyMessage += "The CHREST model associated with this GUI can record history so "
-        + "<br>try running an experiment.";
-      }
-      else{
-        emptyMessage += "The CHREST model associated with this GUI is not set to record history." +
-          "<br>To enable this functionality go to 'Menu -> Properties' and check" +
-          "<br>the 'Record History' box.";
-      }
-      
-      JLabel emptyMessageJLabel = new JLabel("<html>" + emptyMessage + "</html>");
-      JScrollPane historyScrollPane = new JScrollPane(emptyMessageJLabel);
-      executionHistoryPanel.add(historyScrollPane);
-    }
-    else{
-      
-      /********************************************************/
-      /***** Execution history filter components creation *****/
-      /********************************************************/
-      
-      //Time filters construction
-      int maxChrestTime = this._model.getMaximumClockValue();
-      
-      _executionHistoryTimeFrom = new JSpinner(new SpinnerNumberModel(0, 0, maxChrestTime, 1));
-      _executionHistoryTimeFrom.setToolTipText("Max value is largest value for CHREST's attention/learning clock");
-      
-      _executionHistoryTimeTo = new JSpinner(new SpinnerNumberModel(maxChrestTime, 0, maxChrestTime, 1));
-      _executionHistoryTimeTo.setToolTipText("Max value is largest value for CHREST's attention/learning clock");
-      
-      JFormattedTextField timeFromEditorField = (JFormattedTextField)_executionHistoryTimeFrom.getEditor().getComponent(0);
-      DefaultFormatter timeFromFormatter = (DefaultFormatter) timeFromEditorField.getFormatter();
-      timeFromFormatter.setCommitsOnValidEdit(true);
-      _executionHistoryTimeFrom.addChangeListener(new ChangeListener() {
-
-        @Override
-        public void stateChanged(ChangeEvent e) {
-          
-          //When changing the "Time From" value, this should change the "Time 
-          //To" minimum value and, if the "Time From" value is greater than the
-          //"Time To" value, the "Time To" value should be equal to the new
-          //"Time From" value plus 1.
-          SpinnerNumberModel timeToModel = (SpinnerNumberModel)_executionHistoryTimeTo.getModel();
-          Integer timeFromCurrentValue = (Integer)_executionHistoryTimeFrom.getValue();
-          timeToModel.setMinimum(timeFromCurrentValue);
-        }
-
-      });
-      
-      JFormattedTextField timeToEditorField = (JFormattedTextField) _executionHistoryTimeTo.getEditor().getComponent(0);
-      DefaultFormatter timeToFormatter = (DefaultFormatter) timeToEditorField.getFormatter();
-      timeToFormatter.setCommitsOnValidEdit(true);
-      _executionHistoryTimeTo.addChangeListener(new ChangeListener() {
-
-        @Override
-        public void stateChanged(ChangeEvent e) {
-          
-          //When changing the "Time To" value, this should alter the "Time From"
-          //maximum value and, if the "Time To" value is less than the
-          //"Time From" value, the "Time From" value should be equal to the new
-          //"Time To" value minus 1.
-          SpinnerNumberModel timeFromModel = (SpinnerNumberModel)_executionHistoryTimeFrom.getModel();
-          Integer timeToCurrentValue = (Integer)_executionHistoryTimeTo.getValue();
-          timeFromModel.setMaximum(timeToCurrentValue);
-          
-        }
-
-      });
-      
-      //Operation filter construction
-      String[] executionHistoryOperationsArray = this._executionHistoryOperations.toArray(new String[this._executionHistoryOperations.size()]);
-      Arrays.sort(executionHistoryOperationsArray);
-      this._executionHistoryOperationsComboBox = new JComboBox(executionHistoryOperationsArray);
-      ((JLabel)this._executionHistoryOperationsComboBox.getRenderer()).setHorizontalAlignment(JLabel.RIGHT);
-      
-      //Add filter components to panel
-      JPanel filterOptions = new JPanel();
-      filterOptions.setBorder(new TitledBorder ("Filters"));
-      filterOptions.setLayout(new GridLayout(4, 2));
-      
-      filterOptions.add(new JLabel("Time From: "));
-      filterOptions.add(_executionHistoryTimeFrom);
-      
-      filterOptions.add(new JLabel("Time To: "));
-      filterOptions.add(_executionHistoryTimeTo);
-      
-      filterOptions.add(new JLabel("Filter by Operation: "));
-      filterOptions.add(this._executionHistoryOperationsComboBox);
-      
-      filterOptions.add( new JLabel(""));
-      filterOptions.add(new JButton( new FilterExecutionHistoryAction() ));
-      
-      /******************************************/
-      /***** Create execution history table *****/
-      /******************************************/
-      TableModel executionHistoryTableModel = new AbstractTableModel() {
-        
-        @Override
-        public int getRowCount() {
-          if(_executionHistory.size() > 0){
-            return _executionHistory.size();
-          } else {
-            return 0;
-          }
-        }
-
-        @Override
-        public int getColumnCount(){
-          if(_executionHistory.size() > 0){
-            return _executionHistory.get(0).size();
-          } else {
-            return Shell.this._model.getExecutionHistoryTableColumnMetadata().size();
-          }
-        }
-
-        @Override
-        public Object getValueAt(int rowIndex, int columnIndex) {
-          if(_executionHistory.size() > rowIndex && _executionHistory.get(rowIndex).size() > columnIndex){
-            return _executionHistory.get(rowIndex).get(columnIndex);
-          } else {
-            return null;
-          }
-        }
-
-        @Override
-        public String getColumnName (int columnIndex) {
-          String uncapitalisedColumnName = (String)Shell.this._model.getExecutionHistoryTableColumnMetadata().get(columnIndex)[0];
-          return uncapitalisedColumnName.substring(0, 1).toUpperCase() + uncapitalisedColumnName.substring(1);
-        }
-        
-        @Override
-        public void fireTableStructureChanged() {
-          super.fireTableStructureChanged ();
-          JTableCustomOperations.resizeColumnsToFitWidestCellContentInColumn(Shell.this._executionHistoryTable);
-          Shell.this._executionHistoryTable.removeColumn(Shell.this._executionHistoryTable.getColumnModel().getColumn(0));
-        }
-      };
-      
-      _executionHistoryTable = new JTable (executionHistoryTableModel);
-      JTableCustomOperations.resizeColumnsToFitWidestCellContentInColumn(this._executionHistoryTable);
-      Shell.this._executionHistoryTable.removeColumn(Shell.this._executionHistoryTable.getColumnModel().getColumn(0));
-      
-      /*****************************************/
-      /***** Build execution history panel *****/
-      /*****************************************/
-      
-      JScrollPane executionHistoryScrollPane = new JScrollPane(_executionHistoryTable);
-      JButton exportExecutionHistoryButton = new JButton( new ExportExecutionHistoryAction() );
-      exportExecutionHistoryButton.setAlignmentX(Component.RIGHT_ALIGNMENT);
-      
-      JPanel executionHistory = new JPanel();
-      executionHistory.setBorder(new TitledBorder ("Execution History"));
-      executionHistory.setLayout(new BoxLayout(executionHistory, BoxLayout.Y_AXIS));
-      executionHistory.add(executionHistoryScrollPane);
-      executionHistory.add(exportExecutionHistoryButton);
-      
-      executionHistoryPanel.setLayout(new BoxLayout(executionHistoryPanel, BoxLayout.Y_AXIS));
-      executionHistoryPanel.add(filterOptions);
-      executionHistoryPanel.add(executionHistory);
-    }
-    
-    return executionHistoryPanel;
-  }
-  
-  class ExportExecutionHistoryAction extends AbstractAction implements ActionListener {
-
-    ExportExecutionHistoryAction(){
-      super ("Export Execution History as CSV");
-    }
-      
-    @Override
-    public void actionPerformed(ActionEvent e) {
-      ArrayList<String> executionHistoryData = new ArrayList<>();
-      executionHistoryData.add(ExportData.extractJTableDataAsCsv(_executionHistoryTable));
-      executionHistoryData.add("CHRESTexecutionHistory");
-      executionHistoryData.add("csv");
-      
-      ArrayList<ArrayList<String>> data = new ArrayList<>();
-      data.add(executionHistoryData);
-      ExportData.saveFile(null, "CHREST-execution-history-data", data);
-    }
-  }
-  
-  class FilterExecutionHistoryAction extends AbstractAction implements ActionListener{
-
-    FilterExecutionHistoryAction(){
-      super("Filter");
-    }
-    
-    @Override
-    public void actionPerformed(ActionEvent e) {
-      
-      SwingWorker<Void, Void> filterExecutionHistoryThread = new FilterExecutionHistoryThread();
-      filterExecutionHistoryThread.execute();
-    }
-  }
-  
-  private final class FilterExecutionHistoryThread extends SwingWorker<Void, Void> {
-
-    @Override
-    protected Void doInBackground() throws Exception {
-      ArrayList<ArrayList<Object[]>> executionHistory = null;
-      
-      String selectedOperation = Shell.this._executionHistoryOperationsComboBox.getSelectedItem().toString();
-      if(selectedOperation.equals("")){
-        executionHistory = Shell.this._model.getHistory((Integer)_executionHistoryTimeFrom.getValue(), (Integer)_executionHistoryTimeTo.getValue() );
-      }
-      else{
-        executionHistory = _model.getHistory(selectedOperation, (Integer)_executionHistoryTimeFrom.getValue(), (Integer)_executionHistoryTimeTo.getValue());
-      }
-      
-      Shell.this.updateExecutionHistoryAndOperations(executionHistory, false);
-      return null;
-    }
-    
-    @Override
-    protected void done(){
-      ((AbstractTableModel)_executionHistoryTable.getModel()).fireTableStructureChanged();
-    }
   }
 
   class SaveHistogramActionListener implements ActionListener {
