@@ -31,7 +31,8 @@ and manually
 
 ## Using jChrest ##
 
-Simply run the Jar file in the `target` folder to load the jChrest GUI.
+Please compile jChrest first (see section below) and then run the Jar file in 
+the `target` folder to load the jChrest GUI.
 
 ## Compiling jChrest ##
 

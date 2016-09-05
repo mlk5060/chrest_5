@@ -1,5 +1,7 @@
 # Buildr file for managing the CHREST project
 
+VERSION = '8.0.1'
+
 repositories.remote << 'http://repo1.maven.org/maven2'
 
 H2DATABASE = 'com.h2database:h2:jar:1.4.187'
@@ -52,7 +54,7 @@ desc 'run all Chrest tests'
 task :tests => :compile do
   Dir.chdir('tests') do
     Rake::Task["package"].invoke #Create a new JAR so that the classpath set below uses the most up-to-date version of CHREST
-    sh "jruby -J-cp ../target/chrest.jar all-chrest-tests.rb" #Run tests using most up-to-date CHREST code.
+    sh "jruby -J-cp ../target/chrest-#{VERSION}.jar all-chrest-tests.rb" #Run tests using most up-to-date CHREST code.
   end
 end
 
@@ -66,7 +68,7 @@ task :bundle => [:guide, :manual, :package, :doc, 'release/chrest'] do
     sh 'cp ../../doc/user-guide/user-guide.pdf documentation'
     sh 'cp ../../doc/manual/manual.pdf documentation'
 
-    sh "cp ../../target/chrest.jar ./chrest.jar"
+    sh "cp ../../target/chrest-#{VERSION}.jar ./chrest.jar"
     sh 'cp -r ../../examples .'
 
     sh 'cp -r ../../target/doc documentation/javadoc'
@@ -87,7 +89,7 @@ END
     end
   end
   Dir.chdir('release') do
-    sh "zip -FS -r chrest.zip chrest"
+    sh "zip -FS -r chrest-#{VERSION}.zip chrest"
   end
 end
 
