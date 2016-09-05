@@ -1329,8 +1329,8 @@ public class Chrest extends Observable implements Serializable {
    *
    * @return A count of the number of {@link jchrest.architecture.Node}s in the 
    * long-term memory {@link jchrest.lib.Modality} specified at the time 
-   * requested.  If this {@link #this} model was not created at the time 
-   * specified, null is returned.
+   * requested.  If this model was not created at the {@code time} specified, 
+   * {@code null} is returned.
    */
   public Integer getLtmModalitySize (Modality modality, int time) {
     if(this._creationTime <= time){
@@ -1340,7 +1340,11 @@ public class Chrest extends Observable implements Serializable {
       
       try {
         TreeMap modalityNodeCountVariable = (TreeMap)Chrest.class.getDeclaredField("_totalNumber" + modalityString + "LtmNodes").get(this);
-        Entry<Integer, Object> entry= modalityNodeCountVariable.floorEntry(time);
+        Entry<Integer, Object> entry = this._executionHistoryRecordingEnabled ? 
+          modalityNodeCountVariable.floorEntry(time) :
+          modalityNodeCountVariable.lastEntry()
+          ;
+        
         if(entry != null){
           return (Integer)entry.getValue();
         }
@@ -1396,6 +1400,11 @@ public class Chrest extends Observable implements Serializable {
       Entry<Integer, Object> entry = modalityNodeCountVariable.floorEntry(time);
       if(entry != null){
         Integer currentCount = (Integer)entry.getValue();
+        
+        if(!this._executionHistoryRecordingEnabled){
+          modalityNodeCountVariable.clear();
+        }
+        
         modalityNodeCountVariable.put(time, currentCount - 1);
       }
     } catch (NoSuchFieldException | SecurityException | IllegalArgumentException | IllegalAccessException ex) {
@@ -1412,6 +1421,11 @@ public class Chrest extends Observable implements Serializable {
       Entry<Integer, Object> entry= modalityNodeCountVariable.floorEntry(time);
       if(entry != null){
         Integer currentCount = (Integer)entry.getValue();
+        
+        if(!this._executionHistoryRecordingEnabled){
+          modalityNodeCountVariable.clear();
+        }
+        
         modalityNodeCountVariable.put(time, currentCount + 1);
       }
     } catch (NoSuchFieldException | SecurityException | IllegalArgumentException | IllegalAccessException ex) {
@@ -4961,6 +4975,11 @@ public class Chrest extends Observable implements Serializable {
           this.printDebugStatement("- Visual STM should be cleared at the current time (" + time + ") since a new Fixation set has started");
           this._visualStm.clear(time);
         }
+        
+        if(!this._executionHistoryRecordingEnabled){
+          this.printDebugStatement("- Execution history recording is not enabled so the current fixations scheduled will be cleared");
+          this._fixationsScheduled.clear();
+        }
       }
       
       //Only continue if performing a Fixation set.  If a Fixation set has 
@@ -5998,7 +6017,11 @@ public class Chrest extends Observable implements Serializable {
    * If a {@link jchrest.architecture.VisualSpatialField} is successfully
    * created, it will be added to the database of {@link 
    * jchrest.architecture.VisualSpatialField VisualSpatialFields} associated 
-   * with {@link #this} at the {@code time} specified.
+   * with {@link #this} at the {@code time} specified.  However, if {@link 
+   * jchrest.architecture.Chrest#canRecordExecutionHistory()} returns {@link 
+   * java.lang.Boolean#TRUE}, the new {@link 
+   * jchrest.architecture.VisualSpatialField} will replace the previous {@link 
+   * jchrest.architecture.VisualSpatialField}.
    * <p>
    * The {@link jchrest.architecture.VisualSpatialField} created represents what
    * has been "seen" by {@link #this} based upon the results of passing the 
@@ -6227,6 +6250,16 @@ public class Chrest extends Observable implements Serializable {
           "\n- Adding the VisualSpatialField to this model's " +
           "database of VisualSpatialFields at time " + time
         );
+        
+        if(!this._executionHistoryRecordingEnabled){
+          this.printDebugStatement(
+            "\n- Since execution history recording is disabled, a database of " +
+            "all VisualSpatialFields shouldn't be maintained so the database " +
+            "will be cleared before adding the new VisualSpatialField"
+          );
+          this._visualSpatialFields.clear();
+        }
+        
         this._visualSpatialFields.put(time, visualSpatialField);
         
         ///////////////////////////////////////

@@ -153,36 +153,46 @@ unit_test "size" do
   # Setup CHREST model
   model_creation_time = 0
   model = Chrest.new(model_creation_time, false)
-  
+
   #Setup nodes.
   visual_root_node = model.getLtmModalityRootNode(Modality::VISUAL)
-  
+
   node_1_contents = Pattern.makeVisualList(["1"].to_java(:String))
   node_1_image = Pattern.makeVisualList(["1"].to_java(:String))
   node_1_creation_time = model_creation_time + 1
   node_1 = Node.new(model, node_1_contents, node_1_image, node_1_creation_time)
   model._nextLtmNodeReference += 1
-  
+
   node_2_contents = Pattern.makeVisualList(["2"].to_java(:String))
   node_2_image = Pattern.makeVisualList(["2"].to_java(:String))
   node_2_creation_time = node_1_creation_time + 1
   node_2 = Node.new(model, node_2_contents, node_2_image, node_2_creation_time)
   model._nextLtmNodeReference += 1
-  
+
   node_3_contents = Pattern.makeVisualList(["3"].to_java(:String))
   node_3_image = Pattern.makeVisualList(["3"].to_java(:String))
   node_3_creation_time = node_2_creation_time + 1
   node_3 = Node.new(model, node_3_contents, node_3_image, node_3_creation_time)
   model._nextLtmNodeReference += 1
-  
+
+  #Add Nodes so LTM looks like:
+  #
+  # visual root (created time 0)
+  #     |
+  #  node 1 (created time 1, added time 8)
+  #     |
+  #  node 2 (created time 2, added time 13)
+  #     |
+  #  node 3 (created time 3, added time 18)
   add_node_1_as_child_to_visual_root_time = node_3_creation_time + 5
-  visual_root_node.addChild(
+  add_child.invoke(
+    visual_root_node,
     node_1_contents,
     node_1,
     add_node_1_as_child_to_visual_root_time,
     ""
   )
-  
+
   add_node_2_as_child_to_node_1_time = add_node_1_as_child_to_visual_root_time + 5
   add_child.invoke(
     node_1,
@@ -191,7 +201,7 @@ unit_test "size" do
     add_node_2_as_child_to_node_1_time,
     ""
   )
-  
+
   add_node_3_as_child_to_node_2_time = add_node_2_as_child_to_node_1_time + 5
   add_child.invoke(
     node_2,
@@ -200,12 +210,12 @@ unit_test "size" do
     add_node_3_as_child_to_node_2_time,
     ""
   )
-  
+
   #############
   ### TESTS ###
   #############
-  
-  # Check sizes for visual root node.
+
+  # Check sizes for visual root node.  
   for time in (model_creation_time - 1)..add_node_3_as_child_to_node_2_time + 5
     if time < model_creation_time
       assert_equal(0, visual_root_node.size(time), "occurred when checking the size of the network from the visual root node before the visual root node is created.")
@@ -219,31 +229,31 @@ unit_test "size" do
       assert_equal(4, visual_root_node.size(time), "occurred when checking the size of the network from the visual root node after node 3 has been added as a child to node 2")
     end
   end
-  
+
   # Check sizes for node 1
   for time in model_creation_time..add_node_3_as_child_to_node_2_time + 5
     if time < node_1_creation_time
       assert_equal(0, node_1.size(time), "occurred when checking the size of the network from node 1 before node 1 is created")
     elsif time >= node_1_creation_time and time < add_node_2_as_child_to_node_1_time
-      assert_equal(1, node_1.size(time), "occurred when checking the size of the network from node 1 after node 1 is created but before any children are added to it")
+        assert_equal(1, node_1.size(time), "occurred when checking the size of the network from node 1 after node 1 is created but before any children are added to it")
     elsif time >= add_node_2_as_child_to_node_1_time and time < add_node_3_as_child_to_node_2_time
-      assert_equal(2, node_1.size(time), "occurred when checking the size of the network from node 1 after node 2 has been added as a child to node 1")
+        assert_equal(2, node_1.size(time), "occurred when checking the size of the network from node 1 after node 2 has been added as a child to node 1")
     elsif time >= add_node_3_as_child_to_node_2_time
-      assert_equal(3, node_1.size(time), "occurred when checking the size of the network from node 1 after node 3 has been added as a child to node 2")
+        assert_equal(3, node_1.size(time), "occurred when checking the size of the network from node 1 after node 3 has been added as a child to node 2")
     end
   end
-  
+
   # Check sizes for node 2
   for time in model_creation_time..add_node_3_as_child_to_node_2_time + 5
     if time < node_2_creation_time
       assert_equal(0, node_2.size(time), "occurred when checking the size of the network from node 2 before node 2 is created")
     elsif time >= node_2_creation_time and time < add_node_3_as_child_to_node_2_time
-      assert_equal(1, node_2.size(time), "occurred when checking the size of the network from node 2 after node 2 is created but before any children are added to it")
+        assert_equal(1, node_2.size(time), "occurred when checking the size of the network from node 2 after node 2 is created but before any children are added to it")
     elsif time >= add_node_3_as_child_to_node_2_time
-      assert_equal(2, node_2.size(time), "occurred when checking the size of the network from node 2 after node 3 has been added as a child to node 2")
+        assert_equal(2, node_2.size(time), "occurred when checking the size of the network from node 2 after node 3 has been added as a child to node 2")
     end
   end
-  
+
   # Check sizes for node 3
   for time in model_creation_time..add_node_3_as_child_to_node_2_time + 5
     if time < node_3_creation_time
@@ -260,6 +270,35 @@ end
 # Crucially, these functions use times specified to determine how to act so a 
 # large majority of the test is devoted to passing different timings to these
 # functions and analysing the output.
+#
+# The test attempts to add 3 child Nodes to a parent Node. 1
+# of these child Nodes is invalid (has a different Modality to the parent) and 
+# will not be added.  The following network should be produced:
+# 
+# - [] denotes a Link
+# - {} denotes a Node
+# - Number inside a Node followed by a colon denotes the Node's reference
+# - Text surrounded by double quotes denotes a Link's test or a Node's image
+# - "|", "-" and "->" denote connections
+#  
+#
+# {3: "parent_image"}
+# |
+# |-->["child_2_contents"]-->{5: "child_2_image"}
+# |
+# |-->["child_1_contents"]-->{4: "child_1_image"}
+#
+# The timeline used in this test is as follows:
+# 
+# |======|=========================================================|
+# | Time | Event                                                   |
+# |======|=========================================================|
+# | 0    | CHREST model created                                    |
+# | 1    | Parent Node creation time                               |
+# | 2    | Invalid child Node and valid child Node 1 creation time |
+# | 3    | Valid child Node 2 creation time                        |
+# |------|---------------------------------------------------------|
+#
 process_test "child functionality" do
   
   #############
@@ -278,11 +317,18 @@ process_test "child functionality" do
   res_add_child = Node.java_class.declared_method(:addChild, ListPattern, Java::int)
   ext_add_child.accessible = true
   res_add_child.accessible = true
-  
-  # Setup the model and Nodes to use.
+    
+  ########################
+  ##### MODEL SET-UP #####
+  ########################
+
   model_creation_time = 0
   model = Chrest.new(model_creation_time, false)
-  
+
+  #######################
+  ##### NODE SET-UP #####
+  #######################
+
   parent_node_creation_time = model_creation_time + 1
   parent_node_contents = Pattern.makeList(["parent_contents"].to_java(:String), Modality::VISUAL)
   parent_node_image = Pattern.makeList(["parent_image"].to_java(:String), Modality::VISUAL)
@@ -293,8 +339,13 @@ process_test "child functionality" do
     parent_node_creation_time
   )
   model._nextLtmNodeReference += 1
-  
-  #Child is invalid since it is not the same Modality as the parent.
+
+  # Child is invalid since it is not the same Modality as the parent.  Note that,
+  # after creating the invalid child, model._nextLtmNodeReference isn't 
+  # incremented by 1. This is because, during regular CHREST model operation, 
+  # i.e. using Node.addChild(), this Node would not be added as a child and, 
+  # consequently, the model's "_nextLtmNodeReference" variable would not be 
+  # incremented by 1.
   invalid_child_creation_time = parent_node_creation_time + 1
   invalid_child_contents = Pattern.makeList(["invalid_child_contents"].to_java(:String), Modality::ACTION)
   invalid_child_image = Pattern.makeList(["invalid_child_image"].to_java(:String), Modality::ACTION)
@@ -304,12 +355,9 @@ process_test "child functionality" do
     invalid_child_image,
     invalid_child_creation_time
   )
-  # Note that model._nextLtmNodeReference isn't incremented by 1 here since, 
-  # during regular CHREST model operation, this Node would not be added as a 
-  # child and, consequently, the model's "_nextLtmNodeReference" variable would
-  # not be incremented by 1.  So, the reference for the Node created above and
-  # below are the same.
-  
+
+  # Note that model._nextLtmNodeReference is incremented by 1 for the next two 
+  # valid children 
   child_node_1_creation_time = parent_node_creation_time + 1
   child_node_1_contents = Pattern.makeList(["child_1_contents"].to_java(:String), Modality::VISUAL)
   child_node_1_image = Pattern.makeList(["child_1_image"].to_java(:String), Modality::VISUAL)
@@ -320,7 +368,7 @@ process_test "child functionality" do
     child_node_1_creation_time
   )
   model._nextLtmNodeReference += 1
-  
+
   child_node_2_creation_time = child_node_1_creation_time + 1
   child_node_2_contents = Pattern.makeList(["child_2_contents"].to_java(:String), Modality::VISUAL)
   child_node_2_image = Pattern.makeList(["child_2_image"].to_java(:String), Modality::VISUAL)
@@ -331,44 +379,47 @@ process_test "child functionality" do
     child_node_2_creation_time
   )
   model._nextLtmNodeReference += 1
-  
-  
-  # Reset the model's "_nextLtmReference" variable to 4, not 3, as expected.  To
-  # explain: when the model is constructed, the modality root Nodes for LTM are
-  # constructed and the model's "_nextLtmReference" variable is incremented 
-  # accordingly.  This means that, when the parent Node is constructed, it is 
-  # assigned the reference 3.  However, this test doesn't add the parent Node to
-  # the relevant modality root Node using "Node.addChild()" so the model's
-  # "_nextLtmReference" variable is not incremented programatically.  Therefore,
-  # the expected value of the model's "_nextLtmReference" variable when the first
-  # child is added to the parent Node should be 4.  This is absolutely vital for
-  # correct test progression since Node reference numbers determine whether 
-  # child links should be added or not.
+
+
+  # Reset the model's "_nextLtmReference" variable to 4, not 3, as expected.  
+  # To explain: when the model is constructed, the modality root Nodes for 
+  # LTM are constructed and the model's "_nextLtmReference" variable is 
+  # incremented to 3.  This means that, when the parent Node is constructed, 
+  # it is assigned the reference 3.  However, this test doesn't add the parent 
+  # Node to the relevant modality root Node using "Node.addChild()" so the 
+  # model's "_nextLtmReference" variable is not incremented programatically.  
+  # Therefore, the expected value of the model's "_nextLtmReference" variable 
+  # when the first child is added to the parent Node should be 4. This is 
+  # absolutely vital for correct test progression since Node reference numbers 
+  # determine whether child links should be added or not.
   model._nextLtmNodeReference -= 2
-  
-  # Setup times to use
+
+  #######################
+  ##### TIME SET-UP #####
+  #######################
+
   before_model_created_time = model_creation_time - 1
   after_model_created_but_before_parent_created_time = parent_node_creation_time - 2
   after_model_and_parent_created_but_before_children_created_time = child_node_1_creation_time - 1
   after_model_parent_and_child_1_created_but_before_child_2_created_time = child_node_2_creation_time - 1
   after_model_parent_and_both_child_nodes_created_time = child_node_2_creation_time
   restricted_parameter_function_invocation_time = child_node_2_creation_time + 3
-  
+
   ###########################################################
   ### ADD CHILDREN USING BOTH VERSIONS OF Node.addChild() ###
   ###########################################################
-  
+
   add_child_before_model_created = ext_add_child.invoke(parent_node, child_node_1_contents, child_node_1, before_model_created_time, "")
   add_child_after_model_created_but_before_parent_created = ext_add_child.invoke(parent_node, child_node_1_contents, child_node_1, after_model_created_but_before_parent_created_time, "")
   attempt_to_add_self_as_child = ext_add_child.invoke(parent_node, parent_node_contents, parent_node, parent_node_creation_time, "")
   add_invalid_child_after_model_parent_and_child_created = ext_add_child.invoke(parent_node, invalid_child_contents, invalid_child, invalid_child_creation_time, "")
   add_child_after_model_and_parent_created_but_before_child_1_created = ext_add_child.invoke(parent_node, child_node_1_contents, child_node_1, after_model_and_parent_created_but_before_children_created_time, "")
-  
+
   add_child_after_model_parent_child_1_created_but_before_child_2_created = ext_add_child.invoke(parent_node, child_node_1_contents, child_node_1, after_model_parent_and_child_1_created_but_before_child_2_created_time, "")
   add_child_after_model_parent_and_both_child_nodes_created = ext_add_child.invoke(parent_node, child_node_2_contents, child_node_2, after_model_parent_and_both_child_nodes_created_time, "")
   add_child_when_already_a_child = ext_add_child.invoke(parent_node, child_node_1_contents, child_node_1, restricted_parameter_function_invocation_time - 1, "")
   attempt_to_rewrite_history = ext_add_child.invoke(parent_node, child_node_2_contents, child_node_2, after_model_parent_and_both_child_nodes_created_time, "")
-  
+
   # The restricted parameter version of Node.addChild() just calls the extended
   # parameter version so, since all permutations of the extended parameter 
   # version's output are returned using the extended parameter invocations 
@@ -376,26 +427,30 @@ process_test "child functionality" do
   # version invocation.
   test_for_third_child = Pattern.makeVisualList(["restricted"].to_java(:String))
   res_add_child.invoke(parent_node, test_for_third_child, restricted_parameter_function_invocation_time)
-  
+
+  #################################
+  ##### Node.addChild() TESTS #####
+  #################################
+
   assert_false(
     add_child_before_model_created, 
     "occurred when checking the success of attempting to add a child to a parent " +
     "Node before the CHREST model associated with these Nodes is created "
   )
-  
+
   assert_false(
     add_child_after_model_created_but_before_parent_created, 
     "occurred when checking the success of attempting to add a child to a parent " +
     "Node after the CHREST model associated with these Nodes is created but " +
     "before the parent Node has been created"
   )
-  
+
   assert_false(
     attempt_to_add_self_as_child, 
     "occurred when checking the success of attempting to add a node as " +
     "a child of itself at a valid time"
   )
-  
+
   assert_false(
     add_invalid_child_after_model_parent_and_child_created, 
     "occurred when checking the success of attempting to add a child to a parent " +
@@ -403,29 +458,28 @@ process_test "child functionality" do
     "parent Node has been created but the modality of the child Node is different " +
     "to the parent Node"
   )
-  
+
   assert_false(
     add_child_after_model_and_parent_created_but_before_child_1_created, 
     "occurred when checking the success of attempting to add a child to a parent " +
     "Node after the CHREST model associated with these Nodes is created and the " +
     "parent Node has been created but before the child Node has been created"
   )
-  
+
   assert_true(
     add_child_after_model_parent_child_1_created_but_before_child_2_created, 
     "occurred when checking the success of attempting to add a child to a parent " +
     "Node after the CHREST model associated with these Nodes and the Nodes " +
     "themselves have been created"
   )
-  
+
   assert_true(
     add_child_after_model_parent_and_both_child_nodes_created, 
     "occurred when checking the success of attempting to add another child to a " +
     "parent Node after the CHREST model associated with these Nodes and the Nodes " +
     "themselves have been created"
   )
-  
-  # Test result of attempting to add a child that has already been added.
+
   assert_false(
     add_child_when_already_a_child, 
     "occurred when checking the success of attempting to add another child to a " +
@@ -433,26 +487,24 @@ process_test "child functionality" do
     "themselves have been created but the child to add is already a child of the " +
     "parent"
   )
-  
-  # Test result of attempting to rewrite the child history of the node.
+
   assert_false(
     attempt_to_rewrite_history, 
     "occurred when checking the success of attempting to rewrite the child " +
     "history of the Node that has had a child added to it parent"
   )
-  
-  
-  ######################
-  ### GET TEST LINKS ###
-  ######################
-  
+
+  ################################
+  ### Node.getChildren() TESTS ###
+  ################################
+
   children_before_model_created = parent_node.getChildren(before_model_created_time)
   children_after_model_created_but_before_parent_created = parent_node.getChildren(after_model_created_but_before_parent_created_time)
   children_after_model_and_parent_created_but_before_children_added = parent_node.getChildren(after_model_and_parent_created_but_before_children_created_time)
   children_after_first_child_added_to_parent = parent_node.getChildren(after_model_parent_and_child_1_created_but_before_child_2_created_time)
   children_after_two_children_added_to_parent = parent_node.getChildren(after_model_parent_and_both_child_nodes_created_time)
   children_after_adding_child_using_restricted_parameter_function = parent_node.getChildren(restricted_parameter_function_invocation_time)
-  
+
   # Check numbers of test links returned at different times
   assert_equal(
     nil, 
@@ -468,35 +520,35 @@ process_test "child functionality" do
     "before the parent Node has been created"
   )
   assert_equal(
-    0, 
+  0, 
     children_after_model_and_parent_created_but_before_children_added.size(), 
     "occurred when checking the number of children for a parent Node at a time " +
     "after the CHREST model associated with the parent Node and the parent Node " +
-    "have been created but before any children have been added to the parent Node"
+    "has been created but before any children have been added to the parent Node"
   )
   assert_equal(
-    1, 
+  1, 
     children_after_first_child_added_to_parent.size(), 
     "occurred when checking the number of children for a parent Node at a time " +
     "after the CHREST model associated with the parent Node and the parent Node " +
     "have been created and after one child has been added to the parent Node"
   )
   assert_equal(
-    2, 
+  2, 
     children_after_two_children_added_to_parent.size(), 
     "occurred when checking the number of children for a parent Node at a time " +
     "after the CHREST model associated with the parent Node and the parent Node " +
-    "have been created and after two children have been added to the parent Node"
+    "has been created and after two children have been added to the parent Node"
   )
   assert_equal(
     3,
     children_after_adding_child_using_restricted_parameter_function.size(),
     "occurred when checking the number of children for a parent Node at a time " +
     "after the CHREST model associated with the parent Node and the parent Node " +
-    "have been created and after three children have been added to the parent " +
+    "has been created and after three children have been added to the parent " +
     "Node"
   )
-  
+
   # Test details of children returned at different times
   child_after_adding_one_child = children_after_first_child_added_to_parent.get(0)
   assert_equal(
@@ -523,7 +575,7 @@ process_test "child functionality" do
     "occurred when checking the experiment name of the Link added to the parent " +
     "Node after attempting to add the first child"
   )
-  
+
   first_child_after_adding_two_children = children_after_two_children_added_to_parent.get(0)
   second_child_after_adding_two_children = children_after_two_children_added_to_parent.get(1)
   assert_equal(
@@ -550,7 +602,7 @@ process_test "child functionality" do
     "occurred when checking the experiment name for the first child of the " +
     "parent Node after attempting to add a second child"
   )
-  
+
   assert_equal(
     child_node_1, 
     second_child_after_adding_two_children.getChildNode(),
@@ -575,7 +627,7 @@ process_test "child functionality" do
     "occurred when checking the experiment name for the second child of the " +
     "parent Node after attempting to add a second child"
   )
-  
+
   first_child_after_adding_three_children = children_after_adding_child_using_restricted_parameter_function.get(0)
   second_child_after_adding_three_children = children_after_adding_child_using_restricted_parameter_function.get(1)
   third_child_after_adding_three_children = children_after_adding_child_using_restricted_parameter_function.get(2)
@@ -623,7 +675,7 @@ process_test "child functionality" do
     "occurred when checking the experiment name for the first child of the " +
     "parent Node after attempting to add a third child"
   )
-  
+
   assert_equal(
     child_node_2, 
     second_child_after_adding_three_children.getChildNode(),
@@ -648,7 +700,7 @@ process_test "child functionality" do
     "occurred when checking the experiment name for the second child of the " +
     "parent Node after attempting to add a third child"
   )
-  
+
   assert_equal(
     child_node_1, 
     third_child_after_adding_three_children.getChildNode(),

@@ -392,7 +392,7 @@ public class Node extends Observable implements Serializable{
     Entry entry = this._childHistory.floorEntry(time);
     return entry == null ? null : (List<Link>)entry.getValue();
   }
-  
+    
   /**
    * Attempt to add a new {@link jchrest.architecture.Link} to this {@link 
    * #this} whose test and child {@link jchrest.architecture.Node} is equal to 
@@ -517,7 +517,7 @@ public class Node extends Observable implements Serializable{
     }
     
     this._model.printDebugStatement("- Returning " + childAdded);
-    this._model.printDebugStatement("===== RETURN Node.discriminate() =====");
+    this._model.printDebugStatement("===== RETURN Node.addChild() =====");
     return childAdded;
   }
   

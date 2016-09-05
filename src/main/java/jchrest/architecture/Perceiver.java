@@ -12,7 +12,7 @@ import jchrest.lib.Square;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map.Entry;
-import jchrest.lib.HistoryTreeMap;
+import java.util.TreeMap;
 import jchrest.domainSpecifics.SceneObject;
 import jchrest.lib.PrimitivePattern;
 
@@ -32,7 +32,7 @@ public class Perceiver {
   private final Chrest _associatedChrestModel;
   private int _fixationFieldOfView = 2;
   
-  private final HistoryTreeMap _fixations = new HistoryTreeMap();
+  private final TreeMap<Integer, List<Fixation>> _fixations = new TreeMap();
   private int _fixationToLearnFrom = 0;
 
   /**
@@ -206,6 +206,15 @@ public class Perceiver {
         List<Fixation> newFixations = new ArrayList();
         newFixations.addAll(mostRecentFixations);
         newFixations.add(fixation);
+        
+        //If the model is not recording execution history, keep the Fixation
+        //structure as memory-starved as possible by only maintaining two 
+        //Fixation entries at all times: the previous Fixation set and the new
+        //one.  The previous set is needed for correct model execution
+        if(!this._associatedChrestModel.canRecordExecutionHistory() && this._fixations.size() >= 2){
+          this._fixations.remove(this._fixations.firstEntry().getKey());
+        }
+        
         this._fixations.put(fixationPerformanceTime, newFixations);
 
         this._associatedChrestModel.printDebugStatement("- Checking if the Fixation was performed");
@@ -394,7 +403,7 @@ public class Perceiver {
    */
   public List<Fixation> getFixations(int time) {
     //TODO: potentially add in trace decay here.
-    Entry<Integer, Object> mostRecentFixations = this._fixations.floorEntry(time);
+    Entry<Integer, List<Fixation>> mostRecentFixations = this._fixations.floorEntry(time);
     return mostRecentFixations == null ? null : (ArrayList<Fixation>)mostRecentFixations.getValue();
   }
   

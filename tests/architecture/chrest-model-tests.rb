@@ -10,51 +10,57 @@ require_relative "visual-spatial-field-tests.rb"
 ################################################################################
 unit_test "get_ltm_modality_size" do
   
-  node_creation_time_field = Node.java_class.declared_field("_creationTime")
-  node_creation_time_field.accessible = true
+  chrest_execution_history_recording_enabled_field = Chrest.java_class.declared_field("_executionHistoryRecordingEnabled")
+  chrest_execution_history_recording_enabled_field.accessible = true
   
-  time = 0
-  model = Chrest.new(time, [true, false].sample)
-  
-  time += 1
-  for modality in Modality.values()
-    node = model.getLtmModalityRootNode(modality)
+  for scenario in 1..2
+    time = 0
+    model = Chrest.new(time, [true, false].sample)
+    chrest_execution_history_recording_enabled_field.set_value(model, scenario == 1 ? true : false)
 
-    until time % 50 == 0
+    time += 1
+    for modality in Modality.values()
+      node = model.getLtmModalityRootNode(modality)
+
+      until time % 50 == 0
+        new_node = Node.new(model, ListPattern.new(modality), ListPattern.new(modality), time)
+        node.addChild(ListPattern.new(modality), new_node, time, "")
+        node = new_node
+        time += 1
+      end 
+
       new_node = Node.new(model, ListPattern.new(modality), ListPattern.new(modality), time)
       node.addChild(ListPattern.new(modality), new_node, time, "")
-      node = new_node
       time += 1
-    end 
-    
-    new_node = Node.new(model, ListPattern.new(modality), ListPattern.new(modality), time)
-    node.addChild(ListPattern.new(modality), new_node, time, "")
-    time += 1
-  end
-  
-  number_action_nodes = 0
-  number_verbal_nodes = 0
-  number_visual_nodes = 0
-  
-  for time in 1..50
-    number_action_nodes += 1
-    assert_equal(number_action_nodes, model.getLtmModalitySize(Modality::ACTION, time), "when checking the number of action nodes at time " + time.to_s)
-    assert_equal(number_verbal_nodes, model.getLtmModalitySize(Modality::VERBAL, time), "when checking the number of verbal nodes at time " + time.to_s)
-    assert_equal(number_visual_nodes, model.getLtmModalitySize(Modality::VISUAL, time), "when checking the number of visual nodes at time " + time.to_s)
-  end
-  
-  for time in 51..100 
-    number_verbal_nodes += 1
-    assert_equal(number_action_nodes, model.getLtmModalitySize(Modality::ACTION, time), "when checking the number of action nodes at time " + time.to_s)
-    assert_equal(number_verbal_nodes, model.getLtmModalitySize(Modality::VERBAL, time), "when checking the number of verbal nodes at time " + time.to_s)
-    assert_equal(number_visual_nodes, model.getLtmModalitySize(Modality::VISUAL, time), "when checking the number of visual nodes at time " + time.to_s)
-  end
-  
-  for time in 101..150
-    number_visual_nodes += 1
-    assert_equal(number_action_nodes, model.getLtmModalitySize(Modality::ACTION, time), "when checking the number of action nodes at time " + time.to_s)
-    assert_equal(number_verbal_nodes, model.getLtmModalitySize(Modality::VERBAL, time), "when checking the number of verbal nodes at time " + time.to_s)
-    assert_equal(number_visual_nodes, model.getLtmModalitySize(Modality::VISUAL, time), "when checking the number of visual nodes at time " + time.to_s)
+    end
+
+    #In scenario 1, the number of nodes for each modality should be 0 initially
+    #and be incremented for every time increment.  In scenario 2, the number of
+    #nodes for each modality should be set to the maximum and not be incremented.
+    number_action_nodes = (scenario == 1 ? 0 : 50)
+    number_verbal_nodes = (scenario == 1 ? 0 : 50)
+    number_visual_nodes = (scenario == 1 ? 0 : 50)
+
+    for time in 1..50
+      number_action_nodes += (scenario == 1 ? 1 : 0) #Only increment if execution history recording enabled
+      assert_equal(number_action_nodes, model.getLtmModalitySize(Modality::ACTION, time), "when checking the number of action nodes at time " + time.to_s)
+      assert_equal(number_verbal_nodes, model.getLtmModalitySize(Modality::VERBAL, time), "when checking the number of verbal nodes at time " + time.to_s)
+      assert_equal(number_visual_nodes, model.getLtmModalitySize(Modality::VISUAL, time), "when checking the number of visual nodes at time " + time.to_s)
+    end
+
+    for time in 51..100 
+      number_verbal_nodes += (scenario == 1 ? 1 : 0) #Only increment if execution history recording enabled
+      assert_equal(number_action_nodes, model.getLtmModalitySize(Modality::ACTION, time), "when checking the number of action nodes at time " + time.to_s)
+      assert_equal(number_verbal_nodes, model.getLtmModalitySize(Modality::VERBAL, time), "when checking the number of verbal nodes at time " + time.to_s)
+      assert_equal(number_visual_nodes, model.getLtmModalitySize(Modality::VISUAL, time), "when checking the number of visual nodes at time " + time.to_s)
+    end
+
+    for time in 101..150
+      number_visual_nodes += (scenario == 1 ? 1 : 0) #Only increment if execution history recording enabled
+      assert_equal(number_action_nodes, model.getLtmModalitySize(Modality::ACTION, time), "when checking the number of action nodes at time " + time.to_s)
+      assert_equal(number_verbal_nodes, model.getLtmModalitySize(Modality::VERBAL, time), "when checking the number of verbal nodes at time " + time.to_s)
+      assert_equal(number_visual_nodes, model.getLtmModalitySize(Modality::VISUAL, time), "when checking the number of visual nodes at time " + time.to_s)
+    end
   end
 end
 
@@ -282,17 +288,18 @@ end
 # 
 # BEFORE METHOD INVOCATION
 # o
-# |--{<[T 0 1]>}--(3: <[T 0 1]>)
-# |
 # |--{<[$]>}--(4: <[$]>)
+# |
+# |--{<[T 0 1]>}--(3: <[T 0 1]>)
+# 
 # 
 # AFTER METHOD INVOCATION
 # o
-# |--{<[T 0 1]>}--(3: <[T 0 1]>)
-# |               |
-# |               |--{<[$]>}--(5: <[T 0 1]$>)
-# |
 # |--{<[$]>}--(4: <[$]>)
+# |
+# |--{<[T 0 1]>}--(3: <[T 0 1]>)
+#                 |
+#                 |--{<[$]>}--(5: <[T 0 1]$>)
 # 
 # ~~~~~~~~~~
 # Scenario 2
@@ -329,17 +336,17 @@ end
 # 
 # BEFORE METHOD INVOCATION
 # o
-# |--{<[T 0 1]>}--(3: <[T 0 1]>)
-# |
 # |--{<[H 0 2>}--(4: <[H 0 2]>)
+# |
+# |--{<[T 0 1]>}--(3: <[T 0 1]>)
 # 
 # AFTER METHOD INVOCATION
 # o
-# |--{<[T 0 1]>}--(3: <[T 0 1]>)
-# |               |
-# |               |--{<[H 0 2]>}--(5: <[T 0 1][H 0 2]>)
-# |
 # |--{<[H 0 2>}--(4: <[H 0 2]>)
+# |
+# |--{<[T 0 1]>}--(3: <[T 0 1]>)
+#                 |
+#                 |--{<[H 0 2]>}--(5: <[T 0 1][H 0 2]>)
 # 
 # ~~~~~~~~~~
 # Scenario 5
@@ -347,22 +354,21 @@ end
 # 
 # BEFORE METHOD INVOCATION
 # o
-# |--{<[T 0 1]>}--(3: <[T 0 1]>)
+# |--{<[H 0 2>}--(5: <[H 0 2 $]>) <-- NOTE: end delimiter causes a mismatch
 # |
 # |--{<[$]>}--(4: <[$]>)
 # |
-# |--{<[H 0 2>}--(5: <[H 0 2 $]>) <-- NOTE: end delimiter causes a mismatch
-# 
+# |--{<[T 0 1]>}--(3: <[T 0 1]>)
 #
 # AFTER METHOD INVOCATION
 # o
-# |--{<[T 0 1]>}--(3: <[T 0 1]>)
-# |               |
-# |               |--{<[H 0 2]>}--(6: <[T 0 1][H 0 2]>)
+# |--{<[H 0 2>}--(5: <[H 0 2 $]>)
 # |
 # |--{<[$]>}--(4: <[$]>)
 # |
-# |--{<[H 0 2>}--(5: <[H 0 2 $]>)
+# |--{<[T 0 1]>}--(3: <[T 0 1]>)
+#                 |
+#                 |--{<[H 0 2]>}--(6: <[T 0 1][H 0 2]>)
 #
 process_test "discriminate" do
   discriminate_method = Chrest.java_class.declared_method(:discriminate, Node, ListPattern, Java::int)
@@ -473,7 +479,7 @@ process_test "discriminate" do
           link_1 = Link.new(link_1_test, node_to_discriminate_from, time, "")
           
           # Add Link to modality root Node child history
-          ltm_modality_root_node_child_links.add(link_1)
+          ltm_modality_root_node_child_links.add(0, link_1)
           nodes_in_ltm.push(node_to_discriminate_from)
           
           ####################################
@@ -510,7 +516,7 @@ process_test "discriminate" do
             finished_delimiter_link = Link.new(finished_delimiter_link_test, finished_delimiter_node, time_function_invoked, "")
             
             # Add Link to modality root Node child history
-            ltm_modality_root_node_child_links.add(finished_delimiter_link)
+            ltm_modality_root_node_child_links.add(0, finished_delimiter_link)
             
             nodes_in_ltm.push(finished_delimiter_node)
           end
@@ -530,7 +536,7 @@ process_test "discriminate" do
             node_to_learn_link_test._list.add(primitive_2)
             node_to_learn_link = Link.new(node_to_learn_link_test, node_to_learn, time_function_invoked, "")
             
-            ltm_modality_root_node_child_links.add(node_to_learn_link)
+            ltm_modality_root_node_child_links.add(0, node_to_learn_link)
             
             nodes_in_ltm.push(node_to_learn)
           end
@@ -608,8 +614,8 @@ process_test "discriminate" do
               
               case scenario
               when 1
-                expected_child_link_tests.push(primitive_1)
                 expected_child_link_tests.push(end_primitive)
+                expected_child_link_tests.push(primitive_1)
               when 2
                 expected_child_link_tests.push(end_primitive)
                 expected_child_link_tests.push(primitive_1)
@@ -617,12 +623,12 @@ process_test "discriminate" do
                 expected_child_link_tests.push(primitive_2)
                 expected_child_link_tests.push(primitive_1)
               when 4
-                expected_child_link_tests.push(primitive_1)
                 expected_child_link_tests.push(primitive_2)
+                expected_child_link_tests.push(primitive_1)
               when 5
-                expected_child_link_tests.push(primitive_1)
-                expected_child_link_tests.push(end_primitive)
                 expected_child_link_tests.push(primitive_2)
+                expected_child_link_tests.push(end_primitive)
+                expected_child_link_tests.push(primitive_1)
               end
             else
                
@@ -826,15 +832,15 @@ end
 #
 # BEFORE METHOD INVOCATION
 # o
-# |--{<[T 0 1]>}--(3: <[T 0 1]>)
-# |
 # |--{<[H 0 2]>}--(4: <[H 0 2]>)
+# |
+# |--{<[T 0 1]>}--(3: <[T 0 1]>)
 #
 # AFTER METHOD INVOCATION
 # o
-# |--{<[T 0 1]>}--(3: <[T 0 1][H 0 2]>)
-# |
 # |--{<[H 0 2]>}--(4: <[H 0 2]>)
+# |
+# |--{<[T 0 1]>}--(3: <[T 0 1][H 0 2]>)
 #
 process_test "familiarise" do
   chrest_familiarisation_method = Chrest.java_class.declared_method(:familiarise, Node, ListPattern, Java::int)
@@ -941,7 +947,7 @@ process_test "familiarise" do
           link_1 = Link.new(link_1_test, node_to_familiarise, time, "")
           
           # Add Link to modality root Node child history
-          ltm_modality_root_node_child_links.add(link_1)
+          ltm_modality_root_node_child_links.add(0, link_1)
           nodes_in_ltm.push(node_to_familiarise)
           
           ####################################
@@ -971,7 +977,7 @@ process_test "familiarise" do
             node_to_learn_link_test._list.add(primitive_2)
             node_to_learn_link = Link.new(node_to_learn_link_test, node_to_learn, time_method_invoked, "")
             
-            ltm_modality_root_node_child_links.add(node_to_learn_link)
+            ltm_modality_root_node_child_links.add(0, node_to_learn_link)
             
             nodes_in_ltm.push(node_to_learn)
           end
@@ -1053,8 +1059,8 @@ process_test "familiarise" do
                 expected_child_link_tests.push(primitive_2)
                 expected_child_link_tests.push(primitive_1)
               when 3
-                expected_child_link_tests.push(primitive_1)
                 expected_child_link_tests.push(primitive_2)
+                expected_child_link_tests.push(primitive_1)
               end
             end
             
