@@ -1,6 +1,6 @@
 # Buildr file for managing the CHREST project
 
-version = "8.0.2"
+VERSION = '8.0.1'
 
 repositories.remote << 'http://repo1.maven.org/maven2'
 
@@ -17,21 +17,7 @@ STATISTICS = 'org.apache.commons:commons-math:jar:2.2'
 WATCHMAKER_FRAMEWORK = 'org.uncommons.watchmaker:watchmaker-framework:jar:0.7.1' 
 
 define 'chrest' do
-  puts "\n\e[33mThe current CHREST version is set to: '" + version + "' would you like to update this? (y/n)\e[0m"
-  decision = STDIN.gets.chomp
-
-  if decision == "y"
-    puts "\n\e[33mPlease enter the new version number:\e[0m"
-    version = STDIN.gets.chomp
-  end
-  puts ""
-
-  #Remove any previous CHREST JARs so only the JAR to be created exists in "target"
-  if !Dir.glob('./target/*.jar').empty?
-    sh "rm ./target/*.jar"
-  end
-
-  project.version = version
+  project.version = VERSION
   compile.with(H2DATABASE, JCOMMON, JFREECHART, JSOUP, REFLECTIONS, STATISTICS, WATCHMAKER_FRAMEWORK)
   package(:jar).with(
     :manifest=>{'Main-Class'=>'jchrest.gui.Shell'}
@@ -68,7 +54,7 @@ desc 'run all Chrest tests'
 task :tests => :compile do
   Dir.chdir('tests') do
     Rake::Task["package"].invoke #Create a new JAR so that the classpath set below uses the most up-to-date version of CHREST
-    sh "jruby -J-cp ../target/chrest-#{version}.jar all-chrest-tests.rb" #Run tests using most up-to-date CHREST code.
+    sh "jruby -J-cp ../target/chrest-#{VERSION}.jar all-chrest-tests.rb" #Run tests using most up-to-date CHREST code.
   end
 end
 
@@ -82,7 +68,7 @@ task :bundle => [:guide, :manual, :package, :doc, 'release/chrest'] do
     sh 'cp ../../doc/user-guide/user-guide.pdf documentation'
     sh 'cp ../../doc/manual/manual.pdf documentation'
 
-    sh "cp ../../target/chrest-#{version}.jar ./chrest.jar"
+    sh "cp ../../target/chrest-#{VERSION}.jar ./chrest.jar"
     sh 'cp -r ../../examples .'
 
     sh 'cp -r ../../target/doc documentation/javadoc'
@@ -103,7 +89,7 @@ END
     end
   end
   Dir.chdir('release') do
-    sh "zip -FS -r chrest-#{version}.zip chrest"
+    sh "zip -FS -r chrest-#{VERSION}.zip chrest"
   end
 end
 
