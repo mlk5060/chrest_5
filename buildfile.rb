@@ -1,6 +1,6 @@
 # Buildr file for managing the CHREST project
 
-version = "8.0.2"
+version = "8.0.3"
 
 repositories.remote << 'http://repo1.maven.org/maven2'
 
@@ -106,4 +106,3 @@ END
     sh "zip -FS -r chrest-#{version}.zip chrest"
   end
 end
-

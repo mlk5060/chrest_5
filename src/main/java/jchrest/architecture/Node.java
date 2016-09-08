@@ -7,6 +7,8 @@ import java.io.IOException;
 import java.io.Serializable;
 import java.io.Writer;
 import java.lang.reflect.Field;
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.LinkedHashMap;
@@ -912,10 +914,13 @@ public class Node extends Observable implements Serializable{
       LinkedHashMap<Node, Double> currentProductions = (LinkedHashMap)productionsAtTime.getValue();
       double reinforcedValue = currentProductions.get(node) + reinforcementLearningTheory.calculateReinforcementValue(variables);
       
+      BigDecimal reinforcedValueToFiveSigFigs = new BigDecimal(reinforcedValue);
+      reinforcedValueToFiveSigFigs = reinforcedValueToFiveSigFigs.setScale(5, RoundingMode.HALF_UP);
+      
       LinkedHashMap<Node, Double> newProductions = new LinkedHashMap();
       for(Entry<Node, Double> currentProduction : currentProductions.entrySet()){
         if(currentProduction.getKey().equals(node)){
-          newProductions.put(node, reinforcedValue);
+          newProductions.put(node, reinforcedValueToFiveSigFigs.doubleValue());
         }
         else{
           newProductions.put(currentProduction.getKey(), currentProduction.getValue());
